@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Views-side theme (window chrome, fragment container, transitions).
+         Material 3 Expressive for XML from com.google.android.material:material:1.14.0.
+         The screens themselves are Compose material3 1.5.0-alpha23 under MaterialExpressiveTheme. -->
+    <style name="Theme.Riyal" parent="Theme.Material3Expressive.DayNight.NoActionBar" />
 
-    <style name="Theme.Riyal" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Riyal.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Riyal</item>
+    </style>
 </resources>
