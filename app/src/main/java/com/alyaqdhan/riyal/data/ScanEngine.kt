@@ -36,10 +36,16 @@ class ScanEngine(
         Verbose.scan("income keywords: ${prefs.incomeKeywords.joinToString(", ")}")
         val allowlistOn = prefs.senderFilterEnabled
         val allowlist = prefs.senderAllowlist.map { it.lowercase() }.toSet()
+        val bankOnly = prefs.bankSendersOnly
         if (allowlistOn) {
             Verbose.scan("sender allowlist ON: only ${prefs.senderAllowlist.joinToString(", ")}")
+        } else if (bankOnly) {
+            Verbose.scan(
+                "bank senders only: sender name must contain \"bank\" / \"بنك\" / \"مصرف\"" +
+                    (if (allowlist.isEmpty()) "" else " (or be in your allowlist: ${prefs.senderAllowlist.joinToString(", ")})")
+            )
         } else {
-            Verbose.scan("sender allowlist OFF: every sender is considered (bodies are still keyword-gated)")
+            Verbose.scan("sender filters OFF: every sender is considered (bodies are still keyword-gated)")
         }
 
         val messages = SmsReader.readInbox(context, since)
@@ -77,6 +83,11 @@ class ScanEngine(
                 logSkip("${msg.sender} · skipped (sender not in your allowlist)")
                 return@forEachIndexed
             }
+            if (!allowlistOn && bankOnly && !looksLikeBank(msg.sender) && msg.sender.lowercase() !in allowlist) {
+                skipped++
+                logSkip("${msg.sender} · skipped (sender name doesn't look like a bank)")
+                return@forEachIndexed
+            }
 
             when (val result = parser.parse(msg.body)) {
                 is SmsParser.Result.Skipped -> {
@@ -101,7 +112,7 @@ class ScanEngine(
                         logSkip("${msg.sender} · exact duplicate message, ignored")
                         return@forEachIndexed
                     }
-                    val cat = Categorizer.categorize(result.direction, result.merchant, msg.body, rules)
+                    val cat = Categorizer.categorize(result.direction, result.merchant, msg.body, rules, msg.sender)
                     Verbose.info("✉ ${msg.sender} · ${fmtDateTime(msg.atMillis)}")
                     result.trace.forEach { Verbose.info("    · $it") }
                     val catNote = cat.pattern?.let { "${cat.source} match \"$it\"" } ?: cat.source
@@ -154,6 +165,12 @@ class ScanEngine(
         return summary
     }
 
+    /** "BankMuscat", "Bank Dhofar", "AhliBank", "بنك نزوى"… — the gate the user asked for. */
+    private fun looksLikeBank(sender: String): Boolean {
+        val s = sender.lowercase()
+        return "bank" in s || "بنك" in s || "مصرف" in s
+    }
+
     private fun hashOf(m: RawSms): String =
         MessageDigest.getInstance("SHA-256")
             .digest("${m.sender}|${m.atMillis}|${m.body}".toByteArray())
@@ -165,7 +182,7 @@ class ScanEngine(
             .format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
 
     private fun fmtDateTime(millis: Long): String =
-        DateTimeFormatter.ofPattern("dd MMM uuuu HH:mm")
+        DateTimeFormatter.ofPattern("dd MMM uuuu h:mm a")
             .format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
 
     private companion object {

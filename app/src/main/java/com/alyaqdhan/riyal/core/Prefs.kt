@@ -25,6 +25,16 @@ class Prefs(context: Context) {
         get() = sp.getString("default_currency", "OMR") ?: "OMR"
         set(v) = sp.edit().putString("default_currency", v).apply()
 
+    /** Only read senders whose name looks like a bank (contains bank/بنك/مصرف) or is allowlisted. */
+    var bankSendersOnly: Boolean
+        get() = sp.getBoolean("bank_senders_only", true)
+        set(v) = sp.edit().putBoolean("bank_senders_only", v).apply()
+
+    /** Kick off a scan automatically when the app opens (still one-shot, still verbose). */
+    var scanOnLaunch: Boolean
+        get() = sp.getBoolean("scan_on_launch", true)
+        set(v) = sp.edit().putBoolean("scan_on_launch", v).apply()
+
     var senderFilterEnabled: Boolean
         get() = sp.getBoolean("sender_filter_enabled", false)
         set(v) = sp.edit().putBoolean("sender_filter_enabled", v).apply()
@@ -56,8 +66,21 @@ class Prefs(context: Context) {
     }
 
     companion object {
-        /** Strict by design: nothing is processed unless it mentions a withdrawal or a deposit. */
-        val DEFAULT_EXPENSE_KEYWORDS = setOf("withdraw", "withdrawal", "withdrawn", "سحب")
-        val DEFAULT_INCOME_KEYWORDS = setOf("deposit", "deposited", "إيداع", "ايداع")
+        /**
+         * The gate: nothing is processed unless it contains one of these. The original
+         * withdraw/deposit pair missed real bank wording ("debited", "credited",
+         * "purchase"…), so the defaults now cover the phrasings Omani banks actually
+         * send — still fully editable in Settings.
+         */
+        val DEFAULT_EXPENSE_KEYWORDS = setOf(
+            "withdraw", "withdrawal", "withdrawn",
+            "debited", "purchase", "paid", "payment",
+            "سحب", "خصم", "شراء", "دفع",
+        )
+        val DEFAULT_INCOME_KEYWORDS = setOf(
+            "deposit", "deposited",
+            "credited", "received", "refund", "salary",
+            "إيداع", "ايداع", "راتب",
+        )
     }
 }

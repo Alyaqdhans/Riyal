@@ -86,7 +86,7 @@ class Store(context: Context) {
         var changed = 0
         _txns.value = _txns.value.map { t ->
             if (t.categorySource == "auto") {
-                val match = Categorizer.categorize(t.direction, t.merchant, t.body, _rules.value)
+                val match = Categorizer.categorize(t.direction, t.merchant, t.body, _rules.value, t.sender)
                 if (match.categoryId != t.categoryId) {
                     changed++
                     t.copy(categoryId = match.categoryId)

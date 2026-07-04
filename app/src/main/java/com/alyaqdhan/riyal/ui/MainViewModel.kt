@@ -83,9 +83,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _hasSmsPermission.value = granted
     }
 
-    fun startScan() {
+    private var launchScanDone = false
+
+    /** Auto-scan when the app opens (Settings toggle, on by default). Quiet: no sheet pops up. */
+    fun autoScanOnLaunch() {
+        if (launchScanDone) return
+        launchScanDone = true
+        refreshPermission()
+        if (prefs.onboardingDone && prefs.scanOnLaunch && _hasSmsPermission.value) {
+            Verbose.info("scan on app open is ON (Settings → Scanning to turn it off)")
+            Verbose.flush()
+            startScan(showSheet = false)
+        }
+    }
+
+    fun startScan(showSheet: Boolean = true) {
         if (_scanState.value is ScanState.Running) {
-            scanSheetVisible.value = true
+            if (showSheet) scanSheetVisible.value = true
             return
         }
         refreshPermission()
@@ -93,11 +107,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             Verbose.fail("scan requested, but READ_SMS is not granted — nothing was read")
             Verbose.flush()
             _scanState.value = ScanState.Failed("SMS reading permission is not granted")
-            scanSheetVisible.value = true
+            if (showSheet) scanSheetVisible.value = true
             return
         }
         _scanState.value = ScanState.Running(0, 0)
-        scanSheetVisible.value = true
+        if (showSheet) scanSheetVisible.value = true
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val summary = ScanEngine(getApplication(), prefs, store).run { p ->

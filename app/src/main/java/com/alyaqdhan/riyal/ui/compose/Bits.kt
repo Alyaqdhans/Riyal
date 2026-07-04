@@ -7,16 +7,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,7 +39,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-private val rowTimeFmt = DateTimeFormatter.ofPattern("dd MMM · HH:mm")
+private val rowTimeFmt = DateTimeFormatter.ofPattern("dd MMM · h:mm a")
 private val dayFmt = DateTimeFormatter.ofPattern("EEEE, dd MMM uuuu")
 
 fun dayLabel(date: LocalDate): String {
@@ -54,14 +56,35 @@ fun localDateOf(millis: Long): LocalDate =
 
 @Composable
 fun EmojiBadge(emoji: String, container: Color, modifier: Modifier = Modifier) {
+    // M3 Expressive MaterialShapes: a 9-sided cookie — deliberately imperfect edges.
     Box(
         modifier = modifier
             .size(44.dp)
-            .clip(CircleShape)
+            .clip(MaterialShapes.Cookie9Sided.toShape())
             .background(container),
         contentAlignment = Alignment.Center,
     ) {
         Text(emoji, fontSize = 20.sp)
+    }
+}
+
+/**
+ * The mascot sitting on a jagged M3 Expressive "sunny" halo. The imperfect, scalloped
+ * edge is the point — this is the face treatment used everywhere it matters.
+ */
+@Composable
+fun JaggyFace(
+    mood: Float,
+    modifier: Modifier = Modifier,
+    style: FaceStyle = FaceStyle.NORMAL,
+) {
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.tertiaryContainer, MaterialShapes.Sunny.toShape()),
+        )
+        Face(mood = mood, style = style, modifier = Modifier.fillMaxSize(0.72f))
     }
 }
 
@@ -147,11 +170,11 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Face(
+        JaggyFace(
             mood = mood,
             style = style,
             modifier = Modifier
-                .size(88.dp)
+                .size(108.dp)
                 .popIn(),
         )
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)

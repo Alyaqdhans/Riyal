@@ -30,6 +30,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
@@ -97,19 +98,30 @@ fun ScanSheetHost(vm: MainViewModel) {
                 .padding(horizontal = 20.dp),
         ) {
             when (val s = scan) {
-                is MainViewModel.ScanState.Running -> Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    // Material 3 Expressive shape-morphing loading indicator
-                    LoadingIndicator(Modifier.size(52.dp))
-                    Column {
-                        Text("Scanning your inbox…", style = MaterialTheme.typography.titleLarge)
-                        Text(
-                            if (s.total > 0) "${s.processed} / ${s.total} messages" else "querying the inbox…",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                is MainViewModel.ScanState.Running -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        // Material 3 Expressive shape-morphing loading indicator
+                        LoadingIndicator(Modifier.size(52.dp))
+                        Column {
+                            Text("Scanning your inbox…", style = MaterialTheme.typography.titleLarge)
+                            Text(
+                                if (s.total > 0) "${s.processed} / ${s.total} messages" else "querying the inbox…",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    // Expressive squiggly progress — determinate once the total is known
+                    if (s.total > 0) {
+                        LinearWavyProgressIndicator(
+                            progress = { s.processed / s.total.toFloat() },
+                            modifier = Modifier.fillMaxWidth(),
                         )
+                    } else {
+                        LinearWavyProgressIndicator(Modifier.fillMaxWidth())
                     }
                 }
 
@@ -118,7 +130,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Face(mood = 1f, modifier = Modifier.size(56.dp).popIn())
+                        JaggyFace(mood = 1f, modifier = Modifier.size(64.dp).popIn())
                         Column {
                             Text("Scan complete", style = MaterialTheme.typography.titleLarge)
                             Text(
@@ -157,7 +169,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Face(mood = -1f, style = FaceStyle.DIZZY, modifier = Modifier.size(56.dp).popIn())
+                    JaggyFace(mood = -1f, style = FaceStyle.DIZZY, modifier = Modifier.size(64.dp).popIn())
                     Column {
                         Text("Scan didn't finish", style = MaterialTheme.typography.titleLarge)
                         Text(
@@ -283,7 +295,7 @@ fun ManualTxnDialog(
         categoryId = if (direction == Direction.INCOME) Categories.DEFAULT_INCOME else Categories.DEFAULT_EXPENSE
     }
     val parsed = amount.trim().replace(",", "").toBigDecimalOrNull()
-    val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM uuuu, HH:mm") }
+    val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a") }
 
     AlertDialog(
         onDismissRequest = onDismiss,

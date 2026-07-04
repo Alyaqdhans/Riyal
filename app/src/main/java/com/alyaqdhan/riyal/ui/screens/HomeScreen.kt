@@ -19,10 +19,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -33,6 +35,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -51,8 +56,8 @@ import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryPickerSheet
 import com.alyaqdhan.riyal.ui.compose.EmptyState
-import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
+import com.alyaqdhan.riyal.ui.compose.JaggyFace
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TxnRow
@@ -65,7 +70,7 @@ import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
 private val monthFmt = DateTimeFormatter.ofPattern("MMMM uuuu")
-private val lastScanFmt = DateTimeFormatter.ofPattern("dd MMM, HH:mm")
+private val lastScanFmt = DateTimeFormatter.ofPattern("dd MMM, h:mm a")
 
 @Composable
 fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
@@ -83,9 +88,25 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
     val faceRotation = remember { Animatable(0f) }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Riyal") }) }) { padding ->
+        // Pull to refresh = scan, quietly (no sheet) — the wavy indicator shows the work.
+        val ptrState = rememberPullToRefreshState()
+        val refreshing = scan is MainViewModel.ScanState.Running
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = { vm.startScan(showSheet = false) },
+            state = ptrState,
+            modifier = Modifier.padding(padding),
+            indicator = {
+                PullToRefreshDefaults.LoadingIndicator(
+                    state = ptrState,
+                    isRefreshing = refreshing,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
+            },
+        ) {
         Column(
             Modifier
-                .padding(padding)
+                .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -102,10 +123,10 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Face(
+                    JaggyFace(
                         mood = Stats.mood(totals),
                         modifier = Modifier
-                            .size(84.dp)
+                            .size(96.dp)
                             .graphicsLayer { rotationZ = faceRotation.value }
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
@@ -218,6 +239,8 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                     if (hasPerm) {
                         Button(
                             onClick = { vm.startScan() },
+                            // Expressive shape morph: round → squarish while pressed
+                            shapes = ButtonDefaults.shapes(),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .pressBounce(),
@@ -262,6 +285,7 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(8.dp))
+        }
         }
     }
 

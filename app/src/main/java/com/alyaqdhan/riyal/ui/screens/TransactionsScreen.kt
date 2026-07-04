@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
@@ -24,6 +27,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -31,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
@@ -51,6 +58,7 @@ import java.time.LocalDate
 @Composable
 fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     val txns by vm.txns.collectAsState()
+    val scan by vm.scanState.collectAsState()
     var filter by rememberSaveable { mutableStateOf("all") }
     var picker by remember { mutableStateOf<Txn?>(null) }
     var showManual by remember { mutableStateOf(false) }
@@ -81,7 +89,22 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             )
         },
     ) { padding ->
-        Column(Modifier.padding(padding)) {
+        val ptrState = rememberPullToRefreshState()
+        val refreshing = scan is MainViewModel.ScanState.Running
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = { vm.startScan(showSheet = false) },
+            state = ptrState,
+            modifier = Modifier.padding(padding),
+            indicator = {
+                PullToRefreshDefaults.LoadingIndicator(
+                    state = ptrState,
+                    isRefreshing = refreshing,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
+            },
+        ) {
+        Column(Modifier.fillMaxSize()) {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -102,11 +125,18 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                 }
             }
             if (filtered.isEmpty()) {
-                EmptyState(
-                    style = FaceStyle.SLEEPY,
-                    title = "No transactions here",
-                    subtitle = "Scan your messages, add one manually with +, or change the filter.",
-                )
+                // Scrollable so pull-to-refresh works even with nothing in the list.
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    EmptyState(
+                        style = FaceStyle.SLEEPY,
+                        title = "No transactions here",
+                        subtitle = "Pull down to scan, add one manually with +, or change the filter.",
+                    )
+                }
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 24.dp),
@@ -120,6 +150,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     }
                 }
             }
+        }
         }
     }
 

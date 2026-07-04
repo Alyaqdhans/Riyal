@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -31,7 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.alyaqdhan.riyal.ui.compose.Face
+import com.alyaqdhan.riyal.ui.compose.JaggyFace
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
 
@@ -51,10 +52,10 @@ fun OnboardingScreen(onGrant: () -> Unit, onSkip: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Face(
+            JaggyFace(
                 mood = 1f,
                 modifier = Modifier
-                    .size(128.dp)
+                    .size(148.dp)
                     .popIn(),
             )
             Spacer(Modifier.height(16.dp))
@@ -72,8 +73,8 @@ fun OnboardingScreen(onGrant: () -> Unit, onSkip: () -> Unit) {
                     Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    Promise("Reads messages only when you tap Scan. There is no background listener — ever.")
-                    Promise("Only messages containing withdraw/deposit words (editable by you) are processed. Everything else is skipped, unread and unstored.")
+                    Promise("Reads only while the app is open — on launch, pull-to-refresh, or the Scan button. There is no background listener — ever.")
+                    Promise("Only bank senders, and only messages containing transaction words (all editable by you). Everything else is skipped, unread and unstored.")
                     Promise("No internet permission in the manifest, so your data physically cannot leave this device.")
                     Promise("Anything the parser can't read is handed to you to decide — with a full verbose log of every step.")
                 }
@@ -81,6 +82,7 @@ fun OnboardingScreen(onGrant: () -> Unit, onSkip: () -> Unit) {
             Spacer(Modifier.height(24.dp))
             Button(
                 onClick = onGrant,
+                shapes = ButtonDefaults.shapes(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .pressBounce(),

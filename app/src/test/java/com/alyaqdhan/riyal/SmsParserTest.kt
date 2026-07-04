@@ -1,6 +1,7 @@
 package com.alyaqdhan.riyal
 
 import com.alyaqdhan.riyal.core.Money
+import com.alyaqdhan.riyal.core.Prefs
 import com.alyaqdhan.riyal.data.Categorizer
 import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.SmsParser
@@ -16,8 +17,8 @@ import org.junit.Test
  */
 class SmsParserTest {
 
-    private val expense = setOf("withdraw", "withdrawal", "withdrawn", "سحب")
-    private val income = setOf("deposit", "deposited", "إيداع", "ايداع")
+    private val expense = Prefs.DEFAULT_EXPENSE_KEYWORDS
+    private val income = Prefs.DEFAULT_INCOME_KEYWORDS
     private val parser = SmsParser(expense, income, "OMR")
 
     @Test
@@ -106,6 +107,42 @@ class SmsParserTest {
 
         val salary = Categorizer.categorize(Direction.INCOME, null, "Salary deposit received", emptyList())
         assertEquals("salary", salary.categoryId)
+    }
+
+    @Test
+    fun debitedAndCreditedWordingIsCaughtByDefaultGate() {
+        // Real Omani bank phrasing that the old withdraw/deposit-only gate used to miss.
+        val debit = parser.parse("Your a/c XX1234 debited OMR 4.200 at OOMCO SEEB on 03/07/26. Bal OMR 88.000")
+        assertTrue(debit is SmsParser.Result.Parsed)
+        debit as SmsParser.Result.Parsed
+        assertEquals(Direction.EXPENSE, debit.direction)
+        assertEquals(4_200L, debit.amountMinor)
+
+        val credit = parser.parse("Your account has been credited with OMR 500.000 from MOD PAYROLL")
+        assertTrue(credit is SmsParser.Result.Parsed)
+        credit as SmsParser.Result.Parsed
+        assertEquals(Direction.INCOME, credit.direction)
+        assertEquals(500_000L, credit.amountMinor)
+
+        val purchase = parser.parse("Purchase of OMR 2.500 at TALABAT with card ending 9876")
+        assertTrue(purchase is SmsParser.Result.Parsed)
+        assertEquals(Direction.EXPENSE, (purchase as SmsParser.Result.Parsed).direction)
+    }
+
+    @Test
+    fun categorizerUsesSenderAsSignal() {
+        val bySender = Categorizer.categorize(
+            Direction.EXPENSE, null, "debited OMR 3.000 for order 4412", emptyList(), sender = "Talabat",
+        )
+        assertEquals("food", bySender.categoryId)
+    }
+
+    @Test
+    fun categorizerMatchesArabicKeywords() {
+        val salary = Categorizer.categorize(Direction.INCOME, null, "تم إيداع راتب شهر يوليو", emptyList())
+        assertEquals("salary", salary.categoryId)
+        val fuel = Categorizer.categorize(Direction.EXPENSE, null, "شراء وقود من المحطة", emptyList())
+        assertEquals("transport", fuel.categoryId)
     }
 
     @Test

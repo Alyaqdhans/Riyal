@@ -87,6 +87,8 @@ fun SettingsScreen(vm: MainViewModel) {
     var currency by remember { mutableStateOf(prefs.defaultCurrency) }
     var senderFilter by remember { mutableStateOf(prefs.senderFilterEnabled) }
     var allowlist by remember { mutableStateOf(prefs.senderAllowlist) }
+    var bankOnly by remember { mutableStateOf(prefs.bankSendersOnly) }
+    var scanOnLaunch by remember { mutableStateOf(prefs.scanOnLaunch) }
     var confirmWipe by remember { mutableStateOf(false) }
 
     fun note(text: String) {
@@ -133,6 +135,28 @@ fun SettingsScreen(vm: MainViewModel) {
                         ),
                     )
                 }) { Text("Manage in system settings") }
+            }
+
+            // ── scanning behavior
+            SettingsCard("Scanning") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Scan when the app opens", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "One quiet scan on launch. Off = only pull-to-refresh or the Scan button.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = scanOnLaunch,
+                        onCheckedChange = {
+                            scanOnLaunch = it
+                            prefs.scanOnLaunch = it
+                            note("scan on app open ${if (it) "enabled" else "disabled"}")
+                        },
+                    )
+                }
             }
 
             // ── scan range
@@ -207,12 +231,30 @@ fun SettingsScreen(vm: MainViewModel) {
                     prefs.resetKeywords()
                     expenseKw = prefs.expenseKeywords
                     incomeKw = prefs.incomeKeywords
-                    note("keywords reset to defaults (withdraw/deposit + Arabic سحب/إيداع)")
+                    note("keywords reset to defaults (withdraw/debited/purchase… + deposit/credited/salary… incl. Arabic)")
                 }) { Text("Reset to defaults") }
             }
 
             // ── senders
             SettingsCard("Senders") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Bank senders only", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "Only sender names containing “bank” / “بنك” / “مصرف” are read. Banks that brand differently (NBO, Sohar Intl…) — approve them below.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = bankOnly,
+                        onCheckedChange = {
+                            bankOnly = it
+                            prefs.bankSendersOnly = it
+                            note("bank-senders-only ${if (it) "enabled" else "disabled"}")
+                        },
+                    )
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Only scan senders I approve", style = MaterialTheme.typography.titleSmall)
@@ -231,12 +273,14 @@ fun SettingsScreen(vm: MainViewModel) {
                         },
                     )
                 }
-                if (senderFilter) {
+                if (senderFilter || bankOnly) {
                     if (allowlist.isEmpty()) {
                         Text(
-                            "No approved senders yet — a scan will match nothing.",
+                            if (senderFilter) "No approved senders yet — a scan will match nothing."
+                            else "No extra approved senders — only bank-named senders are read.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
+                            color = if (senderFilter) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     } else {
                         KeywordChips(allowlist) { sender ->

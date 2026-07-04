@@ -57,6 +57,8 @@ class MainActivity : AppCompatActivity() {
             currentDestination.value = destination.id
             bottomBar.isVisible = destination.id != R.id.onboardingFragment
         }
+        vm.autoScanOnLaunch()
+
         bottomBar.setContent {
             RiyalTheme {
                 val selected by currentDestination.collectAsState()

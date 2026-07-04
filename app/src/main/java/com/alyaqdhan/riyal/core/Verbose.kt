@@ -20,7 +20,7 @@ object Verbose {
     private const val MAX_LINES = 4000
     private const val FLUSH_EVERY = 16
 
-    private val timeFmt = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
+    private val timeFmt = DateTimeFormatter.ofPattern("h:mm:ss a")
     private val buffer = ArrayDeque<LogLine>()
     private var pendingSinceFlush = 0
 
