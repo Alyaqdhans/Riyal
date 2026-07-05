@@ -79,7 +79,26 @@ class HomeFragment : ScreenFragment() {
 
     @Composable
     override fun Screen() {
-        HomeScreen(vm, onRequestPermission = { requestSms.launch(Manifest.permission.READ_SMS) })
+        HomeScreen(
+            vm,
+            onRequestPermission = { requestSms.launch(Manifest.permission.READ_SMS) },
+            onOpenReview = { findNavController().navigate(R.id.reviewFragment) },
+        )
+    }
+}
+
+/** Inner page pushed from Home's "Needs review" section, not a bottom tab. */
+class ReviewFragment : ScreenFragment() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enterTransition = MaterialSharedAxis(MaterialSharedAxis.X, true)
+        returnTransition = MaterialSharedAxis(MaterialSharedAxis.X, false)
+    }
+
+    @Composable
+    override fun Screen() {
+        ReviewScreen(vm, onBack = { findNavController().navigateUp() })
     }
 }
 
@@ -104,13 +123,6 @@ class AnalysisFragment : ScreenFragment() {
     @Composable
     override fun Screen() {
         AnalysisScreen(vm)
-    }
-}
-
-class ReviewFragment : ScreenFragment() {
-    @Composable
-    override fun Screen() {
-        ReviewScreen(vm)
     }
 }
 

@@ -2,23 +2,18 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +28,7 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.Txn
+import com.alyaqdhan.riyal.ui.theme.successColor
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -52,26 +48,6 @@ fun dayLabel(date: LocalDate): String {
 
 fun localDateOf(millis: Long): LocalDate =
     Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
-
-/**
- * The mascot sitting on a jagged M3 Expressive "sunny" halo. The imperfect, scalloped
- * edge is the point, this is the face treatment used everywhere it matters.
- */
-@Composable
-fun JaggyFace(
-    mood: Float,
-    modifier: Modifier = Modifier,
-    style: FaceStyle = FaceStyle.NORMAL,
-) {
-    Box(modifier, contentAlignment = Alignment.Center) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.tertiaryContainer, MaterialShapes.Sunny.toShape()),
-        )
-        Face(mood = mood, style = style, modifier = Modifier.fillMaxSize(0.72f))
-    }
-}
 
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
@@ -127,7 +103,8 @@ fun TxnRow(txn: Txn, onClick: () -> Unit, modifier: Modifier = Modifier) {
                 Text(
                     Money.formatSigned(txn.amountMinor, txn.currency, expense),
                     style = MaterialTheme.typography.titleSmall,
-                    color = if (expense) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
+                    // Money direction is semantic: out = danger red, in = success green.
+                    color = if (expense) MaterialTheme.colorScheme.error else successColor(),
                 )
                 Text(
                     category.name,
@@ -155,7 +132,7 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        JaggyFace(
+        Face(
             mood = mood,
             style = style,
             modifier = Modifier

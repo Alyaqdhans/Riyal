@@ -16,9 +16,12 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("onboarding_done", false)
         set(v) = sp.edit().putBoolean("onboarding_done", v).apply()
 
-    /** 0 means "everything in the inbox". */
+    /**
+     * 0 means "everything in the inbox", the default: even a few thousand messages
+     * parse in seconds, so there is no reason to silently ignore older history.
+     */
     var scanRangeMonths: Int
-        get() = sp.getInt("scan_range_months", 6)
+        get() = sp.getInt("scan_range_months", 0)
         set(v) = sp.edit().putInt("scan_range_months", v).apply()
 
     var defaultCurrency: String

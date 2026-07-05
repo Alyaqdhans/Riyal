@@ -27,7 +27,7 @@
     <fragment
         android:id="@+id/reviewFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.ReviewFragment"
-        android:label="Review" />
+        android:label="Needs review" />
 
     <fragment
         android:id="@+id/settingsFragment"

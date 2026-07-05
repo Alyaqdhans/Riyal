@@ -6,7 +6,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,20 +26,26 @@ import kotlinx.coroutines.delay
 
 enum class FaceStyle { NORMAL, SLEEPY, CONFUSED, DIZZY }
 
+// The launcher icon's smiling rial coin, exactly: gold fill, darker gold ring,
+// brown features. Fixed colors so the mascot looks the same everywhere in the app.
+private val CoinFill = Color(0xFFFFE082)
+private val CoinRing = Color(0xFFF9A825)
+private val CoinFeatures = Color(0xFF5D4037)
+
 /**
- * The Riyal mascot. mood runs -1 (worried) .. +1 (delighted) and moves on a bouncy
- * spring; the face blinks on its own. SLEEPY/CONFUSED/DIZZY dress the empty, review
- * and error states around the app.
+ * The Riyal mascot: the same smiling rial coin as the app icon. mood runs -1
+ * (worried) .. +1 (delighted) and moves on a bouncy spring; the face blinks on its
+ * own. SLEEPY/CONFUSED/DIZZY dress the empty, review and error states around the app.
  */
 @Composable
 fun Face(
     mood: Float,
     modifier: Modifier = Modifier,
     style: FaceStyle = FaceStyle.NORMAL,
-    background: Color = MaterialTheme.colorScheme.primaryContainer,
-    features: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     blinking: Boolean = true,
 ) {
+    val background = CoinFill
+    val features = CoinFeatures
     val animatedMood by animateFloatAsState(
         targetValue = mood.coerceIn(-1f, 1f),
         animationSpec = spring(
@@ -64,6 +69,13 @@ fun Face(
         val cx = size.width / 2f
         val cy = size.height / 2f
         drawCircle(background, radius = r, center = Offset(cx, cy))
+        // Inner ring, same proportions as the launcher icon (r 21/26, stroke 3/26).
+        drawCircle(
+            CoinRing,
+            radius = r * 0.81f,
+            center = Offset(cx, cy),
+            style = Stroke(r * 0.115f),
+        )
 
         val strokeWidth = r * 0.085f
         val eyeY = cy - r * 0.18f

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,17 +20,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -41,6 +41,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,46 +50,51 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.core.Money
+import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryPickerSheet
 import com.alyaqdhan.riyal.ui.compose.EmptyState
+import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
-import com.alyaqdhan.riyal.ui.compose.JaggyFace
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
-import java.time.Instant
+import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
+import com.alyaqdhan.riyal.ui.theme.successColor
+import com.alyaqdhan.riyal.ui.theme.successContainer
 import java.time.YearMonth
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
 private val monthFmt = DateTimeFormatter.ofPattern("MMMM uuuu")
-private val lastScanFmt = DateTimeFormatter.ofPattern("dd MMM, h:mm a")
 
 @Composable
-fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
+fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit, onOpenReview: () -> Unit) {
     val txns by vm.txns.collectAsState()
     val hasPerm by vm.hasSmsPermission.collectAsState()
     val scan by vm.scanState.collectAsState()
-    val lastSummary by vm.lastSummary.collectAsState()
+    val reviews by vm.reviews.collectAsState()
 
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
-    val month = remember { YearMonth.now() }
-    val totals = remember(txns, currency) { Stats.totalsFor(txns, month, currency) }
+    // The dashboard is per-month: chevrons walk back through any month the inbox covers.
+    var monthOffset by remember { mutableIntStateOf(0) }
+    val month = remember(monthOffset) { YearMonth.now().plusMonths(monthOffset.toLong()) }
+    val totals = remember(txns, currency, month) { Stats.totalsFor(txns, month, currency) }
+    val pending = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_PENDING } }
     var picker by remember { mutableStateOf<Txn?>(null) }
 
     val scope = rememberCoroutineScope()
     val faceRotation = remember { Animatable(0f) }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Riyal") }) }) { padding ->
-        // Pull to refresh = scan, quietly (no sheet), the wavy indicator shows the work.
+        // Pull to refresh = scan (scanning also runs on launch; there is no button).
         val ptrState = rememberPullToRefreshState()
         val refreshing = scan is MainViewModel.ScanState.Running
         PullToRefreshBox(
@@ -111,7 +117,23 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // ── mood card: the face reacts to this month's spending health
+            // ── month selector: every stat below follows it
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { monthOffset-- }) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
+                }
+                Text(
+                    month.format(monthFmt),
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = { monthOffset++ }, enabled = monthOffset < 0) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
+                }
+            }
+
+            // ── mood card: the face reacts to the selected month's spending health
             Card(
                 shape = RoundedCornerShape(28.dp),
                 modifier = Modifier
@@ -123,7 +145,7 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    JaggyFace(
+                    Face(
                         mood = Stats.mood(totals),
                         modifier = Modifier
                             .size(96.dp)
@@ -146,7 +168,7 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                     )
                     Column {
                         Text(
-                            month.format(monthFmt),
+                            "Net",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -154,6 +176,7 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                         Text(
                             (if (net < 0) "− " else "") + Money.format(kotlin.math.abs(net), currency),
                             style = MaterialTheme.typography.headlineSmall,
+                            color = if (net < 0) MaterialTheme.colorScheme.error else successColor(),
                         )
                         Text(
                             Stats.moodLabel(totals),
@@ -164,7 +187,7 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                 }
             }
 
-            // ── in / out stat cards
+            // ── in / out stat cards: danger red out, success green in
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatCard(
                     label = "Spent",
@@ -178,8 +201,8 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                 StatCard(
                     label = "Received",
                     value = Money.format(totals.received, currency),
-                    container = MaterialTheme.colorScheme.primaryContainer,
-                    content = MaterialTheme.colorScheme.onPrimaryContainer,
+                    container = successContainer(),
+                    content = onSuccessContainer(),
                     modifier = Modifier
                         .weight(1f)
                         .popIn(120),
@@ -193,61 +216,25 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                 )
             }
 
-            // ── scan card: the only thing in the app that reads SMS, and only on tap
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .popIn(160),
-            ) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        if (scan is MainViewModel.ScanState.Running) {
-                            LoadingIndicator(Modifier.size(40.dp))
-                        } else {
+            // ── permission: the only reason scanning could be unavailable
+            if (!hasPerm) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .popIn(160),
+                ) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Icon(
-                                if (hasPerm) Icons.Filled.Refresh else Icons.Filled.Lock,
+                                Icons.Filled.Lock,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                             )
+                            Text("SMS access is off", style = MaterialTheme.typography.titleMedium)
                         }
-                        Column {
-                            Text(
-                                when {
-                                    scan is MainViewModel.ScanState.Running -> "Scanning…"
-                                    hasPerm -> "Read new messages"
-                                    else -> "SMS access is off"
-                                },
-                                style = MaterialTheme.typography.titleMedium,
-                            )
-                            Text(
-                                when {
-                                    scan is MainViewModel.ScanState.Running -> "working, tap below for the live log"
-                                    lastSummary != null -> lastSummary!!.let {
-                                        "last scan ${lastScanFmt.format(Instant.ofEpochMilli(it.at).atZone(ZoneId.systemDefault()))} · ${it.parsed} recorded · ${it.skipped} skipped"
-                                    }
-                                    hasPerm -> "no scan yet, nothing has been read"
-                                    else -> "the app cannot read anything until you allow it"
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    if (hasPerm) {
-                        Button(
-                            onClick = { vm.startScan() },
-                            // Expressive shape morph: round → squarish while pressed
-                            shapes = ButtonDefaults.shapes(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .pressBounce(),
-                        ) {
-                            Text(if (scan is MainViewModel.ScanState.Running) "Show live log" else "Scan messages")
-                        }
-                    } else {
                         Text(
                             "Reading is on-demand only, keyword-gated, and stays on this phone. You can revoke the permission at any time.",
                             style = MaterialTheme.typography.bodySmall,
@@ -267,6 +254,44 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                 }
             }
 
+            // ── needs review: one tappable row leading to the inner review page
+            if (pending.isNotEmpty()) {
+                Surface(
+                    onClick = onOpenReview,
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .popIn(200)
+                        .pressBounce(0.97f),
+                ) {
+                    Row(
+                        Modifier.padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Face(mood = -0.2f, style = FaceStyle.CONFUSED, modifier = Modifier.size(44.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "Needs review",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            )
+                            Text(
+                                "${pending.size} message(s) couldn't be read, tap to decide",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            )
+                        }
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
+                    }
+                }
+            }
+
             // ── recent transactions
             SectionTitle("Recent activity")
             val recent = txns.take(6)
@@ -274,7 +299,7 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                 EmptyState(
                     style = FaceStyle.SLEEPY,
                     title = "Nothing recorded yet",
-                    subtitle = if (hasPerm) "Tap “Scan messages” and Riyal will narrate everything it does."
+                    subtitle = if (hasPerm) "Pull down to scan, Riyal will narrate everything it does."
                     else "Allow SMS reading, then scan whenever you choose.",
                 )
             } else {
@@ -317,3 +342,4 @@ private fun StatCard(
         }
     }
 }
+

@@ -12,8 +12,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -23,52 +21,6 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.max
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-/** Donut whose sweep grows on a lazy spring whenever the data changes. */
-@Composable
-fun DonutChart(
-    slices: List<Pair<Float, Color>>, // fraction (0..1) to color
-    trackColor: Color,
-    modifier: Modifier = Modifier,
-) {
-    val progress = remember { Animatable(0f) }
-    LaunchedEffect(slices) {
-        progress.snapTo(0f)
-        progress.animateTo(
-            1f,
-            spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessVeryLow),
-        )
-    }
-    Canvas(modifier) {
-        val d = size.minDimension
-        val strokeWidth = d * 0.13f
-        val inset = strokeWidth / 2f + 2.dp.toPx()
-        val topLeft = Offset((size.width - d) / 2f + inset, (size.height - d) / 2f + inset)
-        val arcSize = Size(d - inset * 2f, d - inset * 2f)
-
-        if (slices.isEmpty()) {
-            drawArc(
-                trackColor, 0f, 360f, false,
-                topLeft = topLeft, size = arcSize,
-                style = Stroke(strokeWidth, cap = StrokeCap.Round),
-            )
-            return@Canvas
-        }
-        val p = progress.value.coerceIn(0f, 1f)
-        val gap = if (slices.size > 1) 3f else 0f
-        var start = -90f
-        slices.forEach { (fraction, color) ->
-            val fullSweep = fraction * 360f
-            val sweep = max(fullSweep - gap, 0.5f) * p
-            drawArc(
-                color, start + gap / 2f, sweep, false,
-                topLeft = topLeft, size = arcSize,
-                style = Stroke(strokeWidth, cap = StrokeCap.Butt),
-            )
-            start += fullSweep
-        }
-    }
-}
 
 data class BarGroup(val label: String, val expense: Float, val income: Float)
 

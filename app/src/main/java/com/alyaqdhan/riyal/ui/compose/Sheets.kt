@@ -130,7 +130,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        JaggyFace(mood = 1f, modifier = Modifier.size(64.dp).popIn())
+                        Face(mood = 1f, modifier = Modifier.size(64.dp).popIn())
                         Column {
                             Text("Scan complete", style = MaterialTheme.typography.titleLarge)
                             Text(
@@ -169,7 +169,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    JaggyFace(mood = -1f, style = FaceStyle.DIZZY, modifier = Modifier.size(64.dp).popIn())
+                    Face(mood = -1f, style = FaceStyle.DIZZY, modifier = Modifier.size(64.dp).popIn())
                     Column {
                         Text("Scan didn't finish", style = MaterialTheme.typography.titleLarge)
                         Text(

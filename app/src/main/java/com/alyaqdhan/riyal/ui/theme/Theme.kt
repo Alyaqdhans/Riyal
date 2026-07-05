@@ -76,6 +76,20 @@ private val DarkScheme = darkColorScheme(
     surfaceContainerHighest = Color(0xFF3D332C),
 )
 
+/**
+ * Money semantics the M3 scheme doesn't have: green = money in / success, paired
+ * with the scheme's error red for money out. Basic UX beats decorative color, so
+ * these are used wherever an amount has a direction.
+ */
+@Composable
+fun successColor() = if (isSystemInDarkTheme()) Color(0xFF81C784) else Color(0xFF2E7D32)
+
+@Composable
+fun successContainer() = if (isSystemInDarkTheme()) Color(0xFF1B4322) else Color(0xFFC8E6C9)
+
+@Composable
+fun onSuccessContainer() = if (isSystemInDarkTheme()) Color(0xFFC8E6C9) else Color(0xFF0B2E13)
+
 @Composable
 fun RiyalTheme(content: @Composable () -> Unit) {
     MaterialExpressiveTheme(

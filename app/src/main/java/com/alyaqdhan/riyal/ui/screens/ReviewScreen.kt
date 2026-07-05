@@ -13,10 +13,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -49,14 +53,15 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
-private val reviewDateFmt = DateTimeFormatter.ofPattern("dd MMM uuuu, HH:mm")
+private val reviewDateFmt = DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a")
 
 /**
- * Messages that matched the keywords but could not be read automatically. Nothing was
- * recorded for them, the user decides what each one was, or dismisses it.
+ * Inner page (opened from the Home "Needs review" section): messages that matched the
+ * keywords but could not be read automatically. Nothing was recorded for them, the
+ * user decides what each one was, or dismisses it.
  */
 @Composable
-fun ReviewScreen(vm: MainViewModel) {
+fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
     val reviews by vm.reviews.collectAsState()
     val pending = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_PENDING } }
     var resolving by remember { mutableStateOf<ReviewItem?>(null) }
@@ -64,7 +69,16 @@ fun ReviewScreen(vm: MainViewModel) {
     val scope = rememberCoroutineScope()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Review") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Needs review") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+            )
+        },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         Column(Modifier.padding(padding)) {

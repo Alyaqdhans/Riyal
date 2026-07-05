@@ -55,7 +55,9 @@ class MainActivity : AppCompatActivity() {
         val bottomBar = findViewById<ComposeView>(R.id.bottom_bar)
         navController.addOnDestinationChangedListener { _, destination, _ ->
             currentDestination.value = destination.id
-            bottomBar.isVisible = destination.id != R.id.onboardingFragment
+            // Hidden on onboarding and on inner pages (review) for a focused push feel.
+            bottomBar.isVisible =
+                destination.id != R.id.onboardingFragment && destination.id != R.id.reviewFragment
         }
         vm.autoScanOnLaunch()
 
@@ -92,7 +94,12 @@ private fun RiyalNavBar(selected: Int, reviewCount: Int, onSelect: (Int) -> Unit
         NavigationBarItem(
             selected = selected == R.id.homeFragment,
             onClick = { onSelect(R.id.homeFragment) },
-            icon = { Icon(Icons.Filled.Home, contentDescription = null) },
+            icon = {
+                // Review lives inside Home now; its pending count badges the Home tab.
+                BadgedBox(badge = { if (reviewCount > 0) Badge { Text("$reviewCount") } }) {
+                    Icon(Icons.Filled.Home, contentDescription = null)
+                }
+            },
             label = { Text("Home") },
         )
         NavigationBarItem(
@@ -106,16 +113,6 @@ private fun RiyalNavBar(selected: Int, reviewCount: Int, onSelect: (Int) -> Unit
             onClick = { onSelect(R.id.analysisFragment) },
             icon = { Icon(painterResource(R.drawable.ic_pie), contentDescription = null) },
             label = { Text("Analysis") },
-        )
-        NavigationBarItem(
-            selected = selected == R.id.reviewFragment,
-            onClick = { onSelect(R.id.reviewFragment) },
-            icon = {
-                BadgedBox(badge = { if (reviewCount > 0) Badge { Text("$reviewCount") } }) {
-                    Icon(painterResource(R.drawable.ic_inbox), contentDescription = null)
-                }
-            },
-            label = { Text("Review") },
         )
         NavigationBarItem(
             selected = selected == R.id.settingsFragment,

@@ -4,6 +4,9 @@ package com.alyaqdhan.riyal.ui.screens
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -49,10 +53,10 @@ import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.BarChart
 import com.alyaqdhan.riyal.ui.compose.BarGroup
-import com.alyaqdhan.riyal.ui.compose.DonutChart
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.popIn
+import com.alyaqdhan.riyal.ui.theme.successColor
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
@@ -115,8 +119,29 @@ fun AnalysisScreen(vm: MainViewModel) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            DonutChart(
-                                slices = slices.map { it.fraction to Color(Categories.colorFor(it.categoryId)) },
+                            // M3 Expressive wavy gauge: how much of the month's income
+                            // is already spent, in semantic color (green → orange → red).
+                            val target = when {
+                                totals.received > 0L ->
+                                    (totals.spent.toFloat() / totals.received.toFloat()).coerceIn(0f, 1f)
+                                totals.spent > 0L -> 1f
+                                else -> 0f
+                            }
+                            val gaugeProgress by animateFloatAsState(
+                                targetValue = target,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                    stiffness = Spring.StiffnessVeryLow,
+                                ),
+                                label = "gauge",
+                            )
+                            CircularWavyProgressIndicator(
+                                progress = { gaugeProgress },
+                                color = when {
+                                    target >= 0.99f -> MaterialTheme.colorScheme.error
+                                    target > 0.8f -> MaterialTheme.colorScheme.primary
+                                    else -> successColor()
+                                },
                                 trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 modifier = Modifier.size(210.dp),
                             )
@@ -128,7 +153,11 @@ fun AnalysisScreen(vm: MainViewModel) {
                                 )
                                 Text(Money.format(totals.spent, currency), style = MaterialTheme.typography.titleLarge)
                                 Text(
-                                    if (slices.isEmpty()) "no expenses" else "across ${slices.size} categories",
+                                    when {
+                                        totals.received > 0L -> "${(target * 100).roundToInt()}% of income"
+                                        slices.isEmpty() -> "no expenses"
+                                        else -> "across ${slices.size} categories"
+                                    },
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -185,7 +214,7 @@ fun AnalysisScreen(vm: MainViewModel) {
                                 BarGroup(it.month.format(barLabelFmt), it.spent.toFloat(), it.received.toFloat())
                             },
                             expenseColor = MaterialTheme.colorScheme.error,
-                            incomeColor = MaterialTheme.colorScheme.primary,
+                            incomeColor = successColor(),
                             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             baselineColor = MaterialTheme.colorScheme.outlineVariant,
                             modifier = Modifier
@@ -194,7 +223,7 @@ fun AnalysisScreen(vm: MainViewModel) {
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                             LegendDot(MaterialTheme.colorScheme.error, "money out")
-                            LegendDot(MaterialTheme.colorScheme.primary, "money in")
+                            LegendDot(successColor(), "money in")
                         }
                     }
                 }
