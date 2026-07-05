@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -256,7 +257,11 @@ private fun ReviewCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
                 TextButton(onClick = { onDismiss(rememberChoice) }) { Text("Dismiss") }
-                FilledTonalButton(onClick = { onResolve(rememberChoice) }, modifier = Modifier.pressBounce()) {
+                FilledTonalButton(
+                    onClick = { onResolve(rememberChoice) },
+                    shapes = ButtonDefaults.shapes(),
+                    modifier = Modifier.pressBounce(),
+                ) {
                     Text("Add manually")
                 }
             }

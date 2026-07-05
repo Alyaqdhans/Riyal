@@ -50,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -189,13 +190,17 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit, onOpenReview:
                 }
             }
 
-            // ── in / out stat cards: danger red out, success green in
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // ── in / out stat cards: danger red out, success green in. Shaped as an
+            // M3 Expressive pair: big corners on the outside, tight where they meet.
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatCard(
                     label = "Spent",
                     value = Money.format(totals.spent, currency),
                     container = MaterialTheme.colorScheme.errorContainer,
                     content = MaterialTheme.colorScheme.onErrorContainer,
+                    shape = RoundedCornerShape(
+                        topStart = 28.dp, bottomStart = 28.dp, topEnd = 10.dp, bottomEnd = 10.dp,
+                    ),
                     modifier = Modifier
                         .weight(1f)
                         .popIn(60),
@@ -205,6 +210,9 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit, onOpenReview:
                     value = Money.format(totals.received, currency),
                     container = successContainer(),
                     content = onSuccessContainer(),
+                    shape = RoundedCornerShape(
+                        topStart = 10.dp, bottomStart = 10.dp, topEnd = 28.dp, bottomEnd = 28.dp,
+                    ),
                     modifier = Modifier
                         .weight(1f)
                         .popIn(120),
@@ -382,8 +390,9 @@ private fun StatCard(
     container: Color,
     content: Color,
     modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(24.dp),
 ) {
-    Surface(shape = RoundedCornerShape(24.dp), color = container, modifier = modifier) {
+    Surface(shape = shape, color = container, modifier = modifier) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = content)
             Text(value, style = MaterialTheme.typography.titleLarge, color = content)

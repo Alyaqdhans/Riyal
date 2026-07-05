@@ -35,12 +35,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDateRangePickerState
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -58,6 +60,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.graphics.shapes.RoundedPolygon
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
@@ -357,17 +360,17 @@ fun AnalysisScreen(vm: MainViewModel) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Insights", style = MaterialTheme.typography.titleMedium)
                         InsightRow(
-                            R.drawable.ic_insight_store, "Top merchant",
+                            R.drawable.ic_insight_store, MaterialShapes.Cookie9Sided, "Top merchant",
                             topMerchant?.let { "${it.first} · ${Money.format(it.second, currency)}" } ?: "none yet",
                         )
                         InsightRow(
-                            R.drawable.ic_insight_bolt, "Biggest expense",
+                            R.drawable.ic_insight_bolt, MaterialShapes.SoftBurst, "Biggest expense",
                             biggest?.let {
                                 "${it.merchant ?: Categories.byId(it.categoryId).name} · ${Money.format(it.amountMinor, it.currency)}"
                             } ?: "none yet",
                         )
                         InsightRow(
-                            R.drawable.ic_insight_calendar, "Average per day",
+                            R.drawable.ic_insight_calendar, MaterialShapes.Clover4Leaf, "Average per day",
                             Money.format(
                                 Stats.avgSpentPerDayIn(totals.spent, slice.start, slice.endExclusive),
                                 currency,
@@ -532,14 +535,28 @@ private fun LegendDot(color: Color, label: String) {
 }
 
 @Composable
-private fun InsightRow(@DrawableRes iconRes: Int, label: String, value: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            painterResource(iconRes),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.tertiary,
-            modifier = Modifier.size(20.dp),
-        )
+private fun InsightRow(
+    @DrawableRes iconRes: Int,
+    shape: RoundedPolygon,
+    label: String,
+    value: String,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Each insight sits on its own imperfect M3 shape, like the category badges.
+        Box(
+            Modifier
+                .size(38.dp)
+                .clip(shape.toShape())
+                .background(MaterialTheme.colorScheme.tertiaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(iconRes),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.size(20.dp),
+            )
+        }
         Column {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(value, style = MaterialTheme.typography.bodyMedium)
