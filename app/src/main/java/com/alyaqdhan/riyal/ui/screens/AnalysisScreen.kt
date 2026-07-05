@@ -4,8 +4,8 @@ package com.alyaqdhan.riyal.ui.screens
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +34,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -43,6 +44,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -51,18 +55,28 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.ui.MainViewModel
-import com.alyaqdhan.riyal.ui.compose.BarChart
-import com.alyaqdhan.riyal.ui.compose.BarGroup
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.theme.successColor
+import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
+import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
+import com.patrykandpatrick.vico.compose.cartesian.data.columnModel
+import com.patrykandpatrick.vico.compose.cartesian.layer.ColumnCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.compose.common.Fill
+import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
+import com.patrykandpatrick.vico.compose.common.data.ExtraStore
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
 private val monthTitleFmt = DateTimeFormatter.ofPattern("MMMM uuuu")
 private val barLabelFmt = DateTimeFormatter.ofPattern("MMM")
+private val MonthLabelsKey = ExtraStore.Key<List<String>>()
 
 @Composable
 fun AnalysisScreen(vm: MainViewModel) {
@@ -119,32 +133,65 @@ fun AnalysisScreen(vm: MainViewModel) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            // M3 Expressive wavy gauge: how much of the month's income
-                            // is already spent, in semantic color (green → orange → red).
-                            val target = when {
-                                totals.received > 0L ->
-                                    (totals.spent.toFloat() / totals.received.toFloat()).coerceIn(0f, 1f)
-                                totals.spent > 0L -> 1f
-                                else -> 0f
+                            // Multi-color category donut out of stock M3 wavy indicators:
+                            // one layer per category at its cumulative fraction, drawn
+                            // largest-first so each layer on top masks the start of the
+                            // one below, leaving exactly that category's share visible.
+                            val grow = remember(slices) { Animatable(0f) }
+                            LaunchedEffect(slices) {
+                                grow.animateTo(
+                                    1f,
+                                    spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessVeryLow,
+                                    ),
+                                )
                             }
-                            val gaugeProgress by animateFloatAsState(
-                                targetValue = target,
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                    stiffness = Spring.StiffnessVeryLow,
-                                ),
-                                label = "gauge",
+                            // Thick stroke + forced amplitude: the defaults are a thin
+                            // 4dp line whose wave flattens near 0% and 100%. Long
+                            // wavelength so the thick ring carries few, broad waves.
+                            val gaugeStroke = Stroke(
+                                width = with(LocalDensity.current) { 14.dp.toPx() },
+                                cap = StrokeCap.Round,
                             )
-                            CircularWavyProgressIndicator(
-                                progress = { gaugeProgress },
-                                color = when {
-                                    target >= 0.99f -> MaterialTheme.colorScheme.error
-                                    target > 0.8f -> MaterialTheme.colorScheme.primary
-                                    else -> successColor()
-                                },
-                                trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                modifier = Modifier.size(210.dp),
-                            )
+                            val cumulative = remember(slices) {
+                                var acc = 0f
+                                slices.map { s ->
+                                    acc += s.fraction
+                                    acc.coerceAtMost(1f) to Categories.colorFor(s.categoryId)
+                                }
+                            }
+                            if (cumulative.isEmpty()) {
+                                CircularWavyProgressIndicator(
+                                    progress = { 0f },
+                                    trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    stroke = gaugeStroke,
+                                    trackStroke = gaugeStroke,
+                                    amplitude = { 1f },
+                                    wavelength = 42.dp,
+                                    modifier = Modifier.size(210.dp),
+                                )
+                            } else {
+                                cumulative.asReversed().forEachIndexed { index, (fraction, colorInt) ->
+                                    CircularWavyProgressIndicator(
+                                        progress = { fraction * grow.value },
+                                        color = Color(colorInt),
+                                        trackColor = if (index == 0) {
+                                            MaterialTheme.colorScheme.surfaceContainerHigh
+                                        } else {
+                                            Color.Transparent
+                                        },
+                                        stroke = gaugeStroke,
+                                        trackStroke = gaugeStroke,
+                                        amplitude = { 1f },
+                                        wavelength = 42.dp,
+                                        // Static wave: layered rings must share the exact
+                                        // same phase or the color boundaries shimmer.
+                                        waveSpeed = 0.dp,
+                                        modifier = Modifier.size(210.dp),
+                                    )
+                                }
+                            }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     "spent",
@@ -153,11 +200,7 @@ fun AnalysisScreen(vm: MainViewModel) {
                                 )
                                 Text(Money.format(totals.spent, currency), style = MaterialTheme.typography.titleLarge)
                                 Text(
-                                    when {
-                                        totals.received > 0L -> "${(target * 100).roundToInt()}% of income"
-                                        slices.isEmpty() -> "no expenses"
-                                        else -> "across ${slices.size} categories"
-                                    },
+                                    if (slices.isEmpty()) "no expenses" else "across ${slices.size} categories",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -205,21 +248,41 @@ fun AnalysisScreen(vm: MainViewModel) {
                     }
                 }
 
-                // 6-month bars
+                // 6-month grouped columns, drawn by Vico
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Last 6 months", style = MaterialTheme.typography.titleMedium)
-                        BarChart(
-                            bars = series.map {
-                                BarGroup(it.month.format(barLabelFmt), it.spent.toFloat(), it.received.toFloat())
-                            },
-                            expenseColor = MaterialTheme.colorScheme.error,
-                            incomeColor = successColor(),
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            baselineColor = MaterialTheme.colorScheme.outlineVariant,
+                        val spentVals = remember(series) { series.map { it.spent } }
+                        val receivedVals = remember(series) { series.map { it.received } }
+                        val monthLabels = remember(series) { series.map { it.month.format(barLabelFmt) } }
+                        val modelProducer = remember { CartesianChartModelProducer() }
+                        LaunchedEffect(spentVals, receivedVals, monthLabels) {
+                            modelProducer.runTransaction {
+                                columnModel {
+                                    series(spentVals)
+                                    series(receivedVals)
+                                }
+                                extras { it[MonthLabelsKey] = monthLabels }
+                            }
+                        }
+                        CartesianChartHost(
+                            chart = rememberCartesianChart(
+                                rememberColumnCartesianLayer(
+                                    ColumnCartesianLayer.ColumnProvider.series(
+                                        rememberLineComponent(Fill(MaterialTheme.colorScheme.error), 10.dp),
+                                        rememberLineComponent(Fill(successColor()), 10.dp),
+                                    ),
+                                ),
+                                bottomAxis = HorizontalAxis.rememberBottom(
+                                    valueFormatter = CartesianValueFormatter { context, x, _ ->
+                                        context.model.extraStore[MonthLabelsKey].getOrNull(x.toInt()) ?: ""
+                                    },
+                                ),
+                            ),
+                            modelProducer = modelProducer,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(160.dp),
+                                .height(180.dp),
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                             LegendDot(MaterialTheme.colorScheme.error, "money out")
@@ -255,7 +318,8 @@ fun AnalysisScreen(vm: MainViewModel) {
                         }
                     }
                 }
-                Spacer(Modifier.height(8.dp))
+                // Room for the floating toolbar hovering over the content.
+                Spacer(Modifier.height(88.dp))
             }
         }
     }

@@ -393,7 +393,8 @@ fun SettingsScreen(vm: MainViewModel) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Spacer(Modifier.height(24.dp))
+            // Room for the floating toolbar hovering over the content.
+            Spacer(Modifier.height(88.dp))
         }
     }
 

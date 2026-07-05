@@ -52,5 +52,7 @@ dependencies {
     // the routed fragments (MaterialExpressiveTheme, expressive MotionScheme, LoadingIndicator…).
     implementation(libs.compose.material3)
     implementation(libs.compose.icons.core)
+    // Vico: proper chart library (Analysis 6-month columns), Compose + Material 3.
+    implementation(libs.vico.compose.m3)
     testImplementation(libs.junit)
 }

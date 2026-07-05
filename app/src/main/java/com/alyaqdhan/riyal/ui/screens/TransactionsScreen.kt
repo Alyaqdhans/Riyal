@@ -141,7 +141,8 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                 }
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 24.dp),
+                    // Extra bottom room so the last row scrolls clear of the floating toolbar.
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     grouped.forEach { (date, dayTxns) ->

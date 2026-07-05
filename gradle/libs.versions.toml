@@ -13,6 +13,7 @@ navigation = "2.9.8"
 splashscreen = "1.0.1"
 composeMaterial3 = "1.5.0-alpha23"
 composeIconsCore = "1.7.8"
+vico = "3.2.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -24,6 +25,7 @@ androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifec
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "composeMaterial3" }
 compose-icons-core = { group = "androidx.compose.material", name = "material-icons-core", version.ref = "composeIconsCore" }
+vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]

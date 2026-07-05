@@ -309,7 +309,8 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit, onOpenReview:
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            // Room for the floating toolbar hovering over the content.
+            Spacer(Modifier.height(88.dp))
         }
         }
     }
