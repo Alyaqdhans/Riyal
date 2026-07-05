@@ -38,6 +38,20 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("scan_on_launch", true)
         set(v) = sp.edit().putBoolean("scan_on_launch", v).apply()
 
+    /**
+     * Learn from corrections: when the user fixes a category on a transaction with a
+     * merchant, the category picker's "Always" switch starts ON, so a rule is saved
+     * and applied to past and future messages unless the user opts out per edit.
+     */
+    var smartRules: Boolean
+        get() = sp.getBoolean("smart_rules", true)
+        set(v) = sp.edit().putBoolean("smart_rules", v).apply()
+
+    /** Monthly spending budget in minor units of the default currency. 0 = off. */
+    var monthlyBudgetMinor: Long
+        get() = sp.getLong("monthly_budget_minor", 0L)
+        set(v) = sp.edit().putLong("monthly_budget_minor", v).apply()
+
     var senderFilterEnabled: Boolean
         get() = sp.getBoolean("sender_filter_enabled", false)
         set(v) = sp.edit().putBoolean("sender_filter_enabled", v).apply()

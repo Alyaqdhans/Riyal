@@ -166,6 +166,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                 picker = null
             },
             onDismiss = { picker = null },
+            rememberByDefault = vm.prefs.smartRules,
         )
     }
     if (showManual) {

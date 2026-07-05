@@ -57,7 +57,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.ui.MainViewModel
@@ -90,6 +93,14 @@ fun SettingsScreen(vm: MainViewModel) {
     var allowlist by remember { mutableStateOf(prefs.senderAllowlist) }
     var bankOnly by remember { mutableStateOf(prefs.bankSendersOnly) }
     var scanOnLaunch by remember { mutableStateOf(prefs.scanOnLaunch) }
+    var smartRules by remember { mutableStateOf(prefs.smartRules) }
+    var budgetText by remember {
+        mutableStateOf(
+            if (prefs.monthlyBudgetMinor > 0) {
+                Money.toMajor(prefs.monthlyBudgetMinor, prefs.defaultCurrency).toPlainString()
+            } else "",
+        )
+    }
     var confirmWipe by remember { mutableStateOf(false) }
 
     fun note(text: String) {
@@ -157,6 +168,58 @@ fun SettingsScreen(vm: MainViewModel) {
                             note("scan on app open ${if (it) "enabled" else "disabled"}")
                         },
                     )
+                }
+            }
+
+            // ── smart behavior
+            SettingsCard("Smart") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Learn from my corrections", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "When you fix a category, the merchant is remembered automatically and applied to past and future messages. The picker still lets you opt out per edit.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = smartRules,
+                        onCheckedChange = {
+                            smartRules = it
+                            prefs.smartRules = it
+                            note("smart category learning ${if (it) "enabled" else "disabled"}")
+                        },
+                    )
+                }
+                Text("Monthly budget", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "Home shows how much of it this month's spending has used. Leave empty to turn it off.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedTextField(
+                        value = budgetText,
+                        onValueChange = { budgetText = it },
+                        label = { Text("Budget in ${prefs.defaultCurrency}") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.weight(1f),
+                    )
+                    FilledTonalButton(onClick = {
+                        val parsed = budgetText.trim().replace(",", "").toBigDecimalOrNull()
+                        val minor = if (parsed != null && parsed.signum() > 0) {
+                            Money.toMinor(parsed, prefs.defaultCurrency)
+                        } else 0L
+                        prefs.monthlyBudgetMinor = minor
+                        note(
+                            if (minor > 0) "monthly budget → ${Money.format(minor, prefs.defaultCurrency)}"
+                            else "monthly budget turned off",
+                        )
+                    }) { Text("Save") }
                 }
             }
 

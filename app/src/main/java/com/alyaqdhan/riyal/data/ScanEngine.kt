@@ -41,9 +41,13 @@ class ScanEngine(
             Verbose.scan("sender allowlist ON: only ${prefs.senderAllowlist.joinToString(", ")}")
         } else if (bankOnly) {
             Verbose.scan(
-                "bank senders only: sender name must contain \"bank\" / \"بنك\" / \"مصرف\"" +
-                    (if (allowlist.isEmpty()) "" else " (or be in your allowlist: ${prefs.senderAllowlist.joinToString(", ")})")
+                "bank senders first: known bank names are read directly; other senders are " +
+                    "recorded only when a message parses as a real transaction, and such " +
+                    "senders are then auto-approved (your second bank gets learned)"
             )
+            if (allowlist.isNotEmpty()) {
+                Verbose.scan("approved/learned senders: ${prefs.senderAllowlist.joinToString(", ")}")
+            }
         } else {
             Verbose.scan("sender filters OFF: every sender is considered (bodies are still keyword-gated)")
         }
@@ -75,19 +79,30 @@ class ScanEngine(
             }
         }
 
+        val learned = HashSet<String>()
+
         messages.forEachIndexed { index, msg ->
             if (index % 25 == 0) onProgress(Progress(index, messages.size))
 
+            // Banks send from named sender IDs ("BankMuscat"), people send from phone
+            // numbers. Numeric senders are never read unless explicitly approved in
+            // Settings → Senders (that's where a bank texting from a number is added).
+            if (isPhoneNumber(msg.sender) && msg.sender.lowercase() !in allowlist) {
+                skipped++
+                logSkip("${msg.sender} · skipped (numeric sender = personal contact; approve it in Settings if it's really a bank)")
+                return@forEachIndexed
+            }
             if (allowlistOn && msg.sender.lowercase() !in allowlist) {
                 skipped++
                 logSkip("${msg.sender} · skipped (sender not in your allowlist)")
                 return@forEachIndexed
             }
-            if (!allowlistOn && bankOnly && !looksLikeBank(msg.sender) && msg.sender.lowercase() !in allowlist) {
-                skipped++
-                logSkip("${msg.sender} · skipped (sender name doesn't look like a bank)")
-                return@forEachIndexed
-            }
+            // Bank gate, self-teaching: senders that don't look like a bank are still
+            // keyword-gated and parsed, but only a fully parsed transaction is kept,
+            // and the sender is then learned as a bank. Their unreadable messages are
+            // NOT sent to Review, so promo senders can't spam it.
+            val trustedSender = !bankOnly || allowlistOn || looksLikeBank(msg.sender) ||
+                msg.sender.lowercase() in allowlist || msg.sender.lowercase() in learned
 
             when (val result = parser.parse(msg.body)) {
                 is SmsParser.Result.Skipped -> {
@@ -96,6 +111,11 @@ class ScanEngine(
                 }
 
                 is SmsParser.Result.NeedsReview -> {
+                    if (!trustedSender) {
+                        skipped++
+                        logSkip("${msg.sender} · matched keywords but unparsable and sender isn't a known bank, skipped")
+                        return@forEachIndexed
+                    }
                     matched++
                     needsReview++
                     Verbose.fail("✉ ${msg.sender} · ${fmtDateTime(msg.atMillis)} → COULD NOT READ: ${result.reason}")
@@ -106,6 +126,13 @@ class ScanEngine(
 
                 is SmsParser.Result.Parsed -> {
                     matched++
+                    if (!trustedSender && msg.sender.lowercase() !in learned) {
+                        learned += msg.sender.lowercase()
+                        Verbose.ok(
+                            "✦ learned sender: \"${msg.sender}\" sends real transactions, " +
+                                "auto-approved (remove it in Settings → Senders)"
+                        )
+                    }
                     val id = hashOf(msg)
                     if (txns.containsKey(id)) {
                         duplicates++
@@ -140,6 +167,11 @@ class ScanEngine(
 
         onProgress(Progress(messages.size, messages.size))
 
+        if (learned.isNotEmpty()) {
+            prefs.senderAllowlist = prefs.senderAllowlist + learned
+            Verbose.scan("learned ${learned.size} new bank sender(s): ${learned.joinToString(", ")}")
+        }
+
         val summary = ScanSummary(
             at = System.currentTimeMillis(),
             tookMs = System.currentTimeMillis() - startedAt,
@@ -165,10 +197,20 @@ class ScanEngine(
         return summary
     }
 
-    /** "BankMuscat", "Bank Dhofar", "AhliBank", "بنك نزوى"…, the gate the user asked for. */
+    /**
+     * "BankMuscat", "Bank Dhofar", "بنك نزوى"… plus Omani banks that brand without the
+     * word "bank" (NBO, Sohar International, Meethaq, Muzn, Maisarah, Alizz…).
+     * Anything not listed here is still picked up by sender learning once one of its
+     * messages parses as a real transaction.
+     */
+    /** "+96891234567", "9123 4567"… anything that's just a phone number. */
+    private fun isPhoneNumber(sender: String): Boolean =
+        sender.isNotBlank() && sender.all { it.isDigit() || it in "+ -()" }
+
     private fun looksLikeBank(sender: String): Boolean {
-        val s = sender.lowercase()
-        return "bank" in s || "بنك" in s || "مصرف" in s
+        val s = sender.lowercase().replace(" ", "").replace("-", "").replace("_", "")
+        if ("bank" in s || "بنك" in s || "مصرف" in s) return true
+        return KNOWN_BANK_BRANDS.any { it in s }
     }
 
     private fun hashOf(m: RawSms): String =
@@ -187,5 +229,22 @@ class ScanEngine(
 
     private companion object {
         const val MAX_SKIP_LINES = 400
+
+        // Omani (and common regional) bank sender brands that don't say "bank".
+        val KNOWN_BANK_BRANDS = listOf(
+            "nbo",          // National Bank of Oman
+            "soharintl", "soharisl", // Sohar International / Islamic
+            "meethaq",      // Bank Muscat Islamic
+            "muzn",         // NBO Islamic
+            "maisarah",     // Bank Dhofar Islamic
+            "alizz", "izzbank", // Alizz Islamic
+            "ahli",         // Ahli Bank
+            "hsbc",
+            "oab", "omanarab",  // Oman Arab Bank
+            "nizwa",
+            "dhofar",
+            "muscat",       // BankMuscat variants like "Muscat"
+            "cbd", "sib", "qnb", "sbi",
+        )
     }
 }

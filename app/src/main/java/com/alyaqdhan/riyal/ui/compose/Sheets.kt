@@ -221,15 +221,19 @@ fun ScanSheetHost(vm: MainViewModel) {
     }
 }
 
-/** Category picker: icon chips + optional "always" rule for this merchant. */
+/**
+ * Category picker: icon chips + a "remember" rule for this merchant. With smart rules
+ * on (the default), remembering starts enabled, so one correction teaches the app.
+ */
 @Composable
 fun CategoryPickerSheet(
     txn: Txn,
     onApply: (categoryId: String, rulePattern: String?) -> Unit,
     onDismiss: () -> Unit,
+    rememberByDefault: Boolean = false,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var makeRule by remember { mutableStateOf(false) }
+    var makeRule by remember { mutableStateOf(rememberByDefault && !txn.merchant.isNullOrBlank()) }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(

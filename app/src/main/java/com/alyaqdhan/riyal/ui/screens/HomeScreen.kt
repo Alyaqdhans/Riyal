@@ -30,6 +30,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -71,6 +72,7 @@ import com.alyaqdhan.riyal.ui.theme.successColor
 import com.alyaqdhan.riyal.ui.theme.successContainer
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 private val monthFmt = DateTimeFormatter.ofPattern("MMMM uuuu")
@@ -216,6 +218,50 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit, onOpenReview:
                 )
             }
 
+            // ── budget: wavy bar against the monthly budget from Settings
+            val budget = vm.prefs.monthlyBudgetMinor
+            if (budget > 0) {
+                val used = totals.spent.toFloat() / budget.toFloat()
+                val budgetColor = when {
+                    used >= 1f -> MaterialTheme.colorScheme.error
+                    used > 0.8f -> MaterialTheme.colorScheme.primary
+                    else -> successColor()
+                }
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .popIn(140),
+                ) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Budget", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "${(used * 100).roundToInt()}%",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = budgetColor,
+                            )
+                        }
+                        LinearWavyProgressIndicator(
+                            progress = { used.coerceIn(0f, 1f) },
+                            color = budgetColor,
+                            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            amplitude = { 1f },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        val left = budget - totals.spent
+                        Text(
+                            if (left >= 0) {
+                                "${Money.format(left, currency)} left of ${Money.format(budget, currency)}"
+                            } else {
+                                "${Money.format(-left, currency)} over your ${Money.format(budget, currency)} budget"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
             // ── permission: the only reason scanning could be unavailable
             if (!hasPerm) {
                 Card(
@@ -324,6 +370,7 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit, onOpenReview:
                 picker = null
             },
             onDismiss = { picker = null },
+            rememberByDefault = vm.prefs.smartRules,
         )
     }
 }
