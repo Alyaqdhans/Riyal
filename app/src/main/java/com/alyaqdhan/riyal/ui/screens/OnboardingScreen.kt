@@ -37,8 +37,8 @@ import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
 
 /**
- * First-run pitch. The whole point of the app in four promises, then the user —
- * not the app — decides whether SMS reading is allowed.
+ * First-run pitch. The whole point of the app in four promises, then the user -
+ * not the app, decides whether SMS reading is allowed.
  */
 @Composable
 fun OnboardingScreen(onGrant: () -> Unit, onSkip: () -> Unit) {
@@ -73,10 +73,10 @@ fun OnboardingScreen(onGrant: () -> Unit, onSkip: () -> Unit) {
                     Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    Promise("Reads only while the app is open — on launch, pull-to-refresh, or the Scan button. There is no background listener — ever.")
+                    Promise("Reads only while the app is open, on launch, pull-to-refresh, or the Scan button. There is no background listener, ever.")
                     Promise("Only bank senders, and only messages containing transaction words (all editable by you). Everything else is skipped, unread and unstored.")
                     Promise("No internet permission in the manifest, so your data physically cannot leave this device.")
-                    Promise("Anything the parser can't read is handed to you to decide — with a full verbose log of every step.")
+                    Promise("Anything the parser can't read is handed to you to decide, with a full verbose log of every step.")
                 }
             }
             Spacer(Modifier.height(24.dp))
@@ -92,7 +92,7 @@ fun OnboardingScreen(onGrant: () -> Unit, onSkip: () -> Unit) {
                 Text("Allow SMS reading & scan")
             }
             TextButton(onClick = onSkip) {
-                Text("Not now — look around first")
+                Text("Not now, look around first")
             }
         }
     }

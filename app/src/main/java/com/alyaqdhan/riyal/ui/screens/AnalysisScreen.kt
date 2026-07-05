@@ -2,6 +2,7 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -38,8 +39,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
@@ -147,7 +150,7 @@ fun AnalysisScreen(vm: MainViewModel) {
                                         .background(Color(Categories.colorFor(cat.id))),
                                 )
                                 Text(
-                                    "${cat.emoji} ${cat.name}",
+                                    cat.name,
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.weight(1f),
                                 )
@@ -201,22 +204,22 @@ fun AnalysisScreen(vm: MainViewModel) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Insights", style = MaterialTheme.typography.titleMedium)
                         InsightRow(
-                            "🏪", "Top merchant",
-                            topMerchant?.let { "${it.first} · ${Money.format(it.second, currency)}" } ?: "—",
+                            R.drawable.ic_insight_store, "Top merchant",
+                            topMerchant?.let { "${it.first} · ${Money.format(it.second, currency)}" } ?: "none yet",
                         )
                         InsightRow(
-                            "💥", "Biggest expense",
+                            R.drawable.ic_insight_bolt, "Biggest expense",
                             biggest?.let {
                                 "${it.merchant ?: Categories.byId(it.categoryId).name} · ${Money.format(it.amountMinor, it.currency)}"
-                            } ?: "—",
+                            } ?: "none yet",
                         )
                         InsightRow(
-                            "📅", "Average per day",
+                            R.drawable.ic_insight_calendar, "Average per day",
                             Money.format(Stats.avgSpentPerDay(totals.spent, month), currency),
                         )
                         if (totals.otherCurrencyCount > 0) {
                             Text(
-                                "Charts show $currency only — ${totals.otherCurrencyCount} transaction(s) in other currencies are listed in Activity.",
+                                "Charts show $currency only, ${totals.otherCurrencyCount} transaction(s) in other currencies are listed in Activity.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -243,9 +246,14 @@ private fun LegendDot(color: Color, label: String) {
 }
 
 @Composable
-private fun InsightRow(emoji: String, label: String, value: String) {
+private fun InsightRow(@DrawableRes iconRes: Int, label: String, value: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(emoji)
+        Icon(
+            painterResource(iconRes),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier.size(20.dp),
+        )
         Column {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(value, style = MaterialTheme.typography.bodyMedium)

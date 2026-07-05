@@ -70,7 +70,7 @@ class Prefs(context: Context) {
          * The gate: nothing is processed unless it contains one of these. The original
          * withdraw/deposit pair missed real bank wording ("debited", "credited",
          * "purchase"…), so the defaults now cover the phrasings Omani banks actually
-         * send — still fully editable in Settings.
+         * send, still fully editable in Settings.
          */
         val DEFAULT_EXPENSE_KEYWORDS = setOf(
             "withdraw", "withdrawal", "withdrawn",

@@ -19,7 +19,7 @@ class RiyalApp : Application() {
         store = Store(this)
         DynamicColors.applyToActivitiesIfAvailable(this)
         Verbose.info("Riyal started · verbose processing log is live")
-        Verbose.info("permissions declared: READ_SMS only — no INTERNET, no RECEIVE_SMS, no background work")
+        Verbose.info("permissions declared: READ_SMS only, no INTERNET, no RECEIVE_SMS, no background work")
         Verbose.flush()
     }
 }

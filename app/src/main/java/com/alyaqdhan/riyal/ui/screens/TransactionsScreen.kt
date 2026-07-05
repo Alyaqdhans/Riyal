@@ -44,6 +44,7 @@ import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.CategoryIcon
 import com.alyaqdhan.riyal.ui.compose.CategoryPickerSheet
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
@@ -120,7 +121,8 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     FilterChip(
                         selected = filter == cat.id,
                         onClick = { filter = if (filter == cat.id) "all" else cat.id },
-                        label = { Text("${cat.emoji} ${cat.name}") },
+                        label = { Text(cat.name) },
+                        leadingIcon = { CategoryIcon(cat.id) },
                     )
                 }
             }

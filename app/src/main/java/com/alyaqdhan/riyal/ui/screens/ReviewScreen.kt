@@ -53,7 +53,7 @@ private val reviewDateFmt = DateTimeFormatter.ofPattern("dd MMM uuuu, HH:mm")
 
 /**
  * Messages that matched the keywords but could not be read automatically. Nothing was
- * recorded for them — the user decides what each one was, or dismisses it.
+ * recorded for them, the user decides what each one was, or dismisses it.
  */
 @Composable
 fun ReviewScreen(vm: MainViewModel) {
@@ -73,7 +73,7 @@ fun ReviewScreen(vm: MainViewModel) {
                     style = FaceStyle.NORMAL,
                     mood = 0.9f,
                     title = "All clear",
-                    subtitle = "When a message matches your keywords but can't be read, it waits here for your decision — it is never guessed into your numbers.",
+                    subtitle = "When a message matches your keywords but can't be read, it waits here for your decision, it is never guessed into your numbers.",
                 )
             } else {
                 LazyColumn(
@@ -82,7 +82,7 @@ fun ReviewScreen(vm: MainViewModel) {
                 ) {
                     item {
                         Text(
-                            "These matched your keywords but couldn't be read automatically. Nothing was recorded for them — you decide.",
+                            "These matched your keywords but couldn't be read automatically. Nothing was recorded for them, you decide.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

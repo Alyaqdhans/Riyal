@@ -88,7 +88,7 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
     val faceRotation = remember { Animatable(0f) }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Riyal") }) }) { padding ->
-        // Pull to refresh = scan, quietly (no sheet) — the wavy indicator shows the work.
+        // Pull to refresh = scan, quietly (no sheet), the wavy indicator shows the work.
         val ptrState = rememberPullToRefreshState()
         val refreshing = scan is MainViewModel.ScanState.Running
         PullToRefreshBox(
@@ -187,7 +187,7 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
             }
             if (totals.otherCurrencyCount > 0) {
                 Text(
-                    "+${totals.otherCurrencyCount} transaction(s) this month in other currencies — see Activity",
+                    "+${totals.otherCurrencyCount} transaction(s) this month in other currencies, see Activity",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -224,11 +224,11 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                             )
                             Text(
                                 when {
-                                    scan is MainViewModel.ScanState.Running -> "working — tap below for the live log"
+                                    scan is MainViewModel.ScanState.Running -> "working, tap below for the live log"
                                     lastSummary != null -> lastSummary!!.let {
                                         "last scan ${lastScanFmt.format(Instant.ofEpochMilli(it.at).atZone(ZoneId.systemDefault()))} · ${it.parsed} recorded · ${it.skipped} skipped"
                                     }
-                                    hasPerm -> "no scan yet — nothing has been read"
+                                    hasPerm -> "no scan yet, nothing has been read"
                                     else -> "the app cannot read anything until you allow it"
                                 },
                                 style = MaterialTheme.typography.bodySmall,

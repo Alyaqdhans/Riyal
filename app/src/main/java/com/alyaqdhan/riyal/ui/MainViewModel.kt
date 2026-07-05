@@ -74,8 +74,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         ) == PackageManager.PERMISSION_GRANTED
         if (lastLoggedPermission != granted) {
             Verbose.info(
-                if (granted) "READ_SMS permission: granted — you can revoke it anytime in system settings"
-                else "READ_SMS permission: not granted — the app cannot and will not read anything"
+                if (granted) "READ_SMS permission: granted, you can revoke it anytime in system settings"
+                else "READ_SMS permission: not granted, the app cannot and will not read anything"
             )
             Verbose.flush()
             lastLoggedPermission = granted
@@ -104,7 +104,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         refreshPermission()
         if (!_hasSmsPermission.value) {
-            Verbose.fail("scan requested, but READ_SMS is not granted — nothing was read")
+            Verbose.fail("scan requested, but READ_SMS is not granted, nothing was read")
             Verbose.flush()
             _scanState.value = ScanState.Failed("SMS reading permission is not granted")
             if (showSheet) scanSheetVisible.value = true
@@ -122,7 +122,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             } catch (e: SecurityException) {
                 Verbose.fail("scan aborted: the system refused the SMS read (permission revoked?)")
                 Verbose.flush()
-                _scanState.value = ScanState.Failed("The system refused the SMS read — check the permission")
+                _scanState.value = ScanState.Failed("The system refused the SMS read, check the permission")
             } catch (e: Exception) {
                 Verbose.fail("scan failed: ${e.javaClass.simpleName}: ${e.message}")
                 Verbose.flush()
@@ -174,7 +174,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun undoDismissReview(item: ReviewItem) = viewModelScope.launch(Dispatchers.IO) {
         store.setReviewState(item.id, ReviewItem.STATE_PENDING)
-        Verbose.info("dismiss undone — review item restored")
+        Verbose.info("dismiss undone, review item restored")
         Verbose.flush()
     }
 
@@ -257,7 +257,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 }
             }
-            Verbose.ok("exported ${list.size} transaction(s) to the CSV file you picked — stayed on your device")
+            Verbose.ok("exported ${list.size} transaction(s) to the CSV file you picked, stayed on your device")
         } catch (e: Exception) {
             Verbose.fail("CSV export failed: ${e.message}")
         }

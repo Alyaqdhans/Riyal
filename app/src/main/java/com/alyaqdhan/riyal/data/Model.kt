@@ -5,28 +5,27 @@ enum class Direction { EXPENSE, INCOME }
 data class Category(
     val id: String,
     val name: String,
-    val emoji: String,
     val income: Boolean = false,
 )
 
 object Categories {
 
     val ALL = listOf(
-        Category("food", "Food & Dining", "🍔"),
-        Category("groceries", "Groceries", "🛒"),
-        Category("transport", "Transport & Fuel", "⛽"),
-        Category("bills", "Bills & Telecom", "💡"),
-        Category("shopping", "Shopping", "🛍️"),
-        Category("health", "Health", "💊"),
-        Category("entertainment", "Entertainment", "🎬"),
-        Category("travel", "Travel", "✈️"),
-        Category("education", "Education", "🎓"),
-        Category("fees", "Fees & Charges", "🧾"),
-        Category("cash", "Cash & ATM", "🏧"),
-        Category("transfer", "Transfers", "💸"),
-        Category("other", "Other", "❓"),
-        Category("salary", "Salary", "💼", income = true),
-        Category("income", "Other Income", "💰", income = true),
+        Category("food", "Food & Dining"),
+        Category("groceries", "Groceries"),
+        Category("transport", "Transport & Fuel"),
+        Category("bills", "Bills & Telecom"),
+        Category("shopping", "Shopping"),
+        Category("health", "Health"),
+        Category("entertainment", "Entertainment"),
+        Category("travel", "Travel"),
+        Category("education", "Education"),
+        Category("fees", "Fees & Charges"),
+        Category("cash", "Cash & ATM"),
+        Category("transfer", "Transfers"),
+        Category("other", "Other"),
+        Category("salary", "Salary", income = true),
+        Category("income", "Other Income", income = true),
     )
 
     const val DEFAULT_EXPENSE = "other"
@@ -71,7 +70,7 @@ data class Txn(
     val body: String,
     val categoryId: String,
     val categorySource: String, // "auto" | "user"
-    val confidence: Int,        // 0..100 — how sure the parser was
+    val confidence: Int,        // 0..100, how sure the parser was
     val manual: Boolean = false,
 )
 

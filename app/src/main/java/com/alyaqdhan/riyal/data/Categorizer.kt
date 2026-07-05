@@ -82,7 +82,7 @@ object Categorizer {
         rules: List<UserRule>,
         sender: String = "",
     ): Match {
-        // The sender is part of the haystack too — "Talabat" or "OmanOil" as a sender
+        // The sender is part of the haystack too, "Talabat" or "OmanOil" as a sender
         // name is often the only merchant signal the message carries.
         val hay = ((merchant ?: "") + " " + sender + " " + body).lowercase()
         for (rule in rules) {
@@ -104,7 +104,7 @@ object Categorizer {
     // Short keywords ("fee", "vat", "atm"…) must match whole words so "coffee" or
     // "private" never trip them; longer ones can match as substrings. The boundary
     // check only applies to ASCII words: \b in Java regex treats Arabic letters as
-    // non-word characters, so \bراتب\b would never match — Arabic goes substring.
+    // non-word characters, so \bراتب\b would never match, Arabic goes substring.
     private fun contains(hay: String, keyword: String): Boolean =
         if (keyword.length <= 4 && keyword.all { it in 'a'..'z' }) {
             Regex("\\b${Regex.escape(keyword)}\\b").containsMatchIn(hay)

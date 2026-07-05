@@ -73,7 +73,7 @@ val CURRENCIES = listOf("OMR", "SAR", "AED", "KWD", "BHD", "QAR", "USD", "EUR", 
 /**
  * The scan bottom sheet: expressive LoadingIndicator while working, the live verbose
  * log streaming underneath, and a plain-language summary when done. Dismissable at any
- * time — the scan itself keeps running; the user is in charge of the window, not the work.
+ * time, the scan itself keeps running; the user is in charge of the window, not the work.
  */
 @Composable
 fun ScanSheetHost(vm: MainViewModel) {
@@ -114,7 +114,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                             )
                         }
                     }
-                    // Expressive squiggly progress — determinate once the total is known
+                    // Expressive squiggly progress, determinate once the total is known
                     if (s.total > 0) {
                         LinearWavyProgressIndicator(
                             progress = { s.processed / s.total.toFloat() },
@@ -215,13 +215,13 @@ fun ScanSheetHost(vm: MainViewModel) {
                     .padding(vertical = 16.dp)
                     .pressBounce(),
             ) {
-                Text(if (scan is MainViewModel.ScanState.Running) "Hide — scanning continues" else "Close")
+                Text(if (scan is MainViewModel.ScanState.Running) "Hide, scanning continues" else "Close")
             }
         }
     }
 }
 
-/** Category picker: emoji chips + optional "always" rule for this merchant. */
+/** Category picker: icon chips + optional "always" rule for this merchant. */
 @Composable
 fun CategoryPickerSheet(
     txn: Txn,
@@ -259,7 +259,8 @@ fun CategoryPickerSheet(
                         onClick = {
                             onApply(cat.id, if (makeRule) txn.merchant?.lowercase() else null)
                         },
-                        label = { Text("${cat.emoji} ${cat.name}") },
+                        label = { Text(cat.name) },
+                        leadingIcon = { CategoryIcon(cat.id) },
                         modifier = Modifier.pressBounce(0.92f),
                     )
                 }
@@ -277,7 +278,7 @@ fun CategoryPickerSheet(
     }
 }
 
-/** Full-control manual entry — used to resolve unreadable messages or add from scratch. */
+/** Full-control manual entry, used to resolve unreadable messages or add from scratch. */
 @Composable
 fun ManualTxnDialog(
     title: String,
@@ -337,9 +338,9 @@ fun ManualTxnDialog(
                 )
                 DropdownField(
                     label = "Category",
-                    value = Categories.byId(categoryId).let { "${it.emoji} ${it.name}" },
+                    value = Categories.byId(categoryId).name,
                     options = Categories.forDirection(direction).map { it.id },
-                    display = { Categories.byId(it).let { c -> "${c.emoji} ${c.name}" } },
+                    display = { Categories.byId(it).name },
                     onSelect = { categoryId = it },
                 )
                 Text(

@@ -62,6 +62,7 @@ import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CURRENCIES
+import com.alyaqdhan.riyal.ui.compose.CategoryIcon
 import com.alyaqdhan.riyal.ui.compose.DropdownField
 
 /**
@@ -185,7 +186,7 @@ fun SettingsScreen(vm: MainViewModel) {
             // ── keywords
             SettingsCard("Gate keywords") {
                 Text(
-                    "A message is processed only if it contains one of these words. Everything else is skipped — unread and unstored.",
+                    "A message is processed only if it contains one of these words. Everything else is skipped, unread and unstored.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -241,7 +242,7 @@ fun SettingsScreen(vm: MainViewModel) {
                     Column(Modifier.weight(1f)) {
                         Text("Bank senders only", style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "Only sender names containing “bank” / “بنك” / “مصرف” are read. Banks that brand differently (NBO, Sohar Intl…) — approve them below.",
+                            "Only sender names containing “bank” / “بنك” / “مصرف” are read. Banks that brand differently (NBO, Sohar Intl…), approve them below.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -276,8 +277,8 @@ fun SettingsScreen(vm: MainViewModel) {
                 if (senderFilter || bankOnly) {
                     if (allowlist.isEmpty()) {
                         Text(
-                            if (senderFilter) "No approved senders yet — a scan will match nothing."
-                            else "No extra approved senders — only bank-named senders are read.",
+                            if (senderFilter) "No approved senders yet, a scan will match nothing."
+                            else "No extra approved senders, only bank-named senders are read.",
                             style = MaterialTheme.typography.bodySmall,
                             color = if (senderFilter) MaterialTheme.colorScheme.error
                             else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -294,7 +295,7 @@ fun SettingsScreen(vm: MainViewModel) {
                     }
                     if (suggestions.isNotEmpty()) {
                         Text(
-                            "Seen in your inbox — tap to approve:",
+                            "Seen in your inbox, tap to approve:",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -331,8 +332,9 @@ fun SettingsScreen(vm: MainViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
+                        CategoryIcon(cat.id)
                         Text(
-                            "\"${rule.pattern}\" → ${cat.emoji} ${cat.name}",
+                            "\"${rule.pattern}\" → ${cat.name}",
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f),
                         )
@@ -366,7 +368,7 @@ fun SettingsScreen(vm: MainViewModel) {
             // ── data & privacy
             SettingsCard("Data & privacy") {
                 Text(
-                    "Everything lives in one JSON file inside this app's private storage. Backups are disabled. The manifest declares no INTERNET permission — verifiable with any APK inspector.",
+                    "Everything lives in one JSON file inside this app's private storage. Backups are disabled. The manifest declares no INTERNET permission, verifiable with any APK inspector.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -402,7 +404,7 @@ fun SettingsScreen(vm: MainViewModel) {
             text = {
                 Text(
                     "All recorded transactions, rules, review items and settings will be erased. " +
-                        "Your SMS inbox itself is untouched — this app never modifies messages.",
+                        "Your SMS inbox itself is untouched, this app never modifies messages.",
                 )
             },
             confirmButton = {

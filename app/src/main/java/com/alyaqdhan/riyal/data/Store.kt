@@ -17,8 +17,8 @@ import org.json.JSONObject
 /**
  * On-device persistence: one JSON file in app-private storage, written atomically.
  * Scanned transactions are rebuilt from the inbox on every scan; what must survive a
- * rescan is the user's word — category overrides, custom rules, manual entries and
- * dismissed/resolved review items — and it does.
+ * rescan is the user's word, category overrides, custom rules, manual entries and
+ * dismissed/resolved review items, and it does.
  */
 class Store(context: Context) {
 
@@ -166,7 +166,7 @@ class Store(context: Context) {
                     "${_rules.value.size} rule(s)"
             )
         } catch (e: Exception) {
-            Verbose.fail("store: saved data unreadable (${e.message}) — starting fresh, nothing was lost from your inbox")
+            Verbose.fail("store: saved data unreadable (${e.message}), starting fresh, nothing was lost from your inbox")
         }
         Verbose.flush()
     }

@@ -22,7 +22,6 @@ import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -54,23 +53,9 @@ fun dayLabel(date: LocalDate): String {
 fun localDateOf(millis: Long): LocalDate =
     Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
 
-@Composable
-fun EmojiBadge(emoji: String, container: Color, modifier: Modifier = Modifier) {
-    // M3 Expressive MaterialShapes: a 9-sided cookie — deliberately imperfect edges.
-    Box(
-        modifier = modifier
-            .size(44.dp)
-            .clip(MaterialShapes.Cookie9Sided.toShape())
-            .background(container),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(emoji, fontSize = 20.sp)
-    }
-}
-
 /**
  * The mascot sitting on a jagged M3 Expressive "sunny" halo. The imperfect, scalloped
- * edge is the point — this is the face treatment used everywhere it matters.
+ * edge is the point, this is the face treatment used everywhere it matters.
  */
 @Composable
 fun JaggyFace(
@@ -115,7 +100,7 @@ fun TxnRow(txn: Txn, onClick: () -> Unit, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            EmojiBadge(category.emoji, Color(Categories.colorFor(category.id)).copy(alpha = 0.20f))
+            CategoryBadge(category.id)
             Column(Modifier.weight(1f)) {
                 Text(
                     txn.merchant ?: category.name,
@@ -132,7 +117,7 @@ fun TxnRow(txn: Txn, onClick: () -> Unit, modifier: Modifier = Modifier) {
                 )
                 if (txn.categorySource == "auto" && txn.confidence < 70) {
                     Text(
-                        "parser was ${txn.confidence}% sure — tap to fix",
+                        "parser was ${txn.confidence}% sure, tap to fix",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary,
                     )

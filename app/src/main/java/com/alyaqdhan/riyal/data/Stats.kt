@@ -11,7 +11,7 @@ object Stats {
     fun ym(millis: Long): YearMonth =
         YearMonth.from(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
 
-    /** The currency you actually transact in — most frequent one, falling back to the setting. */
+    /** The currency you actually transact in, most frequent one, falling back to the setting. */
     fun primaryCurrency(txns: List<Txn>, fallback: String): String =
         txns.groupingBy { it.currency }.eachCount().maxByOrNull { it.value }?.key ?: fallback
 
@@ -90,12 +90,12 @@ object Stats {
 
     fun moodLabel(totals: MonthTotals): String {
         if (totals.received <= 0L) {
-            return if (totals.spent == 0L) "Quiet month so far" else "Tracking spending — no income seen yet"
+            return if (totals.spent == 0L) "Quiet month so far" else "Tracking spending, no income seen yet"
         }
         val ratio = totals.spent.toFloat() / totals.received.toFloat()
         return when {
-            ratio < 0.5f -> "Smooth sailing — well under your income"
-            ratio < 0.8f -> "Doing fine — keep an eye on it"
+            ratio < 0.5f -> "Smooth sailing, well under your income"
+            ratio < 0.8f -> "Doing fine, keep an eye on it"
             ratio <= 1.0f -> "Cutting it close this month"
             else -> "Spending is above income this month"
         }

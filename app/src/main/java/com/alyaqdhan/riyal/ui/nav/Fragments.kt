@@ -27,7 +27,7 @@ import com.google.android.material.transition.MaterialFadeThrough
 import com.google.android.material.transition.MaterialSharedAxis
 
 /**
- * Destinations of res/navigation/nav_graph.xml — the XML routing layer. Each fragment
+ * Destinations of res/navigation/nav_graph.xml, the XML routing layer. Each fragment
  * enters/exits with native Material motion transitions and renders its screen with
  * Compose Material 3 Expressive (material3 1.5.0-alpha23).
  */
@@ -70,7 +70,7 @@ class HomeFragment : ScreenFragment() {
     private val requestSms = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         Verbose.info(
             if (granted) "you granted READ_SMS from Home"
-            else "you declined READ_SMS — nothing will be read",
+            else "you declined READ_SMS, nothing will be read",
         )
         Verbose.flush()
         vm.refreshPermission()
@@ -89,7 +89,7 @@ class TransactionsFragment : ScreenFragment() {
         if (uri != null) {
             vm.exportCsv(uri)
         } else {
-            Verbose.info("CSV export cancelled by you — nothing was written")
+            Verbose.info("CSV export cancelled by you, nothing was written")
             Verbose.flush()
         }
     }
@@ -132,7 +132,7 @@ class OnboardingFragment : ScreenFragment() {
     private val requestSms = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         Verbose.info(
             if (granted) "you granted READ_SMS during onboarding"
-            else "you declined READ_SMS — Riyal stays fully inert until you allow it",
+            else "you declined READ_SMS, Riyal stays fully inert until you allow it",
         )
         Verbose.flush()
         vm.refreshPermission()

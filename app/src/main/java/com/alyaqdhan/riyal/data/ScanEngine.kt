@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter
 
 /**
  * One user-initiated pass over the inbox. Narrates every decision to [Verbose]:
- * what was queried, which messages matched, how each one was parsed, and — loudly —
+ * what was queried, which messages matched, how each one was parsed, and, loudly -
  * which ones could not be read and why (those land in the Review tab).
  */
 class ScanEngine(
@@ -30,7 +30,7 @@ class ScanEngine(
         else ZonedDateTime.now().minusMonths(months.toLong()).toInstant().toEpochMilli()
 
         Verbose.scan("──────── scan started ────────")
-        Verbose.scan("mode: manual one-shot — this app has no background receiver")
+        Verbose.scan("mode: manual one-shot, this app has no background receiver")
         Verbose.scan("range: " + if (since == 0L) "entire inbox" else "last $months month(s), since ${fmtDate(since)}")
         Verbose.scan("expense keywords: ${prefs.expenseKeywords.joinToString(", ")}")
         Verbose.scan("income keywords: ${prefs.incomeKeywords.joinToString(", ")}")
@@ -69,7 +69,7 @@ class ScanEngine(
                     skipLinesLogged++
                 }
                 skipLinesLogged == MAX_SKIP_LINES -> {
-                    Verbose.skip("…more skipped messages — muting further skip lines (counts still tallied)")
+                    Verbose.skip("…more skipped messages, muting further skip lines (counts still tallied)")
                     skipLinesLogged++
                 }
             }
@@ -92,7 +92,7 @@ class ScanEngine(
             when (val result = parser.parse(msg.body)) {
                 is SmsParser.Result.Skipped -> {
                     skipped++
-                    logSkip("${msg.sender} · skipped (${result.reason}) — content not processed")
+                    logSkip("${msg.sender} · skipped (${result.reason}), content not processed")
                 }
 
                 is SmsParser.Result.NeedsReview -> {
@@ -158,14 +158,14 @@ class ScanEngine(
                 " · needs review ${summary.review} · skipped ${summary.skipped}"
         )
         if (needsReview > 0) {
-            Verbose.scan("→ ${needsReview} message(s) could not be read — they are waiting in the Review tab")
+            Verbose.scan("→ ${needsReview} message(s) could not be read, they are waiting in the Review tab")
         }
         Verbose.scan("skipped messages were never stored; only their count was kept")
         Verbose.flush()
         return summary
     }
 
-    /** "BankMuscat", "Bank Dhofar", "AhliBank", "بنك نزوى"… — the gate the user asked for. */
+    /** "BankMuscat", "Bank Dhofar", "AhliBank", "بنك نزوى"…, the gate the user asked for. */
     private fun looksLikeBank(sender: String): Boolean {
         val s = sender.lowercase()
         return "bank" in s || "بنك" in s || "مصرف" in s

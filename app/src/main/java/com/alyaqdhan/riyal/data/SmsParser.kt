@@ -9,9 +9,9 @@ import kotlin.math.max
  * Pure-Kotlin message parser (fully unit-testable, no Android dependencies).
  *
  * Contract, in order:
- *  1. Keyword gate — a message is not processed AT ALL unless it contains one of the
+ *  1. Keyword gate, a message is not processed AT ALL unless it contains one of the
  *     user's withdraw/deposit keywords (English or Arabic). Everything else → Skipped.
- *  2. Amount extraction — currency-tagged numbers first (OMR 12.500 / 12.500 OMR /
+ *  2. Amount extraction, currency-tagged numbers first (OMR 12.500 / 12.500 OMR /
  *     ر.ع ٢٥٫٥٠٠), "balance"-adjacent numbers excluded, the candidate closest to the
  *     keyword wins. Failure → NeedsReview with a human-readable reason.
  *  3. Merchant / counterparty via "at … / to … / from …" patterns.
