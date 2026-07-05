@@ -166,15 +166,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
     }
 
-    fun dismissReview(item: ReviewItem) = viewModelScope.launch(Dispatchers.IO) {
-        store.setReviewState(item.id, ReviewItem.STATE_DISMISSED)
-        Verbose.info("review item dismissed by you (${item.sender}, ${item.reason})")
+    fun dismissReview(item: ReviewItem, alsoSimilar: Boolean) = viewModelScope.launch(Dispatchers.IO) {
+        val extra = store.dismissReview(item, smart = alsoSimilar)
+        Verbose.info(
+            "review item dismissed by you (${item.sender}, ${item.reason})" +
+                if (alsoSimilar) {
+                    " · remembered: $extra similar message(s) dismissed with it, future ones " +
+                        "will be auto-dismissed (restore any time in Review)"
+                } else ""
+        )
         Verbose.flush()
     }
 
-    fun undoDismissReview(item: ReviewItem) = viewModelScope.launch(Dispatchers.IO) {
-        store.setReviewState(item.id, ReviewItem.STATE_PENDING)
-        Verbose.info("dismiss undone, review item restored")
+    fun restoreReview(item: ReviewItem) = viewModelScope.launch(Dispatchers.IO) {
+        val extra = store.restoreReview(item)
+        Verbose.info(
+            "review item restored by you" +
+                if (extra > 0) " together with $extra similar message(s), that kind is no longer auto-dismissed" else ""
+        )
         Verbose.flush()
     }
 
@@ -185,6 +194,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         direction: Direction,
         merchant: String?,
         categoryId: String,
+        learnSimilar: Boolean = true,
     ) = viewModelScope.launch(Dispatchers.IO) {
         val txn = Txn(
             id = "man-${item.id}",
@@ -200,8 +210,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             confidence = 100,
             manual = true,
         )
-        store.resolveReview(item.id, txn)
-        Verbose.ok("review resolved by you: recorded ${Money.format(amountMinor, currency)} (${Categories.byId(categoryId).name})")
+        store.resolveReview(item.id, txn, learn = learnSimilar)
+        Verbose.ok(
+            "review resolved by you: recorded ${Money.format(amountMinor, currency)} (${Categories.byId(categoryId).name})" +
+                if (learnSimilar) " · remembered: similar messages will always reach Review" else ""
+        )
         Verbose.flush()
     }
 

@@ -91,6 +91,32 @@ data class ReviewItem(
 
 data class UserRule(val pattern: String, val categoryId: String)
 
+/**
+ * A kind of message the user dismissed from Review: similar future messages are
+ * auto-dismissed on scan (still stored, restorable from the Review page).
+ */
+data class MutedTemplate(
+    val template: String,
+    val sender: String,
+    val sample: String,
+    val at: Long,
+)
+
+object MsgTemplate {
+    /**
+     * Fingerprint of "the same kind of message": the sender plus the body with every
+     * number blanked out, so two balance alerts or two promos from one sender look
+     * identical even though their digits differ.
+     */
+    fun of(sender: String, body: String): String {
+        val norm = body.lowercase()
+            .replace(Regex("[0-9٠-٩][0-9٠-٩.,:/-]*"), "#")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+        return sender.trim().lowercase() + "|" + norm
+    }
+}
+
 data class ScanSummary(
     val at: Long,
     val tookMs: Long,

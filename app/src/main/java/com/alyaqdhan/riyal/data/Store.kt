@@ -39,6 +39,14 @@ class Store(context: Context) {
     private val _senders = MutableStateFlow<Set<String>>(emptySet())
     val senders: StateFlow<Set<String>> = _senders
 
+    /** Message kinds the user dismissed; similar future messages are auto-dismissed. */
+    private val _muted = MutableStateFlow<List<MutedTemplate>>(emptyList())
+    val muted: StateFlow<List<MutedTemplate>> = _muted
+
+    /** Message kinds the user recorded from Review; similar ones always reach Review. */
+    private val _needed = MutableStateFlow<Set<String>>(emptySet())
+    val needed: StateFlow<Set<String>> = _needed
+
     private val _lastSummary = MutableStateFlow<ScanSummary?>(null)
     val lastSummary: StateFlow<ScanSummary?> = _lastSummary
 
@@ -107,12 +115,67 @@ class Store(context: Context) {
         persistLocked()
     }
 
-    suspend fun setReviewState(id: String, state: String) = mutex.withLock {
-        _reviews.value = _reviews.value.map { if (it.id == id) it.copy(state = state) else it }
+    /**
+     * Dismisses [item]. With [smart], similar pending items go with it and the message
+     * kind is muted so future scans auto-dismiss it too. Returns how many other items
+     * were dismissed alongside.
+     */
+    suspend fun dismissReview(item: ReviewItem, smart: Boolean): Int = mutex.withLock {
+        val template = MsgTemplate.of(item.sender, item.body)
+        var extra = 0
+        _reviews.value = _reviews.value.map { r ->
+            when {
+                r.id == item.id -> r.copy(state = ReviewItem.STATE_DISMISSED)
+                smart && r.state == ReviewItem.STATE_PENDING &&
+                    MsgTemplate.of(r.sender, r.body) == template -> {
+                    extra++
+                    r.copy(state = ReviewItem.STATE_DISMISSED)
+                }
+                else -> r
+            }
+        }
+        if (smart && _muted.value.none { it.template == template }) {
+            _muted.value = _muted.value +
+                MutedTemplate(template, item.sender, item.body, System.currentTimeMillis())
+        }
         persistLocked()
+        extra
     }
 
-    suspend fun resolveReview(reviewId: String, txn: Txn) = mutex.withLock {
+    /**
+     * Brings a dismissed [item] back to pending. If its kind was muted, the mute is
+     * lifted and every similarly dismissed item comes back too (the whole group was
+     * hidden as one decision, it is restored as one). Returns how many others returned.
+     */
+    suspend fun restoreReview(item: ReviewItem): Int = mutex.withLock {
+        val template = MsgTemplate.of(item.sender, item.body)
+        val wasMuted = _muted.value.any { it.template == template }
+        if (wasMuted) _muted.value = _muted.value.filter { it.template != template }
+        var extra = 0
+        _reviews.value = _reviews.value.map { r ->
+            when {
+                r.id == item.id -> r.copy(state = ReviewItem.STATE_PENDING)
+                wasMuted && r.state == ReviewItem.STATE_DISMISSED &&
+                    MsgTemplate.of(r.sender, r.body) == template -> {
+                    extra++
+                    r.copy(state = ReviewItem.STATE_PENDING)
+                }
+                else -> r
+            }
+        }
+        persistLocked()
+        extra
+    }
+
+    suspend fun resolveReview(reviewId: String, txn: Txn, learn: Boolean = true) = mutex.withLock {
+        val item = if (learn) _reviews.value.firstOrNull { it.id == reviewId } else null
+        if (item != null) {
+            // Recording it is the opposite signal of dismissing: this kind of message
+            // matters, keep showing similar ones and drop any mute on them.
+            val template = MsgTemplate.of(item.sender, item.body)
+            _needed.value = _needed.value + template
+            _muted.value = _muted.value.filter { it.template != template }
+        }
         _reviews.value = _reviews.value.map {
             if (it.id == reviewId) it.copy(state = ReviewItem.STATE_RESOLVED) else it
         }
@@ -125,6 +188,8 @@ class Store(context: Context) {
         _reviews.value = emptyList()
         _rules.value = emptyList()
         _senders.value = emptySet()
+        _muted.value = emptyList()
+        _needed.value = emptySet()
         _lastSummary.value = null
         overrides.clear()
         file.delete()
@@ -148,6 +213,11 @@ class Store(context: Context) {
             val senderArr = root.optJSONArray("senders")
             _senders.value = buildSet {
                 if (senderArr != null) for (i in 0 until senderArr.length()) add(senderArr.getString(i))
+            }
+            _muted.value = root.optJSONArray("muted").toListOf(::mutedFromJson)
+            val neededArr = root.optJSONArray("needed")
+            _needed.value = buildSet {
+                if (neededArr != null) for (i in 0 until neededArr.length()) add(neededArr.getString(i))
             }
             root.optJSONObject("overrides")?.let { o ->
                 for (key in o.keys()) overrides[key] = o.getString(key)
@@ -179,6 +249,8 @@ class Store(context: Context) {
             root.put("reviews", JSONArray().apply { _reviews.value.forEach { put(reviewToJson(it)) } })
             root.put("rules", JSONArray().apply { _rules.value.forEach { put(ruleToJson(it)) } })
             root.put("senders", JSONArray().apply { _senders.value.forEach { put(it) } })
+            root.put("muted", JSONArray().apply { _muted.value.forEach { put(mutedToJson(it)) } })
+            root.put("needed", JSONArray().apply { _needed.value.forEach { put(it) } })
             root.put("overrides", JSONObject().apply { overrides.forEach { (k, v) -> put(k, v) } })
             _lastSummary.value?.let { s ->
                 root.put("summary", JSONObject().apply {
@@ -253,4 +325,15 @@ class Store(context: Context) {
     }
 
     private fun ruleFromJson(o: JSONObject) = UserRule(o.getString("p"), o.getString("c"))
+
+    private fun mutedToJson(m: MutedTemplate) = JSONObject().apply {
+        put("t", m.template); put("sen", m.sender); put("sample", m.sample); put("at", m.at)
+    }
+
+    private fun mutedFromJson(o: JSONObject) = MutedTemplate(
+        template = o.getString("t"),
+        sender = o.getString("sen"),
+        sample = o.getString("sample"),
+        at = o.getLong("at"),
+    )
 }

@@ -58,11 +58,20 @@ class ScanEngine(
 
         val parser = SmsParser(prefs.expenseKeywords, prefs.incomeKeywords, prefs.defaultCurrency)
         val rules = store.rules.value
+        val mutedTemplates = store.muted.value.mapTo(HashSet()) { it.template }
+        val neededTemplates = store.needed.value
+        if (mutedTemplates.isNotEmpty()) {
+            Verbose.scan(
+                "${mutedTemplates.size} dismissed message kind(s): similar messages are " +
+                    "auto-dismissed, restore them any time in Review"
+            )
+        }
         val txns = LinkedHashMap<String, Txn>()
         val reviews = ArrayList<ReviewItem>()
         var skipped = 0
         var matched = 0
         var needsReview = 0
+        var autoDismissed = 0
         var duplicates = 0
         var skipLinesLogged = 0
 
@@ -111,15 +120,31 @@ class ScanEngine(
                 }
 
                 is SmsParser.Result.NeedsReview -> {
-                    if (!trustedSender) {
+                    val template = MsgTemplate.of(msg.sender, msg.body)
+                    if (!trustedSender && template !in neededTemplates) {
                         skipped++
                         logSkip("${msg.sender} · matched keywords but unparsable and sender isn't a known bank, skipped")
                         return@forEachIndexed
                     }
                     matched++
+                    if (template in mutedTemplates) {
+                        autoDismissed++
+                        logSkip(
+                            "${msg.sender} · unreadable, but you dismissed this kind of message " +
+                                "before → auto-dismissed (restore it in Review)"
+                        )
+                        reviews += ReviewItem(
+                            hashOf(msg), msg.atMillis, msg.sender, msg.body, result.reason,
+                            state = ReviewItem.STATE_DISMISSED,
+                        )
+                        return@forEachIndexed
+                    }
                     needsReview++
                     Verbose.fail("✉ ${msg.sender} · ${fmtDateTime(msg.atMillis)} → COULD NOT READ: ${result.reason}")
                     result.trace.forEach { Verbose.fail("    · $it") }
+                    if (!trustedSender) {
+                        Verbose.fail("    · sender isn't a known bank, kept because you recorded a message like this before")
+                    }
                     Verbose.fail("    → added to Review so you decide what it was")
                     reviews += ReviewItem(hashOf(msg), msg.atMillis, msg.sender, msg.body, result.reason)
                 }
@@ -191,6 +216,12 @@ class ScanEngine(
         )
         if (needsReview > 0) {
             Verbose.scan("→ ${needsReview} message(s) could not be read, they are waiting in the Review tab")
+        }
+        if (autoDismissed > 0) {
+            Verbose.scan(
+                "→ $autoDismissed unreadable message(s) auto-dismissed because you dismissed " +
+                    "that kind before, restore them in Review"
+            )
         }
         Verbose.scan("skipped messages were never stored; only their count was kept")
         Verbose.flush()
