@@ -6,6 +6,7 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import android.content.ClipData
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -20,7 +21,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -33,8 +36,9 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -43,18 +47,19 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -67,8 +72,12 @@ import com.alyaqdhan.riyal.ui.MainViewModel
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.launch
 
 val CURRENCIES = listOf("OMR", "SAR", "AED", "KWD", "BHD", "QAR", "USD", "EUR", "GBP", "INR")
+
+/** Wraps text as a clipboard entry for the new suspend [androidx.compose.ui.platform.Clipboard] API. */
+fun plainText(text: String): ClipEntry = ClipEntry(ClipData.newPlainText("riyal", text))
 
 /**
  * The scan bottom sheet: expressive LoadingIndicator while working, the live verbose
@@ -82,9 +91,10 @@ fun ScanSheetHost(vm: MainViewModel) {
 
     val scan by vm.scanState.collectAsState()
     val lines by Verbose.lines.collectAsState()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     val listState = rememberLazyListState()
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(lines.size) {
         if (lines.isNotEmpty()) listState.scrollToItem(lines.lastIndex)
@@ -190,7 +200,9 @@ fun ScanSheetHost(vm: MainViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("Verbose processing log", style = MaterialTheme.typography.labelLarge)
-                TextButton(onClick = { clipboard.setText(AnnotatedString(Verbose.dump())) }) {
+                TextButton(onClick = {
+                    scope.launch { clipboard.setClipEntry(plainText(Verbose.dump())) }
+                }) {
                     Text("Copy")
                 }
             }
@@ -232,7 +244,7 @@ fun CategoryPickerSheet(
     onDismiss: () -> Unit,
     rememberByDefault: Boolean = false,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     var makeRule by remember { mutableStateOf(rememberByDefault && !txn.merchant.isNullOrBlank()) }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -254,21 +266,11 @@ fun CategoryPickerSheet(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Categories.forDirection(txn.direction).forEach { cat ->
-                    FilterChip(
-                        selected = cat.id == txn.categoryId,
-                        onClick = {
-                            onApply(cat.id, if (makeRule) txn.merchant?.lowercase() else null)
-                        },
-                        label = { Text(cat.name) },
-                        leadingIcon = { CategoryIcon(cat.id) },
-                        modifier = Modifier.pressBounce(0.92f),
-                    )
-                }
-            }
+            CategoryChips(
+                direction = txn.direction,
+                selectedId = txn.categoryId,
+                onSelect = { onApply(it, if (makeRule) txn.merchant?.lowercase() else null) },
+            )
             if (!txn.merchant.isNullOrBlank()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Switch(checked = makeRule, onCheckedChange = { makeRule = it })
@@ -306,7 +308,10 @@ fun ManualTxnDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                     SegmentedButton(
                         selected = direction == Direction.EXPENSE,
@@ -340,11 +345,10 @@ fun ManualTxnDialog(
                     label = { Text("Merchant / from (optional)") },
                     singleLine = true,
                 )
-                DropdownField(
-                    label = "Category",
-                    value = Categories.byId(categoryId).name,
-                    options = Categories.forDirection(direction).map { it.id },
-                    display = { Categories.byId(it).name },
+                Text("Category", style = MaterialTheme.typography.labelLarge)
+                CategoryChips(
+                    direction = direction,
+                    selectedId = categoryId,
                     onSelect = { categoryId = it },
                 )
                 Text(
@@ -372,6 +376,30 @@ fun ManualTxnDialog(
     )
 }
 
+/**
+ * The one category picker used everywhere: a chip per category for the given
+ * direction, the current one selected. Same look in the correction sheet and the
+ * manual-entry dialog, so "pick a category" is a single gesture app-wide.
+ */
+@Composable
+fun CategoryChips(
+    direction: Direction,
+    selectedId: String,
+    onSelect: (String) -> Unit,
+) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Categories.forDirection(direction).forEach { cat ->
+            FilterChip(
+                selected = cat.id == selectedId,
+                onClick = { onSelect(cat.id) },
+                label = { Text(cat.name) },
+                leadingIcon = { CategoryIcon(cat.id) },
+                modifier = Modifier.pressBounce(0.92f),
+            )
+        }
+    }
+}
+
 @Composable
 fun <T> DropdownField(
     label: String,
@@ -391,7 +419,7 @@ fun <T> DropdownField(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { option ->

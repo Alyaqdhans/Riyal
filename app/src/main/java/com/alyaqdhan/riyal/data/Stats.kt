@@ -46,6 +46,13 @@ object Stats {
             .map { (cat, sum) -> Slice(cat, sum, sum.toFloat() / total.toFloat()) }
     }
 
+    /** Total expense in [currency] for one category in one month, minor units. */
+    fun categorySpent(txns: List<Txn>, categoryId: String, month: YearMonth, currency: String): Long =
+        txns.filter {
+            it.direction == Direction.EXPENSE && it.currency == currency &&
+                it.categoryId == categoryId && ym(it.atMillis) == month
+        }.sumOf { it.amountMinor }
+
     data class MonthPoint(val month: YearMonth, val spent: Long, val received: Long)
 
     fun series(txns: List<Txn>, currency: String, end: YearMonth, monthsBack: Int = 6): List<MonthPoint> =

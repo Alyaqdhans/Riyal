@@ -52,8 +52,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.Stats
@@ -395,7 +397,19 @@ private fun StatCard(
     Surface(shape = shape, color = container, modifier = modifier) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = content)
-            Text(value, style = MaterialTheme.typography.titleLarge, color = content)
+            // The amount must never wrap under its currency: big totals shrink to fit
+            // one line instead of breaking the two side-by-side cards' alignment.
+            Text(
+                value,
+                style = MaterialTheme.typography.titleLarge,
+                color = content,
+                maxLines = 1,
+                softWrap = false,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 13.sp,
+                    maxFontSize = MaterialTheme.typography.titleLarge.fontSize,
+                ),
+            )
         }
     }
 }

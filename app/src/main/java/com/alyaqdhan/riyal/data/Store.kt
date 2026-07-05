@@ -47,11 +47,22 @@ class Store(context: Context) {
     private val _needed = MutableStateFlow<Set<String>>(emptySet())
     val needed: StateFlow<Set<String>> = _needed
 
+    /** User-created categories, merged into the [Categories] registry on every change. */
+    private val _categories = MutableStateFlow<List<Category>>(emptyList())
+    val categories: StateFlow<List<Category>> = _categories
+
     private val _lastSummary = MutableStateFlow<ScanSummary?>(null)
     val lastSummary: StateFlow<ScanSummary?> = _lastSummary
 
     /** txnId → categoryId chosen by the user; reapplied after every rescan. */
     private val overrides = HashMap<String, String>()
+
+    /**
+     * Txn ids the user removed as "not a real transaction". Since scanned txns are
+     * rebuilt from the inbox each scan and the id is a stable hash of the message,
+     * these must be filtered out on every rescan or the message would just come back.
+     */
+    private val ignored = HashSet<String>()
 
     init {
         scope.launch { mutex.withLock { loadLocked() } }
@@ -63,9 +74,11 @@ class Store(context: Context) {
         seenSenders: Set<String>,
         summary: ScanSummary,
     ) = mutex.withLock {
-        val withOverrides = scanned.map { t ->
-            overrides[t.id]?.let { t.copy(categoryId = it, categorySource = "user") } ?: t
-        }
+        val withOverrides = scanned.asSequence()
+            .filter { it.id !in ignored }
+            .map { t ->
+                overrides[t.id]?.let { t.copy(categoryId = it, categorySource = "user") } ?: t
+            }.toList()
         val manuals = _txns.value.filter { m -> m.manual && scanned.none { it.id == m.id } }
         _txns.value = (withOverrides + manuals).sortedByDescending { it.atMillis }
 
@@ -88,6 +101,20 @@ class Store(context: Context) {
         persistLocked()
     }
 
+    /**
+     * Removes a transaction the user says isn't a real one. A scanned transaction is
+     * also remembered as ignored so future rescans keep dropping the same message; a
+     * manual transaction is simply deleted (there's no inbox message to re-parse).
+     */
+    suspend fun ignoreTxn(txn: Txn) = mutex.withLock {
+        if (!txn.manual) {
+            ignored.add(txn.id)
+            overrides.remove(txn.id)
+        }
+        _txns.value = _txns.value.filter { it.id != txn.id }
+        persistLocked()
+    }
+
     /** Adds/replaces a rule and re-categorizes auto-categorized transactions. Returns how many changed. */
     suspend fun addRule(rule: UserRule): Int = mutex.withLock {
         _rules.value = _rules.value.filter { it.pattern != rule.pattern } + rule
@@ -107,6 +134,40 @@ class Store(context: Context) {
 
     suspend fun removeRule(pattern: String) = mutex.withLock {
         _rules.value = _rules.value.filter { it.pattern != pattern }
+        persistLocked()
+    }
+
+    // ─────────────────────────── custom categories ───────────────────────────
+
+    /** Creates a new user category and returns its generated id. */
+    suspend fun addCategory(name: String, income: Boolean, color: Int): String = mutex.withLock {
+        val id = Categories.CUSTOM_ID_PREFIX + System.currentTimeMillis().toString(36)
+        _categories.value = _categories.value + Category(id, name, income, color, custom = true)
+        Categories.setCustom(_categories.value)
+        persistLocked()
+        id
+    }
+
+    suspend fun updateCategory(id: String, name: String, color: Int) = mutex.withLock {
+        _categories.value = _categories.value.map {
+            if (it.id == id) it.copy(name = name, color = color) else it
+        }
+        Categories.setCustom(_categories.value)
+        persistLocked()
+    }
+
+    /**
+     * Deletes a user category. Any transactions, rules and overrides still pointing at
+     * it are re-homed to the default so nothing dangles at an unknown id.
+     */
+    suspend fun deleteCategory(id: String) = mutex.withLock {
+        val removed = _categories.value.firstOrNull { it.id == id } ?: return@withLock
+        _categories.value = _categories.value.filter { it.id != id }
+        Categories.setCustom(_categories.value)
+        val fallback = if (removed.income) Categories.DEFAULT_INCOME else Categories.DEFAULT_EXPENSE
+        _txns.value = _txns.value.map { if (it.categoryId == id) it.copy(categoryId = fallback) else it }
+        _rules.value = _rules.value.map { if (it.categoryId == id) it.copy(categoryId = fallback) else it }
+        for ((k, v) in overrides.toMap()) if (v == id) overrides[k] = fallback
         persistLocked()
     }
 
@@ -190,8 +251,11 @@ class Store(context: Context) {
         _senders.value = emptySet()
         _muted.value = emptyList()
         _needed.value = emptySet()
+        _categories.value = emptyList()
+        Categories.setCustom(emptyList())
         _lastSummary.value = null
         overrides.clear()
+        ignored.clear()
         file.delete()
         Verbose.info("store: all saved data deleted by you")
         Verbose.flush()
@@ -219,8 +283,13 @@ class Store(context: Context) {
             _needed.value = buildSet {
                 if (neededArr != null) for (i in 0 until neededArr.length()) add(neededArr.getString(i))
             }
+            _categories.value = root.optJSONArray("categories").toListOf(::categoryFromJson)
+            Categories.setCustom(_categories.value)
             root.optJSONObject("overrides")?.let { o ->
                 for (key in o.keys()) overrides[key] = o.getString(key)
+            }
+            root.optJSONArray("ignored")?.let { a ->
+                for (i in 0 until a.length()) ignored.add(a.getString(i))
             }
             root.optJSONObject("summary")?.let { s ->
                 _lastSummary.value = ScanSummary(
@@ -251,7 +320,9 @@ class Store(context: Context) {
             root.put("senders", JSONArray().apply { _senders.value.forEach { put(it) } })
             root.put("muted", JSONArray().apply { _muted.value.forEach { put(mutedToJson(it)) } })
             root.put("needed", JSONArray().apply { _needed.value.forEach { put(it) } })
+            root.put("categories", JSONArray().apply { _categories.value.forEach { put(categoryToJson(it)) } })
             root.put("overrides", JSONObject().apply { overrides.forEach { (k, v) -> put(k, v) } })
+            root.put("ignored", JSONArray().apply { ignored.forEach { put(it) } })
             _lastSummary.value?.let { s ->
                 root.put("summary", JSONObject().apply {
                     put("at", s.at); put("took", s.tookMs); put("scanned", s.scanned)
@@ -325,6 +396,18 @@ class Store(context: Context) {
     }
 
     private fun ruleFromJson(o: JSONObject) = UserRule(o.getString("p"), o.getString("c"))
+
+    private fun categoryToJson(c: Category) = JSONObject().apply {
+        put("id", c.id); put("name", c.name); put("income", c.income); put("color", c.color)
+    }
+
+    private fun categoryFromJson(o: JSONObject) = Category(
+        id = o.getString("id"),
+        name = o.getString("name"),
+        income = o.optBoolean("income", false),
+        color = o.optInt("color", 0),
+        custom = true,
+    )
 
     private fun mutedToJson(m: MutedTemplate) = JSONObject().apply {
         put("t", m.template); put("sen", m.sender); put("sample", m.sample); put("at", m.at)

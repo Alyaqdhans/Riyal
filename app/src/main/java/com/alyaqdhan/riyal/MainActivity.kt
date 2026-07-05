@@ -6,24 +6,30 @@ import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconToggleButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
@@ -34,6 +40,7 @@ import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.navOptions
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
 import com.alyaqdhan.riyal.ui.theme.RiyalTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -79,7 +86,24 @@ class MainActivity : AppCompatActivity() {
                     selected = selected,
                     reviewCount = reviewCount,
                     onSelect = { destId -> switchTab(navController, destId) },
+                    onAdd = { vm.requestManualAdd() },
                 )
+
+                // The Add FAB opens this from any tab, so the dialog is hosted globally
+                // beside the toolbar rather than inside one screen.
+                val showAdd by vm.manualAddVisible.collectAsState()
+                if (showAdd) {
+                    ManualTxnDialog(
+                        title = "Add transaction",
+                        atMillis = System.currentTimeMillis(),
+                        defaultCurrency = vm.prefs.defaultCurrency,
+                        onSave = { amountMinor, currency, direction, merchant, categoryId ->
+                            vm.addManual(amountMinor, currency, direction, merchant, categoryId)
+                            vm.dismissManualAdd()
+                        },
+                        onDismiss = { vm.dismissManualAdd() },
+                    )
+                }
             }
         }
     }
@@ -99,36 +123,56 @@ class MainActivity : AppCompatActivity() {
 }
 
 @Composable
-private fun RiyalNavBar(selected: Int, reviewCount: Int, onSelect: (Int) -> Unit) {
-    HorizontalFloatingToolbar(
-        expanded = true,
-        colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
+private fun RiyalNavBar(
+    selected: Int,
+    reviewCount: Int,
+    onSelect: (Int) -> Unit,
+    onAdd: () -> Unit,
+) {
+    // M3 Expressive pattern: the navigation toolbar and the primary action live in two
+    // separate floating containers ("islands") with a gap between them, not one merged
+    // pill. The Add island is permanent, so a transaction can be added from any screen.
+    Row(
         modifier = Modifier
             .navigationBarsPadding()
             .padding(bottom = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        NavToggle(
-            checked = selected == R.id.homeFragment,
-            onCheck = { onSelect(R.id.homeFragment) },
+        HorizontalFloatingToolbar(
+            expanded = true,
+            colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
         ) {
-            // Review lives inside Home; a plain dot (no number) marks pending items,
-            // the count itself is on the Home "Needs review" card.
-            BadgedBox(badge = { if (reviewCount > 0) Badge() }) {
-                Icon(Icons.Filled.Home, contentDescription = "Home")
+            NavToggle(
+                checked = selected == R.id.homeFragment,
+                onCheck = { onSelect(R.id.homeFragment) },
+            ) {
+                // Review lives inside Home; a plain dot (no number) marks pending items,
+                // the count itself is on the Home "Needs review" card.
+                BadgedBox(badge = { if (reviewCount > 0) Badge() }) {
+                    Icon(Icons.Filled.Home, contentDescription = "Home")
+                }
             }
+            NavToggle(
+                checked = selected == R.id.transactionsFragment,
+                onCheck = { onSelect(R.id.transactionsFragment) },
+            ) { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Activity") }
+            NavToggle(
+                checked = selected == R.id.analysisFragment,
+                onCheck = { onSelect(R.id.analysisFragment) },
+            ) { Icon(painterResource(R.drawable.ic_pie), contentDescription = "Analysis") }
+            NavToggle(
+                checked = selected == R.id.settingsFragment,
+                onCheck = { onSelect(R.id.settingsFragment) },
+            ) { Icon(Icons.Filled.Settings, contentDescription = "Settings") }
         }
-        NavToggle(
-            checked = selected == R.id.transactionsFragment,
-            onCheck = { onSelect(R.id.transactionsFragment) },
-        ) { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Activity") }
-        NavToggle(
-            checked = selected == R.id.analysisFragment,
-            onCheck = { onSelect(R.id.analysisFragment) },
-        ) { Icon(painterResource(R.drawable.ic_pie), contentDescription = "Analysis") }
-        NavToggle(
-            checked = selected == R.id.settingsFragment,
-            onCheck = { onSelect(R.id.settingsFragment) },
-        ) { Icon(Icons.Filled.Settings, contentDescription = "Settings") }
+        FloatingActionButton(
+            onClick = onAdd,
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = "Add transaction")
+        }
     }
 }
 

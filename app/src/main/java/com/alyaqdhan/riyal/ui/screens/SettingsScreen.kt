@@ -9,8 +9,10 @@ package com.alyaqdhan.riyal.ui.screens
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -22,8 +24,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
@@ -51,12 +55,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
@@ -67,6 +73,8 @@ import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CURRENCIES
 import com.alyaqdhan.riyal.ui.compose.CategoryIcon
 import com.alyaqdhan.riyal.ui.compose.DropdownField
+import com.alyaqdhan.riyal.ui.compose.plainText
+import kotlinx.coroutines.launch
 
 /**
  * Everything the scanner does is decided here: gate keywords, sender allowlist, scan
@@ -77,11 +85,16 @@ import com.alyaqdhan.riyal.ui.compose.DropdownField
 fun SettingsScreen(vm: MainViewModel) {
     val context = LocalContext.current
     val prefs = vm.prefs
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
 
     val hasPerm by vm.hasSmsPermission.collectAsState()
     val knownSenders by vm.senders.collectAsState()
     val rules by vm.rules.collectAsState()
+    val customCategories by vm.categories.collectAsState()
+    // null = closed; a Category = editing it; the sentinel below = adding new.
+    var categoryEditor by remember { mutableStateOf<com.alyaqdhan.riyal.data.Category?>(null) }
+    var showCategoryEditor by remember { mutableStateOf(false) }
 
     var expenseKw by remember { mutableStateOf(prefs.expenseKeywords) }
     var incomeKw by remember { mutableStateOf(prefs.incomeKeywords) }
@@ -91,6 +104,7 @@ fun SettingsScreen(vm: MainViewModel) {
     var currency by remember { mutableStateOf(prefs.defaultCurrency) }
     var senderFilter by remember { mutableStateOf(prefs.senderFilterEnabled) }
     var allowlist by remember { mutableStateOf(prefs.senderAllowlist) }
+    var newSender by remember { mutableStateOf("") }
     var bankOnly by remember { mutableStateOf(prefs.bankSendersOnly) }
     var scanOnLaunch by remember { mutableStateOf(prefs.scanOnLaunch) }
     var smartRules by remember { mutableStateOf(prefs.smartRules) }
@@ -353,6 +367,27 @@ fun SettingsScreen(vm: MainViewModel) {
                             note("removed sender \"$sender\" from allowlist")
                         }
                     }
+                    // Add a sender by name directly, for a bank whose ID hasn't shown up
+                    // in the inbox yet (or a contact number you know is a bank).
+                    Text(
+                        "Add a sender the app hasn't seen yet:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    AddKeywordRow(
+                        value = newSender,
+                        onValueChange = { newSender = it },
+                        label = "Sender name",
+                        onAdd = {
+                            val s = newSender.trim()
+                            if (s.isNotEmpty() && s !in allowlist) {
+                                allowlist = allowlist + s
+                                prefs.senderAllowlist = allowlist
+                                note("approved sender \"$s\" (added by name)")
+                            }
+                            newSender = ""
+                        },
+                    )
                     val suggestions = remember(knownSenders, allowlist) {
                         (knownSenders - allowlist).sorted().take(12)
                     }
@@ -377,6 +412,49 @@ fun SettingsScreen(vm: MainViewModel) {
                             }
                         }
                     }
+                }
+            }
+
+            // ── custom categories
+            SettingsCard("Your categories") {
+                Text(
+                    "Add your own categories to file transactions under. Built-in ones can't be edited, but yours can be renamed, recolored, or removed.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (customCategories.isEmpty()) {
+                    Text(
+                        "No custom categories yet.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                customCategories.forEach { cat ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Box(
+                            Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(Color(Categories.colorFor(cat.id))),
+                        )
+                        Text(
+                            cat.name + if (cat.income) "  · income" else "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { categoryEditor = cat; showCategoryEditor = true }) {
+                            Text("Edit")
+                        }
+                        IconButton(onClick = { vm.deleteCategory(cat.id) }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete ${cat.name}")
+                        }
+                    }
+                }
+                FilledTonalButton(onClick = { categoryEditor = null; showCategoryEditor = true }) {
+                    Text("Add category")
                 }
             }
 
@@ -437,7 +515,7 @@ fun SettingsScreen(vm: MainViewModel) {
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = {
-                        clipboard.setText(AnnotatedString(Verbose.dump()))
+                        scope.launch { clipboard.setClipEntry(plainText(Verbose.dump())) }
                         note("verbose log copied to clipboard")
                     }) { Text("Copy verbose log") }
                     TextButton(onClick = {
@@ -459,6 +537,15 @@ fun SettingsScreen(vm: MainViewModel) {
             // Room for the floating toolbar hovering over the content.
             Spacer(Modifier.height(88.dp))
         }
+    }
+
+    if (showCategoryEditor) {
+        CategoryEditorDialog(
+            editing = categoryEditor,
+            onAdd = { name, income, color -> vm.addCategory(name, income, color) },
+            onUpdate = { id, name, color -> vm.updateCategory(id, name, color) },
+            onDismiss = { showCategoryEditor = false },
+        )
     }
 
     if (confirmWipe) {
@@ -517,7 +604,12 @@ private fun KeywordChips(items: Set<String>, onRemove: (String) -> Unit) {
 }
 
 @Composable
-private fun AddKeywordRow(value: String, onValueChange: (String) -> Unit, onAdd: () -> Unit) {
+private fun AddKeywordRow(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onAdd: () -> Unit,
+    label: String = "Add keyword",
+) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -525,12 +617,97 @@ private fun AddKeywordRow(value: String, onValueChange: (String) -> Unit, onAdd:
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            label = { Text("Add keyword") },
+            label = { Text(label) },
             singleLine = true,
             modifier = Modifier.weight(1f),
         )
         FilledTonalButton(onClick = onAdd, enabled = value.isNotBlank()) { Text("Add") }
     }
+}
+
+/**
+ * Add or edit a custom category: name, a color from the palette, and (when adding)
+ * whether it's income or expense. Direction is fixed once created, since moving a
+ * category between income and expense would strand its transactions on the wrong side.
+ */
+@Composable
+private fun CategoryEditorDialog(
+    editing: com.alyaqdhan.riyal.data.Category?,
+    onAdd: (name: String, income: Boolean, color: Int) -> Unit,
+    onUpdate: (id: String, name: String, color: Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var name by remember { mutableStateOf(editing?.name ?: "") }
+    var income by remember { mutableStateOf(editing?.income ?: false) }
+    var color by remember {
+        mutableStateOf(
+            editing?.color?.takeIf { it != 0 } ?: Categories.PALETTE.first(),
+        )
+    }
+    val trimmed = name.trim()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (editing == null) "New category" else "Edit category") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (editing == null) {
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = !income,
+                            onClick = { income = false },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        ) { Text("Expense") }
+                        SegmentedButton(
+                            selected = income,
+                            onClick = { income = true },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        ) { Text("Income") }
+                    }
+                }
+                Text("Color", style = MaterialTheme.typography.labelLarge)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Categories.PALETTE.forEach { swatch ->
+                        Box(
+                            Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Color(swatch))
+                                .clickable { color = swatch },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (swatch == color) {
+                                Icon(
+                                    Icons.Filled.Check,
+                                    contentDescription = "Selected",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = trimmed.isNotEmpty(),
+                onClick = {
+                    if (editing == null) onAdd(trimmed, income, color)
+                    else onUpdate(editing.id, trimmed, color)
+                    onDismiss()
+                },
+            ) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 private fun appVersion(context: android.content.Context): String = try {

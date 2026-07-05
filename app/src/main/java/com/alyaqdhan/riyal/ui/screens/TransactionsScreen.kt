@@ -15,8 +15,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -48,7 +46,6 @@ import com.alyaqdhan.riyal.ui.compose.CategoryIcon
 import com.alyaqdhan.riyal.ui.compose.CategoryPickerSheet
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
-import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.dayLabel
@@ -62,7 +59,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     val scan by vm.scanState.collectAsState()
     var filter by rememberSaveable { mutableStateOf("all") }
     var picker by remember { mutableStateOf<Txn?>(null) }
-    var showManual by remember { mutableStateOf(false) }
 
     val filtered = remember(txns, filter) {
         if (filter == "all") txns else txns.filter { it.categoryId == filter }
@@ -77,12 +73,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             TopAppBar(
                 title = { Text("Activity") },
                 actions = {
-                    IconButton(onClick = { vm.startScan() }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Scan messages")
-                    }
-                    IconButton(onClick = { showManual = true }) {
-                        Icon(Icons.Filled.Add, contentDescription = "Add manually")
-                    }
                     IconButton(onClick = onExport, enabled = txns.isNotEmpty()) {
                         Icon(Icons.Filled.Share, contentDescription = "Export CSV")
                     }
@@ -167,18 +157,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             },
             onDismiss = { picker = null },
             rememberByDefault = vm.prefs.smartRules,
-        )
-    }
-    if (showManual) {
-        ManualTxnDialog(
-            title = "Add transaction",
-            atMillis = System.currentTimeMillis(),
-            defaultCurrency = vm.prefs.defaultCurrency,
-            onSave = { amountMinor, currency, direction, merchant, categoryId ->
-                vm.addManual(amountMinor, currency, direction, merchant, categoryId)
-                showManual = false
-            },
-            onDismiss = { showManual = false },
         )
     }
 }

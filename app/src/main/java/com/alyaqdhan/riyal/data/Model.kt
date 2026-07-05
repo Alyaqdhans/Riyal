@@ -6,11 +6,21 @@ data class Category(
     val id: String,
     val name: String,
     val income: Boolean = false,
+    /** ARGB color; 0 means "use the built-in/default color for this id". */
+    val color: Int = 0,
+    /** True for user-created categories, which can be renamed, recolored, deleted. */
+    val custom: Boolean = false,
 )
 
+/**
+ * The category registry: fixed built-ins plus whatever the user added. It is a
+ * plain in-memory snapshot so pure code ([Categorizer], the UI) can resolve a
+ * category id synchronously; [Store] owns the user list and calls [setCustom]
+ * whenever it loads or changes, keeping this registry in sync.
+ */
 object Categories {
 
-    val ALL = listOf(
+    val BUILTIN = listOf(
         Category("food", "Food & Dining"),
         Category("groceries", "Groceries"),
         Category("transport", "Transport & Fuel"),
@@ -30,15 +40,28 @@ object Categories {
 
     const val DEFAULT_EXPENSE = "other"
     const val DEFAULT_INCOME = "income"
+    const val CUSTOM_ID_PREFIX = "u_"
 
-    private val byId = ALL.associateBy { it.id }
+    @Volatile
+    private var custom: List<Category> = emptyList()
 
-    fun byId(id: String): Category = byId[id] ?: byId.getValue(DEFAULT_EXPENSE)
+    /** Called by [Store] on load and on every change to the user's categories. */
+    fun setCustom(list: List<Category>) {
+        custom = list.map { it.copy(custom = true) }
+    }
+
+    /** Built-ins first (their order is meaningful), then user categories. */
+    val ALL: List<Category> get() = BUILTIN + custom
+
+    private val builtinById = BUILTIN.associateBy { it.id }
+
+    fun byId(id: String): Category =
+        builtinById[id] ?: custom.firstOrNull { it.id == id } ?: builtinById.getValue(DEFAULT_EXPENSE)
 
     fun forDirection(direction: Direction): List<Category> =
         ALL.filter { it.income == (direction == Direction.INCOME) }
 
-    private val COLORS = mapOf(
+    private val BUILTIN_COLORS = mapOf(
         "food" to 0xFFFF7043.toInt(),
         "groceries" to 0xFF26A69A.toInt(),
         "transport" to 0xFF42A5F5.toInt(),
@@ -56,7 +79,19 @@ object Categories {
         "income" to 0xFF9CCC65.toInt(),
     )
 
-    fun colorFor(id: String): Int = COLORS[id] ?: COLORS.getValue("other")
+    /** The palette offered to user categories (also used to auto-assign on create). */
+    val PALETTE = listOf(
+        0xFFEF5350.toInt(), 0xFFEC407A.toInt(), 0xFFAB47BC.toInt(), 0xFF7E57C2.toInt(),
+        0xFF5C6BC0.toInt(), 0xFF42A5F5.toInt(), 0xFF29B6F6.toInt(), 0xFF26A69A.toInt(),
+        0xFF66BB6A.toInt(), 0xFF9CCC65.toInt(), 0xFFFFB300.toInt(), 0xFFFF7043.toInt(),
+        0xFF8D6E63.toInt(), 0xFF78909C.toInt(),
+    )
+
+    fun colorFor(id: String): Int {
+        BUILTIN_COLORS[id]?.let { return it }
+        val c = custom.firstOrNull { it.id == id }?.color ?: 0
+        return if (c != 0) c else BUILTIN_COLORS.getValue("other")
+    }
 }
 
 data class Txn(

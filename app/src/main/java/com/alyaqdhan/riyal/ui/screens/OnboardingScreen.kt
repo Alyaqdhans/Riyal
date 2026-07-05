@@ -62,7 +62,7 @@ fun OnboardingScreen(onGrant: () -> Unit, onSkip: () -> Unit) {
             Text("Riyal", style = MaterialTheme.typography.displaySmall)
             Spacer(Modifier.height(6.dp))
             Text(
-                "Your expenses, read from your messages,\nentirely on your phone.",
+                "Your spending, sorted from your bank SMS —\nquietly, and only on this phone.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -71,12 +71,12 @@ fun OnboardingScreen(onGrant: () -> Unit, onSkip: () -> Unit) {
             Card(Modifier.fillMaxWidth()) {
                 Column(
                     Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Promise("Reads only while the app is open, on launch, pull-to-refresh, or the Scan button. There is no background listener, ever.")
-                    Promise("Only bank senders, and only messages containing transaction words (all editable by you). Everything else is skipped, unread and unstored.")
-                    Promise("No internet permission in the manifest, so your data physically cannot leave this device.")
-                    Promise("Anything the parser can't read is handed to you to decide, with a full verbose log of every step.")
+                    Promise("Reads only when you ask", "No background listener, ever.")
+                    Promise("Stays on your phone", "No internet permission — data can't leave.")
+                    Promise("Only what matters", "Bank messages with money words. The rest is ignored.")
+                    Promise("You're in control", "Anything unclear is yours to decide, every step logged.")
                 }
             }
             Spacer(Modifier.height(24.dp))
@@ -89,17 +89,17 @@ fun OnboardingScreen(onGrant: () -> Unit, onSkip: () -> Unit) {
             ) {
                 Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Allow SMS reading & scan")
+                Text("Allow SMS & scan")
             }
             TextButton(onClick = onSkip) {
-                Text("Not now, look around first")
+                Text("Explore first")
             }
         }
     }
 }
 
 @Composable
-private fun Promise(text: String) {
+private fun Promise(title: String, detail: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Icon(
             Icons.Filled.Check,
@@ -107,6 +107,13 @@ private fun Promise(text: String) {
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(20.dp),
         )
-        Text(text, style = MaterialTheme.typography.bodyMedium)
+        Column {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                detail,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

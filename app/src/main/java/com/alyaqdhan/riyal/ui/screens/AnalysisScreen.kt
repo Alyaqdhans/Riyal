@@ -18,14 +18,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularWavyProgressIndicator
@@ -35,12 +41,17 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
@@ -58,17 +69,23 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.RoundedPolygon
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
+import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.CategoryBadge
+import com.alyaqdhan.riyal.ui.compose.CategoryChips
+import com.alyaqdhan.riyal.ui.compose.CategoryPickerSheet
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
+import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.theme.successColor
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
@@ -103,6 +120,16 @@ fun AnalysisScreen(vm: MainViewModel) {
     var slice by remember { mutableStateOf(TimeSlice.ofMonth(YearMonth.now())) }
     var showSlicePicker by remember { mutableStateOf(false) }
     var showCustomRange by remember { mutableStateOf(false) }
+    // Tapping a category legend row opens its transactions for this slice, to fix wrong ones.
+    var drillCategoryId by remember { mutableStateOf<String?>(null) }
+    // A row inside the drill-down opens the shared category picker to re-categorize it.
+    var recategorize by remember { mutableStateOf<Txn?>(null) }
+    // Or the user marks the whole transaction as not real; confirm before removing.
+    var confirmRemove by remember { mutableStateOf<Txn?>(null) }
+    // Per-category monthly budgets live in Prefs; this local mirror re-renders the bars
+    // as the user edits them in the dialog below.
+    var budgets by remember { mutableStateOf(vm.prefs.categoryBudgets) }
+    var showBudgetEditor by remember { mutableStateOf(false) }
 
     val totals = remember(txns, slice, currency) {
         Stats.totalsIn(txns, slice.start, slice.endExclusive, currency)
@@ -251,6 +278,9 @@ fun AnalysisScreen(vm: MainViewModel) {
                             Row(
                                 Modifier
                                     .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { drillCategoryId = cat.id }
+                                    .padding(vertical = 4.dp)
                                     .popIn(index * 40),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -275,6 +305,12 @@ fun AnalysisScreen(vm: MainViewModel) {
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.End,
+                                )
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    contentDescription = "Review ${cat.name}",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp),
                                 )
                             }
                         }
@@ -385,6 +421,40 @@ fun AnalysisScreen(vm: MainViewModel) {
                         }
                     }
                 }
+                // Budgets: only meaningful against a single calendar month, since a
+                // budget is a monthly cap. For other slices, offer the editor only.
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("Category budgets", style = MaterialTheme.typography.titleMedium)
+                            TextButton(onClick = { showBudgetEditor = true }) { Text("Edit") }
+                        }
+                        if (slice.month == null) {
+                            Text(
+                                "Pick a single month to see budget progress. Budgets are monthly caps.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else if (budgets.isEmpty()) {
+                            Text(
+                                "No category budgets yet. Tap Edit to cap a category's monthly spend.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            budgets.entries
+                                .sortedByDescending { it.value }
+                                .forEach { (catId, budget) ->
+                                    val spent = Stats.categorySpent(txns, catId, slice.month!!, currency)
+                                    BudgetBar(catId, spent, budget, currency)
+                                }
+                        }
+                    }
+                }
                 // Room for the floating toolbar hovering over the content.
                 Spacer(Modifier.height(88.dp))
             }
@@ -440,6 +510,259 @@ fun AnalysisScreen(vm: MainViewModel) {
             )
         }
     }
+
+    drillCategoryId?.let { catId ->
+        val cat = Categories.byId(catId)
+        // The exact transactions behind this slice of the donut, newest first.
+        val inCategory = remember(txns, catId, slice) {
+            txns.filter {
+                it.categoryId == catId &&
+                    it.atMillis >= slice.start && it.atMillis < slice.endExclusive
+            }.sortedByDescending { it.atMillis }
+        }
+        CategoryTxnsSheet(
+            categoryId = catId,
+            title = cat.name,
+            txns = inCategory,
+            onTxnClick = { recategorize = it },
+            onTxnRemove = { confirmRemove = it },
+            onDismiss = { drillCategoryId = null },
+        )
+    }
+
+    confirmRemove?.let { txn ->
+        AlertDialog(
+            onDismissRequest = { confirmRemove = null },
+            title = { Text("Remove this transaction?") },
+            text = {
+                Text(
+                    if (txn.manual) {
+                        "This was added manually. It will be deleted."
+                    } else {
+                        "The app read this from an SMS but you're saying it isn't a real " +
+                            "transaction. It'll be removed and kept out of future scans. " +
+                            "Your SMS inbox is untouched."
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.ignoreTxn(txn)
+                    confirmRemove = null
+                    drillCategoryId = null
+                }) { Text("Remove") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRemove = null }) { Text("Cancel") }
+            },
+        )
+    }
+
+    if (showBudgetEditor) {
+        BudgetEditorDialog(
+            currency = currency,
+            initial = budgets,
+            onSave = { catId, minor ->
+                vm.prefs.setCategoryBudget(catId, minor)
+                budgets = vm.prefs.categoryBudgets
+            },
+            onDismiss = { showBudgetEditor = false },
+        )
+    }
+
+    recategorize?.let { txn ->
+        CategoryPickerSheet(
+            txn = txn,
+            onApply = { categoryId, rulePattern ->
+                vm.setCategory(txn, categoryId, rulePattern)
+                recategorize = null
+                // The transaction left this category; drop back to the charts so the
+                // list can't show a now-stale membership.
+                drillCategoryId = null
+            },
+            onDismiss = { recategorize = null },
+            rememberByDefault = vm.prefs.smartRules,
+        )
+    }
+}
+
+/**
+ * Drill-down from the Analysis donut: every transaction the app filed under one
+ * category for the selected period. Tapping a row re-categorizes it, which is how a
+ * misclassified message gets corrected right where you spot it.
+ */
+@Composable
+private fun CategoryTxnsSheet(
+    categoryId: String,
+    title: String,
+    txns: List<Txn>,
+    onTxnClick: (Txn) -> Unit,
+    onTxnRemove: (Txn) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            Modifier
+                .fillMaxHeight(0.82f)
+                .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                CategoryBadge(categoryId)
+                Column {
+                    Text(title, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "${txns.size} transaction(s) · tap to recategorize, ✕ to remove a wrong one",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(txns, key = { it.id }) { txn ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TxnRow(txn, onClick = { onTxnClick(txn) }, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { onTxnRemove(txn) }) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = "Remove this transaction",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** One category's month-to-date spend against its budget cap, with a colored bar. */
+@Composable
+private fun BudgetBar(categoryId: String, spent: Long, budget: Long, currency: String) {
+    val cat = Categories.byId(categoryId)
+    val fraction = if (budget > 0) (spent.toFloat() / budget.toFloat()) else 0f
+    val over = spent > budget
+    val barColor = when {
+        over -> MaterialTheme.colorScheme.error
+        fraction >= 0.85f -> MaterialTheme.colorScheme.tertiary
+        else -> Color(Categories.colorFor(categoryId))
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(Color(Categories.colorFor(categoryId))),
+            )
+            Text(cat.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Text(
+                "${Money.format(spent, currency)} / ${Money.format(budget, currency)}",
+                style = MaterialTheme.typography.labelMedium,
+                color = if (over) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        LinearProgressIndicator(
+            progress = { fraction.coerceIn(0f, 1f) },
+            color = barColor,
+            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(CircleShape),
+        )
+        if (over) {
+            Text(
+                "Over by ${Money.format(spent - budget, currency)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+/**
+ * Set or clear a monthly cap per category: pick a category chip, type an amount,
+ * add it. Existing budgets are listed with a remove control. Expense categories only,
+ * since income isn't something you cap.
+ */
+@Composable
+private fun BudgetEditorDialog(
+    currency: String,
+    initial: Map<String, Long>,
+    onSave: (categoryId: String, minor: Long) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var selected by remember { mutableStateOf(Categories.forDirection(Direction.EXPENSE).first().id) }
+    var amount by remember { mutableStateOf("") }
+    // Local view so the list updates live as budgets are added/removed.
+    var current by remember { mutableStateOf(initial) }
+    val parsed = amount.trim().replace(",", "").toBigDecimalOrNull()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Category budgets") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (current.isNotEmpty()) {
+                    current.entries.sortedByDescending { it.value }.forEach { (catId, minor) ->
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "${Categories.byId(catId).name}: ${Money.format(minor, currency)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = {
+                                onSave(catId, 0L)
+                                current = current - catId
+                            }) { Text("Remove") }
+                        }
+                    }
+                }
+                Text("Add / change a budget", style = MaterialTheme.typography.labelLarge)
+                CategoryChips(
+                    direction = Direction.EXPENSE,
+                    selectedId = selected,
+                    onSelect = { selected = it },
+                )
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { amount = it },
+                    label = { Text("Monthly cap") },
+                    suffix = { Text(currency) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = parsed != null && parsed.signum() > 0,
+                onClick = {
+                    val minor = Money.toMinor(parsed!!, currency)
+                    onSave(selected, minor)
+                    current = current + (selected to minor)
+                    amount = ""
+                },
+            ) { Text("Add") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+    )
 }
 
 @Composable

@@ -52,6 +52,33 @@ class Prefs(context: Context) {
         get() = sp.getLong("monthly_budget_minor", 0L)
         set(v) = sp.edit().putLong("monthly_budget_minor", v).apply()
 
+    /**
+     * Per-category monthly budgets, in minor units of the default currency, keyed by
+     * category id. Absent or 0 means "no budget for this category". Stored as one
+     * `id=amount` line per entry so it survives without a schema migration.
+     */
+    var categoryBudgets: Map<String, Long>
+        get() {
+            val raw = sp.getStringSet("category_budgets", emptySet()) ?: emptySet()
+            return raw.mapNotNull { line ->
+                val i = line.lastIndexOf('=')
+                if (i <= 0) return@mapNotNull null
+                val id = line.substring(0, i)
+                val amt = line.substring(i + 1).toLongOrNull() ?: return@mapNotNull null
+                if (amt > 0) id to amt else null
+            }.toMap()
+        }
+        set(v) = sp.edit().putStringSet(
+            "category_budgets",
+            v.filterValues { it > 0 }.map { (id, amt) -> "$id=$amt" }.toSet(),
+        ).apply()
+
+    fun setCategoryBudget(categoryId: String, minor: Long) {
+        categoryBudgets = categoryBudgets.toMutableMap().apply {
+            if (minor > 0) this[categoryId] = minor else remove(categoryId)
+        }
+    }
+
     var senderFilterEnabled: Boolean
         get() = sp.getBoolean("sender_filter_enabled", false)
         set(v) = sp.edit().putBoolean("sender_filter_enabled", v).apply()

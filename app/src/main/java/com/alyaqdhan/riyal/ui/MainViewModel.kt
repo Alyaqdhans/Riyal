@@ -60,6 +60,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     val scanSheetVisible = MutableStateFlow(false)
 
+    /**
+     * The permanent Add FAB (in the bottom toolbar island) opens the manual-entry
+     * dialog from any screen, so the request lives here rather than in one screen.
+     */
+    val manualAddVisible = MutableStateFlow(false)
+    fun requestManualAdd() { manualAddVisible.value = true }
+    fun dismissManualAdd() { manualAddVisible.value = false }
+
     private val _hasSmsPermission = MutableStateFlow(false)
     val hasSmsPermission: StateFlow<Boolean> = _hasSmsPermission
     private var lastLoggedPermission: Boolean? = null
@@ -154,6 +162,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             Verbose.flush()
         }
 
+    fun ignoreTxn(txn: Txn) = viewModelScope.launch(Dispatchers.IO) {
+        store.ignoreTxn(txn)
+        Verbose.info(
+            "transaction removed by you: ${Money.format(txn.amountMinor, txn.currency)} (${txn.sender})" +
+                if (!txn.manual) " · this message will stay ignored on future scans" else ""
+        )
+        Verbose.flush()
+    }
+
     fun addRule(pattern: String, categoryId: String) = viewModelScope.launch(Dispatchers.IO) {
         val changed = store.addRule(UserRule(pattern.trim().lowercase(), categoryId))
         Verbose.ok("rule saved: \"${pattern.trim().lowercase()}\" → ${Categories.byId(categoryId).name} · re-categorized $changed transaction(s)")
@@ -163,6 +180,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun removeRule(pattern: String) = viewModelScope.launch(Dispatchers.IO) {
         store.removeRule(pattern)
         Verbose.info("rule removed: \"$pattern\"")
+        Verbose.flush()
+    }
+
+    // ─────────────────────────── custom categories ───────────────────────────
+
+    val categories = store.categories
+
+    fun addCategory(name: String, income: Boolean, color: Int) = viewModelScope.launch(Dispatchers.IO) {
+        store.addCategory(name.trim(), income, color)
+        Verbose.ok("category added by you: \"${name.trim()}\" (${if (income) "income" else "expense"})")
+        Verbose.flush()
+    }
+
+    fun updateCategory(id: String, name: String, color: Int) = viewModelScope.launch(Dispatchers.IO) {
+        store.updateCategory(id, name.trim(), color)
+        Verbose.info("category updated by you: \"${name.trim()}\"")
+        Verbose.flush()
+    }
+
+    fun deleteCategory(id: String) = viewModelScope.launch(Dispatchers.IO) {
+        val name = Categories.byId(id).name
+        store.deleteCategory(id)
+        Verbose.info("category deleted by you: \"$name\" · its transactions moved to the default category")
         Verbose.flush()
     }
 
