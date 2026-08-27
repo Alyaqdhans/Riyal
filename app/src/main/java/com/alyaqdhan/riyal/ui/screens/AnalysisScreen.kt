@@ -72,6 +72,7 @@ import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.EmptyState
+import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
@@ -601,7 +602,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
                     }
                 }
                 // Room for the floating toolbar hovering over the content.
-                Spacer(Modifier.height(88.dp))
+                ToolbarSpacer()
             }
         }
     }

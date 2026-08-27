@@ -60,6 +60,9 @@ fun localDateOf(millis: Long): LocalDate =
  * The toolbar already carries the navigation-bar inset itself, and a Scaffold hands its
  * content the same inset, so this is only the pill: its height, the gap it floats above
  * the system bar by, and enough space that the last row does not touch it.
+ *
+ * For the four tab screens only - a pushed page hides the toolbar, so it needs nothing
+ * more than ordinary padding at its end.
  */
 val ToolbarSpace = 96.dp
 

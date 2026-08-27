@@ -32,6 +32,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -73,6 +74,7 @@ import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CURRENCIES
+import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
 import com.alyaqdhan.riyal.ui.compose.CategoryIcon
 import com.alyaqdhan.riyal.ui.compose.DropdownField
 import com.alyaqdhan.riyal.ui.compose.plainText
@@ -165,71 +167,50 @@ fun SettingsScreen(
 
             // ── scanning behavior
             SettingsCard("Scanning") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Scan when the app opens", style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            "One quiet scan on launch. Off = only pull-to-refresh or the Scan button.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = scanOnLaunch,
-                        onCheckedChange = {
-                            scanOnLaunch = it
-                            prefs.scanOnLaunch = it
-                            note("scan on app open ${if (it) "enabled" else "disabled"}")
-                        },
-                    )
-                }
+                SettingRow(
+                    title = "Scan when the app opens",
+                    summary = "One quiet scan on launch",
+                    checked = scanOnLaunch,
+                    onCheckedChange = {
+                        scanOnLaunch = it
+                        prefs.scanOnLaunch = it
+                        note("scan on app open ${if (it) "enabled" else "disabled"}")
+                    },
+                    detail = "Riyal reads the inbox once when it starts. With this off, a scan " +
+                        "only happens when you pull down to refresh.",
+                )
             }
 
             // ── smart behavior
             SettingsCard("Smart") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Learn from my corrections", style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            "When you fix a category, the merchant is remembered automatically and applied to past and future messages. The picker still lets you opt out per edit.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = smartRules,
-                        onCheckedChange = {
-                            smartRules = it
-                            prefs.smartRules = it
-                            note("smart category learning ${if (it) "enabled" else "disabled"}")
-                        },
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Confirm transfers for me", style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            if (autoConfirmTransfers) {
-                                "A matching pair — same amount and currency, two of your own " +
-                                    "accounts, minutes apart — is treated as one transfer straight " +
-                                    "away, so it never counts as spending or income. Any of them " +
-                                    "can be split back apart from its row."
-                            } else {
-                                "Off. Every matching pair waits in Review for your yes or no."
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = autoConfirmTransfers,
-                        onCheckedChange = {
-                            autoConfirmTransfers = it
-                            vm.autoConfirmTransfers = it
-                            note("auto-confirm transfers ${if (it) "enabled" else "disabled"}")
-                        },
-                    )
-                }
+                SettingRow(
+                    title = "Learn from my corrections",
+                    summary = "Remember a merchant's category once you fix it",
+                    checked = smartRules,
+                    onCheckedChange = {
+                        smartRules = it
+                        prefs.smartRules = it
+                        note("smart category learning ${if (it) "enabled" else "disabled"}")
+                    },
+                    detail = "When you fix a category on a transaction with a merchant, that " +
+                        "merchant is remembered and applied to past and future messages. The " +
+                        "category picker still lets you opt out for a single edit.",
+                )
+                SettingRow(
+                    title = "Confirm transfers for me",
+                    summary = "Treat a matching pair as one transfer, without asking",
+                    checked = autoConfirmTransfers,
+                    onCheckedChange = {
+                        autoConfirmTransfers = it
+                        vm.autoConfirmTransfers = it
+                        note("auto-confirm transfers ${if (it) "enabled" else "disabled"}")
+                    },
+                    detail = "A matching pair is the same amount and currency, moving between " +
+                        "two of your own accounts, minutes apart. With this on it becomes one " +
+                        "transfer straight away and stops counting as spending or income; any " +
+                        "of them can be split back apart from its row in Activity. With it off, " +
+                        "every pair waits in Review for your yes or no.",
+                )
             }
 
             // ── money: the two pages that own accounts and categories, and the switch
@@ -253,30 +234,24 @@ fun SettingsScreen(
                     },
                     onClick = onOpenCategories,
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Budget", style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            if (budgetsEnabled) {
-                                "Home shows a budget section: cap what you spend per category " +
-                                    "for any period, with progress bars." +
-                                    if (budgets.isNotEmpty()) " ${budgets.size} plan(s) so far." else ""
-                            } else {
-                                "Off. Turn it on to plan spending per category on the Home screen."
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = budgetsEnabled,
-                        onCheckedChange = {
-                            budgetsEnabled = it
-                            vm.budgetsEnabled = it
-                            note("budget planning ${if (it) "enabled" else "disabled"}")
-                        },
-                    )
-                }
+                SettingRow(
+                    title = "Budget",
+                    summary = "Plan what you spend per category, on Home",
+                    checked = budgetsEnabled,
+                    onCheckedChange = {
+                        budgetsEnabled = it
+                        vm.budgetsEnabled = it
+                        note("budget planning ${if (it) "enabled" else "disabled"}")
+                    },
+                    detail = "Home gains a budget section for the month it is showing: a cap per " +
+                        "category, a bar for each, and a marker for whether the money is going " +
+                        "faster than the calendar. A plan can cover any period, set from its editor.",
+                    note = if (budgetsEnabled && budgets.isNotEmpty()) {
+                        "${budgets.size} plan(s) so far"
+                    } else {
+                        null
+                    },
+                )
             }
 
             // ── scan range
@@ -357,42 +332,31 @@ fun SettingsScreen(
 
             // ── senders
             SettingsCard("Senders") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Bank senders only", style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            "Only sender names containing “bank” / “بنك” / “مصرف” are read. Banks that brand differently (NBO, Sohar Intl…), approve them below.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = bankOnly,
-                        onCheckedChange = {
-                            bankOnly = it
-                            prefs.bankSendersOnly = it
-                            note("bank-senders-only ${if (it) "enabled" else "disabled"}")
-                        },
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Only scan senders I approve", style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            "Off = every sender is considered (bodies still keyword-gated).",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = senderFilter,
-                        onCheckedChange = {
-                            senderFilter = it
-                            prefs.senderFilterEnabled = it
-                            note("sender allowlist ${if (it) "enabled" else "disabled"}")
-                        },
-                    )
-                }
+                SettingRow(
+                    title = "Bank senders only",
+                    summary = "Read senders whose name says bank",
+                    checked = bankOnly,
+                    onCheckedChange = {
+                        bankOnly = it
+                        prefs.bankSendersOnly = it
+                        note("bank-senders-only ${if (it) "enabled" else "disabled"}")
+                    },
+                    detail = "Only senders whose name contains “bank”, “بنك” or “مصرف” are read. " +
+                        "Banks that brand differently — NBO, Sohar Intl, Meethaq — are approved " +
+                        "in the list below instead.",
+                )
+                SettingRow(
+                    title = "Only scan senders I approve",
+                    summary = "Ignore every sender not in the list below",
+                    checked = senderFilter,
+                    onCheckedChange = {
+                        senderFilter = it
+                        prefs.senderFilterEnabled = it
+                        note("sender allowlist ${if (it) "enabled" else "disabled"}")
+                    },
+                    detail = "With this off, every sender is considered and the message body " +
+                        "still has to contain one of the gate keywords to be read at all.",
+                )
                 if (senderFilter || bankOnly) {
                     if (allowlist.isEmpty()) {
                         Text(
@@ -534,7 +498,7 @@ fun SettingsScreen(
                 )
             }
             // Room for the floating toolbar hovering over the content.
-            Spacer(Modifier.height(88.dp))
+            ToolbarSpacer()
         }
     }
 
@@ -558,6 +522,71 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { confirmWipe = false }) { Text("Cancel") }
             },
+        )
+    }
+}
+
+/**
+ * One switch, one short line. The paragraph that used to sit under every switch moves
+ * behind the (i): a settings screen is read by someone looking for a switch, and six
+ * explanations they have already read are what they have to scroll past to find it.
+ *
+ * [detail] is shown on demand; [note] is for the rare line that has to be on screen
+ * because it says something about *this* state rather than what the switch does.
+ */
+@Composable
+private fun SettingRow(
+    title: String,
+    summary: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    detail: String,
+    note: String? = null,
+) {
+    var showDetail by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(title, style = MaterialTheme.typography.titleSmall)
+                    IconButton(
+                        onClick = { showDetail = true },
+                        modifier = Modifier.size(20.dp),
+                    ) {
+                        Icon(
+                            Icons.Filled.Info,
+                            contentDescription = "About this setting",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+                Text(
+                    summary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
+        }
+        if (note != null) {
+            Text(
+                note,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+
+    if (showDetail) {
+        AlertDialog(
+            onDismissRequest = { showDetail = false },
+            title = { Text(title) },
+            text = { Text(detail) },
+            confirmButton = { TextButton(onClick = { showDetail = false }) { Text("Got it") } },
         )
     }
 }

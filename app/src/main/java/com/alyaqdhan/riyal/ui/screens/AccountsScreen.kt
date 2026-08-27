@@ -58,7 +58,6 @@ import com.alyaqdhan.riyal.ui.compose.DropdownField
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
-import com.alyaqdhan.riyal.ui.compose.ToolbarSpace
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
 import com.alyaqdhan.riyal.ui.theme.successColor
@@ -119,7 +118,7 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
             }
 
             LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = ToolbarSpace),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (needsConfirming) {
