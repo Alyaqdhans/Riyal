@@ -47,7 +47,7 @@ class ScanEngine(
         Verbose.scan("expense keywords: ${prefs.expenseKeywords.joinToString(", ")}")
         Verbose.scan("income keywords: ${prefs.incomeKeywords.joinToString(", ")}")
         val allowlistOn = prefs.senderFilterEnabled
-        val allowlist = prefs.senderAllowlist.map { it.lowercase() }.toSet()
+        var allowlist = prefs.senderAllowlist.map { it.lowercase() }.toSet()
         val bankOnly = prefs.bankSendersOnly
         if (allowlistOn) {
             Verbose.scan("sender allowlist ON: only ${prefs.senderAllowlist.joinToString(", ")}")
@@ -100,7 +100,27 @@ class ScanEngine(
             }
         }
 
-        val learned = HashSet<String>()
+        // The accounts already known, needed by the sender gate below: a sender that
+        // holds one of them is a bank whatever its name looks like.
+        val existingAccounts = store.accounts.value
+
+        // An earlier version auto-approved any sender whose message happened to parse,
+        // which put every telecom in the allowlist - and an allowlisted sender skips
+        // the bank gate. Drop the ones that hold no account and look nothing like a
+        // bank, or the gate below can never take effect on this device.
+        if (allowlist.isNotEmpty()) {
+            val bogus = allowlist.filterNot { name ->
+                Banks.looksLikeBank(name) || AccountDiscovery.isKnownSender(existingAccounts, name)
+            }
+            if (bogus.isNotEmpty()) {
+                prefs.senderAllowlist = prefs.senderAllowlist.filterNot { it.lowercase() in bogus }.toSet()
+                allowlist = allowlist - bogus.toSet()
+                Verbose.scan(
+                    "removed ${bogus.size} approved sender(s) that hold none of your accounts: " +
+                        bogus.joinToString(", ")
+                )
+            }
+        }
 
         // ── stage 1: read every message ───────────────────────────────────
         messages.forEachIndexed { index, msg ->
@@ -119,12 +139,24 @@ class ScanEngine(
                 logSkip("${msg.sender} · skipped (sender not in your allowlist)")
                 return@forEachIndexed
             }
-            // Bank gate, self-teaching: senders that don't look like a bank are still
-            // keyword-gated and parsed, but only a fully parsed transaction is kept,
-            // and the sender is then learned as a bank. Their unreadable messages are
-            // NOT sent to Review, so promo senders can't spam it.
-            val trustedSender = !bankOnly || allowlistOn || Banks.looksLikeBank(msg.sender) ||
-                msg.sender.lowercase() in allowlist || msg.sender.lowercase() in learned
+            // Bank gate. Only a bank can move money in a bank account, so a sender
+            // that is not one is not read at all - not recorded, and not sent to
+            // Review either. Telecoms text constantly about bills, packages and prize
+            // draws, every one of them quoting an amount; letting them through is how
+            // a TV channel's "cash prizes up to 60,000 OMR" became the biggest expense
+            // in the history, and how Review filled with 218 items nobody wants.
+            //
+            // "Is it a bank" means: a bank-like name, a sender that already holds one
+            // of the user's accounts, or one they approved by hand in Settings.
+            val bankSender = Banks.looksLikeBank(msg.sender) ||
+                msg.sender.lowercase() in allowlist ||
+                AccountDiscovery.isKnownSender(existingAccounts, msg.sender)
+            if (bankOnly && !bankSender) {
+                skipped++
+                logSkip("${msg.sender} · skipped (not one of your banks, so it cannot move your money)")
+                return@forEachIndexed
+            }
+            val trustedSender = !bankOnly || bankSender
 
             when (val result = parser.parse(msg.body)) {
                 is SmsParser.Result.Skipped -> {
@@ -164,13 +196,6 @@ class ScanEngine(
 
                 is SmsParser.Result.Parsed -> {
                     matched++
-                    if (!trustedSender && msg.sender.lowercase() !in learned) {
-                        learned += msg.sender.lowercase()
-                        Verbose.ok(
-                            "✦ learned sender: \"${msg.sender}\" sends real transactions, " +
-                                "auto-approved (remove it in Settings → Senders)"
-                        )
-                    }
                     val id = hashOf(msg)
                     if (parsedMsgs.containsKey(id)) {
                         duplicates++
@@ -184,13 +209,8 @@ class ScanEngine(
 
         onProgress(Progress(messages.size, messages.size))
 
-        if (learned.isNotEmpty()) {
-            prefs.senderAllowlist = prefs.senderAllowlist + learned
-            Verbose.scan("learned ${learned.size} new bank sender(s): ${learned.joinToString(", ")}")
-        }
-
         // ── stage 2: accounts ─────────────────────────────────────────────
-        var accounts = store.accounts.value
+        var accounts = existingAccounts
         if (accounts.isEmpty() && parsedMsgs.isNotEmpty()) {
             accounts = AccountDiscovery.propose(
                 parsedMsgs.values.map { pm ->
@@ -250,8 +270,13 @@ class ScanEngine(
             if (accountId == null) unrouted++
             if (result.transferHint) hinted += pm.id
             result.bankStamp?.let { bankStamps[pm.id] = pm.msg.sender.trim().lowercase() + "|" + it }
+            // A message naming both ends is already a whole transfer: recording it as
+            // a plain debit counts money you moved to yourself as money you spent.
+            val selfTo = result.selfTransferTo?.let { tail ->
+                AccountDiscovery.routeTo(accounts, pm.msg.sender, tail)
+            }?.takeIf { it != accountId }
             val cat = Categorizer.categorize(result.direction, result.merchant, pm.msg.body, rules, pm.msg.sender)
-            val type = TxnType.of(result.direction)
+            val type = if (selfTo != null) TxnType.TRANSFER else TxnType.of(result.direction)
             Verbose.info("✉ ${pm.msg.sender} · ${fmtDateTime(pm.msg.atMillis)}")
             result.trace.forEach { Verbose.info("    · $it") }
             val catNote = cat.pattern?.let { "${cat.source} match \"$it\"" } ?: cat.source
@@ -260,22 +285,37 @@ class ScanEngine(
                 "    · account: " + (accounts.firstOrNull { it.id == accountId }?.displayName
                     ?: "not matched, assign it from the transaction row")
             )
-            Verbose.ok(
-                "    ✓ recorded ${Money.formatSigned(result.amountMinor, result.currency, type == TxnType.EXPENSE)}" +
-                    " · confidence ${result.confidence}%"
-            )
+            if (type == TxnType.TRANSFER) {
+                Verbose.ok(
+                    "    ✓ recorded as a transfer between your own accounts · " +
+                        "${Money.format(result.amountMinor, result.currency)} · it counts as " +
+                        "neither spending nor income"
+                )
+            } else {
+                Verbose.ok(
+                    "    ✓ recorded ${Money.formatSigned(result.amountMinor, result.currency, type == TxnType.EXPENSE)}" +
+                        " · confidence ${result.confidence}%"
+                )
+            }
             txns += Txn(
                 id = pm.id,
                 atMillis = pm.msg.atMillis,
                 amountMinor = result.amountMinor,
                 currency = result.currency,
                 type = type,
-                fromAccountId = if (type == TxnType.EXPENSE) accountId else null,
-                toAccountId = if (type == TxnType.INCOME) accountId else null,
+                fromAccountId = when (type) {
+                    TxnType.INCOME -> null
+                    else -> accountId
+                },
+                toAccountId = when (type) {
+                    TxnType.TRANSFER -> selfTo
+                    TxnType.INCOME -> accountId
+                    else -> null
+                },
                 merchant = result.merchant,
                 sender = pm.msg.sender,
                 body = pm.msg.body,
-                categoryId = cat.categoryId,
+                categoryId = if (type == TxnType.TRANSFER) Categories.TRANSFER_ID else cat.categoryId,
                 categorySource = "auto",
                 confidence = result.confidence,
             )

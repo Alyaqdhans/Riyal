@@ -42,6 +42,12 @@ class SmsParser(
             /** The wording suggests moving money between accounts rather than spending. */
             val transferHint: Boolean = false,
             /**
+             * The message names both ends itself ("debited from your A/C 0038 and
+             * credited to your A/C 0022"), so it is a whole transfer on its own and
+             * needs no second message to pair with.
+             */
+            val selfTransferTo: String? = null,
+            /**
              * The bank's own timestamp for the transaction ("2026/07/23 10:21:53"),
              * which is not the same thing as when the message arrived: a bank can text
              * one side of a transfer an hour after the other, both quoting this.
@@ -82,6 +88,14 @@ class SmsParser(
         val advert = ADVERT_WORDS.filter { it in lower }
         if (advert.isNotEmpty()) {
             return Result.Skipped("advertising, not a transaction (\"${advert.first()}\")")
+        }
+
+        // 1c ── a bank also texts about money that did NOT move: a request waiting for
+        // your approval, an instruction you cancelled, a card that was declined. Each
+        // names an amount, and recording any of them invents a transaction.
+        val notMoved = NOT_MOVED_WORDS.firstOrNull { it in lower }
+        if (notMoved != null) {
+            return Result.Skipped("no money moved (\"$notMoved\")")
         }
         hits.sortBy { it.pos }
         val hit = hits.first()
@@ -146,6 +160,14 @@ class SmsParser(
         if (accountTail != null) trace += "account ending $accountTail"
         val transferHint = TRANSFER_WORDS.any { it in lower }
         if (transferHint) trace += "wording suggests a transfer between accounts"
+        // One message, both ends: the bank is telling you it moved money between two
+        // of your own accounts. Judged on its first keyword alone this reads as a plain
+        // debit, which counts your own transfer as spending.
+        val selfTransferTo = SELF_TRANSFER.find(body)?.groupValues?.get(1)
+            ?.takeLastWhile { it.isDigit() }?.takeIf { it.length >= 3 }?.takeLast(4)
+        if (selfTransferTo != null) {
+            trace += "this message names both accounts: money moved to your own ···$selfTransferTo"
+        }
         val bankStamp = findBankStamp(body)
         if (bankStamp != null) trace += "the bank dates this $bankStamp (its clock, not the message's)"
 
@@ -160,6 +182,7 @@ class SmsParser(
             accountTail = accountTail,
             transferHint = transferHint,
             bankStamp = bankStamp,
+            selfTransferTo = selfTransferTo,
         )
     }
 
@@ -329,6 +352,16 @@ class SmsParser(
         /** A plain decimal is an amount, never an account number. */
         val amountLike = Regex("""^\d+\.\d+$""")
 
+    /**
+     * "…debited from your A/C 0372XXXXXXXX0038 and credited to your A/C 0372XXXXXXXX0022…"
+     * and its Arabic equivalent: one message carrying both sides of a transfer.
+     */
+    private val SELF_TRANSFER = Regex(
+        "(?i)(?:debited|خصم).{0,80}?(?:credited to (?:your )?a/?c|إلى حساب\\p{L}*)" +
+            "[\\s:.]*(?:no\\.?|number|#|رقم)?[\\s:.]*([0-9Xx*\\u2022.-]{3,32})",
+        RegexOption.DOT_MATCHES_ALL,
+    )
+
     /** "2026/07/23 10:21:53", with any spacing the banks actually use around it. */
     private val bankStampPattern =
         Regex("""(\d{4}[/-]\d{2}[/-]\d{2})\s*(\d{2}:\d{2}:\d{2})""")
@@ -348,6 +381,19 @@ class SmsParser(
             // 60,000 OMR" is not a bank telling you 60,000 left your account.
             "جوائز", "فرصة الفوز", "للمشاركة", "السحب أرسل", "بيسة للرسالة",
             "chance to win", "cash prizes", "to participate", "sms ",
+        )
+
+        /**
+         * Wording that means the money stayed where it was. A payment *request* is an
+         * invitation to pay, a deleted standing order is an instruction withdrawn, and
+         * a declined card moved nothing - all of them quote an amount.
+         */
+        val NOT_MOVED_WORDS = listOf(
+            "payment request", "request of omr", "please login to accept",
+            "declined", "failed", "unsuccessful", "insufficient funds",
+            "has been cancelled", "was cancelled", "reversal", "reversed",
+            "طلب دفع", "حذف طلبك", "تم إلغاء", "تم الغاء", "لم تتم", "فشل",
+            "رفض", "غير كافي", "غير كافية",
         )
 
         val TRANSFER_WORDS = listOf(

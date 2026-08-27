@@ -209,4 +209,37 @@ class SmsParserTest {
             "للمشاركة في السحب أرسل \"البيت\" إلى 91794 525 بيسة للرسالة"
         assertTrue(parser.parse(body) is SmsParser.Result.Skipped)
     }
+
+    // ── a bank also texts about money that did not move ──
+
+    @Test
+    fun `a payment request is not income, nobody has paid yet`() {
+        val body = "Dear Customer, You have received a payment request of OMR 2.0 from " +
+            "SUHAIB MOHAMMED. Txn Id BMCT013392425587. Please login to accept/reject the payment."
+        assertTrue(parser.parse(body) is SmsParser.Result.Skipped)
+    }
+
+    @Test
+    fun `a cancelled standing order is not a payment`() {
+        // "دفع" appears inside "أوامر الدفع الدائمة", so this read as money out.
+        val body = "عزيزي الزبون، تم حذف طلبك لأوامر الدفع الدائمة ACH Payment بنجاح."
+        assertTrue(parser.parse(body) is SmsParser.Result.Skipped)
+    }
+
+    @Test
+    fun `one message naming both accounts is a transfer, not spending`() {
+        val body = "OMR 196.850 is debited from your A/C 0372XXXXXXXX0038 and credited " +
+            "to your A/C 0372XXXXXXXX0022 on 31/12/2025 10:12:10."
+        val r = parser.parse(body) as SmsParser.Result.Parsed
+        assertEquals(196_850L, r.amountMinor)
+        assertEquals("0022", r.selfTransferTo)
+    }
+
+    @Test
+    fun `an ordinary debit names no second account`() {
+        val body = "OMR 12.500 is debited from your a/c 0372XXXXXXXX0022 on 13/06/2024 " +
+            "14:32:46. New Available Balance is OMR 1.036."
+        val r = parser.parse(body) as SmsParser.Result.Parsed
+        assertEquals(null, r.selfTransferTo)
+    }
 }
