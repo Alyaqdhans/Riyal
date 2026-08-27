@@ -440,7 +440,13 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
 
     /** Adds/replaces a rule and re-categorizes auto-categorized transactions. Returns how many changed. */
     suspend fun addRule(rule: UserRule): Int = mutex.withLock {
-        _rules.value = _rules.value.filter { it.pattern != rule.pattern } + rule
+        // Replacing by pattern alone would let a rule for money in delete the one for
+        // money out under the same name, since a counterparty can be both. One rule
+        // per pattern per side of the ledger.
+        val incoming = Categories.byId(rule.categoryId).income
+        _rules.value = _rules.value.filterNot {
+            it.pattern == rule.pattern && Categories.byId(it.categoryId).income == incoming
+        } + rule
         var changed = 0
         rawTxns = rawTxns.map { t ->
             if (t.categorySource == "auto" && t.type != TxnType.TRANSFER) {

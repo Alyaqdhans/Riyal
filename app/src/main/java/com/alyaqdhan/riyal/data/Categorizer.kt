@@ -86,10 +86,16 @@ object Categorizer {
         // The sender is part of the haystack too, "Talabat" or "OmanOil" as a sender
         // name is often the only merchant signal the message carries.
         val hay = ((merchant ?: "") + " " + sender + " " + body).lowercase()
+        val wantIncome = direction == Direction.INCOME
         for (rule in rules) {
-            if (contains(hay, rule.pattern.lowercase())) {
-                return Match(rule.categoryId, rule.pattern, "your rule")
-            }
+            if (!contains(hay, rule.pattern.lowercase())) continue
+            // A rule must match the side of the ledger it was made on, exactly as the
+            // built-ins do. One counterparty can both take money and send it - "MBI"
+            // covers 226 records in one real inbox, half of them incoming - and filing
+            // the outgoing half as an expense category must not drag the incoming half
+            // in with it.
+            if (Categories.byId(rule.categoryId).income != wantIncome) continue
+            return Match(rule.categoryId, rule.pattern, "your rule")
         }
         for ((keyword, categoryId) in BUILTIN) {
             if (!contains(hay, keyword)) continue
