@@ -200,7 +200,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
                         FilterChip(
                             selected = accountId == acc.id,
                             onClick = { accountId = if (accountId == acc.id) null else acc.id },
-                            label = { Text(acc.name) },
+                            label = { Text(acc.displayName) },
                         )
                     }
                 }
@@ -338,15 +338,15 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Text(
-                                    Money.format(
+                                    Money.formatAmount(
                                         if (donutType == TxnType.EXPENSE) totals.spent else totals.received,
                                         currency,
                                     ),
-                                    style = MaterialTheme.typography.titleLarge,
+                                    style = MaterialTheme.typography.headlineSmall,
                                 )
                                 Text(
-                                    if (slices.isEmpty()) "nothing recorded"
-                                    else "across ${slices.size} categories",
+                                    currency + if (slices.isEmpty()) " · nothing recorded"
+                                    else " · ${slices.size} categories",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -743,7 +743,13 @@ private fun labelAxisFormatter() = CartesianValueFormatter { context, x, _ ->
     context.model.extraStore[ChartLabelsKey].getOrNull(x.toInt()) ?: ""
 }
 
-/** One headline figure with how it compares to the equally long period before. */
+/**
+ * One headline figure with how it compares to the equally long period before.
+ *
+ * The currency sits under the number rather than in front of it: three tiles side by
+ * side leave each one about a third of the screen, and "OMR " ahead of the digits was
+ * spending that width on a word that is the same on all three.
+ */
 @Composable
 private fun SummaryTile(
     label: String,
@@ -759,7 +765,7 @@ private fun SummaryTile(
             .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
             label,
@@ -767,10 +773,15 @@ private fun SummaryTile(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            (if (signed && amount < 0) "− " else "") + Money.format(abs(amount), currency),
-            style = MaterialTheme.typography.titleSmall,
+            (if (signed && amount < 0) "− " else "") + Money.formatAmount(abs(amount), currency),
+            style = MaterialTheme.typography.titleMedium,
             color = if (signed && amount < 0) MaterialTheme.colorScheme.error
             else MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            currency,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         DeltaText(amount, previous, upIsGood = upIsGood)
     }

@@ -354,7 +354,7 @@ fun TxnEditSheet(
                             FilterChip(
                                 selected = acc.id == txn.accountId,
                                 onClick = { onSetAccount(acc.id) },
-                                label = { Text(acc.name) },
+                                label = { Text(acc.displayName) },
                                 modifier = Modifier.pressBounce(0.92f),
                             )
                         }
@@ -385,7 +385,7 @@ fun TxnEditSheet(
                                             onMarkTransfer(acc.id, txn.accountId)
                                         }
                                     },
-                                    label = { Text(acc.name) },
+                                    label = { Text(acc.displayName) },
                                     modifier = Modifier.pressBounce(0.92f),
                                 )
                             }
