@@ -51,6 +51,31 @@ class SmsParserTest {
         assertEquals(2_000L, r.amountMinor)
     }
 
+    @Test
+    fun `a service notice is not a question for the user`() {
+        // Verbatim from Review. Each says "الدفع" or "Payment", so it read as a
+        // transaction, found no amount, and became something to decide about.
+        val notices = listOf(
+            "عزيزي الزبون ، لقد قمت بإلغاء تفعيل خدمات الدفع عبر الهاتف النقال بنجاح. " +
+                "في حالة رغبتك في إعادة التفعيل ، يرجى تسجيل الدخول إلى تطبيق بنك مسقط.",
+            "عزيزي الزبون ، لقد قمت بتفعيل خدمات الدفع بواسطة الهاتف النقال بنجاح.",
+            "This is to remind you that your National Payment Debit Card Maal for the " +
+                "A/C ending with 0022 is ready to collect from Bahla Branch.",
+        )
+        notices.forEach { assertTrue(it, parser.parse(it) is SmsParser.Result.Skipped) }
+    }
+
+    @Test
+    fun `a real payment is still read`() {
+        // The gate above must not swallow the thing it sits next to.
+        assertTrue(
+            parser.parse(
+                "تم خصم 3.400 OMR من حسابك رقم 0630XXXXXXXX0001 بإستخدام بطاقة الخصم " +
+                    "المباشر في 5842-Al Fatah Food Com LLC B بتاريخ 12/08/2026 19:02:41."
+            ) is SmsParser.Result.Parsed
+        )
+    }
+
     // ── merchants in Arabic ──
     //
     // Every shape below is verbatim from a live inbox, digits aside. Before these, the

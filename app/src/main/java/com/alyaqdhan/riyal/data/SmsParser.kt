@@ -439,6 +439,12 @@ class SmsParser(
             "has been cancelled", "was cancelled", "reversal", "reversed",
             "طلب دفع", "حذف طلبك", "تم إلغاء", "تم الغاء", "لم تتم", "فشل",
             "رفض", "غير كافي", "غير كافية",
+            // Service notices a bank sends about the account rather than about money:
+            // switching mobile payments on or off, a card waiting at a branch. They say
+            // "الدفع" or "Payment", which is enough to be read as a transaction, and
+            // then land in Review with "no amount found" - a question with no answer,
+            // asked of the user for something that was never a transaction.
+            "تفعيل", "ready to collect", "ready for collection",
         )
 
         val TRANSFER_WORDS = listOf(
