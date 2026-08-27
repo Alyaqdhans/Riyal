@@ -135,6 +135,42 @@ class StatsRangeTest {
     }
 
     @Test
+    fun `spread describes the period beyond its total`() {
+        val start = millis(LocalDate.of(2026, 7, 1))
+        val end = millis(LocalDate.of(2026, 8, 1))
+        val data = listOf(
+            txn(LocalDate.of(2026, 7, 2), 1_000, TxnType.EXPENSE),
+            txn(LocalDate.of(2026, 7, 2), 3_000, TxnType.EXPENSE, categoryId = "food"),
+            txn(LocalDate.of(2026, 7, 9), 2_000, TxnType.EXPENSE),
+            txn(LocalDate.of(2026, 7, 20), 90_000, TxnType.INCOME, categoryId = "salary"),
+            // Transfers move nothing in or out, so they belong in none of these counts.
+            txn(LocalDate.of(2026, 7, 21), 50_000, TxnType.TRANSFER, to = "acc_b"),
+        )
+        val s = Stats.spread(data, start, end, "OMR", zone = zone)
+        assertEquals(3, s.payments)
+        assertEquals(1, s.deposits)
+        assertEquals(2_000L, s.medianMinor)          // 1_000, 2_000, 3_000
+        assertEquals(2_000L, s.averageMinor)
+        assertEquals(2, s.activeDays)                 // two of the payments share a day
+        assertEquals(31, s.periodDays)
+        assertEquals(millis(LocalDate.of(2026, 7, 2)), s.busiestDayMillis)
+        assertEquals(4_000L, s.busiestDayMinor)
+        assertEquals(0.933f, s.savedFraction(90_000, 6_000)!!, 0.001f)
+    }
+
+    @Test
+    fun `spread stays silent rather than dividing by nothing`() {
+        val start = millis(LocalDate.of(2026, 7, 1))
+        val end = millis(LocalDate.of(2026, 8, 1))
+        val s = Stats.spread(emptyList(), start, end, "OMR", zone = zone)
+        assertEquals(0, s.payments)
+        assertEquals(0L, s.medianMinor)
+        assertEquals(0L, s.averageMinor)
+        assertNull(s.busiestDayMillis)
+        assertNull(s.savedFraction(0, 0))
+    }
+
+    @Test
     fun `biggestMovers ranks by absolute change against the period before`() {
         val july = millis(LocalDate.of(2026, 7, 1))
         val data = listOf(

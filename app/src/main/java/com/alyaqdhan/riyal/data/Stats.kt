@@ -252,34 +252,62 @@ object Stats {
         }
     }
 
-    // ── merchants ──
+    // ── the shape of a period's spending ──
 
-    data class MerchantTotal(val merchant: String, val amountMinor: Long, val count: Int)
+    /**
+     * What a period's spending was made of, beyond its total: how many payments, how
+     * big a normal one was, how many days had any spending at all, and the worst day.
+     *
+     * The median is here because the mean is not the typical payment - one rent
+     * payment among sixty coffees drags an average nowhere near either of them.
+     */
+    data class Spread(
+        val payments: Int,
+        val deposits: Int,
+        val medianMinor: Long,
+        val averageMinor: Long,
+        val activeDays: Int,
+        val periodDays: Int,
+        val busiestDayMillis: Long?,
+        val busiestDayMinor: Long,
+    ) {
+        /** Share of what came in that was still there at the end, or null if nothing came in. */
+        fun savedFraction(received: Long, spent: Long): Float? =
+            if (received <= 0L) null else ((received - spent).toFloat() / received.toFloat())
+    }
 
-    fun topMerchantsIn(
+    fun spread(
         txns: List<Txn>,
         start: Long,
         endExclusive: Long,
         currency: String,
         accountId: String? = null,
-        limit: Int = 5,
-    ): List<MerchantTotal> =
-        flows(txns, start, endExclusive, currency, accountId)
-            .filter { it.isExpense && !it.merchant.isNullOrBlank() }
-            .groupBy { it.merchant!!.trim() }
-            .map { (merchant, list) -> MerchantTotal(merchant, list.sumOf { it.amountMinor }, list.size) }
-            .sortedByDescending { it.amountMinor }
-            .take(limit)
-
-    fun topMerchantIn(
-        txns: List<Txn>,
-        start: Long,
-        endExclusive: Long,
-        currency: String,
-        accountId: String? = null,
-    ): Pair<String, Long>? =
-        topMerchantsIn(txns, start, endExclusive, currency, accountId, limit = 1)
-            .firstOrNull()?.let { it.merchant to it.amountMinor }
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): Spread {
+        val inPeriod = flows(txns, start, endExclusive, currency, accountId)
+        val out = inPeriod.filter { it.isExpense }
+        val amounts = out.map { it.amountMinor }.sorted()
+        val median = when {
+            amounts.isEmpty() -> 0L
+            amounts.size % 2 == 1 -> amounts[amounts.size / 2]
+            else -> (amounts[amounts.size / 2 - 1] + amounts[amounts.size / 2]) / 2
+        }
+        val byDay = out.groupBy {
+            Instant.ofEpochMilli(it.atMillis).atZone(zone).toLocalDate()
+        }
+        val worst = byDay.maxByOrNull { (_, list) -> list.sumOf { it.amountMinor } }
+        val days = ((endExclusive - start) / 86_400_000L).toInt().coerceAtLeast(1)
+        return Spread(
+            payments = out.size,
+            deposits = inPeriod.count { it.isIncome },
+            medianMinor = median,
+            averageMinor = if (out.isEmpty()) 0L else amounts.sum() / out.size,
+            activeDays = byDay.size,
+            periodDays = days,
+            busiestDayMillis = worst?.key?.atStartOfDay(zone)?.toInstant()?.toEpochMilli(),
+            busiestDayMinor = worst?.value?.sumOf { it.amountMinor } ?: 0L,
+        )
+    }
 
     fun biggestExpenseIn(
         txns: List<Txn>,

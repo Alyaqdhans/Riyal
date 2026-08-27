@@ -36,7 +36,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -100,6 +99,7 @@ import kotlin.math.roundToInt
 
 private val ChartLabelsKey = ExtraStore.Key<List<String>>()
 private val nextDueFmt = DateTimeFormatter.ofPattern("d MMM")
+private val dayFmt = DateTimeFormatter.ofPattern("d MMM")
 
 /**
  * Analysis answers three questions the rest of the app can't: where the money went,
@@ -151,8 +151,8 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
     val movers = remember(txns, slice, currency, accountId) {
         Stats.biggestMovers(txns, slice.start, slice.endExclusive, currency, accountId)
     }
-    val merchants = remember(txns, slice, currency, accountId) {
-        Stats.topMerchantsIn(txns, slice.start, slice.endExclusive, currency, accountId)
+    val spread = remember(txns, slice, currency, accountId) {
+        Stats.spread(txns, slice.start, slice.endExclusive, currency, accountId)
     }
     val recurring = remember(txns, currency, accountId) {
         Stats.recurring(txns, currency, accountId)
@@ -461,49 +461,6 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                     }
                 }
 
-                // ── who took the money
-                if (merchants.isNotEmpty()) {
-                    val biggestMerchant = merchants.first().amountMinor
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("Top merchants", style = MaterialTheme.typography.titleMedium)
-                            merchants.forEach { m ->
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Row(
-                                        Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        Text(
-                                            m.merchant,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                        Text(
-                                            "${m.count}×",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        Text(
-                                            Money.format(m.amountMinor, currency),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                        )
-                                    }
-                                    LinearProgressIndicator(
-                                        progress = {
-                                            if (biggestMerchant > 0) {
-                                                m.amountMinor.toFloat() / biggestMerchant.toFloat()
-                                            } else 0f
-                                        },
-                                        color = MaterialTheme.colorScheme.primary,
-                                        trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
                 // ── what is going to happen again
                 if (recurring.isNotEmpty()) {
                     Card(Modifier.fillMaxWidth()) {
@@ -543,16 +500,10 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                     }
                 }
 
-                // ── insights
+                // ── the numbers behind the total
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Insights", style = MaterialTheme.typography.titleMedium)
-                        InsightRow(
-                            R.drawable.ic_insight_store, MaterialShapes.Cookie9Sided, "Top merchant",
-                            merchants.firstOrNull()
-                                ?.let { "${it.merchant} · ${Money.format(it.amountMinor, currency)}" }
-                                ?: "none yet",
-                        )
+                        Text("Statistics", style = MaterialTheme.typography.titleMedium)
                         InsightRow(
                             R.drawable.ic_insight_bolt, MaterialShapes.SoftBurst, "Biggest expense",
                             biggest?.let {
@@ -560,12 +511,39 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                             } ?: "none yet",
                         )
                         InsightRow(
-                            R.drawable.ic_insight_calendar, MaterialShapes.Clover4Leaf, "Average per day",
+                            R.drawable.ic_insight_calendar, MaterialShapes.Clover4Leaf, "Heaviest day",
+                            spread.busiestDayMillis?.let {
+                                "${dayFmt.format(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()))} · " +
+                                    Money.format(spread.busiestDayMinor, currency)
+                            } ?: "none yet",
+                        )
+                        InsightRow(
+                            R.drawable.ic_insight_store, MaterialShapes.Cookie9Sided, "A normal payment",
+                            if (spread.payments == 0) "none yet" else
+                                "${Money.format(spread.medianMinor, currency)} · " +
+                                    "average ${Money.format(spread.averageMinor, currency)}",
+                        )
+                        // The rest as plain figures: they are read, not compared, and
+                        // one shape each would turn a card into a list of badges.
+                        StatLine("Payments", "${spread.payments} out · ${spread.deposits} in")
+                        StatLine(
+                            "Days with spending",
+                            "${spread.activeDays} of ${spread.periodDays}",
+                        )
+                        StatLine(
+                            "Average per day",
                             Money.format(
                                 Stats.avgSpentPerDayIn(totals.spent, slice.start, slice.endExclusive),
                                 currency,
                             ),
                         )
+                        spread.savedFraction(totals.received, totals.spent)?.let { saved ->
+                            StatLine(
+                                "Kept of what came in",
+                                "${(saved * 100).roundToInt()}%",
+                                color = if (saved < 0f) MaterialTheme.colorScheme.error else successColor(),
+                            )
+                        }
                         if (totals.otherCurrencyCount > 0) {
                             Text(
                                 "Charts show $currency only, ${totals.otherCurrencyCount} transaction(s) in other currencies are listed in Activity.",
@@ -834,6 +812,27 @@ private fun LegendDot(color: Color, label: String) {
                 .background(color),
         )
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** A plain "label … value" row, for figures that are read rather than compared. */
+@Composable
+private fun StatLine(label: String, value: String, color: Color = Color.Unspecified) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (color == Color.Unspecified) MaterialTheme.colorScheme.onSurface else color,
+        )
     }
 }
 
