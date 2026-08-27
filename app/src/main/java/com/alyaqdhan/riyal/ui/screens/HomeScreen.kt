@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -50,8 +49,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,13 +67,12 @@ import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
+import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
-import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
 import com.alyaqdhan.riyal.ui.theme.successColor
-import com.alyaqdhan.riyal.ui.theme.successContainer
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
@@ -104,8 +103,8 @@ fun HomeScreen(
     val totals = remember(txns, currency, month) { Stats.totalsFor(txns, month, currency) }
     val pending = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_PENDING } }
     var picker by remember { mutableStateOf<Txn?>(null) }
-    // The budget card follows its own period, since a plan need not be a calendar month.
-    var budgetSlice by remember { mutableStateOf(TimeSlice.thisMonth()) }
+    // The budget follows the month selector above it: one period control per screen.
+    val budgetSlice = remember(month) { TimeSlice.ofMonth(month) }
 
     val scope = rememberCoroutineScope()
     val faceRotation = remember { Animatable(0f) }
@@ -150,7 +149,8 @@ fun HomeScreen(
                 }
             }
 
-            // ── mood card: the face reacts to the selected month's spending health
+            // ── the one hero: the face reacts to the month, Net is the number, and
+            // spent/received sit under it as a single line rather than two more cards.
             Card(
                 shape = RoundedCornerShape(28.dp),
                 modifier = Modifier
@@ -158,15 +158,19 @@ fun HomeScreen(
                     .popIn(),
             ) {
                 Row(
-                    Modifier.padding(20.dp),
+                    Modifier.padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    val moodLabel = Stats.moodLabel(totals)
                     Face(
                         mood = Stats.mood(totals),
                         modifier = Modifier
-                            .size(96.dp)
+                            .size(88.dp)
                             .graphicsLayer { rotationZ = faceRotation.value }
+                            // The sentence that used to say this is gone from the screen,
+                            // so the face carries it for anyone reading by screen reader.
+                            .semantics { contentDescription = moodLabel }
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -183,7 +187,7 @@ fun HomeScreen(
                                 }
                             },
                     )
-                    Column {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             "Net",
                             style = MaterialTheme.typography.labelMedium,
@@ -191,53 +195,44 @@ fun HomeScreen(
                         )
                         val net = totals.net
                         Text(
-                            (if (net < 0) "− " else "") + Money.format(kotlin.math.abs(net), currency),
-                            style = MaterialTheme.typography.headlineSmall,
+                            (if (net < 0) "\u2212 " else "") + Money.format(kotlin.math.abs(net), currency),
+                            style = MaterialTheme.typography.headlineMedium,
                             color = if (net < 0) MaterialTheme.colorScheme.error else successColor(),
+                            maxLines = 1,
+                            softWrap = false,
+                            autoSize = TextAutoSize.StepBased(
+                                minFontSize = 18.sp,
+                                maxFontSize = MaterialTheme.typography.headlineMedium.fontSize,
+                            ),
                         )
-                        Text(
-                            Stats.moodLabel(totals),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        // Both figures, one line, no labels repeated: colour says which
+                        // is which, and the currency was named by the number above.
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                Money.formatAmount(totals.spent, currency) + " out",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                            Text(
+                                "\u00b7",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                Money.formatAmount(totals.received, currency) + " in",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = successColor(),
+                            )
+                        }
+                        if (totals.otherCurrencyCount > 0) {
+                            Text(
+                                "+${totals.otherCurrencyCount} in other currencies",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
-            }
-
-            // ── in / out stat cards: danger red out, success green in. Shaped as an
-            // M3 Expressive pair: big corners on the outside, tight where they meet.
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatCard(
-                    label = "Spent",
-                    value = Money.format(totals.spent, currency),
-                    container = MaterialTheme.colorScheme.errorContainer,
-                    content = MaterialTheme.colorScheme.onErrorContainer,
-                    shape = RoundedCornerShape(
-                        topStart = 28.dp, bottomStart = 28.dp, topEnd = 10.dp, bottomEnd = 10.dp,
-                    ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .popIn(60),
-                )
-                StatCard(
-                    label = "Received",
-                    value = Money.format(totals.received, currency),
-                    container = successContainer(),
-                    content = onSuccessContainer(),
-                    shape = RoundedCornerShape(
-                        topStart = 10.dp, bottomStart = 10.dp, topEnd = 28.dp, bottomEnd = 28.dp,
-                    ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .popIn(120),
-                )
-            }
-            if (totals.otherCurrencyCount > 0) {
-                Text(
-                    "+${totals.otherCurrencyCount} transaction(s) this month in other currencies, see Activity",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
 
             // ── accounts: balances read from SMS are a first guess until the user says
@@ -260,13 +255,13 @@ fun HomeScreen(
             if (budgetsOn) {
                 BudgetSection(
                     slice = budgetSlice,
-                    onSliceChange = { budgetSlice = it },
                     plans = budgets,
                     txns = txns,
                     currency = currency,
                     onCreate = { label, start, end -> vm.addBudget(label, start, end) },
                     onCopy = { source, label, start, end -> vm.copyBudget(source, label, start, end) },
                     onSetLine = { planId, categoryId, minor -> vm.setBudgetLine(planId, categoryId, minor) },
+                    onSetPeriod = { planId, label, start, end -> vm.setBudgetPeriod(planId, label, start, end) },
                     onDelete = { vm.deleteBudget(it) },
                     modifier = Modifier.popIn(160),
                 )
@@ -279,7 +274,7 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .popIn(180),
                 ) {
-                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -350,8 +345,7 @@ fun HomeScreen(
                     }
                 }
             }
-            // Room for the floating toolbar hovering over the content.
-            Spacer(Modifier.height(88.dp))
+            ToolbarSpacer()
         }
         }
     }
@@ -417,35 +411,6 @@ private fun ActionCard(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = content,
-            )
-        }
-    }
-}
-
-@Composable
-private fun StatCard(
-    label: String,
-    value: String,
-    container: Color,
-    content: Color,
-    modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(24.dp),
-) {
-    Surface(shape = shape, color = container, modifier = modifier) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = content)
-            // The amount must never wrap under its currency: big totals shrink to fit
-            // one line instead of breaking the two side-by-side cards' alignment.
-            Text(
-                value,
-                style = MaterialTheme.typography.titleLarge,
-                color = content,
-                maxLines = 1,
-                softWrap = false,
-                autoSize = TextAutoSize.StepBased(
-                    minFontSize = 13.sp,
-                    maxFontSize = MaterialTheme.typography.titleLarge.fontSize,
-                ),
             )
         }
     }
