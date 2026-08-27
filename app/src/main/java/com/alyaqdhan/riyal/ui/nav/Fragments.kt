@@ -16,7 +16,11 @@ import androidx.navigation.navOptions
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
+import androidx.core.os.bundleOf
+import com.alyaqdhan.riyal.ui.screens.AccountsScreen
 import com.alyaqdhan.riyal.ui.screens.AnalysisScreen
+import com.alyaqdhan.riyal.ui.screens.CategoriesScreen
+import com.alyaqdhan.riyal.ui.screens.CategoryDetailScreen
 import com.alyaqdhan.riyal.ui.screens.HomeScreen
 import com.alyaqdhan.riyal.ui.screens.OnboardingScreen
 import com.alyaqdhan.riyal.ui.screens.ReviewScreen
@@ -83,12 +87,17 @@ class HomeFragment : ScreenFragment() {
             vm,
             onRequestPermission = { requestSms.launch(Manifest.permission.READ_SMS) },
             onOpenReview = { findNavController().navigate(R.id.reviewFragment) },
+            onOpenAccounts = { findNavController().navigate(R.id.accountsFragment) },
         )
     }
 }
 
-/** Inner page pushed from Home's "Needs review" section, not a bottom tab. */
-class ReviewFragment : ScreenFragment() {
+/**
+ * Pages pushed on top of a tab rather than being one: they slide in along the X axis
+ * and hide the bottom toolbar, which is what makes them feel like going *into*
+ * something instead of switching between peers.
+ */
+abstract class InnerFragment : ScreenFragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,10 +105,58 @@ class ReviewFragment : ScreenFragment() {
         returnTransition = MaterialSharedAxis(MaterialSharedAxis.X, false)
     }
 
+    protected fun back() {
+        findNavController().navigateUp()
+    }
+}
+
+/** Inner page pushed from Home's "Needs review" section, not a bottom tab. */
+class ReviewFragment : InnerFragment() {
+
     @Composable
     override fun Screen() {
-        ReviewScreen(vm, onBack = { findNavController().navigateUp() })
+        ReviewScreen(vm, onBack = { back() })
     }
+}
+
+/** The bank account manager, reached from Settings and from Home's setup prompt. */
+class AccountsFragment : InnerFragment() {
+
+    @Composable
+    override fun Screen() {
+        AccountsScreen(vm, onBack = { back() })
+    }
+}
+
+class CategoriesFragment : InnerFragment() {
+
+    @Composable
+    override fun Screen() {
+        CategoriesScreen(
+            vm,
+            onBack = { back() },
+            onOpenCategory = { openCategory(findNavController(), it) },
+        )
+    }
+}
+
+/** One category's records. The id travels in the arguments bundle. */
+class CategoryDetailFragment : InnerFragment() {
+
+    @Composable
+    override fun Screen() {
+        CategoryDetailScreen(
+            vm,
+            categoryId = arguments?.getString(ARG_CATEGORY_ID).orEmpty(),
+            onBack = { back() },
+        )
+    }
+}
+
+const val ARG_CATEGORY_ID = "categoryId"
+
+fun openCategory(navController: androidx.navigation.NavController, categoryId: String) {
+    navController.navigate(R.id.categoryDetailFragment, bundleOf(ARG_CATEGORY_ID to categoryId))
 }
 
 class TransactionsFragment : ScreenFragment() {
@@ -122,14 +179,18 @@ class TransactionsFragment : ScreenFragment() {
 class AnalysisFragment : ScreenFragment() {
     @Composable
     override fun Screen() {
-        AnalysisScreen(vm)
+        AnalysisScreen(vm, onOpenCategory = { openCategory(findNavController(), it) })
     }
 }
 
 class SettingsFragment : ScreenFragment() {
     @Composable
     override fun Screen() {
-        SettingsScreen(vm)
+        SettingsScreen(
+            vm,
+            onOpenAccounts = { findNavController().navigate(R.id.accountsFragment) },
+            onOpenCategories = { findNavController().navigate(R.id.categoriesFragment) },
+        )
     }
 }
 

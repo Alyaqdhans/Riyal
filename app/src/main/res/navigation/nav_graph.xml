@@ -30,6 +30,25 @@
         android:label="Needs review" />
 
     <fragment
+        android:id="@+id/accountsFragment"
+        android:name="com.alyaqdhan.riyal.ui.nav.AccountsFragment"
+        android:label="Bank accounts" />
+
+    <fragment
+        android:id="@+id/categoriesFragment"
+        android:name="com.alyaqdhan.riyal.ui.nav.CategoriesFragment"
+        android:label="Categories" />
+
+    <fragment
+        android:id="@+id/categoryDetailFragment"
+        android:name="com.alyaqdhan.riyal.ui.nav.CategoryDetailFragment"
+        android:label="Category">
+        <argument
+            android:name="categoryId"
+            app:argType="string" />
+    </fragment>
+
+    <fragment
         android:id="@+id/settingsFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.SettingsFragment"
         android:label="Settings" />

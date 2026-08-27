@@ -72,9 +72,8 @@ class MainActivity : AppCompatActivity() {
         val bottomBar = findViewById<ComposeView>(R.id.bottom_bar)
         navController.addOnDestinationChangedListener { _, destination, _ ->
             currentDestination.value = destination.id
-            // Hidden on onboarding and on inner pages (review) for a focused push feel.
-            bottomBar.isVisible =
-                destination.id != R.id.onboardingFragment && destination.id != R.id.reviewFragment
+            // Hidden on onboarding and on every inner page for a focused push feel.
+            bottomBar.isVisible = destination.id !in CHROMELESS_DESTINATIONS
         }
         vm.autoScanOnLaunch()
 
@@ -92,13 +91,15 @@ class MainActivity : AppCompatActivity() {
                 // The Add FAB opens this from any tab, so the dialog is hosted globally
                 // beside the toolbar rather than inside one screen.
                 val showAdd by vm.manualAddVisible.collectAsState()
+                val accounts by vm.accounts.collectAsState()
                 if (showAdd) {
                     ManualTxnDialog(
                         title = "Add transaction",
                         atMillis = System.currentTimeMillis(),
                         defaultCurrency = vm.prefs.defaultCurrency,
-                        onSave = { amountMinor, currency, direction, merchant, categoryId ->
-                            vm.addManual(amountMinor, currency, direction, merchant, categoryId)
+                        accounts = accounts,
+                        onSave = { amountMinor, currency, type, merchant, categoryId, from, to ->
+                            vm.addManual(amountMinor, currency, type, merchant, categoryId, from, to)
                             vm.dismissManualAdd()
                         },
                         onDismiss = { vm.dismissManualAdd() },
@@ -118,6 +119,17 @@ class MainActivity : AppCompatActivity() {
                 restoreState = true
                 popUpTo(R.id.homeFragment) { saveState = true }
             },
+        )
+    }
+
+    private companion object {
+        /** Destinations that own the whole screen: onboarding and every pushed page. */
+        val CHROMELESS_DESTINATIONS = setOf(
+            R.id.onboardingFragment,
+            R.id.reviewFragment,
+            R.id.accountsFragment,
+            R.id.categoriesFragment,
+            R.id.categoryDetailFragment,
         )
     }
 }
