@@ -1,11 +1,13 @@
 package com.alyaqdhan.riyal
 
-import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
+import com.alyaqdhan.riyal.data.TxnType
 import java.time.LocalDate
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StatsRangeTest {
@@ -15,26 +17,36 @@ class StatsRangeTest {
     private fun millis(date: LocalDate): Long =
         date.atStartOfDay(zone).toInstant().toEpochMilli()
 
-    private fun txn(date: LocalDate, amountMinor: Long, direction: Direction, currency: String = "OMR") = Txn(
-        id = "t-$date-$amountMinor",
+    private fun txn(
+        date: LocalDate,
+        amountMinor: Long,
+        type: TxnType,
+        currency: String = "OMR",
+        categoryId: String = "groceries",
+        from: String? = "acc_a",
+        to: String? = null,
+    ) = Txn(
+        id = "t-$date-$amountMinor-$type",
         atMillis = millis(date) + 3_600_000,
         amountMinor = amountMinor,
         currency = currency,
-        direction = direction,
+        type = type,
+        fromAccountId = if (type == TxnType.INCOME) null else from,
+        toAccountId = if (type == TxnType.EXPENSE) null else to ?: "acc_a",
         merchant = "Lulu",
         sender = "BankMuscat",
         body = "test",
-        categoryId = "groceries",
+        categoryId = categoryId,
         categorySource = "auto",
         confidence = 90,
     )
 
     private val txns = listOf(
-        txn(LocalDate.of(2026, 5, 10), 5_000, Direction.EXPENSE),
-        txn(LocalDate.of(2026, 6, 1), 2_000, Direction.EXPENSE),
-        txn(LocalDate.of(2026, 6, 15), 1_000, Direction.INCOME),
-        txn(LocalDate.of(2026, 7, 2), 7_000, Direction.EXPENSE),
-        txn(LocalDate.of(2026, 6, 20), 9_000, Direction.EXPENSE, currency = "AED"),
+        txn(LocalDate.of(2026, 5, 10), 5_000, TxnType.EXPENSE),
+        txn(LocalDate.of(2026, 6, 1), 2_000, TxnType.EXPENSE),
+        txn(LocalDate.of(2026, 6, 15), 1_000, TxnType.INCOME, categoryId = "salary"),
+        txn(LocalDate.of(2026, 7, 2), 7_000, TxnType.EXPENSE),
+        txn(LocalDate.of(2026, 6, 20), 9_000, TxnType.EXPENSE, currency = "AED"),
     )
 
     @Test
@@ -45,6 +57,7 @@ class StatsRangeTest {
         assertEquals(2_000, totals.spent)
         assertEquals(1_000, totals.received)
         assertEquals(1, totals.otherCurrencyCount)
+        assertEquals(-1_000, totals.net)
     }
 
     @Test
@@ -58,13 +71,13 @@ class StatsRangeTest {
     }
 
     @Test
-    fun `monthsIn lists overlapping months oldest first`() {
-        val start = millis(LocalDate.of(2026, 5, 20))
-        val end = millis(LocalDate.of(2026, 7, 3))
-        val months = Stats.monthsIn(start, end)
-        assertEquals(3, months.size)
-        assertEquals(5, months[0].monthValue)
-        assertEquals(7, months[2].monthValue)
+    fun `breakdownIn can split the income side instead`() {
+        val start = millis(LocalDate.of(2026, 6, 1))
+        val end = millis(LocalDate.of(2026, 7, 1))
+        val slices = Stats.breakdownIn(txns, start, end, "OMR", type = TxnType.INCOME)
+        assertEquals(1, slices.size)
+        assertEquals("salary", slices[0].categoryId)
+        assertEquals(1_000, slices[0].amountMinor)
     }
 
     @Test
@@ -72,5 +85,68 @@ class StatsRangeTest {
         val start = millis(LocalDate.of(2026, 6, 1))
         val end = millis(LocalDate.of(2026, 6, 11)) // 10 full days, all in the past
         assertEquals(1_000, Stats.avgSpentPerDayIn(10_000, start, end))
+    }
+
+    // ── the whole point of TxnType.TRANSFER ──
+
+    @Test
+    fun `a transfer is neither spending nor income`() {
+        val start = millis(LocalDate.of(2026, 6, 1))
+        val end = millis(LocalDate.of(2026, 7, 1))
+        val withTransfer = txns + txn(
+            LocalDate.of(2026, 6, 10), 50_000, TxnType.TRANSFER,
+            categoryId = "transfer", from = "acc_a", to = "acc_b",
+        )
+        val totals = Stats.totalsIn(withTransfer, start, end, "OMR")
+        // Identical to the run without it: 50.000 moved, nothing was earned or spent.
+        assertEquals(2_000, totals.spent)
+        assertEquals(1_000, totals.received)
+        assertEquals(50_000, Stats.transferTotalIn(withTransfer, start, end, "OMR"))
+        assertTrue(Stats.breakdownIn(withTransfer, start, end, "OMR").none { it.categoryId == "transfer" })
+    }
+
+    @Test
+    fun `an account filter keeps only records that touch it`() {
+        val start = millis(LocalDate.of(2026, 6, 1))
+        val end = millis(LocalDate.of(2026, 7, 1))
+        val other = txn(LocalDate.of(2026, 6, 5), 4_000, TxnType.EXPENSE, from = "acc_b")
+        val all = txns + other
+        assertEquals(2_000, Stats.totalsIn(all, start, end, "OMR", accountId = "acc_a").spent)
+        assertEquals(4_000, Stats.totalsIn(all, start, end, "OMR", accountId = "acc_b").spent)
+        assertEquals(6_000, Stats.totalsIn(all, start, end, "OMR").spent)
+    }
+
+    // ── comparison against the previous window ──
+
+    @Test
+    fun `previousWindow is the same length immediately before`() {
+        val start = millis(LocalDate.of(2026, 6, 11))
+        val end = millis(LocalDate.of(2026, 6, 21))
+        val (prevStart, prevEnd) = Stats.previousWindow(start, end)
+        assertEquals(start, prevEnd)
+        assertEquals(end - start, prevEnd - prevStart)
+    }
+
+    @Test
+    fun `deltaPct refuses to invent a percentage from nothing`() {
+        assertNull(Stats.deltaPct(500, 0))
+        assertEquals(1f, Stats.deltaPct(200, 100)!!, 0.001f)
+        assertEquals(-0.5f, Stats.deltaPct(50, 100)!!, 0.001f)
+    }
+
+    @Test
+    fun `biggestMovers ranks by absolute change against the period before`() {
+        val july = millis(LocalDate.of(2026, 7, 1))
+        val data = listOf(
+            txn(LocalDate.of(2026, 6, 5), 10_000, TxnType.EXPENSE, categoryId = "food"),
+            txn(LocalDate.of(2026, 6, 6), 3_000, TxnType.EXPENSE, categoryId = "transport"),
+            txn(LocalDate.of(2026, 7, 5), 1_000, TxnType.EXPENSE, categoryId = "food"),
+            txn(LocalDate.of(2026, 7, 6), 9_000, TxnType.EXPENSE, categoryId = "transport"),
+        )
+        val movers = Stats.biggestMovers(data, july, millis(LocalDate.of(2026, 8, 1)), "OMR")
+        assertEquals("food", movers[0].categoryId)
+        assertEquals(-9_000, movers[0].deltaMinor)
+        assertEquals("transport", movers[1].categoryId)
+        assertEquals(6_000, movers[1].deltaMinor)
     }
 }

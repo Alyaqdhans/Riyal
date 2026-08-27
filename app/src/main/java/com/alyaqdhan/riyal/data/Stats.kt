@@ -4,8 +4,18 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import kotlin.math.abs
 
-/** Pure aggregation helpers for the Home and Analysis screens. */
+/**
+ * Pure aggregation helpers for the Home, Categories and Analysis screens.
+ *
+ * One rule runs through all of it: **a [TxnType.TRANSFER] is never money earned or
+ * money spent.** Moving your own savings into your current account is not income, and
+ * the withdrawal side is not an expense; counting either would inflate both halves of
+ * every total at once. [flows] is the single gate that enforces it, and every figure
+ * on every screen comes through it.
+ */
 object Stats {
 
     fun ym(millis: Long): YearMonth =
@@ -15,101 +25,415 @@ object Stats {
     fun primaryCurrency(txns: List<Txn>, fallback: String): String =
         txns.groupingBy { it.currency }.eachCount().maxByOrNull { it.value }?.key ?: fallback
 
-    data class MonthTotals(val spent: Long, val received: Long, val otherCurrencyCount: Int)
+    /**
+     * The records that count as money in or money out, in one currency, optionally
+     * narrowed to one account. Transfers are excluded here and nowhere else.
+     */
+    private fun flows(
+        txns: List<Txn>,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String?,
+    ): List<Txn> = txns.filter {
+        it.type.isFlow &&
+            it.currency == currency &&
+            it.atMillis >= start && it.atMillis < endExclusive &&
+            (accountId == null || it.touches(accountId))
+    }
 
-    fun totalsFor(txns: List<Txn>, month: YearMonth, currency: String): MonthTotals {
+    private fun monthBounds(month: YearMonth): Pair<Long, Long> {
+        val zone = ZoneId.systemDefault()
+        return month.atDay(1).atStartOfDay(zone).toInstant().toEpochMilli() to
+            month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
+    }
+
+    data class MonthTotals(val spent: Long, val received: Long, val otherCurrencyCount: Int) {
+        val net: Long get() = received - spent
+    }
+
+    fun totalsFor(
+        txns: List<Txn>,
+        month: YearMonth,
+        currency: String,
+        accountId: String? = null,
+    ): MonthTotals {
+        val (start, end) = monthBounds(month)
+        return totalsIn(txns, start, end, currency, accountId)
+    }
+
+    fun totalsIn(
+        txns: List<Txn>,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String? = null,
+    ): MonthTotals {
         var spent = 0L
         var received = 0L
         var other = 0
         for (t in txns) {
-            if (ym(t.atMillis) != month) continue
+            if (!t.type.isFlow) continue
+            if (t.atMillis < start || t.atMillis >= endExclusive) continue
+            if (accountId != null && !t.touches(accountId)) continue
             if (t.currency != currency) {
                 other++
                 continue
             }
-            if (t.direction == Direction.EXPENSE) spent += t.amountMinor else received += t.amountMinor
+            if (t.isExpense) spent += t.amountMinor else received += t.amountMinor
         }
         return MonthTotals(spent, received, other)
     }
+
+    /** What moved between the user's own accounts in a period; shown, never counted. */
+    fun transferTotalIn(
+        txns: List<Txn>,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String? = null,
+    ): Long = txns.filter {
+        it.isTransfer && it.currency == currency &&
+            it.atMillis >= start && it.atMillis < endExclusive &&
+            (accountId == null || it.touches(accountId))
+    }.sumOf { it.amountMinor }
 
     data class Slice(val categoryId: String, val amountMinor: Long, val fraction: Float)
 
-    fun breakdown(txns: List<Txn>, month: YearMonth, currency: String): List<Slice> {
-        val expenses = txns.filter {
-            it.direction == Direction.EXPENSE && it.currency == currency && ym(it.atMillis) == month
-        }
-        val total = expenses.sumOf { it.amountMinor }
+    /** Category split of one side of the ledger, biggest first. */
+    fun breakdownIn(
+        txns: List<Txn>,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String? = null,
+        type: TxnType = TxnType.EXPENSE,
+    ): List<Slice> {
+        val matching = flows(txns, start, endExclusive, currency, accountId).filter { it.type == type }
+        val total = matching.sumOf { it.amountMinor }
         if (total <= 0L) return emptyList()
-        return expenses.groupBy { it.categoryId }
+        return matching.groupBy { it.categoryId }
             .map { (cat, list) -> cat to list.sumOf { it.amountMinor } }
             .sortedByDescending { it.second }
             .map { (cat, sum) -> Slice(cat, sum, sum.toFloat() / total.toFloat()) }
     }
 
-    /** Total expense in [currency] for one category in one month, minor units. */
-    fun categorySpent(txns: List<Txn>, categoryId: String, month: YearMonth, currency: String): Long =
-        txns.filter {
-            it.direction == Direction.EXPENSE && it.currency == currency &&
-                it.categoryId == categoryId && ym(it.atMillis) == month
-        }.sumOf { it.amountMinor }
+    fun categoryTotalIn(
+        txns: List<Txn>,
+        categoryId: String,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String? = null,
+    ): Long = flows(txns, start, endExclusive, currency, accountId)
+        .filter { it.categoryId == categoryId }
+        .sumOf { it.amountMinor }
 
-    data class MonthPoint(val month: YearMonth, val spent: Long, val received: Long)
+    // ── comparison against the previous, equally long period ──
 
-    fun series(txns: List<Txn>, currency: String, end: YearMonth, monthsBack: Int = 6): List<MonthPoint> =
-        (monthsBack - 1 downTo 0).map { back ->
-            val m = end.minusMonths(back.toLong())
-            val t = totalsFor(txns, m, currency)
-            MonthPoint(m, t.spent, t.received)
+    /**
+     * The window of the same length immediately before [start]. Comparing August with
+     * July only means something if both are measured over the same span, so the shift
+     * is by the slice's own length rather than by a calendar month.
+     */
+    fun previousWindow(start: Long, endExclusive: Long): Pair<Long, Long> {
+        val length = endExclusive - start
+        return (start - length) to start
+    }
+
+    /**
+     * Change from [before] to [now] as a fraction (0.25 = up a quarter). Null when
+     * there is nothing to compare against - "up from zero" is not a percentage, and
+     * showing +100% or ∞ there would be a lie dressed as precision.
+     */
+    fun deltaPct(now: Long, before: Long): Float? {
+        if (before <= 0L) return null
+        return (now - before).toFloat() / before.toFloat()
+    }
+
+    data class Mover(
+        val categoryId: String,
+        val nowMinor: Long,
+        val beforeMinor: Long,
+    ) {
+        val deltaMinor: Long get() = nowMinor - beforeMinor
+        val pct: Float? get() = deltaPct(nowMinor, beforeMinor)
+    }
+
+    /** The categories whose spending changed most against the previous period. */
+    fun biggestMovers(
+        txns: List<Txn>,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String? = null,
+        limit: Int = 3,
+        minMinor: Long = 0L,
+    ): List<Mover> {
+        val (prevStart, prevEnd) = previousWindow(start, endExclusive)
+        val now = breakdownIn(txns, start, endExclusive, currency, accountId)
+            .associate { it.categoryId to it.amountMinor }
+        val before = breakdownIn(txns, prevStart, prevEnd, currency, accountId)
+            .associate { it.categoryId to it.amountMinor }
+        return (now.keys + before.keys)
+            .map { Mover(it, now[it] ?: 0L, before[it] ?: 0L) }
+            .filter { abs(it.deltaMinor) > minMinor }
+            .sortedByDescending { abs(it.deltaMinor) }
+            .take(limit)
+    }
+
+    // ── cashflow ──
+
+    data class CashflowPoint(val label: String, val spent: Long, val received: Long) {
+        val net: Long get() = received - spent
+    }
+
+    /**
+     * Money in against money out, bucketed so the bars stay readable whatever the
+     * slice: days for a short window, weeks for a season, months beyond that.
+     */
+    fun cashflow(
+        txns: List<Txn>,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String? = null,
+    ): List<CashflowPoint> {
+        val zone = ZoneId.systemDefault()
+        val startDay = Instant.ofEpochMilli(start).atZone(zone).toLocalDate()
+        val endDay = Instant.ofEpochMilli(endExclusive - 1).atZone(zone).toLocalDate()
+        val lastDay = minOf(endDay, LocalDate.now())
+        if (lastDay < startDay) return emptyList()
+
+        val inSlice = flows(txns, start, endExclusive, currency, accountId)
+        val spanDays = lastDay.toEpochDay() - startDay.toEpochDay() + 1
+
+        fun bucket(list: List<Txn>): Pair<Long, Long> {
+            var s = 0L
+            var r = 0L
+            list.forEach { if (it.isExpense) s += it.amountMinor else r += it.amountMinor }
+            return s to r
         }
 
-    fun monthsWithData(txns: List<Txn>): List<YearMonth> =
-        txns.map { ym(it.atMillis) }.distinct().sorted()
-
-    // ── arbitrary time slices (Analysis lets the user pick any period) ──
-
-    private fun inRange(t: Txn, start: Long, endExclusive: Long) =
-        t.atMillis in start until endExclusive
-
-    fun totalsIn(txns: List<Txn>, start: Long, endExclusive: Long, currency: String): MonthTotals {
-        var spent = 0L
-        var received = 0L
-        var other = 0
-        for (t in txns) {
-            if (!inRange(t, start, endExclusive)) continue
-            if (t.currency != currency) {
-                other++
-                continue
+        return when {
+            spanDays <= 14 -> {
+                val fmt = DateTimeFormatter.ofPattern("d MMM")
+                val byDay = inSlice.groupBy { Instant.ofEpochMilli(it.atMillis).atZone(zone).toLocalDate() }
+                generateSequence(startDay) { it.plusDays(1) }.takeWhile { it <= lastDay }
+                    .map { day ->
+                        val (s, r) = bucket(byDay[day].orEmpty())
+                        CashflowPoint(fmt.format(day), s, r)
+                    }.toList()
             }
-            if (t.direction == Direction.EXPENSE) spent += t.amountMinor else received += t.amountMinor
+
+            spanDays <= 120 -> {
+                val fmt = DateTimeFormatter.ofPattern("d MMM")
+                val byWeek = inSlice.groupBy {
+                    val d = Instant.ofEpochMilli(it.atMillis).atZone(zone).toLocalDate()
+                    startDay.plusDays(((d.toEpochDay() - startDay.toEpochDay()) / 7) * 7)
+                }
+                generateSequence(startDay) { it.plusWeeks(1) }.takeWhile { it <= lastDay }
+                    .map { weekStart ->
+                        val (s, r) = bucket(byWeek[weekStart].orEmpty())
+                        CashflowPoint(fmt.format(weekStart), s, r)
+                    }.toList()
+            }
+
+            else -> {
+                val fmt = DateTimeFormatter.ofPattern("MMM uu")
+                val byMonth = inSlice.groupBy { ym(it.atMillis) }
+                generateSequence(YearMonth.from(startDay)) { it.plusMonths(1) }
+                    .takeWhile { it <= YearMonth.from(lastDay) }
+                    .map { m ->
+                        val (s, r) = bucket(byMonth[m].orEmpty())
+                        CashflowPoint(fmt.format(m), s, r)
+                    }.toList()
+            }
         }
-        return MonthTotals(spent, received, other)
     }
 
-    fun breakdownIn(txns: List<Txn>, start: Long, endExclusive: Long, currency: String): List<Slice> {
-        val expenses = txns.filter {
-            it.direction == Direction.EXPENSE && it.currency == currency && inRange(it, start, endExclusive)
+    // ── merchants ──
+
+    data class MerchantTotal(val merchant: String, val amountMinor: Long, val count: Int)
+
+    fun topMerchantsIn(
+        txns: List<Txn>,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String? = null,
+        limit: Int = 5,
+    ): List<MerchantTotal> =
+        flows(txns, start, endExclusive, currency, accountId)
+            .filter { it.isExpense && !it.merchant.isNullOrBlank() }
+            .groupBy { it.merchant!!.trim() }
+            .map { (merchant, list) -> MerchantTotal(merchant, list.sumOf { it.amountMinor }, list.size) }
+            .sortedByDescending { it.amountMinor }
+            .take(limit)
+
+    fun topMerchantIn(
+        txns: List<Txn>,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String? = null,
+    ): Pair<String, Long>? =
+        topMerchantsIn(txns, start, endExclusive, currency, accountId, limit = 1)
+            .firstOrNull()?.let { it.merchant to it.amountMinor }
+
+    fun biggestExpenseIn(
+        txns: List<Txn>,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String? = null,
+    ): Txn? = flows(txns, start, endExclusive, currency, accountId)
+        .filter { it.isExpense }
+        .maxByOrNull { it.amountMinor }
+
+    // ── recurring charges ──
+
+    data class Recurring(
+        val merchant: String,
+        val categoryId: String,
+        val typicalMinor: Long,
+        val occurrences: Int,
+        val intervalDays: Int,
+        val lastAtMillis: Long,
+        val nextAtMillis: Long,
+    )
+
+    /**
+     * Subscriptions and standing charges: the same merchant billing at a steady cadence
+     * for a steady amount. Requires at least three charges, so one repeat purchase
+     * cannot masquerade as a commitment, and allows only mild variation in amount
+     * (a bill that swings wildly is a bill, not a subscription).
+     */
+    fun recurring(
+        txns: List<Txn>,
+        currency: String,
+        accountId: String? = null,
+        now: Long = System.currentTimeMillis(),
+        limit: Int = 6,
+    ): List<Recurring> {
+        val candidates = txns.filter {
+            it.isExpense && it.currency == currency && !it.merchant.isNullOrBlank() &&
+                (accountId == null || it.touches(accountId))
         }
-        val total = expenses.sumOf { it.amountMinor }
-        if (total <= 0L) return emptyList()
-        return expenses.groupBy { it.categoryId }
-            .map { (cat, list) -> cat to list.sumOf { it.amountMinor } }
-            .sortedByDescending { it.second }
-            .map { (cat, sum) -> Slice(cat, sum, sum.toFloat() / total.toFloat()) }
+        return candidates
+            .groupBy { it.merchant!!.trim().lowercase() }
+            .mapNotNull { (_, group) ->
+                if (group.size < 3) return@mapNotNull null
+                val sorted = group.sortedBy { it.atMillis }
+                val gapsDays = sorted.zipWithNext { a, b ->
+                    ((b.atMillis - a.atMillis) / DAY_MILLIS).toInt()
+                }
+                val cadence = medianInt(gapsDays)
+                val period = CADENCES.firstOrNull { cadence in it } ?: return@mapNotNull null
+                // Every gap must sit near the cadence, or this is just a busy merchant.
+                if (gapsDays.any { it !in period }) return@mapNotNull null
+
+                val amounts = sorted.map { it.amountMinor }
+                val typical = medianLong(amounts)
+                if (typical <= 0L) return@mapNotNull null
+                if (amounts.max().toDouble() / amounts.min().toDouble() > AMOUNT_TOLERANCE) return@mapNotNull null
+
+                val last = sorted.last()
+                Recurring(
+                    merchant = last.merchant!!.trim(),
+                    categoryId = last.categoryId,
+                    typicalMinor = typical,
+                    occurrences = sorted.size,
+                    intervalDays = cadence,
+                    lastAtMillis = last.atMillis,
+                    nextAtMillis = last.atMillis + cadence * DAY_MILLIS,
+                )
+            }
+            .filter { it.nextAtMillis > now - GRACE_MILLIS }
+            .sortedByDescending { it.typicalMinor }
+            .take(limit)
     }
 
-    fun topMerchantIn(txns: List<Txn>, start: Long, endExclusive: Long, currency: String): Pair<String, Long>? =
-        txns.filter {
-            it.direction == Direction.EXPENSE && it.currency == currency &&
-                inRange(it, start, endExclusive) && !it.merchant.isNullOrBlank()
-        }
-            .groupBy { it.merchant!! }
-            .map { (merchant, list) -> merchant to list.sumOf { it.amountMinor } }
-            .maxByOrNull { it.second }
+    private fun medianInt(values: List<Int>): Int {
+        if (values.isEmpty()) return 0
+        val s = values.sorted()
+        return s[s.size / 2]
+    }
 
-    fun biggestExpenseIn(txns: List<Txn>, start: Long, endExclusive: Long, currency: String): Txn? =
-        txns.filter {
-            it.direction == Direction.EXPENSE && it.currency == currency && inRange(it, start, endExclusive)
-        }.maxByOrNull { it.amountMinor }
+    private fun medianLong(values: List<Long>): Long {
+        if (values.isEmpty()) return 0L
+        val s = values.sorted()
+        return s[s.size / 2]
+    }
+
+    // ── budgets ──
+
+    data class BudgetLineProgress(
+        val categoryId: String,
+        val spentMinor: Long,
+        val capMinor: Long,
+    ) {
+        val fraction: Float get() = if (capMinor > 0) spentMinor.toFloat() / capMinor.toFloat() else 0f
+        val over: Boolean get() = spentMinor > capMinor
+        val remainingMinor: Long get() = capMinor - spentMinor
+    }
+
+    data class BudgetProgress(
+        val plan: BudgetPlan,
+        val lines: List<BudgetLineProgress>,
+        val totalSpentMinor: Long,
+        val totalCapMinor: Long,
+        /** How much of the plan's period has already gone by, 0..1. */
+        val elapsedFraction: Float,
+        /** Spending outside any budgeted category, so the totals stay honest. */
+        val unbudgetedMinor: Long,
+    ) {
+        val fraction: Float
+            get() = if (totalCapMinor > 0) totalSpentMinor.toFloat() / totalCapMinor.toFloat() else 0f
+        val over: Boolean get() = totalSpentMinor > totalCapMinor
+
+        /**
+         * True when the money is going faster than the calendar - the signal that
+         * matters mid-period, well before a bar actually fills up.
+         */
+        val aheadOfPace: Boolean get() = elapsedFraction > 0f && fraction > elapsedFraction
+    }
+
+    fun budgetProgress(
+        plan: BudgetPlan,
+        txns: List<Txn>,
+        currency: String,
+        accountId: String? = null,
+        now: Long = System.currentTimeMillis(),
+    ): BudgetProgress {
+        val lines = plan.lines.entries
+            .map { (categoryId, cap) ->
+                BudgetLineProgress(
+                    categoryId = categoryId,
+                    spentMinor = categoryTotalIn(
+                        txns, categoryId, plan.startMillis, plan.endExclusiveMillis, currency, accountId,
+                    ),
+                    capMinor = cap,
+                )
+            }
+            .sortedByDescending { it.capMinor }
+
+        val allSpent = totalsIn(txns, plan.startMillis, plan.endExclusiveMillis, currency, accountId).spent
+        val budgetedSpent = lines.sumOf { it.spentMinor }
+        val span = (plan.endExclusiveMillis - plan.startMillis).coerceAtLeast(1L)
+        val elapsed = ((now - plan.startMillis).toFloat() / span.toFloat()).coerceIn(0f, 1f)
+
+        return BudgetProgress(
+            plan = plan,
+            lines = lines,
+            totalSpentMinor = budgetedSpent,
+            totalCapMinor = plan.totalMinor,
+            elapsedFraction = elapsed,
+            unbudgetedMinor = (allSpent - budgetedSpent).coerceAtLeast(0L),
+        )
+    }
+
+    // ── time-slice helpers used by Analysis ──
 
     /** Average per elapsed day of the slice (days in the future don't dilute it). */
     fun avgSpentPerDayIn(spent: Long, start: Long, endExclusive: Long): Long {
@@ -128,14 +452,20 @@ object Stats {
      * and income accumulated day by day (month by month for long slices). Stops at
      * today so an ongoing month doesn't drag a flat line into the future.
      */
-    fun cumulativeTrend(txns: List<Txn>, start: Long, endExclusive: Long, currency: String): List<TrendPoint> {
+    fun cumulativeTrend(
+        txns: List<Txn>,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String? = null,
+    ): List<TrendPoint> {
         val zone = ZoneId.systemDefault()
         val startDay = Instant.ofEpochMilli(start).atZone(zone).toLocalDate()
         val endDay = Instant.ofEpochMilli(endExclusive - 1).atZone(zone).toLocalDate()
         val lastDay = minOf(endDay, LocalDate.now())
         if (lastDay < startDay) return emptyList()
 
-        val inSlice = txns.filter { it.atMillis in start until endExclusive && it.currency == currency }
+        val inSlice = flows(txns, start, endExclusive, currency, accountId)
         val totalDays = lastDay.toEpochDay() - startDay.toEpochDay() + 1
         var spent = 0L
         var received = 0L
@@ -143,62 +473,29 @@ object Stats {
 
         if (totalDays <= 92) {
             val byDay = inSlice.groupBy { Instant.ofEpochMilli(it.atMillis).atZone(zone).toLocalDate() }
-            val fmt = java.time.format.DateTimeFormatter.ofPattern("d MMM")
+            val fmt = DateTimeFormatter.ofPattern("d MMM")
             var day = startDay
             while (day <= lastDay) {
                 byDay[day]?.forEach { t ->
-                    if (t.direction == Direction.EXPENSE) spent += t.amountMinor else received += t.amountMinor
+                    if (t.isExpense) spent += t.amountMinor else received += t.amountMinor
                 }
                 out += TrendPoint(fmt.format(day), spent, received)
                 day = day.plusDays(1)
             }
         } else {
             val byMonth = inSlice.groupBy { ym(it.atMillis) }
-            val fmt = java.time.format.DateTimeFormatter.ofPattern("MMM uu")
+            val fmt = DateTimeFormatter.ofPattern("MMM uu")
             var m = YearMonth.from(startDay)
             val lastMonth = YearMonth.from(lastDay)
             while (m <= lastMonth) {
                 byMonth[m]?.forEach { t ->
-                    if (t.direction == Direction.EXPENSE) spent += t.amountMinor else received += t.amountMinor
+                    if (t.isExpense) spent += t.amountMinor else received += t.amountMinor
                 }
                 out += TrendPoint(fmt.format(m), spent, received)
                 m = m.plusMonths(1)
             }
         }
         return out
-    }
-
-    /** Months overlapping the slice, oldest first, capped so the chart stays readable. */
-    fun monthsIn(start: Long, endExclusive: Long, cap: Int = 12): List<YearMonth> {
-        val first = ym(start)
-        val last = ym(endExclusive - 1)
-        val months = ArrayList<YearMonth>()
-        var m = first
-        while (m <= last && months.size < cap * 4) {
-            months += m
-            m = m.plusMonths(1)
-        }
-        return months.takeLast(cap)
-    }
-
-    fun topMerchant(txns: List<Txn>, month: YearMonth, currency: String): Pair<String, Long>? =
-        txns.filter {
-            it.direction == Direction.EXPENSE && it.currency == currency &&
-                ym(it.atMillis) == month && !it.merchant.isNullOrBlank()
-        }
-            .groupBy { it.merchant!! }
-            .map { (merchant, list) -> merchant to list.sumOf { it.amountMinor } }
-            .maxByOrNull { it.second }
-
-    fun biggestExpense(txns: List<Txn>, month: YearMonth, currency: String): Txn? =
-        txns.filter {
-            it.direction == Direction.EXPENSE && it.currency == currency && ym(it.atMillis) == month
-        }.maxByOrNull { it.amountMinor }
-
-    fun avgSpentPerDay(spent: Long, month: YearMonth): Long {
-        val today = LocalDate.now()
-        val days = if (YearMonth.from(today) == month) today.dayOfMonth else month.lengthOfMonth()
-        return if (days <= 0) spent else spent / days
     }
 
     /**
@@ -223,4 +520,15 @@ object Stats {
             else -> "Spending is above income this month"
         }
     }
+
+    private const val DAY_MILLIS = 24L * 60L * 60L * 1000L
+
+    /** Weekly, fortnightly, monthly, quarterly and yearly billing, with slack. */
+    private val CADENCES = listOf(6..8, 13..16, 26..35, 85..95, 355..375)
+
+    /** A "same" charge may vary by a third; beyond that it is a variable bill. */
+    private const val AMOUNT_TOLERANCE = 1.35
+
+    /** A charge stays listed for a while after its due date before it looks stale. */
+    private const val GRACE_MILLIS = 45L * DAY_MILLIS
 }
