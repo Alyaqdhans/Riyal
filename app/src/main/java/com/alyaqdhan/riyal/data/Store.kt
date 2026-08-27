@@ -3,11 +3,15 @@ package com.alyaqdhan.riyal.data
 import android.content.Context
 import com.alyaqdhan.riyal.core.Verbose
 import java.io.File
+import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -17,8 +21,12 @@ import org.json.JSONObject
 /**
  * On-device persistence: one JSON file in app-private storage, written atomically.
  * Scanned transactions are rebuilt from the inbox on every scan; what must survive a
- * rescan is the user's word, category overrides, custom rules, manual entries and
- * dismissed/resolved review items, and it does.
+ * rescan is the user's word - category overrides, account assignments, transfer
+ * decisions, custom rules, manual entries and dismissed/resolved review items - and it does.
+ *
+ * Transfers are *derived*, never baked in: the file stores the raw two-legged scan
+ * output plus a yes/no per proposal, and [txns] is recomputed from both. That is what
+ * makes "actually, that wasn't a transfer" a one-tap undo rather than a rescan.
  */
 class Store(context: Context) {
 
@@ -26,6 +34,9 @@ class Store(context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
     private val file: File by lazy { File(appContext.filesDir, "riyal_store.json") }
+
+    /** What the scan produced plus manual entries, before transfer pairs are collapsed. */
+    private var rawTxns: List<Txn> = emptyList()
 
     private val _txns = MutableStateFlow<List<Txn>>(emptyList())
     val txns: StateFlow<List<Txn>> = _txns
@@ -51,11 +62,40 @@ class Store(context: Context) {
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
     val categories: StateFlow<List<Category>> = _categories
 
+    private val _accounts = MutableStateFlow<List<Account>>(emptyList())
+    val accounts: StateFlow<List<Account>> = _accounts
+
+    private val _budgets = MutableStateFlow<List<BudgetPlan>>(emptyList())
+    val budgets: StateFlow<List<BudgetPlan>> = _budgets
+
+    /** Candidate transfers, in every state; the UI shows the pending ones. */
+    private val _transfers = MutableStateFlow<List<TransferProposal>>(emptyList())
+    val transfers: StateFlow<List<TransferProposal>> = _transfers
+
     private val _lastSummary = MutableStateFlow<ScanSummary?>(null)
     val lastSummary: StateFlow<ScanSummary?> = _lastSummary
 
+    /** Live balance per account id, the one place every screen reads a balance from. */
+    val balances: StateFlow<Map<String, Long>> =
+        combine(_accounts, _txns) { accounts, txns ->
+            accounts.associate { it.id to AccountDiscovery.balanceOf(it, txns) }
+        }.stateIn(scope, SharingStarted.Eagerly, emptyMap())
+
     /** txnId → categoryId chosen by the user; reapplied after every rescan. */
     private val overrides = HashMap<String, String>()
+
+    /** txnId → accountId chosen by the user, for messages the scanner couldn't route. */
+    private val accountOverrides = HashMap<String, String>()
+
+    /** proposalId → accepted | rejected. The user is never asked the same pair twice. */
+    private val transferDecisions = HashMap<String, String>()
+
+    /**
+     * txnId → the two ends of a transfer the user declared by hand (when only one bank
+     * texted, so there was no second leg to pair with). Re-applied on every rescan, or
+     * the record would silently revert to being counted as spending.
+     */
+    private val manualTransfers = HashMap<String, Pair<String?, String?>>()
 
     /**
      * Txn ids the user removed as "not a real transaction". Since scanned txns are
@@ -68,22 +108,33 @@ class Store(context: Context) {
         scope.launch { mutex.withLock { loadLocked() } }
     }
 
+    // ─────────────────────────── scanning ───────────────────────────
+
     suspend fun replaceScanned(
         scanned: List<Txn>,
+        proposals: List<TransferProposal>,
         newReviews: List<ReviewItem>,
         seenSenders: Set<String>,
         summary: ScanSummary,
     ) = mutex.withLock {
         val withOverrides = scanned.asSequence()
             .filter { it.id !in ignored }
-            .map { t ->
-                overrides[t.id]?.let { t.copy(categoryId = it, categorySource = "user") } ?: t
-            }.toList()
-        val manuals = _txns.value.filter { m -> m.manual && scanned.none { it.id == m.id } }
-        _txns.value = (withOverrides + manuals).sortedByDescending { it.atMillis }
+            .map { applyUserEdits(it) }
+            .toList()
+        val manuals = rawTxns.filter { m -> m.manual && scanned.none { it.id == m.id } }
+        rawTxns = (withOverrides + manuals).sortedByDescending { it.atMillis }
+
+        // A proposal the user already answered keeps that answer; only genuinely new
+        // pairs arrive as pending, so a rescan never re-asks a settled question.
+        _transfers.value = proposals.distinctBy { it.id }.map { p ->
+            transferDecisions[p.id]?.let { p.copy(state = it) } ?: p
+        }.sortedByDescending { it.atMillis }
+        recomputeTxnsLocked()
 
         val previous = _reviews.value.associateBy { it.id }
-        _reviews.value = newReviews.map { r ->
+        // Two byte-identical messages hash to one id, and a list rendered by id must
+        // not contain it twice - that crashes the Review page rather than degrading.
+        _reviews.value = newReviews.distinctBy { it.id }.map { r ->
             val old = previous[r.id]
             if (old != null && old.state != ReviewItem.STATE_PENDING) r.copy(state = old.state) else r
         }.sortedByDescending { it.atMillis }
@@ -93,11 +144,204 @@ class Store(context: Context) {
         persistLocked()
     }
 
+    private fun applyUserEdits(t: Txn): Txn {
+        var out = t
+        overrides[t.id]?.let { out = out.copy(categoryId = it, categorySource = "user") }
+        accountOverrides[t.id]?.let { acc ->
+            out = if (out.type == TxnType.INCOME) {
+                out.copy(toAccountId = acc)
+            } else {
+                out.copy(fromAccountId = acc)
+            }
+        }
+        return out
+    }
+
+    /** Applies a hand-declared transfer mark to one record. */
+    private fun asMarkedTransfer(t: Txn, ends: Pair<String?, String?>): Txn = t.copy(
+        type = TxnType.TRANSFER,
+        fromAccountId = ends.first,
+        toAccountId = ends.second,
+        categoryId = Categories.TRANSFER_ID,
+        categorySource = "user",
+        // One leg, not two: enough to mark it as derived from a real record, which is
+        // what tells the UI this transfer can be split back apart.
+        legIds = listOf(t.id),
+    )
+
+    /**
+     * Rebuilds [txns] from the raw scan output by collapsing every accepted transfer
+     * pair into one record. Called after anything that could change either input.
+     */
+    private fun recomputeTxnsLocked() {
+        val accepted = _transfers.value.filter { it.state == TransferProposal.STATE_ACCEPTED }
+        val byId = rawTxns.associateBy { it.id }
+        val consumed = HashSet<String>()
+        val merged = ArrayList<Txn>()
+        for (p in accepted) {
+            val out = byId[p.outTxnId] ?: continue
+            val income = byId[p.inTxnId] ?: continue
+            if (out.id in consumed || income.id in consumed) continue
+            consumed += out.id
+            consumed += income.id
+            merged += TransferMatcher.merge(p, out, income)
+        }
+        _txns.value = (
+            rawTxns
+                .filter { it.id !in consumed }
+                .map { t -> manualTransfers[t.id]?.let { asMarkedTransfer(t, it) } ?: t } + merged
+            ).sortedByDescending { it.atMillis }
+    }
+
+    // ─────────────────────────── transfers ───────────────────────────
+
+    /** Confirms a pair really was one movement between the user's own accounts. */
+    suspend fun acceptTransfer(proposal: TransferProposal) = mutex.withLock {
+        transferDecisions[proposal.id] = TransferProposal.STATE_ACCEPTED
+        setTransferStateLocked(proposal.id, TransferProposal.STATE_ACCEPTED)
+        recomputeTxnsLocked()
+        persistLocked()
+    }
+
+    /** Keeps both legs as a real expense and a real income, and stops asking. */
+    suspend fun rejectTransfer(proposal: TransferProposal) = mutex.withLock {
+        transferDecisions[proposal.id] = TransferProposal.STATE_REJECTED
+        setTransferStateLocked(proposal.id, TransferProposal.STATE_REJECTED)
+        recomputeTxnsLocked()
+        persistLocked()
+    }
+
+    /** Undoes an earlier answer, putting the pair back in the queue. */
+    suspend fun reopenTransfer(proposalId: String) = mutex.withLock {
+        transferDecisions.remove(proposalId)
+        setTransferStateLocked(proposalId, TransferProposal.STATE_PENDING)
+        recomputeTxnsLocked()
+        persistLocked()
+    }
+
+    /**
+     * Undoes a transfer from a transaction row, whichever way it became one: a
+     * confirmed pair goes back to two records, a hand-declared one goes back to the
+     * expense or income the scanner originally read.
+     */
+    suspend fun splitTransfer(txn: Txn) = mutex.withLock {
+        if (txn.legIds.size == 2) {
+            val id = TransferProposal.idFor(txn.legIds[0], txn.legIds[1])
+            transferDecisions[id] = TransferProposal.STATE_REJECTED
+            setTransferStateLocked(id, TransferProposal.STATE_REJECTED)
+        }
+        // A mark is an overlay, so dropping it restores the record the scanner read.
+        txn.legIds.forEach { manualTransfers.remove(it) }
+        manualTransfers.remove(txn.id)
+        recomputeTxnsLocked()
+        persistLocked()
+    }
+
+    /**
+     * Records a transfer the user declared by hand, e.g. when only one of the two banks
+     * texted. The chosen expense row becomes the single transfer record.
+     */
+    suspend fun markAsTransfer(txn: Txn, fromAccountId: String?, toAccountId: String?) = mutex.withLock {
+        manualTransfers[txn.id] = fromAccountId to toAccountId
+        recomputeTxnsLocked()
+        persistLocked()
+    }
+
+    private fun setTransferStateLocked(proposalId: String, state: String) {
+        _transfers.value = _transfers.value.map {
+            if (it.id == proposalId) it.copy(state = state) else it
+        }
+    }
+
+    // ─────────────────────────── accounts ───────────────────────────
+
+    /** Replaces the account list wholesale, used by first-run confirmation. */
+    suspend fun replaceAccounts(list: List<Account>) = mutex.withLock {
+        _accounts.value = list
+        recomputeTxnsLocked()
+        persistLocked()
+    }
+
+    suspend fun addAccount(account: Account): String = mutex.withLock {
+        val id = account.id.ifBlank { Account.ID_PREFIX + UUID.randomUUID().toString().take(8) }
+        _accounts.value = _accounts.value + account.copy(id = id)
+        persistLocked()
+        id
+    }
+
+    suspend fun updateAccount(account: Account) = mutex.withLock {
+        _accounts.value = _accounts.value.map { if (it.id == account.id) account else it }
+        persistLocked()
+    }
+
+    /**
+     * Deletes an account. Records that pointed at it are detached rather than removed:
+     * the money still moved, we just no longer know which account it moved through.
+     */
+    suspend fun deleteAccount(id: String) = mutex.withLock {
+        _accounts.value = _accounts.value.filter { it.id != id }
+        rawTxns = rawTxns.map {
+            when (id) {
+                it.fromAccountId -> it.copy(fromAccountId = null)
+                it.toAccountId -> it.copy(toAccountId = null)
+                else -> it
+            }
+        }
+        for ((k, v) in accountOverrides.toMap()) if (v == id) accountOverrides.remove(k)
+        recomputeTxnsLocked()
+        persistLocked()
+    }
+
+    /** Routes one record to an account by hand, and remembers it across rescans. */
+    suspend fun setTxnAccount(txnId: String, accountId: String) = mutex.withLock {
+        accountOverrides[txnId] = accountId
+        rawTxns = rawTxns.map { if (it.id == txnId) applyUserEdits(it) else it }
+        recomputeTxnsLocked()
+        persistLocked()
+    }
+
+    // ─────────────────────────── budgets ───────────────────────────
+
+    suspend fun addBudget(plan: BudgetPlan): String = mutex.withLock {
+        val id = plan.id.ifBlank { BudgetPlan.ID_PREFIX + UUID.randomUUID().toString().take(8) }
+        _budgets.value = (_budgets.value + plan.copy(id = id)).sortedByDescending { it.startMillis }
+        persistLocked()
+        id
+    }
+
+    suspend fun updateBudget(plan: BudgetPlan) = mutex.withLock {
+        _budgets.value = _budgets.value
+            .map { if (it.id == plan.id) plan else it }
+            .sortedByDescending { it.startMillis }
+        persistLocked()
+    }
+
+    suspend fun deleteBudget(id: String) = mutex.withLock {
+        _budgets.value = _budgets.value.filter { it.id != id }
+        persistLocked()
+    }
+
+    /** Sets or clears one category cap inside a plan. A zero cap removes the line. */
+    suspend fun setBudgetLine(planId: String, categoryId: String, minor: Long) = mutex.withLock {
+        _budgets.value = _budgets.value.map { plan ->
+            if (plan.id != planId) plan
+            else plan.copy(
+                lines = plan.lines.toMutableMap().apply {
+                    if (minor > 0) this[categoryId] = minor else remove(categoryId)
+                },
+            )
+        }
+        persistLocked()
+    }
+
+    // ─────────────────────────── user edits ───────────────────────────
+
     suspend fun setCategory(txnId: String, categoryId: String) = mutex.withLock {
         overrides[txnId] = categoryId
-        _txns.value = _txns.value.map {
+        rawTxns = rawTxns.map {
             if (it.id == txnId) it.copy(categoryId = categoryId, categorySource = "user") else it
         }
+        recomputeTxnsLocked()
         persistLocked()
     }
 
@@ -111,7 +355,12 @@ class Store(context: Context) {
             ignored.add(txn.id)
             overrides.remove(txn.id)
         }
-        _txns.value = _txns.value.filter { it.id != txn.id }
+        // A confirmed transfer stands for two messages; ignoring it must ignore both.
+        txn.legIds.forEach { if (!txn.manual) ignored.add(it) }
+        val gone = (txn.legIds + txn.id).toSet()
+        gone.forEach { manualTransfers.remove(it) }
+        rawTxns = rawTxns.filter { it.id !in gone }
+        recomputeTxnsLocked()
         persistLocked()
     }
 
@@ -119,15 +368,17 @@ class Store(context: Context) {
     suspend fun addRule(rule: UserRule): Int = mutex.withLock {
         _rules.value = _rules.value.filter { it.pattern != rule.pattern } + rule
         var changed = 0
-        _txns.value = _txns.value.map { t ->
-            if (t.categorySource == "auto") {
-                val match = Categorizer.categorize(t.direction, t.merchant, t.body, _rules.value, t.sender)
+        rawTxns = rawTxns.map { t ->
+            if (t.categorySource == "auto" && t.type != TxnType.TRANSFER) {
+                val direction = if (t.type == TxnType.INCOME) Direction.INCOME else Direction.EXPENSE
+                val match = Categorizer.categorize(direction, t.merchant, t.body, _rules.value, t.sender)
                 if (match.categoryId != t.categoryId) {
                     changed++
                     t.copy(categoryId = match.categoryId)
                 } else t
             } else t
         }
+        recomputeTxnsLocked()
         persistLocked()
         changed
     }
@@ -157,24 +408,29 @@ class Store(context: Context) {
     }
 
     /**
-     * Deletes a user category. Any transactions, rules and overrides still pointing at
-     * it are re-homed to the default so nothing dangles at an unknown id.
+     * Deletes a user category. Any transactions, rules, budget lines and overrides still
+     * pointing at it are re-homed to the default so nothing dangles at an unknown id.
      */
     suspend fun deleteCategory(id: String) = mutex.withLock {
         val removed = _categories.value.firstOrNull { it.id == id } ?: return@withLock
         _categories.value = _categories.value.filter { it.id != id }
         Categories.setCustom(_categories.value)
         val fallback = if (removed.income) Categories.DEFAULT_INCOME else Categories.DEFAULT_EXPENSE
-        _txns.value = _txns.value.map { if (it.categoryId == id) it.copy(categoryId = fallback) else it }
+        rawTxns = rawTxns.map { if (it.categoryId == id) it.copy(categoryId = fallback) else it }
         _rules.value = _rules.value.map { if (it.categoryId == id) it.copy(categoryId = fallback) else it }
+        _budgets.value = _budgets.value.map { it.copy(lines = it.lines - id) }
         for ((k, v) in overrides.toMap()) if (v == id) overrides[k] = fallback
+        recomputeTxnsLocked()
         persistLocked()
     }
 
     suspend fun addManual(txn: Txn) = mutex.withLock {
-        _txns.value = (_txns.value + txn).sortedByDescending { it.atMillis }
+        rawTxns = (rawTxns + txn).sortedByDescending { it.atMillis }
+        recomputeTxnsLocked()
         persistLocked()
     }
+
+    // ─────────────────────────── review ───────────────────────────
 
     /**
      * Dismisses [item]. With [smart], similar pending items go with it and the message
@@ -240,11 +496,13 @@ class Store(context: Context) {
         _reviews.value = _reviews.value.map {
             if (it.id == reviewId) it.copy(state = ReviewItem.STATE_RESOLVED) else it
         }
-        _txns.value = (_txns.value + txn).sortedByDescending { it.atMillis }
+        rawTxns = (rawTxns + txn).sortedByDescending { it.atMillis }
+        recomputeTxnsLocked()
         persistLocked()
     }
 
     suspend fun wipe() = mutex.withLock {
+        rawTxns = emptyList()
         _txns.value = emptyList()
         _reviews.value = emptyList()
         _rules.value = emptyList()
@@ -253,8 +511,14 @@ class Store(context: Context) {
         _needed.value = emptySet()
         _categories.value = emptyList()
         Categories.setCustom(emptyList())
+        _accounts.value = emptyList()
+        _budgets.value = emptyList()
+        _transfers.value = emptyList()
         _lastSummary.value = null
         overrides.clear()
+        accountOverrides.clear()
+        transferDecisions.clear()
+        manualTransfers.clear()
         ignored.clear()
         file.delete()
         Verbose.info("store: all saved data deleted by you")
@@ -271,22 +535,47 @@ class Store(context: Context) {
         }
         try {
             val root = JSONObject(file.readText())
-            _txns.value = root.optJSONArray("txns").toListOf(::txnFromJson).sortedByDescending { it.atMillis }
+            val version = root.optInt("v", 1)
+            if (version != SCHEMA_VERSION) {
+                // Accounts, transfer types and dated budgets changed the shape of every
+                // record. Transactions are rebuilt from the inbox anyway, so the honest
+                // move is to start clean rather than guess at half-formed old rows.
+                file.delete()
+                Verbose.info(
+                    "store: saved data is from an older version (v$version) and this build " +
+                        "stores accounts and transfers, discarded it. Your inbox is untouched, " +
+                        "the next scan rebuilds everything."
+                )
+                Verbose.flush()
+                return
+            }
+            rawTxns = root.optJSONArray("txns").toListOf(::txnFromJson).sortedByDescending { it.atMillis }
             _reviews.value = root.optJSONArray("reviews").toListOf(::reviewFromJson).sortedByDescending { it.atMillis }
             _rules.value = root.optJSONArray("rules").toListOf(::ruleFromJson)
-            val senderArr = root.optJSONArray("senders")
-            _senders.value = buildSet {
-                if (senderArr != null) for (i in 0 until senderArr.length()) add(senderArr.getString(i))
-            }
+            _senders.value = root.optJSONArray("senders").toStringSet()
             _muted.value = root.optJSONArray("muted").toListOf(::mutedFromJson)
-            val neededArr = root.optJSONArray("needed")
-            _needed.value = buildSet {
-                if (neededArr != null) for (i in 0 until neededArr.length()) add(neededArr.getString(i))
-            }
+            _needed.value = root.optJSONArray("needed").toStringSet()
             _categories.value = root.optJSONArray("categories").toListOf(::categoryFromJson)
             Categories.setCustom(_categories.value)
+            _accounts.value = root.optJSONArray("accounts").toListOf(::accountFromJson)
+            _budgets.value = root.optJSONArray("budgets").toListOf(::budgetFromJson)
+                .sortedByDescending { it.startMillis }
+            _transfers.value = root.optJSONArray("transfers").toListOf(::transferFromJson)
+                .sortedByDescending { it.atMillis }
             root.optJSONObject("overrides")?.let { o ->
                 for (key in o.keys()) overrides[key] = o.getString(key)
+            }
+            root.optJSONObject("accountOverrides")?.let { o ->
+                for (key in o.keys()) accountOverrides[key] = o.getString(key)
+            }
+            root.optJSONObject("transferDecisions")?.let { o ->
+                for (key in o.keys()) transferDecisions[key] = o.getString(key)
+            }
+            root.optJSONObject("manualTransfers")?.let { o ->
+                for (key in o.keys()) {
+                    val ends = o.getJSONObject(key)
+                    manualTransfers[key] = ends.optNullableString("from") to ends.optNullableString("to")
+                }
             }
             root.optJSONArray("ignored")?.let { a ->
                 for (i in 0 until a.length()) ignored.add(a.getString(i))
@@ -296,11 +585,14 @@ class Store(context: Context) {
                     at = s.getLong("at"), tookMs = s.getLong("took"),
                     scanned = s.getInt("scanned"), matched = s.getInt("matched"),
                     parsed = s.getInt("parsed"), review = s.getInt("review"),
-                    skipped = s.getInt("skipped"),
+                    skipped = s.getInt("skipped"), transfers = s.optInt("transfers", 0),
                 )
             }
+            recomputeTxnsLocked()
             Verbose.info(
                 "store: loaded ${_txns.value.size} transaction(s), " +
+                    "${_accounts.value.size} account(s), " +
+                    "${_transfers.value.count { it.state == TransferProposal.STATE_PENDING }} transfer(s) to confirm, " +
                     "${_reviews.value.count { it.state == ReviewItem.STATE_PENDING }} pending review item(s), " +
                     "${_rules.value.size} rule(s)"
             )
@@ -313,21 +605,35 @@ class Store(context: Context) {
     private fun persistLocked() {
         try {
             val root = JSONObject()
-            root.put("v", 1)
-            root.put("txns", JSONArray().apply { _txns.value.forEach { put(txnToJson(it)) } })
+            root.put("v", SCHEMA_VERSION)
+            root.put("txns", JSONArray().apply { rawTxns.forEach { put(txnToJson(it)) } })
             root.put("reviews", JSONArray().apply { _reviews.value.forEach { put(reviewToJson(it)) } })
             root.put("rules", JSONArray().apply { _rules.value.forEach { put(ruleToJson(it)) } })
             root.put("senders", JSONArray().apply { _senders.value.forEach { put(it) } })
             root.put("muted", JSONArray().apply { _muted.value.forEach { put(mutedToJson(it)) } })
             root.put("needed", JSONArray().apply { _needed.value.forEach { put(it) } })
             root.put("categories", JSONArray().apply { _categories.value.forEach { put(categoryToJson(it)) } })
+            root.put("accounts", JSONArray().apply { _accounts.value.forEach { put(accountToJson(it)) } })
+            root.put("budgets", JSONArray().apply { _budgets.value.forEach { put(budgetToJson(it)) } })
+            root.put("transfers", JSONArray().apply { _transfers.value.forEach { put(transferToJson(it)) } })
             root.put("overrides", JSONObject().apply { overrides.forEach { (k, v) -> put(k, v) } })
+            root.put("accountOverrides", JSONObject().apply { accountOverrides.forEach { (k, v) -> put(k, v) } })
+            root.put("transferDecisions", JSONObject().apply { transferDecisions.forEach { (k, v) -> put(k, v) } })
+            root.put("manualTransfers", JSONObject().apply {
+                manualTransfers.forEach { (id, ends) ->
+                    put(id, JSONObject().apply {
+                        put("from", ends.first ?: JSONObject.NULL)
+                        put("to", ends.second ?: JSONObject.NULL)
+                    })
+                }
+            })
             root.put("ignored", JSONArray().apply { ignored.forEach { put(it) } })
             _lastSummary.value?.let { s ->
                 root.put("summary", JSONObject().apply {
                     put("at", s.at); put("took", s.tookMs); put("scanned", s.scanned)
                     put("matched", s.matched); put("parsed", s.parsed)
                     put("review", s.review); put("skipped", s.skipped)
+                    put("transfers", s.transfers)
                 })
             }
             val tmp = File(file.parentFile, file.name + ".tmp")
@@ -354,12 +660,21 @@ class Store(context: Context) {
         return out
     }
 
+    private fun JSONArray?.toStringSet(): Set<String> = buildSet {
+        if (this@toStringSet != null) {
+            for (i in 0 until this@toStringSet.length()) add(this@toStringSet.getString(i))
+        }
+    }
+
     private fun txnToJson(t: Txn) = JSONObject().apply {
         put("id", t.id); put("at", t.atMillis); put("amt", t.amountMinor)
-        put("cur", t.currency); put("dir", t.direction.name)
+        put("cur", t.currency); put("type", t.type.name)
+        put("from", t.fromAccountId ?: JSONObject.NULL)
+        put("to", t.toAccountId ?: JSONObject.NULL)
         put("mer", t.merchant ?: JSONObject.NULL); put("sen", t.sender); put("body", t.body)
         put("cat", t.categoryId); put("src", t.categorySource)
         put("conf", t.confidence); put("man", t.manual)
+        if (t.legIds.isNotEmpty()) put("legs", JSONArray().apply { t.legIds.forEach { put(it) } })
     }
 
     private fun txnFromJson(o: JSONObject) = Txn(
@@ -367,14 +682,75 @@ class Store(context: Context) {
         atMillis = o.getLong("at"),
         amountMinor = o.getLong("amt"),
         currency = o.getString("cur"),
-        direction = Direction.valueOf(o.getString("dir")),
-        merchant = if (o.isNull("mer")) null else o.getString("mer"),
+        type = TxnType.valueOf(o.getString("type")),
+        fromAccountId = o.optNullableString("from"),
+        toAccountId = o.optNullableString("to"),
+        merchant = o.optNullableString("mer"),
         sender = o.getString("sen"),
         body = o.getString("body"),
         categoryId = o.getString("cat"),
         categorySource = o.getString("src"),
         confidence = o.getInt("conf"),
         manual = o.optBoolean("man", false),
+        legIds = o.optJSONArray("legs").toStringSet().toList(),
+    )
+
+    private fun accountToJson(a: Account) = JSONObject().apply {
+        put("id", a.id); put("name", a.name); put("bank", a.bankName)
+        put("last4", a.last4 ?: JSONObject.NULL); put("cur", a.currency)
+        put("open", a.openingBalanceMinor); put("openAt", a.openingAtMillis)
+        put("senders", JSONArray().apply { a.senderIds.forEach { put(it) } })
+        put("color", a.color); put("archived", a.archived); put("needsBal", a.needsBalance)
+    }
+
+    private fun accountFromJson(o: JSONObject) = Account(
+        id = o.getString("id"),
+        name = o.getString("name"),
+        bankName = o.optString("bank", ""),
+        last4 = o.optNullableString("last4"),
+        currency = o.getString("cur"),
+        openingBalanceMinor = o.getLong("open"),
+        openingAtMillis = o.getLong("openAt"),
+        senderIds = o.optJSONArray("senders").toStringSet(),
+        color = o.optInt("color", 0),
+        archived = o.optBoolean("archived", false),
+        needsBalance = o.optBoolean("needsBal", false),
+    )
+
+    private fun budgetToJson(b: BudgetPlan) = JSONObject().apply {
+        put("id", b.id); put("label", b.label)
+        put("start", b.startMillis); put("end", b.endExclusiveMillis)
+        put("lines", JSONObject().apply { b.lines.forEach { (k, v) -> put(k, v) } })
+    }
+
+    private fun budgetFromJson(o: JSONObject) = BudgetPlan(
+        id = o.getString("id"),
+        label = o.getString("label"),
+        startMillis = o.getLong("start"),
+        endExclusiveMillis = o.getLong("end"),
+        lines = o.optJSONObject("lines")?.let { l ->
+            buildMap { for (k in l.keys()) l.optLong(k).takeIf { it > 0 }?.let { put(k, it) } }
+        } ?: emptyMap(),
+    )
+
+    private fun transferToJson(t: TransferProposal) = JSONObject().apply {
+        put("id", t.id); put("out", t.outTxnId); put("in", t.inTxnId)
+        put("from", t.fromAccountId ?: JSONObject.NULL)
+        put("to", t.toAccountId ?: JSONObject.NULL)
+        put("amt", t.amountMinor); put("cur", t.currency)
+        put("at", t.atMillis); put("state", t.state)
+    }
+
+    private fun transferFromJson(o: JSONObject) = TransferProposal(
+        id = o.getString("id"),
+        outTxnId = o.getString("out"),
+        inTxnId = o.getString("in"),
+        fromAccountId = o.optNullableString("from"),
+        toAccountId = o.optNullableString("to"),
+        amountMinor = o.getLong("amt"),
+        currency = o.getString("cur"),
+        atMillis = o.getLong("at"),
+        state = o.optString("state", TransferProposal.STATE_PENDING),
     )
 
     private fun reviewToJson(r: ReviewItem) = JSONObject().apply {
@@ -419,4 +795,12 @@ class Store(context: Context) {
         sample = o.getString("sample"),
         at = o.getLong("at"),
     )
+
+    private fun JSONObject.optNullableString(key: String): String? =
+        if (isNull(key)) null else optString(key).takeIf { it.isNotBlank() }
+
+    private companion object {
+        /** Bumped for accounts + transfer types + dated budgets; older files are discarded. */
+        const val SCHEMA_VERSION = 2
+    }
 }

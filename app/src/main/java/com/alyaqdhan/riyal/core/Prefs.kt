@@ -47,37 +47,24 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("smart_rules", true)
         set(v) = sp.edit().putBoolean("smart_rules", v).apply()
 
-    /** Monthly spending budget in minor units of the default currency. 0 = off. */
-    var monthlyBudgetMinor: Long
-        get() = sp.getLong("monthly_budget_minor", 0L)
-        set(v) = sp.edit().putLong("monthly_budget_minor", v).apply()
+    /**
+     * Whether budget planning is switched on. Off by default: the budget section only
+     * appears on Home once the user asks for it, so the dashboard stays about what
+     * actually happened until they decide to plan against it. The plans themselves are
+     * real records in [com.alyaqdhan.riyal.data.Store], not settings.
+     */
+    var budgetsEnabled: Boolean
+        get() = sp.getBoolean("budgets_enabled", false)
+        set(v) = sp.edit().putBoolean("budgets_enabled", v).apply()
 
     /**
-     * Per-category monthly budgets, in minor units of the default currency, keyed by
-     * category id. Absent or 0 means "no budget for this category". Stored as one
-     * `id=amount` line per entry so it survives without a schema migration.
+     * Set once the user has checked the accounts the first scan proposed. Until then
+     * Home shows the confirmation prompt, because balances read out of SMS are a good
+     * first guess and nothing more.
      */
-    var categoryBudgets: Map<String, Long>
-        get() {
-            val raw = sp.getStringSet("category_budgets", emptySet()) ?: emptySet()
-            return raw.mapNotNull { line ->
-                val i = line.lastIndexOf('=')
-                if (i <= 0) return@mapNotNull null
-                val id = line.substring(0, i)
-                val amt = line.substring(i + 1).toLongOrNull() ?: return@mapNotNull null
-                if (amt > 0) id to amt else null
-            }.toMap()
-        }
-        set(v) = sp.edit().putStringSet(
-            "category_budgets",
-            v.filterValues { it > 0 }.map { (id, amt) -> "$id=$amt" }.toSet(),
-        ).apply()
-
-    fun setCategoryBudget(categoryId: String, minor: Long) {
-        categoryBudgets = categoryBudgets.toMutableMap().apply {
-            if (minor > 0) this[categoryId] = minor else remove(categoryId)
-        }
-    }
+    var accountsConfirmed: Boolean
+        get() = sp.getBoolean("accounts_confirmed", false)
+        set(v) = sp.edit().putBoolean("accounts_confirmed", v).apply()
 
     var senderFilterEnabled: Boolean
         get() = sp.getBoolean("sender_filter_enabled", false)
