@@ -9,12 +9,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -42,11 +43,12 @@ import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
-import com.alyaqdhan.riyal.ui.compose.CategoryIcon
 import com.alyaqdhan.riyal.ui.compose.EmptyState
+import com.alyaqdhan.riyal.ui.compose.FilterSheet
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
+import com.alyaqdhan.riyal.ui.compose.ToolbarSpace
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.typeLabel
 import com.alyaqdhan.riyal.ui.compose.dayLabel
@@ -59,18 +61,22 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     val txns by vm.txns.collectAsState()
     val scan by vm.scanState.collectAsState()
     val accounts by vm.accounts.collectAsState()
-    var filter by rememberSaveable { mutableStateOf("all") }
+    var categoryFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var typeFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var accountFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    var showFilters by rememberSaveable { mutableStateOf(false) }
     var picker by remember { mutableStateOf<Txn?>(null) }
 
-    val filtered = remember(txns, filter, typeFilter, accountFilter) {
+    val filtered = remember(txns, categoryFilter, typeFilter, accountFilter) {
         txns.filter { t ->
-            (filter == "all" || t.categoryId == filter) &&
+            (categoryFilter == null || t.categoryId == categoryFilter) &&
                 (typeFilter == null || t.type.name == typeFilter) &&
                 (accountFilter == null || t.touches(accountFilter!!))
         }
     }
+    // How many of the sheet's filters are on, so the button can say so without
+    // opening it.
+    val hiddenFilterCount = listOfNotNull(categoryFilter, accountFilter).size
     val categoriesPresent = remember(txns) {
         Categories.ALL.filter { cat -> txns.any { it.categoryId == cat.id } }
     }
@@ -104,48 +110,44 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             },
         ) {
         Column(Modifier.fillMaxSize()) {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
+            // One row: the four answers to "what kind of thing am I looking at?".
+            // Categories and accounts have dozens of options each and live in the sheet.
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                item {
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     FilterChip(
-                        selected = typeFilter == null && accountFilter == null && filter == "all",
-                        onClick = {
-                            typeFilter = null
-                            accountFilter = null
-                            filter = "all"
-                        },
-                        label = { Text("All (${txns.size})") },
+                        selected = typeFilter == null,
+                        onClick = { typeFilter = null },
+                        label = { Text("All") },
                     )
+                    TxnType.entries.forEach { type ->
+                        FilterChip(
+                            selected = typeFilter == type.name,
+                            onClick = { typeFilter = if (typeFilter == type.name) null else type.name },
+                            label = { Text(typeLabel(type)) },
+                        )
+                    }
                 }
-                items(TxnType.entries) { type ->
-                    FilterChip(
-                        selected = typeFilter == type.name,
-                        onClick = { typeFilter = if (typeFilter == type.name) null else type.name },
-                        label = { Text(typeLabel(type)) },
-                    )
-                }
-                items(accounts) { acc ->
-                    FilterChip(
-                        selected = accountFilter == acc.id,
-                        onClick = { accountFilter = if (accountFilter == acc.id) null else acc.id },
-                        label = { Text(acc.name) },
-                    )
-                }
-            }
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(categoriesPresent) { cat ->
-                    FilterChip(
-                        selected = filter == cat.id,
-                        onClick = { filter = if (filter == cat.id) "all" else cat.id },
-                        label = { Text(cat.name) },
-                        leadingIcon = { CategoryIcon(cat.id) },
-                    )
-                }
+                FilterChip(
+                    selected = hiddenFilterCount > 0,
+                    onClick = { showFilters = true },
+                    label = {
+                        Text(if (hiddenFilterCount > 0) "Filters ($hiddenFilterCount)" else "Filters")
+                    },
+                    trailingIcon = {
+                        Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+                    },
+                )
             }
             if (filtered.isEmpty()) {
                 // Scrollable so pull-to-refresh works even with nothing in the list.
@@ -157,13 +159,18 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     EmptyState(
                         style = FaceStyle.SLEEPY,
                         title = "No transactions here",
-                        subtitle = "Pull down to scan, add one manually with +, or change the filter.",
+                        subtitle = if (typeFilter != null || hiddenFilterCount > 0) {
+                            "Nothing matches these filters."
+                        } else {
+                            "Pull down to scan, or add one manually with +."
+                        },
                     )
                 }
             } else {
                 LazyColumn(
-                    // Extra bottom room so the last row scrolls clear of the floating toolbar.
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 96.dp),
+                    contentPadding = PaddingValues(
+                        start = 16.dp, end = 16.dp, top = 10.dp, bottom = ToolbarSpace,
+                    ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     grouped.forEach { (date, dayTxns) ->
@@ -181,6 +188,22 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             }
         }
         }
+    }
+
+    if (showFilters) {
+        FilterSheet(
+            categories = categoriesPresent,
+            accounts = accounts,
+            selectedCategoryId = categoryFilter,
+            selectedAccountId = accountFilter,
+            onCategory = { categoryFilter = it },
+            onAccount = { accountFilter = it },
+            onClearAll = {
+                categoryFilter = null
+                accountFilter = null
+            },
+            onDismiss = { showFilters = false },
+        )
     }
 
     ScanSheetHost(vm)

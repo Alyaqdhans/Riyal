@@ -61,9 +61,11 @@ fun localDateOf(millis: Long): LocalDate =
  * content the same inset, so this is only the pill: its height, the gap it floats above
  * the system bar by, and enough space that the last row does not touch it.
  */
+val ToolbarSpace = 96.dp
+
 @Composable
 fun ToolbarSpacer() {
-    Spacer(Modifier.height(96.dp))
+    Spacer(Modifier.height(ToolbarSpace))
 }
 
 @Composable
