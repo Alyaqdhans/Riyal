@@ -1,58 +1,51 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalLayoutApi::class,
+)
 
 package com.alyaqdhan.riyal.ui.screens
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberBottomSheetState
-import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -69,23 +62,20 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.RoundedPolygon
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
-import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.Stats
-import com.alyaqdhan.riyal.data.Txn
+import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
-import com.alyaqdhan.riyal.ui.compose.CategoryBadge
-import com.alyaqdhan.riyal.ui.compose.CategoryChips
-import com.alyaqdhan.riyal.ui.compose.CategoryPickerSheet
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
-import com.alyaqdhan.riyal.ui.compose.TxnRow
+import com.alyaqdhan.riyal.ui.compose.PeriodBar
+import com.alyaqdhan.riyal.ui.compose.SectionTitle
+import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.theme.successColor
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
@@ -93,58 +83,92 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
+import com.patrykandpatrick.vico.compose.cartesian.data.columnModel
 import com.patrykandpatrick.vico.compose.cartesian.data.lineModel
+import com.patrykandpatrick.vico.compose.cartesian.layer.ColumnCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.common.Fill
+import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
 import com.patrykandpatrick.vico.compose.common.data.ExtraStore
 import java.time.Instant
-import java.time.LocalDate
-import java.time.YearMonth
 import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
-private val monthTitleFmt = DateTimeFormatter.ofPattern("MMMM uuuu")
-private val TrendLabelsKey = ExtraStore.Key<List<String>>()
+private val ChartLabelsKey = ExtraStore.Key<List<String>>()
+private val nextDueFmt = DateTimeFormatter.ofPattern("d MMM")
 
+/**
+ * Analysis answers three questions the rest of the app can't: where the money went,
+ * whether that is more or less than usual, and what is going to happen again.
+ *
+ * Everything on the screen obeys two controls at the top - the account filter and the
+ * period - and every figure is measured against the equally long period before it,
+ * because a number with nothing to compare it to is just a number.
+ */
 @Composable
-fun AnalysisScreen(vm: MainViewModel) {
+fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
     val txns by vm.txns.collectAsState()
+    val accounts by vm.accounts.collectAsState()
+    val budgets by vm.budgets.collectAsState()
+    val budgetsOn by vm.budgetsOn.collectAsState()
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
 
-    // The whole screen follows one time slice: a month by default, or whatever period
-    // the user picks by tapping the title (presets or a calendar range).
-    var slice by remember { mutableStateOf(TimeSlice.ofMonth(YearMonth.now())) }
-    var showSlicePicker by remember { mutableStateOf(false) }
-    var showCustomRange by remember { mutableStateOf(false) }
-    // Tapping a category legend row opens its transactions for this slice, to fix wrong ones.
-    var drillCategoryId by remember { mutableStateOf<String?>(null) }
-    // A row inside the drill-down opens the shared category picker to re-categorize it.
-    var recategorize by remember { mutableStateOf<Txn?>(null) }
-    // Or the user marks the whole transaction as not real; confirm before removing.
-    var confirmRemove by remember { mutableStateOf<Txn?>(null) }
-    // Per-category monthly budgets live in Prefs; this local mirror re-renders the bars
-    // as the user edits them in the dialog below.
-    var budgets by remember { mutableStateOf(vm.prefs.categoryBudgets) }
-    var showBudgetEditor by remember { mutableStateOf(false) }
+    var slice by remember { mutableStateOf(TimeSlice.thisMonth()) }
+    var accountId by remember { mutableStateOf<String?>(null) }
+    var donutType by remember { mutableStateOf(TxnType.EXPENSE) }
 
-    val totals = remember(txns, slice, currency) {
-        Stats.totalsIn(txns, slice.start, slice.endExclusive, currency)
+    // Accounts can be deleted while a filter is pinned to one; drop back to All rather
+    // than showing an empty screen with no obvious cause.
+    LaunchedEffect(accounts) {
+        if (accountId != null && accounts.none { it.id == accountId }) accountId = null
     }
-    val slices = remember(txns, slice, currency) {
-        Stats.breakdownIn(txns, slice.start, slice.endExclusive, currency)
+
+    val totals = remember(txns, slice, currency, accountId) {
+        Stats.totalsIn(txns, slice.start, slice.endExclusive, currency, accountId)
     }
-    val trend = remember(txns, slice, currency) {
-        Stats.cumulativeTrend(txns, slice.start, slice.endExclusive, currency)
+    val previous = remember(txns, slice, currency, accountId) {
+        val (s, e) = Stats.previousWindow(slice.start, slice.endExclusive)
+        Stats.totalsIn(txns, s, e, currency, accountId)
     }
-    val topMerchant = remember(txns, slice, currency) {
-        Stats.topMerchantIn(txns, slice.start, slice.endExclusive, currency)
+    val slices = remember(txns, slice, currency, accountId, donutType) {
+        Stats.breakdownIn(txns, slice.start, slice.endExclusive, currency, accountId, donutType)
     }
-    val biggest = remember(txns, slice, currency) {
-        Stats.biggestExpenseIn(txns, slice.start, slice.endExclusive, currency)
+    val previousSlices = remember(txns, slice, currency, accountId, donutType) {
+        val (s, e) = Stats.previousWindow(slice.start, slice.endExclusive)
+        Stats.breakdownIn(txns, s, e, currency, accountId, donutType)
+            .associate { it.categoryId to it.amountMinor }
+    }
+    val trend = remember(txns, slice, currency, accountId) {
+        Stats.cumulativeTrend(txns, slice.start, slice.endExclusive, currency, accountId)
+    }
+    val flow = remember(txns, slice, currency, accountId) {
+        Stats.cashflow(txns, slice.start, slice.endExclusive, currency, accountId)
+    }
+    val movers = remember(txns, slice, currency, accountId) {
+        Stats.biggestMovers(txns, slice.start, slice.endExclusive, currency, accountId)
+    }
+    val merchants = remember(txns, slice, currency, accountId) {
+        Stats.topMerchantsIn(txns, slice.start, slice.endExclusive, currency, accountId)
+    }
+    val recurring = remember(txns, currency, accountId) {
+        Stats.recurring(txns, currency, accountId)
+    }
+    val biggest = remember(txns, slice, currency, accountId) {
+        Stats.biggestExpenseIn(txns, slice.start, slice.endExclusive, currency, accountId)
+    }
+    val moved = remember(txns, slice, currency, accountId) {
+        Stats.transferTotalIn(txns, slice.start, slice.endExclusive, currency, accountId)
+    }
+    val budgetProgress = remember(budgets, txns, slice, currency, accountId, budgetsOn) {
+        if (!budgetsOn) null else {
+            budgets.firstOrNull { it.overlaps(slice.start, slice.endExclusive) && it.lines.isNotEmpty() }
+                ?.let { Stats.budgetProgress(it, txns, currency, accountId) }
+        }
     }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Analysis") }) }) { padding ->
@@ -157,48 +181,96 @@ fun AnalysisScreen(vm: MainViewModel) {
                 )
                 return@Column
             }
+
+            // The account filter sits outside the scroll: it scopes everything below,
+            // so it should never scroll out of sight while you read the numbers.
+            if (accounts.size > 1) {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    item {
+                        FilterChip(
+                            selected = accountId == null,
+                            onClick = { accountId = null },
+                            label = { Text("All accounts") },
+                        )
+                    }
+                    items(accounts) { acc ->
+                        FilterChip(
+                            selected = accountId == acc.id,
+                            onClick = { accountId = if (accountId == acc.id) null else acc.id },
+                            label = { Text(acc.name) },
+                        )
+                    }
+                }
+            }
+
             Column(
                 Modifier
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                // period selector: chevrons step, the title opens the period picker
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = { slice = slice.shifted(back = true) }) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Earlier period")
-                    }
-                    AnimatedContent(targetState = slice.label, label = "sliceTitle") { label ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                            ) { showSlicePicker = true },
-                        ) {
-                            Text(label, style = MaterialTheme.typography.titleMedium)
-                            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Pick a period")
-                        }
-                    }
-                    IconButton(
-                        onClick = { slice = slice.shifted(back = false) },
-                        enabled = slice.endExclusive <= System.currentTimeMillis(),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Later period")
-                    }
+                PeriodBar(slice = slice, onChange = { slice = it }, txns = txns)
+
+                // ── the three headline numbers, each against the period before
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SummaryTile(
+                        label = "Spent",
+                        amount = totals.spent,
+                        previous = previous.spent,
+                        currency = currency,
+                        // Spending less than last period is the good direction.
+                        upIsGood = false,
+                        modifier = Modifier.weight(1f).popIn(),
+                    )
+                    SummaryTile(
+                        label = "Received",
+                        amount = totals.received,
+                        previous = previous.received,
+                        currency = currency,
+                        upIsGood = true,
+                        modifier = Modifier.weight(1f).popIn(50),
+                    )
+                    SummaryTile(
+                        label = "Net",
+                        amount = totals.net,
+                        previous = previous.net,
+                        currency = currency,
+                        upIsGood = true,
+                        signed = true,
+                        modifier = Modifier.weight(1f).popIn(100),
+                    )
+                }
+                if (moved > 0) {
+                    Text(
+                        "${Money.format(moved, currency)} moved between your own accounts and is " +
+                            "counted in neither figure.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
 
-                // donut + legend
+                // ── donut + legend, either side of the ledger
                 Card(Modifier.fillMaxWidth()) {
                     Column(
                         Modifier.padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
+                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                            SegmentedButton(
+                                selected = donutType == TxnType.EXPENSE,
+                                onClick = { donutType = TxnType.EXPENSE },
+                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                            ) { Text("Spending") }
+                            SegmentedButton(
+                                selected = donutType == TxnType.INCOME,
+                                onClick = { donutType = TxnType.INCOME },
+                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                            ) { Text("Income") }
+                        }
                         Box(contentAlignment = Alignment.Center) {
                             // Multi-color category donut out of stock M3 wavy indicators:
                             // one layer per category at its cumulative fraction, drawn
@@ -251,35 +323,42 @@ fun AnalysisScreen(vm: MainViewModel) {
                                         stroke = gaugeStroke,
                                         trackStroke = gaugeStroke,
                                         amplitude = { 1f },
-                                        wavelength = 42.dp,
                                         // Static wave: layered rings must share the exact
                                         // same phase or the color boundaries shimmer.
                                         waveSpeed = 0.dp,
+                                        wavelength = 42.dp,
                                         modifier = Modifier.size(210.dp),
                                     )
                                 }
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    "spent",
+                                    if (donutType == TxnType.EXPENSE) "spent" else "received",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                Text(Money.format(totals.spent, currency), style = MaterialTheme.typography.titleLarge)
                                 Text(
-                                    if (slices.isEmpty()) "no expenses" else "across ${slices.size} categories",
+                                    Money.format(
+                                        if (donutType == TxnType.EXPENSE) totals.spent else totals.received,
+                                        currency,
+                                    ),
+                                    style = MaterialTheme.typography.titleLarge,
+                                )
+                                Text(
+                                    if (slices.isEmpty()) "nothing recorded"
+                                    else "across ${slices.size} categories",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
-                        slices.forEachIndexed { index, slice ->
-                            val cat = Categories.byId(slice.categoryId)
+                        slices.forEachIndexed { index, s ->
+                            val cat = Categories.byId(s.categoryId)
                             Row(
                                 Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
-                                    .clickable { drillCategoryId = cat.id }
+                                    .clickable { onOpenCategory(cat.id) }
                                     .padding(vertical = 4.dp)
                                     .popIn(index * 40),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -291,24 +370,23 @@ fun AnalysisScreen(vm: MainViewModel) {
                                         .clip(CircleShape)
                                         .background(Color(Categories.colorFor(cat.id))),
                                 )
+                                Column(Modifier.weight(1f)) {
+                                    Text(cat.name, style = MaterialTheme.typography.bodyMedium)
+                                    DeltaText(s.amountMinor, previousSlices[s.categoryId] ?: 0L)
+                                }
                                 Text(
-                                    cat.name,
+                                    Money.format(s.amountMinor, currency),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.weight(1f),
                                 )
                                 Text(
-                                    Money.format(slice.amountMinor, currency),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                                Text(
-                                    "${(slice.fraction * 100).roundToInt()}%",
+                                    "${(s.fraction * 100).roundToInt()}%",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.End,
                                 )
                                 Icon(
                                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = "Review ${cat.name}",
+                                    contentDescription = "Open ${cat.name}",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp),
                                 )
@@ -316,7 +394,8 @@ fun AnalysisScreen(vm: MainViewModel) {
                         }
                         if (slices.isEmpty()) {
                             Text(
-                                "No spending recorded for this period.",
+                                if (donutType == TxnType.EXPENSE) "No spending recorded for this period."
+                                else "No income recorded for this period.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -324,80 +403,180 @@ fun AnalysisScreen(vm: MainViewModel) {
                     }
                 }
 
-                // Money over time: running totals across the period, drawn by Vico.
-                // Where the red line steepens is where the money went; the gap between
-                // green and red is what's left.
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Money over time", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "Running totals: steep red = heavy spending days, the gap to green is what's left.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (trend.size < 2) {
+                // ── cashflow bars and the running total, two views of the same period
+                ChartsCard(flow = flow, trend = trend, currency = currency)
+
+                // ── budget pacing, when there is a plan to pace against
+                budgetProgress?.let { progress ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("Budget pacing", style = MaterialTheme.typography.titleMedium)
                             Text(
-                                "Not enough activity in this period to draw a trend.",
-                                style = MaterialTheme.typography.bodyMedium,
+                                buildString {
+                                    append((progress.elapsedFraction * 100).roundToInt())
+                                    append("% of \"")
+                                    append(progress.plan.label)
+                                    append("\" gone, ")
+                                    append((progress.fraction * 100).roundToInt())
+                                    append("% of the budget spent")
+                                    if (progress.over) append(" — over")
+                                    else if (progress.aheadOfPace) append(" — running ahead")
+                                    else append(" — on track")
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = when {
+                                    progress.over -> MaterialTheme.colorScheme.error
+                                    progress.aheadOfPace -> MaterialTheme.colorScheme.tertiary
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                            progress.lines.forEach { line ->
+                                com.alyaqdhan.riyal.ui.compose.BudgetBar(
+                                    categoryId = line.categoryId,
+                                    spent = line.spentMinor,
+                                    budget = line.capMinor,
+                                    currency = currency,
+                                    paceFraction = progress.elapsedFraction,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // ── what changed most since last period
+                if (movers.isNotEmpty()) {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("Biggest movers", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Against the ${slice.lengthDays} day(s) before this period.",
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                        } else {
-                            val spentVals = remember(trend) { trend.map { it.spentCumulative } }
-                            val receivedVals = remember(trend) { trend.map { it.receivedCumulative } }
-                            val labels = remember(trend) { trend.map { it.label } }
-                            val modelProducer = remember { CartesianChartModelProducer() }
-                            LaunchedEffect(spentVals, receivedVals, labels) {
-                                modelProducer.runTransaction {
-                                    lineModel {
-                                        series(spentVals)
-                                        series(receivedVals)
-                                    }
-                                    extras { it[TrendLabelsKey] = labels }
+                            movers.forEach { mover ->
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable { onOpenCategory(mover.categoryId) }
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Box(
+                                        Modifier
+                                            .size(10.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(Categories.colorFor(mover.categoryId))),
+                                    )
+                                    Text(
+                                        Categories.byId(mover.categoryId).name,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    val up = mover.deltaMinor > 0
+                                    Text(
+                                        (if (up) "▲ " else "▼ ") + Money.format(abs(mover.deltaMinor), currency),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (up) MaterialTheme.colorScheme.error else successColor(),
+                                    )
                                 }
                             }
-                            CartesianChartHost(
-                                chart = rememberCartesianChart(
-                                    rememberLineCartesianLayer(
-                                        LineCartesianLayer.LineProvider.series(
-                                            LineCartesianLayer.Line(
-                                                LineCartesianLayer.LineFill.single(Fill(MaterialTheme.colorScheme.error)),
-                                            ),
-                                            LineCartesianLayer.Line(
-                                                LineCartesianLayer.LineFill.single(Fill(successColor())),
-                                            ),
-                                        ),
-                                    ),
-                                    startAxis = VerticalAxis.rememberStart(
-                                        valueFormatter = CartesianValueFormatter { _, y, _ ->
-                                            Money.toMajor(y.toLong(), currency).toBigInteger().toString()
-                                        },
-                                    ),
-                                    bottomAxis = HorizontalAxis.rememberBottom(
-                                        valueFormatter = CartesianValueFormatter { context, x, _ ->
-                                            context.model.extraStore[TrendLabelsKey].getOrNull(x.toInt()) ?: ""
-                                        },
-                                    ),
-                                ),
-                                modelProducer = modelProducer,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp),
-                            )
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                            LegendDot(MaterialTheme.colorScheme.error, "money out")
-                            LegendDot(successColor(), "money in")
                         }
                     }
                 }
 
-                // insights
+                // ── who took the money
+                if (merchants.isNotEmpty()) {
+                    val biggestMerchant = merchants.first().amountMinor
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("Top merchants", style = MaterialTheme.typography.titleMedium)
+                            merchants.forEach { m ->
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Text(
+                                            m.merchant,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        Text(
+                                            "${m.count}×",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Text(
+                                            Money.format(m.amountMinor, currency),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                        )
+                                    }
+                                    LinearProgressIndicator(
+                                        progress = {
+                                            if (biggestMerchant > 0) {
+                                                m.amountMinor.toFloat() / biggestMerchant.toFloat()
+                                            } else 0f
+                                        },
+                                        color = MaterialTheme.colorScheme.primary,
+                                        trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── what is going to happen again
+                if (recurring.isNotEmpty()) {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("Looks recurring", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Same merchant, steady amount, steady rhythm — so it will very " +
+                                    "likely land again.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            recurring.forEach { r ->
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    com.alyaqdhan.riyal.ui.compose.CategoryIcon(r.categoryId, size = 18.dp)
+                                    Column(Modifier.weight(1f)) {
+                                        Text(r.merchant, style = MaterialTheme.typography.bodyMedium)
+                                        Text(
+                                            "every ${cadenceLabel(r.intervalDays)} · ${r.occurrences} so far · " +
+                                                "next around ${nextDueFmt.format(
+                                                    Instant.ofEpochMilli(r.nextAtMillis).atZone(ZoneId.systemDefault())
+                                                )}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    Text(
+                                        Money.format(r.typicalMinor, currency),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── insights
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Insights", style = MaterialTheme.typography.titleMedium)
                         InsightRow(
                             R.drawable.ic_insight_store, MaterialShapes.Cookie9Sided, "Top merchant",
-                            topMerchant?.let { "${it.first} · ${Money.format(it.second, currency)}" } ?: "none yet",
+                            merchants.firstOrNull()
+                                ?.let { "${it.merchant} · ${Money.format(it.amountMinor, currency)}" }
+                                ?: "none yet",
                         )
                         InsightRow(
                             R.drawable.ic_insight_bolt, MaterialShapes.SoftBurst, "Biggest expense",
@@ -421,427 +600,214 @@ fun AnalysisScreen(vm: MainViewModel) {
                         }
                     }
                 }
-                // Budgets: only meaningful against a single calendar month, since a
-                // budget is a monthly cap. For other slices, offer the editor only.
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("Category budgets", style = MaterialTheme.typography.titleMedium)
-                            TextButton(onClick = { showBudgetEditor = true }) { Text("Edit") }
-                        }
-                        if (slice.month == null) {
-                            Text(
-                                "Pick a single month to see budget progress. Budgets are monthly caps.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        } else if (budgets.isEmpty()) {
-                            Text(
-                                "No category budgets yet. Tap Edit to cap a category's monthly spend.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        } else {
-                            budgets.entries
-                                .sortedByDescending { it.value }
-                                .forEach { (catId, budget) ->
-                                    val spent = Stats.categorySpent(txns, catId, slice.month!!, currency)
-                                    BudgetBar(catId, spent, budget, currency)
-                                }
-                        }
-                    }
-                }
                 // Room for the floating toolbar hovering over the content.
                 Spacer(Modifier.height(88.dp))
             }
         }
     }
-
-    if (showSlicePicker) {
-        AlertDialog(
-            onDismissRequest = { showSlicePicker = false },
-            title = { Text("Pick a period") },
-            text = {
-                Column {
-                    val now = YearMonth.now()
-                    PickerOption("This month") { slice = TimeSlice.ofMonth(now); showSlicePicker = false }
-                    PickerOption("Last month") { slice = TimeSlice.ofMonth(now.minusMonths(1)); showSlicePicker = false }
-                    PickerOption("Last 3 months") { slice = TimeSlice.lastMonths(3); showSlicePicker = false }
-                    PickerOption("Last 6 months") { slice = TimeSlice.lastMonths(6); showSlicePicker = false }
-                    PickerOption("This year") { slice = TimeSlice.thisYear(); showSlicePicker = false }
-                    PickerOption("All time") { slice = TimeSlice.allTime(txns); showSlicePicker = false }
-                    PickerOption("Custom range…") { showSlicePicker = false; showCustomRange = true }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showSlicePicker = false }) { Text("Close") }
-            },
-        )
-    }
-
-    if (showCustomRange) {
-        val rangeState = rememberDateRangePickerState()
-        DatePickerDialog(
-            onDismissRequest = { showCustomRange = false },
-            confirmButton = {
-                TextButton(
-                    enabled = rangeState.selectedStartDateMillis != null &&
-                        rangeState.selectedEndDateMillis != null,
-                    onClick = {
-                        slice = TimeSlice.ofDays(
-                            utcDay(rangeState.selectedStartDateMillis!!),
-                            utcDay(rangeState.selectedEndDateMillis!!),
-                        )
-                        showCustomRange = false
-                    },
-                ) { Text("Apply") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCustomRange = false }) { Text("Cancel") }
-            },
-        ) {
-            DateRangePicker(
-                state = rangeState,
-                modifier = Modifier.height(460.dp),
-            )
-        }
-    }
-
-    drillCategoryId?.let { catId ->
-        val cat = Categories.byId(catId)
-        // The exact transactions behind this slice of the donut, newest first.
-        val inCategory = remember(txns, catId, slice) {
-            txns.filter {
-                it.categoryId == catId &&
-                    it.atMillis >= slice.start && it.atMillis < slice.endExclusive
-            }.sortedByDescending { it.atMillis }
-        }
-        CategoryTxnsSheet(
-            categoryId = catId,
-            title = cat.name,
-            txns = inCategory,
-            onTxnClick = { recategorize = it },
-            onTxnRemove = { confirmRemove = it },
-            onDismiss = { drillCategoryId = null },
-        )
-    }
-
-    confirmRemove?.let { txn ->
-        AlertDialog(
-            onDismissRequest = { confirmRemove = null },
-            title = { Text("Remove this transaction?") },
-            text = {
-                Text(
-                    if (txn.manual) {
-                        "This was added manually. It will be deleted."
-                    } else {
-                        "The app read this from an SMS but you're saying it isn't a real " +
-                            "transaction. It'll be removed and kept out of future scans. " +
-                            "Your SMS inbox is untouched."
-                    },
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.ignoreTxn(txn)
-                    confirmRemove = null
-                    drillCategoryId = null
-                }) { Text("Remove") }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmRemove = null }) { Text("Cancel") }
-            },
-        )
-    }
-
-    if (showBudgetEditor) {
-        BudgetEditorDialog(
-            currency = currency,
-            initial = budgets,
-            onSave = { catId, minor ->
-                vm.prefs.setCategoryBudget(catId, minor)
-                budgets = vm.prefs.categoryBudgets
-            },
-            onDismiss = { showBudgetEditor = false },
-        )
-    }
-
-    recategorize?.let { txn ->
-        CategoryPickerSheet(
-            txn = txn,
-            onApply = { categoryId, rulePattern ->
-                vm.setCategory(txn, categoryId, rulePattern)
-                recategorize = null
-                // The transaction left this category; drop back to the charts so the
-                // list can't show a now-stale membership.
-                drillCategoryId = null
-            },
-            onDismiss = { recategorize = null },
-            rememberByDefault = vm.prefs.smartRules,
-        )
-    }
 }
 
 /**
- * Drill-down from the Analysis donut: every transaction the app filed under one
- * category for the selected period. Tapping a row re-categorizes it, which is how a
- * misclassified message gets corrected right where you spot it.
+ * Cashflow bars and the cumulative line, tabbed rather than stacked: they answer
+ * different questions about the same period ("when did it happen" vs "how did it add
+ * up"), and showing both at once buries whichever one you came for.
  */
 @Composable
-private fun CategoryTxnsSheet(
-    categoryId: String,
-    title: String,
-    txns: List<Txn>,
-    onTxnClick: (Txn) -> Unit,
-    onTxnRemove: (Txn) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            Modifier
-                .fillMaxHeight(0.82f)
-                .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                CategoryBadge(categoryId)
-                Column {
-                    Text(title, style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        "${txns.size} transaction(s) · tap to recategorize, ✕ to remove a wrong one",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(txns, key = { it.id }) { txn ->
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        TxnRow(txn, onClick = { onTxnClick(txn) }, modifier = Modifier.weight(1f))
-                        IconButton(onClick = { onTxnRemove(txn) }) {
-                            Icon(
-                                Icons.Filled.Close,
-                                contentDescription = "Remove this transaction",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** One category's month-to-date spend against its budget cap, with a colored bar. */
-@Composable
-private fun BudgetBar(categoryId: String, spent: Long, budget: Long, currency: String) {
-    val cat = Categories.byId(categoryId)
-    val fraction = if (budget > 0) (spent.toFloat() / budget.toFloat()) else 0f
-    val over = spent > budget
-    val barColor = when {
-        over -> MaterialTheme.colorScheme.error
-        fraction >= 0.85f -> MaterialTheme.colorScheme.tertiary
-        else -> Color(Categories.colorFor(categoryId))
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier
-                    .size(10.dp)
-                    .clip(CircleShape)
-                    .background(Color(Categories.colorFor(categoryId))),
-            )
-            Text(cat.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            Text(
-                "${Money.format(spent, currency)} / ${Money.format(budget, currency)}",
-                style = MaterialTheme.typography.labelMedium,
-                color = if (over) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        LinearProgressIndicator(
-            progress = { fraction.coerceIn(0f, 1f) },
-            color = barColor,
-            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(CircleShape),
-        )
-        if (over) {
-            Text(
-                "Over by ${Money.format(spent - budget, currency)}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-    }
-}
-
-/**
- * Set or clear a monthly cap per category: pick a category chip, type an amount,
- * add it. Existing budgets are listed with a remove control. Expense categories only,
- * since income isn't something you cap.
- */
-@Composable
-private fun BudgetEditorDialog(
+private fun ChartsCard(
+    flow: List<Stats.CashflowPoint>,
+    trend: List<Stats.TrendPoint>,
     currency: String,
-    initial: Map<String, Long>,
-    onSave: (categoryId: String, minor: Long) -> Unit,
-    onDismiss: () -> Unit,
 ) {
-    var selected by remember { mutableStateOf(Categories.forDirection(Direction.EXPENSE).first().id) }
-    var amount by remember { mutableStateOf("") }
-    // Local view so the list updates live as budgets are added/removed.
-    var current by remember { mutableStateOf(initial) }
-    val parsed = amount.trim().replace(",", "").toBigDecimalOrNull()
+    var showTrend by remember { mutableStateOf(false) }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    selected = !showTrend,
+                    onClick = { showTrend = false },
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                ) { Text("Cashflow") }
+                SegmentedButton(
+                    selected = showTrend,
+                    onClick = { showTrend = true },
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                ) { Text("Running total") }
+            }
+            Text(
+                if (showTrend) {
+                    "Running totals: steep red = heavy spending days, the gap to green is what's left."
+                } else {
+                    "Money in against money out, side by side, so a lean stretch is obvious."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Category budgets") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (current.isNotEmpty()) {
-                    current.entries.sortedByDescending { it.value }.forEach { (catId, minor) ->
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                "${Categories.byId(catId).name}: ${Money.format(minor, currency)}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f),
-                            )
-                            TextButton(onClick = {
-                                onSave(catId, 0L)
-                                current = current - catId
-                            }) { Text("Remove") }
+            val enough = if (showTrend) trend.size >= 2 else flow.isNotEmpty()
+            if (!enough) {
+                Text(
+                    "Not enough activity in this period to draw it.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else if (showTrend) {
+                val spentVals = remember(trend) { trend.map { it.spentCumulative } }
+                val receivedVals = remember(trend) { trend.map { it.receivedCumulative } }
+                val labels = remember(trend) { trend.map { it.label } }
+                val producer = remember { CartesianChartModelProducer() }
+                LaunchedEffect(spentVals, receivedVals, labels) {
+                    producer.runTransaction {
+                        lineModel {
+                            series(spentVals)
+                            series(receivedVals)
                         }
+                        extras { it[ChartLabelsKey] = labels }
                     }
                 }
-                Text("Add / change a budget", style = MaterialTheme.typography.labelLarge)
-                CategoryChips(
-                    direction = Direction.EXPENSE,
-                    selectedId = selected,
-                    onSelect = { selected = it },
+                CartesianChartHost(
+                    chart = rememberCartesianChart(
+                        rememberLineCartesianLayer(
+                            LineCartesianLayer.LineProvider.series(
+                                LineCartesianLayer.Line(
+                                    LineCartesianLayer.LineFill.single(Fill(MaterialTheme.colorScheme.error)),
+                                ),
+                                LineCartesianLayer.Line(
+                                    LineCartesianLayer.LineFill.single(Fill(successColor())),
+                                ),
+                            ),
+                        ),
+                        startAxis = VerticalAxis.rememberStart(
+                            valueFormatter = amountAxisFormatter(currency),
+                        ),
+                        bottomAxis = HorizontalAxis.rememberBottom(
+                            valueFormatter = labelAxisFormatter(),
+                        ),
+                    ),
+                    modelProducer = producer,
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
                 )
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it },
-                    label = { Text("Monthly cap") },
-                    suffix = { Text(currency) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            } else {
+                val spentVals = remember(flow) { flow.map { it.spent } }
+                val receivedVals = remember(flow) { flow.map { it.received } }
+                val labels = remember(flow) { flow.map { it.label } }
+                val producer = remember { CartesianChartModelProducer() }
+                LaunchedEffect(spentVals, receivedVals, labels) {
+                    producer.runTransaction {
+                        columnModel {
+                            series(spentVals)
+                            series(receivedVals)
+                        }
+                        extras { it[ChartLabelsKey] = labels }
+                    }
+                }
+                CartesianChartHost(
+                    chart = rememberCartesianChart(
+                        rememberColumnCartesianLayer(
+                            ColumnCartesianLayer.ColumnProvider.series(
+                                rememberLineComponent(
+                                    fill = Fill(MaterialTheme.colorScheme.error),
+                                    thickness = 10.dp,
+                                ),
+                                rememberLineComponent(
+                                    fill = Fill(successColor()),
+                                    thickness = 10.dp,
+                                ),
+                            ),
+                        ),
+                        startAxis = VerticalAxis.rememberStart(
+                            valueFormatter = amountAxisFormatter(currency),
+                        ),
+                        bottomAxis = HorizontalAxis.rememberBottom(
+                            valueFormatter = labelAxisFormatter(),
+                        ),
+                    ),
+                    modelProducer = producer,
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
                 )
             }
-        },
-        confirmButton = {
-            TextButton(
-                enabled = parsed != null && parsed.signum() > 0,
-                onClick = {
-                    val minor = Money.toMinor(parsed!!, currency)
-                    onSave(selected, minor)
-                    current = current + (selected to minor)
-                    amount = ""
-                },
-            ) { Text("Add") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                LegendDot(MaterialTheme.colorScheme.error, "money out")
+                LegendDot(successColor(), "money in")
+            }
+        }
+    }
+}
+
+/** Axis labels in whole units: minor units would make every tick unreadable. */
+private fun amountAxisFormatter(currency: String) = CartesianValueFormatter { _, y, _ ->
+    Money.toMajor(y.toLong(), currency).toBigInteger().toString()
+}
+
+private fun labelAxisFormatter() = CartesianValueFormatter { context, x, _ ->
+    context.model.extraStore[ChartLabelsKey].getOrNull(x.toInt()) ?: ""
+}
+
+/** One headline figure with how it compares to the equally long period before. */
+@Composable
+private fun SummaryTile(
+    label: String,
+    amount: Long,
+    previous: Long,
+    currency: String,
+    upIsGood: Boolean,
+    modifier: Modifier = Modifier,
+    signed: Boolean = false,
+) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            (if (signed && amount < 0) "− " else "") + Money.format(abs(amount), currency),
+            style = MaterialTheme.typography.titleSmall,
+            color = if (signed && amount < 0) MaterialTheme.colorScheme.error
+            else MaterialTheme.colorScheme.onSurface,
+        )
+        DeltaText(amount, previous, upIsGood = upIsGood)
+    }
+}
+
+/**
+ * "▲ 18%" against the previous period, coloured by whether that direction is welcome -
+ * spending more is red, earning more is green. Silent when there is no baseline, since
+ * a percentage change from nothing is not a fact.
+ */
+@Composable
+private fun DeltaText(now: Long, previous: Long, upIsGood: Boolean = false) {
+    val pct = Stats.deltaPct(now, previous)
+    if (pct == null || abs(pct) < 0.005f) {
+        Text(
+            if (pct == null) "no baseline" else "level",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+    val up = pct > 0
+    val good = up == upIsGood
+    Text(
+        (if (up) "▲ " else "▼ ") + "${(abs(pct) * 100).roundToInt()}%",
+        style = MaterialTheme.typography.labelSmall,
+        color = if (good) successColor() else MaterialTheme.colorScheme.error,
     )
 }
 
-@Composable
-private fun PickerOption(label: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Text(label, modifier = Modifier.fillMaxWidth())
-    }
-}
-
-/** The picker returns UTC-midnight millis for a calendar day. */
-private fun utcDay(millis: Long): LocalDate =
-    Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
-
-/**
- * One selected period of time. Chevrons shift it by its own length; a slice that is
- * exactly one calendar month keeps stepping through calendar months.
- */
-private data class TimeSlice(
-    val start: Long,
-    val endExclusive: Long,
-    val label: String,
-    val month: YearMonth? = null,
-) {
-    fun shifted(back: Boolean): TimeSlice {
-        if (month != null) return ofMonth(if (back) month.minusMonths(1) else month.plusMonths(1))
-        val zone = ZoneId.systemDefault()
-        val startDay = Instant.ofEpochMilli(start).atZone(zone).toLocalDate()
-        val endDay = Instant.ofEpochMilli(endExclusive - 1).atZone(zone).toLocalDate()
-        val lengthDays = endDay.toEpochDay() - startDay.toEpochDay() + 1
-        val shift = if (back) -lengthDays else lengthDays
-        return ofDays(startDay.plusDays(shift), endDay.plusDays(shift))
-    }
-
-    companion object {
-        private val zone: ZoneId get() = ZoneId.systemDefault()
-        private val dayFmt = DateTimeFormatter.ofPattern("d MMM uu")
-
-        private fun dayStart(d: LocalDate) = d.atStartOfDay(zone).toInstant().toEpochMilli()
-
-        fun ofMonth(m: YearMonth) = TimeSlice(
-            start = dayStart(m.atDay(1)),
-            endExclusive = dayStart(m.plusMonths(1).atDay(1)),
-            label = m.format(monthTitleFmt),
-            month = m,
-        )
-
-        fun ofDays(startDay: LocalDate, endDay: LocalDate) = TimeSlice(
-            start = dayStart(startDay),
-            endExclusive = dayStart(endDay.plusDays(1)),
-            label = "${dayFmt.format(startDay)} – ${dayFmt.format(endDay)}",
-        )
-
-        fun lastMonths(n: Int): TimeSlice {
-            val end = YearMonth.now()
-            return TimeSlice(
-                start = dayStart(end.minusMonths(n - 1L).atDay(1)),
-                endExclusive = dayStart(end.plusMonths(1).atDay(1)),
-                label = "Last $n months",
-            )
-        }
-
-        fun thisYear(): TimeSlice {
-            val year = LocalDate.now().year
-            return TimeSlice(
-                start = dayStart(LocalDate.of(year, 1, 1)),
-                endExclusive = dayStart(LocalDate.of(year + 1, 1, 1)),
-                label = "$year",
-            )
-        }
-
-        fun allTime(txns: List<Txn>): TimeSlice {
-            val oldest = txns.minOfOrNull { it.atMillis } ?: System.currentTimeMillis()
-            return TimeSlice(
-                start = dayStart(Instant.ofEpochMilli(oldest).atZone(zone).toLocalDate()),
-                endExclusive = dayStart(LocalDate.now().plusDays(1)),
-                label = "All time",
-            )
-        }
-    }
+private fun cadenceLabel(days: Int): String = when (days) {
+    in 6..8 -> "week"
+    in 13..16 -> "2 weeks"
+    in 26..35 -> "month"
+    in 85..95 -> "3 months"
+    in 355..375 -> "year"
+    else -> "$days days"
 }
 
 @Composable
