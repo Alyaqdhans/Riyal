@@ -111,6 +111,16 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
      */
     private val ignored = HashSet<String>()
 
+    /**
+     * Txn ids the user archived: still real, still counted in the account balance, but
+     * out of the way in the lists. Unlike [ignored] the record is kept, so archiving is
+     * the safe half of a swipe and deleting is the deliberate one.
+     */
+    private val archived = HashSet<String>()
+
+    private val _archivedIds = MutableStateFlow<Set<String>>(emptySet())
+    val archivedIds: StateFlow<Set<String>> = _archivedIds
+
     init {
         scope.launch { mutex.withLock { loadLocked() } }
     }
@@ -406,6 +416,14 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
      * also remembered as ignored so future rescans keep dropping the same message; a
      * manual transaction is simply deleted (there's no inbox message to re-parse).
      */
+    /** Puts a record out of the lists without pretending it never happened. */
+    suspend fun archiveTxn(txn: Txn, archive: Boolean) = mutex.withLock {
+        val ids = (txn.legIds + txn.id).toSet()
+        if (archive) archived += ids else archived -= ids
+        _archivedIds.value = archived.toSet()
+        persistLocked()
+    }
+
     suspend fun ignoreTxn(txn: Txn) = mutex.withLock {
         if (!txn.manual) {
             ignored.add(txn.id)
@@ -574,6 +592,8 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         overrides.clear()
         accountOverrides.clear()
         transferDecisions.clear()
+        archived.clear()
+        _archivedIds.value = emptySet()
         manualTransfers.clear()
         ignored.clear()
         file.delete()
@@ -633,6 +653,10 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
                     manualTransfers[key] = ends.optNullableString("from") to ends.optNullableString("to")
                 }
             }
+            root.optJSONArray("archivedTxns")?.let { a ->
+                for (i in 0 until a.length()) archived.add(a.getString(i))
+            }
+            _archivedIds.value = archived.toSet()
             root.optJSONArray("ignored")?.let { a ->
                 for (i in 0 until a.length()) ignored.add(a.getString(i))
             }
@@ -686,6 +710,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
                 }
             })
             root.put("ignored", JSONArray().apply { ignored.forEach { put(it) } })
+            root.put("archivedTxns", JSONArray().apply { archived.forEach { put(it) } })
             _lastSummary.value?.let { s ->
                 root.put("summary", JSONObject().apply {
                     put("at", s.at); put("took", s.tookMs); put("scanned", s.scanned)

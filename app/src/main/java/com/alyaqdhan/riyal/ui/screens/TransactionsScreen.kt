@@ -3,6 +3,7 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,8 +17,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -25,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -47,6 +52,7 @@ import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.FilterSheet
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
+import com.alyaqdhan.riyal.ui.compose.SwipeableTxnRow
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.ToolbarSpace
 import com.alyaqdhan.riyal.ui.compose.TxnRow
@@ -64,22 +70,35 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     var typeFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var accountFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var showFilters by rememberSaveable { mutableStateOf(false) }
+    var sort by rememberSaveable { mutableStateOf(TxnSort.NEWEST.name) }
+    var showArchived by rememberSaveable { mutableStateOf(false) }
     var picker by remember { mutableStateOf<Txn?>(null) }
+    var confirmDelete by remember { mutableStateOf<Txn?>(null) }
+    val archivedIds by vm.archivedIds.collectAsState()
 
-    val filtered = remember(txns, categoryFilter, typeFilter, accountFilter) {
+    val filtered = remember(txns, categoryFilter, typeFilter, accountFilter, archivedIds, showArchived) {
         txns.filter { t ->
             (categoryFilter == null || t.categoryId == categoryFilter) &&
                 (typeFilter == null || t.type.name == typeFilter) &&
-                (accountFilter == null || t.touches(accountFilter!!))
+                (accountFilter == null || t.touches(accountFilter!!)) &&
+                (showArchived == (t.id in archivedIds))
         }
     }
+    val order = TxnSort.valueOf(sort)
     // How many of the sheet's filters are on, so the button can say so without
     // opening it.
     val hiddenFilterCount = listOfNotNull(categoryFilter, accountFilter).size
     val categoriesPresent = remember(txns) {
         Categories.ALL.filter { cat -> txns.any { it.categoryId == cat.id } }
     }
-    val grouped = remember(filtered) { filtered.groupBy { localDateOf(it.atMillis) } }
+    // Sorted by date the list reads as days; sorted by size it reads as one ranking,
+    // and day headers would just chop the ranking into meaningless pieces.
+    val grouped = remember(filtered, order) {
+        if (order.byDate) filtered.groupBy { localDateOf(it.atMillis) } else emptyMap()
+    }
+    val ranked = remember(filtered, order) {
+        if (order.byDate) emptyList() else order.applyTo(filtered)
+    }
 
     Scaffold(
         topBar = {
@@ -140,6 +159,10 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                         )
                     }
                 }
+                SortChip(
+                    current = order,
+                    onSelect = { sort = it.name },
+                )
                 FilterChip(
                     selected = hiddenFilterCount > 0,
                     onClick = { showFilters = true },
@@ -151,6 +174,18 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     },
                 )
             }
+            if (archivedIds.isNotEmpty()) {
+                TextButton(
+                    onClick = { showArchived = !showArchived },
+                    modifier = Modifier.padding(start = 8.dp),
+                ) {
+                    Text(
+                        if (showArchived) "Back to your transactions"
+                        else "Archived (${archivedIds.size})",
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+            }
             if (filtered.isEmpty()) {
                 // Scrollable so pull-to-refresh works even with nothing in the list.
                 Column(
@@ -161,10 +196,10 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     EmptyState(
                         style = FaceStyle.SLEEPY,
                         title = "No transactions here",
-                        subtitle = if (typeFilter != null || hiddenFilterCount > 0) {
-                            "Nothing matches these filters."
-                        } else {
-                            "Pull down to scan, or add one manually with +."
+                        subtitle = when {
+                            showArchived -> "Nothing archived. Swipe a row right to put it here."
+                            typeFilter != null || hiddenFilterCount > 0 -> "Nothing matches these filters."
+                            else -> "Pull down to scan, or add one manually with +."
                         },
                     )
                 }
@@ -175,21 +210,47 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    grouped.forEach { (date, dayTxns) ->
-                        item(key = "header-$date") { DayHeader(date, dayTxns) }
-                        items(dayTxns, key = { it.id }) { txn ->
-                            TxnRow(
-                                txn,
-                                onClick = { picker = txn },
+                    if (order.byDate) {
+                        grouped.forEach { (date, dayTxns) ->
+                            item(key = "header-$date") { DayHeader(date, dayTxns) }
+                            items(dayTxns, key = { it.id }) { txn ->
+                                SwipeableTxnRow(
+                                    archived = txn.id in archivedIds,
+                                    onArchive = { vm.archiveTxn(txn, txn.id !in archivedIds) },
+                                    onRequestDelete = { confirmDelete = txn },
+                                    modifier = Modifier.animateItem(),
+                                ) {
+                                    TxnRow(txn, onClick = { picker = txn }, accounts = accounts)
+                                }
+                            }
+                        }
+                    } else {
+                        items(ranked, key = { it.id }) { txn ->
+                            SwipeableTxnRow(
+                                archived = txn.id in archivedIds,
+                                onArchive = { vm.archiveTxn(txn, txn.id !in archivedIds) },
+                                onRequestDelete = { confirmDelete = txn },
                                 modifier = Modifier.animateItem(),
-                                accounts = accounts,
-                            )
+                            ) {
+                                TxnRow(txn, onClick = { picker = txn }, accounts = accounts)
+                            }
                         }
                     }
                 }
             }
         }
         }
+    }
+
+    confirmDelete?.let { txn ->
+        RemoveTxnDialog(
+            txn = txn,
+            onConfirm = {
+                vm.ignoreTxn(txn)
+                confirmDelete = null
+            },
+            onDismiss = { confirmDelete = null },
+        )
     }
 
     if (showFilters) {
@@ -264,6 +325,64 @@ private fun DayHeader(date: LocalDate, dayTxns: List<Txn>) {
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+/**
+ * How the list is ordered. Newest-first is what a transaction list is for; the two
+ * "biggest" orders answer the other question people actually ask of one - what did the
+ * money go on - without making them scroll a year of small card payments to find out.
+ */
+enum class TxnSort(val label: String, val byDate: Boolean) {
+    NEWEST("Newest", true),
+    OLDEST("Oldest", true),
+    BIGGEST_OUT("Biggest out", false),
+    BIGGEST_IN("Biggest in", false),
+    ;
+
+    /** Only meaningful for the amount orders; the date orders group by day instead. */
+    fun applyTo(txns: List<Txn>): List<Txn> = when (this) {
+        NEWEST -> txns.sortedByDescending { it.atMillis }
+        OLDEST -> txns.sortedBy { it.atMillis }
+        // A ranking of spending should not be led by income that happens to be larger,
+        // so the other side is ranked below rather than mixed in.
+        BIGGEST_OUT -> txns.sortedWith(
+            compareByDescending<Txn> { it.type == TxnType.EXPENSE }
+                .thenByDescending { it.amountMinor },
+        )
+        BIGGEST_IN -> txns.sortedWith(
+            compareByDescending<Txn> { it.type == TxnType.INCOME }
+                .thenByDescending { it.amountMinor },
+        )
+    }
+}
+
+@Composable
+private fun SortChip(current: TxnSort, onSelect: (TxnSort) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        FilterChip(
+            selected = current != TxnSort.NEWEST,
+            onClick = { open = true },
+            label = { Text(current.label) },
+            trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null) },
+        )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            TxnSort.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    onClick = {
+                        onSelect(option)
+                        open = false
+                    },
+                    trailingIcon = {
+                        if (option == current) {
+                            Icon(Icons.Filled.Check, contentDescription = null)
+                        }
+                    },
+                )
+            }
         }
     }
 }

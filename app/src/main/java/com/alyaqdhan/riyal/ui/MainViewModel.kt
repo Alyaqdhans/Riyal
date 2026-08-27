@@ -369,6 +369,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             Verbose.flush()
         }
 
+    val archivedIds = store.archivedIds
+
+    fun archiveTxn(txn: Txn, archive: Boolean) = viewModelScope.launch(Dispatchers.IO) {
+        store.archiveTxn(txn, archive)
+        Verbose.info(
+            if (archive) {
+                "archived by you: ${Money.format(txn.amountMinor, txn.currency)} is out of the " +
+                    "lists but still counts towards your balance"
+            } else {
+                "unarchived by you: ${Money.format(txn.amountMinor, txn.currency)} is back in the lists"
+            }
+        )
+        Verbose.flush()
+    }
+
     fun ignoreTxn(txn: Txn) = viewModelScope.launch(Dispatchers.IO) {
         store.ignoreTxn(txn)
         Verbose.info(

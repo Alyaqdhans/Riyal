@@ -40,6 +40,7 @@ import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
+import com.alyaqdhan.riyal.ui.compose.SwipeableTxnRow
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
@@ -68,6 +69,7 @@ fun CategoryDetailScreen(vm: MainViewModel, categoryId: String, onBack: () -> Un
     var slice by remember { mutableStateOf(TimeSlice.thisMonth()) }
     var editing by remember { mutableStateOf<Txn?>(null) }
     var confirmRemove by remember { mutableStateOf<Txn?>(null) }
+    val archivedIds by vm.archivedIds.collectAsState()
 
     val inCategory = remember(txns, categoryId, slice) {
         txns.filter { it.categoryId == categoryId && slice.contains(it.atMillis) }
@@ -162,24 +164,14 @@ fun CategoryDetailScreen(vm: MainViewModel, categoryId: String, onBack: () -> Un
                 }
             } else {
                 items(inCategory, key = { it.id }) { txn ->
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    // Swipe, like every other transaction list: the little × next to
+                    // each row was permanent deletion one mis-tap away.
+                    SwipeableTxnRow(
+                        archived = txn.id in archivedIds,
+                        onArchive = { vm.archiveTxn(txn, txn.id !in archivedIds) },
+                        onRequestDelete = { confirmRemove = txn },
                     ) {
-                        TxnRow(
-                            txn,
-                            onClick = { editing = txn },
-                            modifier = Modifier.weight(1f),
-                            accounts = accounts,
-                        )
-                        IconButton(onClick = { confirmRemove = txn }) {
-                            Icon(
-                                Icons.Filled.Close,
-                                contentDescription = "Remove this transaction",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
+                        TxnRow(txn, onClick = { editing = txn }, accounts = accounts)
                     }
                 }
             }
