@@ -90,10 +90,10 @@ object Categorizer {
         for (rule in rules) {
             if (!contains(hay, rule.pattern.lowercase())) continue
             // A rule must match the side of the ledger it was made on, exactly as the
-            // built-ins do. One counterparty can both take money and send it - "MBI"
-            // covers 226 records in one real inbox, half of them incoming - and filing
-            // the outgoing half as an expense category must not drag the incoming half
-            // in with it.
+            // built-ins do. A counterparty can be on both sides - the same person you
+            // pay can pay you - and filing the outgoing half under an expense category
+            // must not drag the incoming half in with it. Nothing enforced that, and an
+            // expense category on an income record is a wrong answer that looks right.
             if (Categories.byId(rule.categoryId).income != wantIncome) continue
             return Match(rule.categoryId, rule.pattern, "your rule")
         }

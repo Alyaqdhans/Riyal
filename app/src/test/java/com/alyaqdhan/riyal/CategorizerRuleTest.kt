@@ -7,8 +7,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * A saved rule is keyed on a counterparty, and one counterparty can both take money
- * and send it. Filing the outgoing half must leave the incoming half alone.
+ * A saved rule is keyed on a counterparty, and the same person you pay can pay you.
+ * Filing the outgoing half must leave the incoming half alone.
+ *
+ * This is a guard rather than a repair: no merchant in the inbox it was written
+ * against currently sits on both sides. It exists because filing a whole name at once
+ * is now one tap, so the day one does, it must not quietly mis-file the other half.
  */
 class CategorizerRuleTest {
 
