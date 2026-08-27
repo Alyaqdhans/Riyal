@@ -703,9 +703,17 @@ class Store(context: Context) {
         put("color", a.color); put("archived", a.archived); put("needsBal", a.needsBalance)
     }
 
+    /**
+     * Accounts discovered before accounts named themselves carry a placeholder nickname
+     * ("Main", "Account ···0019"). Dropping it lets [Account.displayName] show the bank
+     * and the digits instead; a nickname the user actually typed is left alone.
+     */
+    private fun legacyAutoName(stored: String): String =
+        if (stored == "Main" || LEGACY_AUTO_NAME.matches(stored)) "" else stored
+
     private fun accountFromJson(o: JSONObject) = Account(
         id = o.getString("id"),
-        name = o.getString("name"),
+        name = legacyAutoName(o.getString("name")),
         bankName = o.optString("bank", ""),
         last4 = o.optNullableString("last4"),
         currency = o.getString("cur"),
@@ -802,5 +810,8 @@ class Store(context: Context) {
     private companion object {
         /** Bumped for accounts + transfer types + dated budgets; older files are discarded. */
         const val SCHEMA_VERSION = 2
+
+        /** The placeholder nickname discovery used to write, e.g. "Account ···0019". */
+        val LEGACY_AUTO_NAME = Regex("^Account [·.]{0,3}\\d{2,6}$")
     }
 }
