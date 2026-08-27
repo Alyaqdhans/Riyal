@@ -268,7 +268,9 @@ class ScanEngine(
         }
 
         // ── stage 4: nominate transfers ───────────────────────────────────
-        val proposals = TransferMatcher.propose(txns, hintedIds = hinted)
+        // Accounts go in so the matcher can tell a same-bank move (instant, 15 min)
+        // from a bank-to-bank one, where the receiving bank texts once it settles.
+        val proposals = TransferMatcher.propose(txns, hintedIds = hinted, accounts = accounts)
         if (proposals.isNotEmpty()) {
             Verbose.scan("──────── possible transfers ────────")
             proposals.forEach { p ->

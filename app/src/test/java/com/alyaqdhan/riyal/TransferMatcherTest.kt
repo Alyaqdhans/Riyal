@@ -1,5 +1,6 @@
 package com.alyaqdhan.riyal
 
+import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.TransferMatcher
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
@@ -172,4 +173,43 @@ class TransferMatcherTest {
         assertEquals(TxnType.EXPENSE, expense.type)
         assertTrue(expense.legIds.isEmpty())
     }
+
+    // ── bank to bank: the legs are further apart because the money has to settle ──
+
+    private fun account(id: String, bank: String) = Account(
+        id = id, name = "", bankName = bank, last4 = null, currency = "OMR",
+        openingBalanceMinor = 0L, openingAtMillis = 0L,
+    )
+
+    @Test
+    fun `two banks get a wider window than two accounts at one bank`() {
+        val accounts = listOf(account("acc_a", "Bank Dhofar"), account("acc_b", "Bank Muscat"))
+        val pair = listOf(out("o", 250_000, base), inc("i", 250_000, base + minutes(16)))
+
+        // The same-bank rule would have dropped this at 16 minutes.
+        assertTrue(TransferMatcher.propose(pair).isEmpty())
+        assertEquals(1, TransferMatcher.propose(pair, accounts = accounts).size)
+    }
+
+    @Test
+    fun `the wider window does not apply within one bank`() {
+        val accounts = listOf(account("acc_a", "Bank Muscat"), account("acc_b", "Bank Muscat"))
+        val pair = listOf(out("o", 5_000, base), inc("i", 5_000, base + minutes(90)))
+        assertTrue(TransferMatcher.propose(pair, accounts = accounts).isEmpty())
+    }
+
+    @Test
+    fun `an unknown bank gets the strict window, not the benefit of the doubt`() {
+        val accounts = listOf(account("acc_a", "Bank Dhofar"), account("acc_b", ""))
+        val pair = listOf(out("o", 5_000, base), inc("i", 5_000, base + minutes(20)))
+        assertTrue(TransferMatcher.propose(pair, accounts = accounts).isEmpty())
+    }
+
+    @Test
+    fun `even between banks a coincidence hours later is not proposed`() {
+        val accounts = listOf(account("acc_a", "Bank Dhofar"), account("acc_b", "Bank Muscat"))
+        val pair = listOf(out("o", 5_000, base), inc("i", 5_000, base + minutes(300)))
+        assertTrue(TransferMatcher.propose(pair, accounts = accounts).isEmpty())
+    }
+
 }

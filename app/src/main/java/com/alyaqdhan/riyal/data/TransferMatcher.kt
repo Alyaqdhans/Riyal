@@ -15,8 +15,20 @@ import kotlin.math.abs
  */
 object TransferMatcher {
 
-    /** Two legs of a transfer normally land within minutes of each other. */
+    /** Two legs of a transfer within one bank land within minutes of each other. */
     const val DEFAULT_WINDOW_MILLIS = 15L * 60_000L
+
+    /**
+     * Between two banks the money has to settle before the receiving bank texts, so the
+     * legs sit further apart: in a real inbox the closest unmatched cross-bank pairs
+     * were 16, 17 and 26 minutes, just past the same-bank window.
+     *
+     * Three hours, not more. Widening this is not free - a false pair deletes a real
+     * expense and a real income - and in that same inbox the gap from ~4 hours out was
+     * pure coincidence: thousands of same-amount opposite-direction pairs, of which
+     * only a handful were transfers.
+     */
+    const val CROSS_BANK_WINDOW_MILLIS = 3L * 60L * 60_000L
 
     /**
      * When the wording itself says "transfer", a slower settlement is believable, so the
@@ -37,7 +49,10 @@ object TransferMatcher {
         hintedIds: Set<String> = emptySet(),
         windowMillis: Long = DEFAULT_WINDOW_MILLIS,
         hintedWindowMillis: Long = HINTED_WINDOW_MILLIS,
+        accounts: List<Account> = emptyList(),
+        crossBankWindowMillis: Long = CROSS_BANK_WINDOW_MILLIS,
     ): List<TransferProposal> {
+        val bankOf = accounts.associate { it.id to it.bankName.trim().lowercase() }
         val outs = txns.filter { it.type == TxnType.EXPENSE }
         val ins = txns.filter { it.type == TxnType.INCOME }
         if (outs.isEmpty() || ins.isEmpty()) return emptyList()
@@ -48,10 +63,12 @@ object TransferMatcher {
             for (i in ins) {
                 if (!pairable(o, i)) continue
                 val gap = abs(o.atMillis - i.atMillis)
-                val limit = if (o.id in hintedIds || i.id in hintedIds) {
-                    maxOf(windowMillis, hintedWindowMillis)
-                } else {
-                    windowMillis
+                val limit = when {
+                    o.id in hintedIds || i.id in hintedIds ->
+                        maxOf(windowMillis, hintedWindowMillis)
+                    crossesBanks(bankOf, o.fromAccountId, i.toAccountId) ->
+                        maxOf(windowMillis, crossBankWindowMillis)
+                    else -> windowMillis
                 }
                 if (gap > limit) continue
                 candidates += Triple(gap, o, i)
@@ -77,6 +94,21 @@ object TransferMatcher {
             )
         }
         return out.sortedByDescending { it.atMillis }
+    }
+
+    /**
+     * Whether the two legs belong to accounts at different banks. Unknown on either
+     * side means no: an account we cannot name a bank for gets the strict window rather
+     * than the benefit of the doubt.
+     */
+    private fun crossesBanks(
+        bankOf: Map<String, String>,
+        fromAccountId: String?,
+        toAccountId: String?,
+    ): Boolean {
+        val a = fromAccountId?.let { bankOf[it] }?.takeIf { it.isNotEmpty() } ?: return false
+        val b = toAccountId?.let { bankOf[it] }?.takeIf { it.isNotEmpty() } ?: return false
+        return a != b
     }
 
     private fun pairable(expense: Txn, income: Txn): Boolean {
