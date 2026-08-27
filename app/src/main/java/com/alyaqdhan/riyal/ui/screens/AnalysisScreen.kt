@@ -537,12 +537,22 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                 currency,
                             ),
                         )
+                        // Said in whichever direction is true: "kept −92%" is a riddle,
+                        // "spent 92% beyond what came in" is the same fact, read once.
                         spread.savedFraction(totals.received, totals.spent)?.let { saved ->
-                            StatLine(
-                                "Kept of what came in",
-                                "${(saved * 100).roundToInt()}%",
-                                color = if (saved < 0f) MaterialTheme.colorScheme.error else successColor(),
-                            )
+                            if (saved >= 0f) {
+                                StatLine(
+                                    "Kept of what came in",
+                                    "${(saved * 100).roundToInt()}%",
+                                    color = successColor(),
+                                )
+                            } else {
+                                StatLine(
+                                    "Spent beyond what came in",
+                                    "${(-saved * 100).roundToInt()}%",
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
                         }
                         if (totals.otherCurrencyCount > 0) {
                             Text(
