@@ -30,6 +30,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +41,7 @@ import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
+import com.alyaqdhan.riyal.ui.compose.SortChip
 import com.alyaqdhan.riyal.ui.compose.SwipeableTxnRow
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
@@ -48,6 +50,7 @@ import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.TxnRow
+import com.alyaqdhan.riyal.ui.compose.TxnSort
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.theme.successColor
 import kotlin.math.abs
@@ -61,19 +64,27 @@ import kotlin.math.roundToInt
  * where you notice it - the reason this page exists rather than a chart tooltip.
  */
 @Composable
-fun CategoryDetailScreen(vm: MainViewModel, categoryId: String, onBack: () -> Unit) {
+fun CategoryDetailScreen(
+    vm: MainViewModel,
+    categoryId: String,
+    onBack: () -> Unit,
+    initialSlice: TimeSlice? = null,
+) {
     val txns by vm.txns.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
     val category = remember(categoryId) { Categories.byId(categoryId) }
-    var slice by remember { mutableStateOf(TimeSlice.thisMonth()) }
+    // The period the caller was reading, not today's: this page is opened by tapping a
+    // figure that belongs to a month, and answering for a different one is a wrong answer.
+    var slice by remember { mutableStateOf(initialSlice ?: TimeSlice.thisMonth()) }
+    var sort by rememberSaveable { mutableStateOf(TxnSort.NEWEST.name) }
     var editing by remember { mutableStateOf<Txn?>(null) }
     var confirmRemove by remember { mutableStateOf<Txn?>(null) }
     val archivedIds by vm.archivedIds.collectAsState()
 
-    val inCategory = remember(txns, categoryId, slice) {
-        txns.filter { it.categoryId == categoryId && slice.contains(it.atMillis) }
-            .sortedByDescending { it.atMillis }
+    val order = TxnSort.valueOf(sort)
+    val inCategory = remember(txns, categoryId, slice, order) {
+        order.applyTo(txns.filter { it.categoryId == categoryId && slice.contains(it.atMillis) })
     }
     val total = remember(inCategory, currency) {
         inCategory.filter { it.currency == currency }.sumOf { it.amountMinor }
@@ -99,6 +110,7 @@ fun CategoryDetailScreen(vm: MainViewModel, categoryId: String, onBack: () -> Un
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = { SortChip(current = order, onSelect = { sort = it.name }) },
             )
         },
     ) { padding ->

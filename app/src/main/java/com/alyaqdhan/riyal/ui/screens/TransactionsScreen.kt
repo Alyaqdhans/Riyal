@@ -56,6 +56,8 @@ import com.alyaqdhan.riyal.ui.compose.SwipeableTxnRow
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.ToolbarSpace
 import com.alyaqdhan.riyal.ui.compose.TxnRow
+import com.alyaqdhan.riyal.ui.compose.SortChip
+import com.alyaqdhan.riyal.ui.compose.TxnSort
 import com.alyaqdhan.riyal.ui.compose.dayLabel
 import com.alyaqdhan.riyal.ui.compose.localDateOf
 import androidx.compose.ui.unit.dp
@@ -309,64 +311,6 @@ private fun DayHeader(date: LocalDate, dayTxns: List<Txn>) {
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-    }
-}
-
-/**
- * How the list is ordered. Newest-first is what a transaction list is for; the two
- * "biggest" orders answer the other question people actually ask of one - what did the
- * money go on - without making them scroll a year of small card payments to find out.
- */
-enum class TxnSort(val label: String, val byDate: Boolean) {
-    NEWEST("Newest", true),
-    OLDEST("Oldest", true),
-    BIGGEST_OUT("Biggest out", false),
-    BIGGEST_IN("Biggest in", false),
-    ;
-
-    /** Only meaningful for the amount orders; the date orders group by day instead. */
-    fun applyTo(txns: List<Txn>): List<Txn> = when (this) {
-        NEWEST -> txns.sortedByDescending { it.atMillis }
-        OLDEST -> txns.sortedBy { it.atMillis }
-        // A ranking of spending should not be led by income that happens to be larger,
-        // so the other side is ranked below rather than mixed in.
-        BIGGEST_OUT -> txns.sortedWith(
-            compareByDescending<Txn> { it.type == TxnType.EXPENSE }
-                .thenByDescending { it.amountMinor },
-        )
-        BIGGEST_IN -> txns.sortedWith(
-            compareByDescending<Txn> { it.type == TxnType.INCOME }
-                .thenByDescending { it.amountMinor },
-        )
-    }
-}
-
-@Composable
-private fun SortChip(current: TxnSort, onSelect: (TxnSort) -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        FilterChip(
-            selected = current != TxnSort.NEWEST,
-            onClick = { open = true },
-            label = { Text(current.label) },
-            trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null) },
-        )
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            TxnSort.entries.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option.label) },
-                    onClick = {
-                        onSelect(option)
-                        open = false
-                    },
-                    trailingIcon = {
-                        if (option == current) {
-                            Icon(Icons.Filled.Check, contentDescription = null)
-                        }
-                    },
-                )
-            }
         }
     }
 }

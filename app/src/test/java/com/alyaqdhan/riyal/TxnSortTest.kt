@@ -2,7 +2,7 @@ package com.alyaqdhan.riyal
 
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
-import com.alyaqdhan.riyal.ui.screens.TxnSort
+import com.alyaqdhan.riyal.ui.compose.TxnSort
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

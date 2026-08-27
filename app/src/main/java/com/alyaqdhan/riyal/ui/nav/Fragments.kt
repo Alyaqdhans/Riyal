@@ -27,9 +27,11 @@ import com.alyaqdhan.riyal.ui.screens.OnboardingScreen
 import com.alyaqdhan.riyal.ui.screens.ReviewScreen
 import com.alyaqdhan.riyal.ui.screens.SettingsScreen
 import com.alyaqdhan.riyal.ui.screens.TransactionsScreen
+import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.theme.RiyalTheme
 import com.google.android.material.transition.MaterialFadeThrough
 import com.google.android.material.transition.MaterialSharedAxis
+import java.time.YearMonth
 
 /**
  * Destinations of res/navigation/nav_graph.xml, the XML routing layer. Each fragment
@@ -136,12 +138,12 @@ class CategoriesFragment : InnerFragment() {
         CategoriesScreen(
             vm,
             onBack = { back() },
-            onOpenCategory = { openCategory(findNavController(), it) },
+            onOpenCategory = { id, slice -> openCategory(findNavController(), id, slice) },
         )
     }
 }
 
-/** One category's records. The id travels in the arguments bundle. */
+/** One category's records. The id and the period travel in the arguments bundle. */
 class CategoryDetailFragment : InnerFragment() {
 
     @Composable
@@ -149,15 +151,55 @@ class CategoryDetailFragment : InnerFragment() {
         CategoryDetailScreen(
             vm,
             categoryId = arguments?.getString(ARG_CATEGORY_ID).orEmpty(),
+            initialSlice = arguments.sliceArg(),
             onBack = { back() },
         )
     }
 }
 
 const val ARG_CATEGORY_ID = "categoryId"
+const val ARG_SLICE_START = "sliceStart"
+const val ARG_SLICE_END = "sliceEnd"
+const val ARG_SLICE_LABEL = "sliceLabel"
+const val ARG_SLICE_MONTH = "sliceMonth"
 
-fun openCategory(navController: androidx.navigation.NavController, categoryId: String) {
-    navController.navigate(R.id.categoryDetailFragment, bundleOf(ARG_CATEGORY_ID to categoryId))
+/**
+ * Opens a category with the period the caller was looking at. Sending the id alone
+ * dropped it: tapping August's biggest category answered for the current month, and
+ * the reader had to walk back to the month they had already chosen.
+ */
+fun openCategory(
+    navController: androidx.navigation.NavController,
+    categoryId: String,
+    slice: TimeSlice,
+) {
+    navController.navigate(
+        R.id.categoryDetailFragment,
+        bundleOf(
+            ARG_CATEGORY_ID to categoryId,
+            ARG_SLICE_START to slice.start,
+            ARG_SLICE_END to slice.endExclusive,
+            ARG_SLICE_LABEL to slice.label,
+            // Kept so the chevrons keep stepping whole calendar months rather than
+            // drifting by the month's own length in days.
+            ARG_SLICE_MONTH to slice.month?.toString(),
+        ),
+    )
+}
+
+private fun Bundle?.sliceArg(): TimeSlice? {
+    val args = this ?: return null
+    val start = args.getLong(ARG_SLICE_START, 0L)
+    val end = args.getLong(ARG_SLICE_END, 0L)
+    if (start <= 0L || end <= start) return null
+    return TimeSlice(
+        start = start,
+        endExclusive = end,
+        label = args.getString(ARG_SLICE_LABEL).orEmpty(),
+        month = args.getString(ARG_SLICE_MONTH)?.let {
+            runCatching { YearMonth.parse(it) }.getOrNull()
+        },
+    )
 }
 
 class TransactionsFragment : ScreenFragment() {
@@ -180,7 +222,10 @@ class TransactionsFragment : ScreenFragment() {
 class AnalysisFragment : ScreenFragment() {
     @Composable
     override fun Screen() {
-        AnalysisScreen(vm, onOpenCategory = { openCategory(findNavController(), it) })
+        AnalysisScreen(
+            vm,
+            onOpenCategory = { id, slice -> openCategory(findNavController(), id, slice) },
+        )
     }
 }
 

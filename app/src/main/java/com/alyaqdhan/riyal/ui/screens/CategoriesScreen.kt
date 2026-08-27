@@ -83,7 +83,7 @@ import kotlin.math.roundToInt
 fun CategoriesScreen(
     vm: MainViewModel,
     onBack: () -> Unit,
-    onOpenCategory: (String) -> Unit,
+    onOpenCategory: (String, TimeSlice) -> Unit,
 ) {
     val txns by vm.txns.collectAsState()
     // Read so a create/rename/delete recomposes the list built from the registry.
@@ -135,7 +135,7 @@ fun CategoriesScreen(
                     count = counts[cat.id] ?: 0,
                     currency = currency,
                     income = false,
-                    onClick = { onOpenCategory(cat.id) },
+                    onClick = { onOpenCategory(cat.id, slice) },
                     onEdit = if (cat.custom) ({ editing = cat }) else null,
                 )
             }
@@ -151,7 +151,7 @@ fun CategoriesScreen(
                     count = counts[cat.id] ?: 0,
                     currency = currency,
                     income = true,
-                    onClick = { onOpenCategory(cat.id) },
+                    onClick = { onOpenCategory(cat.id, slice) },
                     onEdit = if (cat.custom) ({ editing = cat }) else null,
                 )
             }

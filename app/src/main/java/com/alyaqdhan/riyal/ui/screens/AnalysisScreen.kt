@@ -110,7 +110,7 @@ private val nextDueFmt = DateTimeFormatter.ofPattern("d MMM")
  * because a number with nothing to compare it to is just a number.
  */
 @Composable
-fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
+fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Unit) {
     val txns by vm.txns.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val budgets by vm.budgets.collectAsState()
@@ -333,7 +333,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
                                 Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
-                                    .clickable { onOpenCategory(cat.id) }
+                                    .clickable { onOpenCategory(cat.id, slice) }
                                     .padding(vertical = 4.dp)
                                     .popIn(index * 40),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -433,7 +433,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
                                     Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(10.dp))
-                                        .clickable { onOpenCategory(mover.categoryId) }
+                                        .clickable { onOpenCategory(mover.categoryId, slice) }
                                         .padding(vertical = 4.dp),
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     verticalAlignment = Alignment.CenterVertically,
