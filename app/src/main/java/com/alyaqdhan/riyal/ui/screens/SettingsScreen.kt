@@ -77,6 +77,11 @@ import com.alyaqdhan.riyal.ui.compose.CategoryIcon
 import com.alyaqdhan.riyal.ui.compose.DropdownField
 import com.alyaqdhan.riyal.ui.compose.plainText
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+private val settingsDayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM uuuu")
 
 /**
  * Everything the scanner does is decided here: gate keywords, sender allowlist, scan
@@ -106,6 +111,7 @@ fun SettingsScreen(
     var newExpenseKw by remember { mutableStateOf("") }
     var newIncomeKw by remember { mutableStateOf("") }
     var rangeMonths by remember { mutableStateOf(prefs.scanRangeMonths) }
+    var freshStart by remember { mutableStateOf(prefs.scanSinceMillis) }
     var currency by remember { mutableStateOf(prefs.defaultCurrency) }
     var senderFilter by remember { mutableStateOf(prefs.senderFilterEnabled) }
     var allowlist by remember { mutableStateOf(prefs.senderAllowlist) }
@@ -272,6 +278,23 @@ fun SettingsScreen(
                             shape = SegmentedButtonDefaults.itemShape(index = index, count = ranges.size),
                         ) { Text(label) }
                     }
+                }
+                // The fresh-start floor overrides the range above, so it has to say so
+                // rather than leave the user picking "All" and seeing nothing older.
+                if (freshStart > 0L) {
+                    Text(
+                        "You chose to start fresh, so nothing before " +
+                            "${settingsDayFmt.format(
+                                Instant.ofEpochMilli(freshStart).atZone(ZoneId.systemDefault())
+                            )} is read, whichever range is picked above.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(onClick = {
+                        prefs.scanSinceMillis = 0L
+                        freshStart = 0L
+                        note("fresh start lifted, older messages can be read again")
+                    }) { Text("Read older messages too") }
                 }
             }
 

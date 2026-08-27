@@ -14,6 +14,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.navOptions
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.core.ScanHistory
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
 import androidx.core.os.bundleOf
@@ -215,9 +216,29 @@ class OnboardingFragment : ScreenFragment() {
     @Composable
     override fun Screen() {
         OnboardingScreen(
-            onGrant = { requestSms.launch(Manifest.permission.READ_SMS) },
-            onSkip = { finishOnboarding(startScan = false) },
+            onGrant = {
+                // Recorded before the permission dialog, because "from today" has to
+                // mean the moment you chose it, not the moment you tapped Allow.
+                chooseHistory(it)
+                requestSms.launch(Manifest.permission.READ_SMS)
+            },
+            onSkip = {
+                chooseHistory(it)
+                finishOnboarding(startScan = false)
+            },
         )
+    }
+
+    private fun chooseHistory(choice: ScanHistory) {
+        vm.prefs.applyScanHistory(choice)
+        Verbose.info(
+            "you chose to read " + when (choice) {
+                ScanHistory.ALL -> "the whole inbox"
+                ScanHistory.FROM_NOW -> "nothing older than today; history starts here"
+                else -> "the last ${choice.months} month(s)"
+            }
+        )
+        Verbose.flush()
     }
 
     private fun finishOnboarding(startScan: Boolean) {

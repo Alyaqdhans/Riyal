@@ -38,12 +38,24 @@ class ScanEngine(
     suspend fun run(onProgress: (Progress) -> Unit): ScanSummary {
         val startedAt = System.currentTimeMillis()
         val months = prefs.scanRangeMonths
-        val since = if (months <= 0) 0L
+        val window = if (months <= 0) 0L
         else ZonedDateTime.now().minusMonths(months.toLong()).toInstant().toEpochMilli()
+        // Two floors, and the later one wins: a rolling window keeps reaching further
+        // back as time passes, which would quietly undo a fresh start.
+        val freshStart = prefs.scanSinceMillis
+        val since = maxOf(window, freshStart)
 
         Verbose.scan("──────── scan started ────────")
         Verbose.scan("mode: manual one-shot, this app has no background receiver")
-        Verbose.scan("range: " + if (since == 0L) "entire inbox" else "last $months month(s), since ${fmtDate(since)}")
+        Verbose.scan(
+            "range: " + when {
+                since == 0L -> "entire inbox"
+                since == freshStart ->
+                    "fresh start, nothing before ${fmtDate(freshStart)} is read " +
+                        "(your history builds up from there)"
+                else -> "last $months month(s), since ${fmtDate(since)}"
+            }
+        )
         Verbose.scan("expense keywords: ${prefs.expenseKeywords.joinToString(", ")}")
         Verbose.scan("income keywords: ${prefs.incomeKeywords.joinToString(", ")}")
         val allowlistOn = prefs.senderFilterEnabled

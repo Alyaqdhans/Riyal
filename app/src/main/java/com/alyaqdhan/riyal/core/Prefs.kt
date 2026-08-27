@@ -4,6 +4,20 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
+ * The first-run answer to "how much of my inbox should this read?".
+ *
+ * [FROM_NOW] is the one that changes the shape of the app rather than its size: the
+ * history starts empty and fills in as the banks text, so accounts appear one at a
+ * time, on the day their bank first says something.
+ */
+enum class ScanHistory(val label: String, val months: Int) {
+    ALL("All", 0),
+    YEAR("1 year", 12),
+    QUARTER("3 months", 3),
+    FROM_NOW("From today", 0),
+}
+
+/**
  * User-controlled settings. Everything the scanner does is driven from here:
  * which keywords gate a message, which senders are allowed, how far back to look.
  */
@@ -23,6 +37,24 @@ class Prefs(context: Context) {
     var scanRangeMonths: Int
         get() = sp.getInt("scan_range_months", 0)
         set(v) = sp.edit().putInt("scan_range_months", v).apply()
+
+    /**
+     * A fixed floor on what any scan reads: no message older than this is queried at
+     * all. 0, the default, means no floor.
+     *
+     * This is what "start fresh" writes on first run - the moment the user chose it.
+     * Unlike [scanRangeMonths] it does not slide: a rolling window keeps picking up
+     * older messages as time passes, which is the opposite of starting fresh.
+     */
+    var scanSinceMillis: Long
+        get() = sp.getLong("scan_since_millis", 0L)
+        set(v) = sp.edit().putLong("scan_since_millis", v).apply()
+
+    /** Applies a first-run history choice to the two settings that carry it. */
+    fun applyScanHistory(choice: ScanHistory) {
+        scanRangeMonths = choice.months
+        scanSinceMillis = if (choice == ScanHistory.FROM_NOW) System.currentTimeMillis() else 0L
+    }
 
     var defaultCurrency: String
         get() = sp.getString("default_currency", "OMR") ?: "OMR"
