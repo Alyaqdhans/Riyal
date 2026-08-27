@@ -153,4 +153,50 @@ class SmsParserTest {
         assertEquals(3, Money.decimalsFor("OMR"))
         assertEquals(2, Money.decimalsFor("USD"))
     }
+
+    // ── advertising is not a transaction ──
+
+    @Test
+    fun `a prize draw advert is not money leaving your account`() {
+        // Real message from a bank's own sender: it contains "purchase" and an amount,
+        // and was being recorded as OMR 50 of spending.
+        val body = "Dear Customer, Be among the winners of a total cash prize worth " +
+            "OMR 2,250 with Meethaq Mobile & Internet Banking! Register, pay bills or " +
+            "purchase a gift card. T&Cs apply."
+        val result = parser.parse(body)
+        assertTrue("advert must not become a transaction", result is SmsParser.Result.Skipped)
+    }
+
+    @Test
+    fun `a salary-transfer offer is not income`() {
+        val body = "Dear customer, Transfer your salary to Meethaq & get a 15% cash " +
+            "bonus with a minimum salary transfer of just OMR 500. Valid till 31 July 2026. " +
+            "T&Cs apply."
+        val result = parser.parse(body)
+        assertTrue("advert must not become income", result is SmsParser.Result.Skipped)
+    }
+
+    @Test
+    fun `a real debit is still read even though banks advertise from the same sender`() {
+        val body = "OMR 88.425 is debited from your a/c 0427XXXXXXXX0019 on " +
+            "23/07/2026 12:36:06. New Available Balance is OMR 0.000."
+        val result = parser.parse(body) as SmsParser.Result.Parsed
+        assertEquals(88_425L, result.amountMinor)
+    }
+
+    // ── the bank's own transaction time ──
+
+    @Test
+    fun `the bank's timestamp is read from the body, not the message's arrival`() {
+        val debit = "تم خصم 500.000 OMR من حسابك رقم  0630XXXXXXXX0001بتاريخ " +
+            "2026/07/23 10:21:53عن طريق MBI.رصيدك الحالي في الحساب هو 0.170 OMR."
+        val credit = "تم إيداع 500.000 OMR إلى حسابك رقم  0630XXXXXXXX0003بتاريخ " +
+            "2026/07/23 10:21:53عن طريق MBI.رصيدك الحالي في الحساب هو 660.265 OMR."
+        val a = parser.parse(debit) as SmsParser.Result.Parsed
+        val b = parser.parse(credit) as SmsParser.Result.Parsed
+        assertEquals("2026/07/23 10:21:53", a.bankStamp)
+        // Same stamp on both halves is what proves they are one movement of money,
+        // even though these two texts arrived 53 minutes apart.
+        assertEquals(a.bankStamp, b.bankStamp)
+    }
 }

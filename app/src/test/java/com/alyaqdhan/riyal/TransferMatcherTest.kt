@@ -212,4 +212,49 @@ class TransferMatcherTest {
         assertTrue(TransferMatcher.propose(pair, accounts = accounts).isEmpty())
     }
 
+
+    // ── the bank's own timestamp beats the clock on the message ──
+
+    @Test
+    fun `one bank timestamp on both halves pairs them however late the text was`() {
+        // Real case: Meethaq debited 0001 and credited 0003 at 10:21:53 by its own
+        // clock, but the debit SMS arrived 53 minutes after the credit SMS. Judged on
+        // arrival alone this looked like 500 OMR spent AND 500 OMR earned.
+        val stamp = "meethaq|2026/07/23 10:21:53"
+        val pair = listOf(out("o", 500_000, base + minutes(53)), inc("i", 500_000, base))
+        assertTrue(TransferMatcher.propose(pair).isEmpty())
+        assertEquals(
+            1,
+            TransferMatcher.propose(
+                pair,
+                bankStamps = mapOf("o" to stamp, "i" to stamp),
+            ).size,
+        )
+    }
+
+    @Test
+    fun `different bank timestamps are not paired just because both have one`() {
+        val pair = listOf(out("o", 500_000, base + minutes(53)), inc("i", 500_000, base))
+        assertTrue(
+            TransferMatcher.propose(
+                pair,
+                bankStamps = mapOf(
+                    "o" to "meethaq|2026/07/23 10:21:53",
+                    "i" to "meethaq|2026/07/23 09:02:11",
+                ),
+            ).isEmpty(),
+        )
+    }
+
+    @Test
+    fun `a shared timestamp still cannot pair an account with itself`() {
+        val stamp = "meethaq|2026/07/23 10:21:53"
+        val pair = listOf(
+            out("o", 500_000, base, account = "acc_a"),
+            inc("i", 500_000, base, account = "acc_a"),
+        )
+        assertTrue(
+            TransferMatcher.propose(pair, bankStamps = mapOf("o" to stamp, "i" to stamp)).isEmpty(),
+        )
+    }
 }

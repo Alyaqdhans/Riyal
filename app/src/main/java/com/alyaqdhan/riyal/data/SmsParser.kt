@@ -41,6 +41,12 @@ class SmsParser(
             val accountTail: String? = null,
             /** The wording suggests moving money between accounts rather than spending. */
             val transferHint: Boolean = false,
+            /**
+             * The bank's own timestamp for the transaction ("2026/07/23 10:21:53"),
+             * which is not the same thing as when the message arrived: a bank can text
+             * one side of a transfer an hour after the other, both quoting this.
+             */
+            val bankStamp: String? = null,
         ) : Result()
 
         data class NeedsReview(val reason: String, val trace: List<String>) : Result()
@@ -68,6 +74,15 @@ class SmsParser(
             if (p >= 0) hits += KeywordHit(kw, p, Direction.INCOME)
         }
         if (hits.isEmpty()) return Result.Skipped("no withdraw/deposit keyword")
+
+        // 1b ── advertising gate. A bank markets to you from the same sender it uses for
+        // real alerts, and "win a prize worth OMR 2,250" or "minimum salary transfer of
+        // OMR 500" contains both a money word and an amount. Nothing was debited or
+        // credited, so recording it invents spending and income that never happened.
+        val advert = ADVERT_WORDS.filter { it in lower }
+        if (advert.isNotEmpty()) {
+            return Result.Skipped("advertising, not a transaction (\"${advert.first()}\")")
+        }
         hits.sortBy { it.pos }
         val hit = hits.first()
         var confidence = 100
@@ -131,6 +146,8 @@ class SmsParser(
         if (accountTail != null) trace += "account ending $accountTail"
         val transferHint = TRANSFER_WORDS.any { it in lower }
         if (transferHint) trace += "wording suggests a transfer between accounts"
+        val bankStamp = findBankStamp(body)
+        if (bankStamp != null) trace += "the bank dates this $bankStamp (its clock, not the message's)"
 
         return Result.Parsed(
             amountMinor = minor,
@@ -142,6 +159,7 @@ class SmsParser(
             balanceMinor = balanceMinor,
             accountTail = accountTail,
             transferHint = transferHint,
+            bankStamp = bankStamp,
         )
     }
 
@@ -189,6 +207,18 @@ class SmsParser(
      * Deliberately never matched against a bare number: without one of these words in
      * front, digits in a bank SMS are far more often a reference or a date.
      */
+    /**
+     * The transaction time the bank writes into the message body. Both halves of one
+     * transfer quote the same value even when the two texts arrive an hour apart, which
+     * makes it the only trustworthy way to tell "these are one movement" from "these are
+     * two coincidences".
+     */
+    private fun findBankStamp(body: String): String? =
+        bankStampPattern.find(body)?.let { m ->
+            // Normalised: some messages run the date into the next word or double-space it.
+            m.groupValues[1] + " " + m.groupValues[2]
+        }
+
     private fun findAccountTail(body: String): String? {
         for (m in accountTailPattern.findAll(body)) {
             val token = m.groupValues[1].trimEnd { !it.isDigit() && !it.isLetter() }
@@ -298,6 +328,23 @@ class SmsParser(
 
         /** A plain decimal is an amount, never an account number. */
         val amountLike = Regex("""^\d+\.\d+$""")
+
+    /** "2026/07/23 10:21:53", with any spacing the banks actually use around it. */
+    private val bankStampPattern =
+        Regex("""(\d{4}[/-]\d{2}[/-]\d{2})\s*(\d{2}:\d{2}:\d{2})""")
+
+        /**
+         * Wording that only appears in marketing. Every one of these is a phrase a bank
+         * uses to sell something, never to report money that moved - the test is whether
+         * a real debit alert could contain it, and none of these can.
+         */
+        val ADVERT_WORDS = listOf(
+            "t&c", "t & c", "terms and conditions", "apply now", "click here",
+            "be among the winners", "win ", "prize", "cash bonus", "lucky draw",
+            "enter the draw", "offer valid", "valid till", "unsubscribe", "stop:",
+            "دخول السحب", "اربح", "جائزة", "الفائزين", "اشترك الآن", "العرض ساري",
+            "لالغاء الاشتراك", "لإلغاء الاشتراك",
+        )
 
         val TRANSFER_WORDS = listOf(
             "transfer", "transferred", "trf ", "own account", "between accounts",

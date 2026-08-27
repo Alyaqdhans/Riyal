@@ -230,12 +230,16 @@ class ScanEngine(
         // ── stage 3: build records, routed to an account ──────────────────
         val txns = ArrayList<Txn>(parsedMsgs.size)
         val hinted = HashSet<String>()
+        // txnId -> the bank's own transaction time, the one thing that proves two
+        // messages describe a single movement of money.
+        val bankStamps = HashMap<String, String>()
         var unrouted = 0
         for (pm in parsedMsgs.values) {
             val result = pm.result
             val accountId = AccountDiscovery.routeTo(accounts, pm.msg.sender, result.accountTail)
             if (accountId == null) unrouted++
             if (result.transferHint) hinted += pm.id
+            result.bankStamp?.let { bankStamps[pm.id] = pm.msg.sender.trim().lowercase() + "|" + it }
             val cat = Categorizer.categorize(result.direction, result.merchant, pm.msg.body, rules, pm.msg.sender)
             val type = TxnType.of(result.direction)
             Verbose.info("✉ ${pm.msg.sender} · ${fmtDateTime(pm.msg.atMillis)}")
@@ -270,7 +274,12 @@ class ScanEngine(
         // ── stage 4: nominate transfers ───────────────────────────────────
         // Accounts go in so the matcher can tell a same-bank move (instant, 15 min)
         // from a bank-to-bank one, where the receiving bank texts once it settles.
-        val proposals = TransferMatcher.propose(txns, hintedIds = hinted, accounts = accounts)
+        val proposals = TransferMatcher.propose(
+            txns,
+            hintedIds = hinted,
+            accounts = accounts,
+            bankStamps = bankStamps,
+        )
         if (proposals.isNotEmpty()) {
             Verbose.scan("──────── possible transfers ────────")
             proposals.forEach { p ->

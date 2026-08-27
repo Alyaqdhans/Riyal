@@ -51,6 +51,7 @@ object TransferMatcher {
         hintedWindowMillis: Long = HINTED_WINDOW_MILLIS,
         accounts: List<Account> = emptyList(),
         crossBankWindowMillis: Long = CROSS_BANK_WINDOW_MILLIS,
+        bankStamps: Map<String, String> = emptyMap(),
     ): List<TransferProposal> {
         val bankOf = accounts.associate { it.id to it.bankName.trim().lowercase() }
         val outs = txns.filter { it.type == TxnType.EXPENSE }
@@ -62,7 +63,14 @@ object TransferMatcher {
         for (o in outs) {
             for (i in ins) {
                 if (!pairable(o, i)) continue
+                // The bank stamping both messages with one transaction time settles it:
+                // that is the same movement of money however late the second text was.
+                val sameStamp = bankStamps[o.id] != null && bankStamps[o.id] == bankStamps[i.id]
                 val gap = abs(o.atMillis - i.atMillis)
+                if (sameStamp) {
+                    candidates += Triple(0L, o, i)
+                    continue
+                }
                 val limit = when {
                     o.id in hintedIds || i.id in hintedIds ->
                         maxOf(windowMillis, hintedWindowMillis)
