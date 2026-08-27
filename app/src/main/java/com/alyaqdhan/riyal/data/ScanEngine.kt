@@ -234,8 +234,18 @@ class ScanEngine(
         // messages describe a single movement of money.
         val bankStamps = HashMap<String, String>()
         var unrouted = 0
+        var skippedNonBank = 0
         for (pm in parsedMsgs.values) {
             val result = pm.result
+            // A sender that owns none of the user's accounts cannot have moved their
+            // money, whatever its text says. Oman TV offering "cash prizes up to 60,000
+            // OMR" was the single biggest expense in the whole history.
+            if (accounts.isNotEmpty() && !AccountDiscovery.isKnownSender(accounts, pm.msg.sender)) {
+                Verbose.info("✉ ${pm.msg.sender} · ${fmtDateTime(pm.msg.atMillis)}")
+                Verbose.info("    → not one of your banks, so it cannot have moved your money; not recorded")
+                skippedNonBank++
+                continue
+            }
             val accountId = AccountDiscovery.routeTo(accounts, pm.msg.sender, result.accountTail)
             if (accountId == null) unrouted++
             if (result.transferHint) hinted += pm.id
@@ -320,6 +330,12 @@ class ScanEngine(
         )
         if (needsReview > 0) {
             Verbose.scan("→ ${needsReview} message(s) could not be read, they are waiting in the Review tab")
+        }
+        if (skippedNonBank > 0) {
+            Verbose.scan(
+                "→ $skippedNonBank message(s) came from senders that hold none of your " +
+                    "accounts (telecoms, shops, TV draws); they mention money but cannot move it"
+            )
         }
         if (unrouted > 0) {
             Verbose.scan(

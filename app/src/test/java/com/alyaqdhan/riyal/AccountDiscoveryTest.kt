@@ -327,4 +327,23 @@ class AccountDiscoveryTest {
         fromAccountId = from, toAccountId = to, merchant = null, sender = "BankMuscat",
         body = "test", categoryId = "other", categorySource = "auto", confidence = 100,
     )
+
+    // ── a sender that holds none of your accounts ──
+
+    @Test
+    fun `only a sender that holds one of your accounts can move your money`() {
+        val accounts = listOf(
+            Account(
+                id = "acc_a", name = "", bankName = "Bank Muscat", last4 = "0019",
+                currency = "OMR", openingBalanceMinor = 0L, openingAtMillis = base,
+                senderIds = setOf("bank muscat"),
+            ),
+        )
+        assertTrue(AccountDiscovery.isKnownSender(accounts, "bank muscat"))
+        assertTrue(AccountDiscovery.isKnownSender(accounts, "Bank Muscat"))
+        // A telecom, a shop or a broadcaster texts about money it will never move.
+        assertFalse(AccountDiscovery.isKnownSender(accounts, "Oman TV"))
+        assertFalse(AccountDiscovery.isKnownSender(accounts, "Ooredoo"))
+        assertFalse(AccountDiscovery.isKnownSender(accounts, ""))
+    }
 }

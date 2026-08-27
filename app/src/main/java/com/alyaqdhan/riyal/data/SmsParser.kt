@@ -344,6 +344,10 @@ class SmsParser(
             "enter the draw", "offer valid", "valid till", "unsubscribe", "stop:",
             "دخول السحب", "اربح", "جائزة", "الفائزين", "اشترك الآن", "العرض ساري",
             "لالغاء الاشتراك", "لإلغاء الاشتراك",
+            // Prize draws and competitions: a broadcaster quoting "cash prizes up to
+            // 60,000 OMR" is not a bank telling you 60,000 left your account.
+            "جوائز", "فرصة الفوز", "للمشاركة", "السحب أرسل", "بيسة للرسالة",
+            "chance to win", "cash prizes", "to participate", "sms ",
         )
 
         val TRANSFER_WORDS = listOf(

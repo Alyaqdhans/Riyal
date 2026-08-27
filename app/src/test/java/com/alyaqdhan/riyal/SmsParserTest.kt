@@ -199,4 +199,14 @@ class SmsParserTest {
         // even though these two texts arrived 53 minutes apart.
         assertEquals(a.bankStamp, b.bankStamp)
     }
+
+    @Test
+    fun `a TV prize draw is not the biggest expense of your life`() {
+        // The real message: Oman TV offering a car and "cash prizes up to 60,000 OMR".
+        // It was recorded as OMR 60,000 spent - the largest expense in the history.
+        val body = "برنامج البيت عبر تلفزيون سلطنة عُمان يمنحكم فرصة الفوز بالسيارة " +
+            "الثانية اليوم 26/3 بالإضافة الى جوائز نقدية تصل الى 60,000 ر.ع " +
+            "للمشاركة في السحب أرسل \"البيت\" إلى 91794 525 بيسة للرسالة"
+        assertTrue(parser.parse(body) is SmsParser.Result.Skipped)
+    }
 }

@@ -178,6 +178,20 @@ object AccountDiscovery {
      * unrouted: guessing would put the money in the wrong balance, and an unassigned
      * row is one tap away from being placed by hand.
      */
+    /**
+     * Whether this sender is one of the user's banks at all. A telecom, a broadcaster or
+     * a shop can text about money - a bill, a prize draw, a package price - but it can
+     * never move money in an account, so nothing it says belongs in a spending total.
+     */
+    fun isKnownSender(accounts: List<Account>, sender: String): Boolean {
+        val s = sender.trim().lowercase()
+        if (s.isEmpty()) return false
+        return accounts.any { account ->
+            account.senderIds.any { it.trim().lowercase() == s } ||
+                account.bankName.trim().lowercase().let { it.isNotEmpty() && it == s }
+        }
+    }
+
     fun routeTo(accounts: List<Account>, sender: String, tail: String?): String? {
         if (accounts.isEmpty()) return null
         val s = sender.trim().lowercase()
