@@ -105,6 +105,13 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             TopAppBar(
                 title = { Text("Activity") },
                 actions = {
+                    // Sort and Filters live here, not in the chip row: six controls in
+                    // one row pushed the Transfers chip off the right edge of something
+                    // that gives no sign it scrolls.
+                    SortChip(current = order, onSelect = { sort = it.name })
+                    TextButton(onClick = { showFilters = true }) {
+                        Text(if (hiddenFilterCount > 0) "Filters ($hiddenFilterCount)" else "Filters")
+                    }
                     IconButton(onClick = onExport, enabled = txns.isNotEmpty()) {
                         Icon(Icons.Filled.Share, contentDescription = "Export CSV")
                     }
@@ -128,51 +135,28 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             },
         ) {
         Column(Modifier.fillMaxSize()) {
-            // One row: the four answers to "what kind of thing am I looking at?".
+            // One row, four chips: the answers to "what kind of thing am I looking at?".
             // Categories and accounts have dozens of options each and live in the sheet.
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 8.dp),
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    Modifier
-                        .weight(1f)
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FilterChip(
-                        selected = typeFilter == null,
-                        onClick = { typeFilter = null },
-                        label = { Text("All") },
-                    )
-                    TxnType.entries.forEach { type ->
-                        FilterChip(
-                            selected = typeFilter == type.name,
-                            onClick = { typeFilter = if (typeFilter == type.name) null else type.name },
-                            // Short here: the full "Money out" labels pushed
-                            // Transfer off the right edge of a row that doesn't look
-                            // scrollable, hiding a filter entirely.
-                            label = { Text(shortTypeLabel(type)) },
-                        )
-                    }
-                }
-                SortChip(
-                    current = order,
-                    onSelect = { sort = it.name },
-                )
                 FilterChip(
-                    selected = hiddenFilterCount > 0,
-                    onClick = { showFilters = true },
-                    label = {
-                        Text(if (hiddenFilterCount > 0) "Filters ($hiddenFilterCount)" else "Filters")
-                    },
-                    trailingIcon = {
-                        Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
-                    },
+                    selected = typeFilter == null,
+                    onClick = { typeFilter = null },
+                    label = { Text("All") },
                 )
+                TxnType.entries.forEach { type ->
+                    FilterChip(
+                        selected = typeFilter == type.name,
+                        onClick = { typeFilter = if (typeFilter == type.name) null else type.name },
+                        label = { Text(shortTypeLabel(type)) },
+                    )
+                }
             }
             if (archivedIds.isNotEmpty()) {
                 TextButton(
