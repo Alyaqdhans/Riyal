@@ -85,6 +85,7 @@ fun HomeScreen(
     onRequestPermission: () -> Unit,
     onOpenReview: () -> Unit,
     onOpenAccounts: () -> Unit,
+    onOpenNeedsCategory: () -> Unit,
 ) {
     val txns by vm.txns.collectAsState()
     val hasPerm by vm.hasSmsPermission.collectAsState()
@@ -93,6 +94,7 @@ fun HomeScreen(
     val accounts by vm.accounts.collectAsState()
     val budgets by vm.budgets.collectAsState()
     val budgetsOn by vm.budgetsOn.collectAsState()
+    val needsCategory by vm.needsCategoryCount.collectAsState()
     val needsAccountCheck by vm.accountsNeedConfirming.collectAsState()
     val pendingTransfers by vm.pendingTransfers.collectAsState()
 
@@ -320,6 +322,22 @@ fun HomeScreen(
                     content = MaterialTheme.colorScheme.onTertiaryContainer,
                     onClick = onOpenReview,
                     modifier = Modifier.popIn(200),
+                )
+            }
+
+            // Sits under Needs review because it is the same kind of thing: something
+            // waiting on the user. Nothing said "these have no category" before, so a
+            // backlog could grow for months without ever being mentioned.
+            if (needsCategory > 0) {
+                ActionCard(
+                    face = FaceStyle.CONFUSED,
+                    mood = 0f,
+                    title = "$needsCategory record(s) need a category",
+                    subtitle = "Grouped by shop, biggest first - one tap files them all",
+                    container = MaterialTheme.colorScheme.secondaryContainer,
+                    content = MaterialTheme.colorScheme.onSecondaryContainer,
+                    onClick = onOpenNeedsCategory,
+                    modifier = Modifier.popIn(240),
                 )
             }
 

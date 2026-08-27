@@ -35,6 +35,11 @@
         android:label="Bank accounts" />
 
     <fragment
+        android:id="@+id/needsCategoryFragment"
+        android:name="com.alyaqdhan.riyal.ui.nav.NeedsCategoryFragment"
+        android:label="Needs a category" />
+
+    <fragment
         android:id="@+id/categoriesFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.CategoriesFragment"
         android:label="Categories" />

@@ -402,6 +402,29 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
 
     // ─────────────────────────── user edits ───────────────────────────
 
+    /**
+     * Files a whole batch under one category in a single write. Used when a merchant is
+     * filed at once: the rule saved alongside catches everything it matches, and this
+     * makes sure the records the user was actually looking at are filed whether it did
+     * or not - being asked again about a merchant you just answered for is the bug this
+     * whole flow exists to remove.
+     */
+    suspend fun setCategories(txnIds: Collection<String>, categoryId: String): Int = mutex.withLock {
+        val ids = txnIds.toHashSet()
+        if (ids.isEmpty()) return@withLock 0
+        var changed = 0
+        for (id in ids) {
+            if (overrides[id] != categoryId) changed++
+            overrides[id] = categoryId
+        }
+        rawTxns = rawTxns.map {
+            if (it.id in ids) it.copy(categoryId = categoryId, categorySource = "user") else it
+        }
+        recomputeTxnsLocked()
+        persistLocked()
+        changed
+    }
+
     suspend fun setCategory(txnId: String, categoryId: String) = mutex.withLock {
         overrides[txnId] = categoryId
         rawTxns = rawTxns.map {

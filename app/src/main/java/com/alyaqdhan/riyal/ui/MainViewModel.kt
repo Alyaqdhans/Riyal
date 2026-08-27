@@ -16,6 +16,7 @@ import com.alyaqdhan.riyal.data.BudgetPlan
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.ScanEngine
+import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.ScanSummary
 import com.alyaqdhan.riyal.data.TransferProposal
 import com.alyaqdhan.riyal.data.Txn
@@ -63,6 +64,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         combine(store.reviews, store.transfers) { reviews, transfers ->
             reviews.count { it.state == ReviewItem.STATE_PENDING } +
                 transfers.count { it.state == TransferProposal.STATE_PENDING }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    /**
+     * Records the scan could not place and the user has not answered for. Counted for
+     * the Home card the same way review items are: something the app needs a decision
+     * on, said once, where it will be seen.
+     */
+    val needsCategoryCount: StateFlow<Int> =
+        combine(store.txns, store.archivedIds) { txns, archived ->
+            Stats.unfiled(txns, archived).size
         }.stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     /** Accounts were proposed from SMS but the user hasn't checked them yet. */
@@ -366,6 +377,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         " · re-categorized $changed past transaction(s)"
                 )
             }
+            Verbose.flush()
+        }
+
+    /**
+     * Files every record of one merchant, and remembers the answer. The rule is what
+     * makes it stick to messages that have not arrived yet; the explicit filing covers
+     * the records in front of the user right now, so nothing they just answered for can
+     * come back on the next scan.
+     */
+    fun fileMerchant(group: Stats.MerchantGroup, categoryId: String) =
+        viewModelScope.launch(Dispatchers.IO) {
+            val pattern = group.merchant.trim().lowercase()
+            val filed = store.setCategories(group.txnIds, categoryId)
+            val byRule = store.addRule(UserRule(pattern, categoryId))
+            Verbose.ok(
+                "filed by you: ${group.count} record(s) from \"${group.merchant}\" → " +
+                    Categories.byId(categoryId).name
+            )
+            Verbose.ok(
+                "rule saved: \"$pattern\" → ${Categories.byId(categoryId).name} · " +
+                    "$filed record(s) filed now, $byRule more re-categorized, and anything " +
+                    "matching from now on lands there without being asked"
+            )
             Verbose.flush()
         }
 

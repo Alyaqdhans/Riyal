@@ -252,6 +252,66 @@ object Stats {
         }
     }
 
+    // ── the backlog waiting for a category ──
+
+    /**
+     * One counterparty's unfiled records, on one side of the ledger: the unit of a
+     * single decision. Filing it saves a rule keyed on the merchant, which files every
+     * record here and every future one from the same place.
+     *
+     * Sides are kept apart because a rule belongs to one: the same name can both take
+     * money and send it, and an expense category on an income record is a wrong answer
+     * that looks like a right one.
+     */
+    data class MerchantGroup(
+        val merchant: String,
+        val type: TxnType,
+        val count: Int,
+        val amountMinor: Long,
+        val currency: String,
+        val txnIds: List<String>,
+    )
+
+    /**
+     * Records the scan could not place: still on the category it falls back to, and
+     * never touched by the user. A category the user chose - even if they chose Other -
+     * is an answer, and answers are not asked again.
+     */
+    fun unfiled(txns: List<Txn>, archived: Set<String> = emptySet()): List<Txn> = txns.filter {
+        it.type != TxnType.TRANSFER &&
+            it.categorySource != "user" &&
+            it.categoryId == Categories.defaultFor(it.type) &&
+            it.id !in archived
+    }
+
+    /**
+     * The backlog as decisions rather than rows, biggest money first. With a long gap
+     * most records are small and barely move a total, so the few biggest merchants are
+     * where the distortion actually lives.
+     *
+     * Records naming no merchant cannot be batched - there is nothing to key a rule on -
+     * so they are left out and counted separately by the caller.
+     */
+    fun unfiledByMerchant(
+        txns: List<Txn>,
+        currency: String,
+        archived: Set<String> = emptySet(),
+    ): List<MerchantGroup> = unfiled(txns, archived)
+        .filter { !it.merchant.isNullOrBlank() && it.currency == currency }
+        .groupBy { it.merchant!!.trim().lowercase() to it.type }
+        .map { (key, list) ->
+            MerchantGroup(
+                // The spelling the bank used, not the lowercased key.
+                merchant = list.first().merchant!!.trim(),
+                type = key.second,
+                count = list.size,
+                amountMinor = list.sumOf { it.amountMinor },
+                currency = currency,
+                txnIds = list.map { it.id },
+            )
+        }
+        .sortedWith(compareByDescending<MerchantGroup> { it.amountMinor }.thenBy { it.merchant })
+
     // ── the shape of a period's spending ──
 
     /**

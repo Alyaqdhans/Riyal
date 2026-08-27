@@ -23,6 +23,7 @@ import com.alyaqdhan.riyal.ui.screens.AnalysisScreen
 import com.alyaqdhan.riyal.ui.screens.CategoriesScreen
 import com.alyaqdhan.riyal.ui.screens.CategoryDetailScreen
 import com.alyaqdhan.riyal.ui.screens.HomeScreen
+import com.alyaqdhan.riyal.ui.screens.NeedsCategoryScreen
 import com.alyaqdhan.riyal.ui.screens.OnboardingScreen
 import com.alyaqdhan.riyal.ui.screens.ReviewScreen
 import com.alyaqdhan.riyal.ui.screens.SettingsScreen
@@ -91,6 +92,7 @@ class HomeFragment : ScreenFragment() {
             onRequestPermission = { requestSms.launch(Manifest.permission.READ_SMS) },
             onOpenReview = { findNavController().navigate(R.id.reviewFragment) },
             onOpenAccounts = { findNavController().navigate(R.id.accountsFragment) },
+            onOpenNeedsCategory = { findNavController().navigate(R.id.needsCategoryFragment) },
         )
     }
 }
@@ -128,6 +130,15 @@ class AccountsFragment : InnerFragment() {
     @Composable
     override fun Screen() {
         AccountsScreen(vm, onBack = { back() })
+    }
+}
+
+/** The grouped backlog, pushed from Home's "needs a category" card. */
+class NeedsCategoryFragment : InnerFragment() {
+
+    @Composable
+    override fun Screen() {
+        NeedsCategoryScreen(vm, onBack = { back() })
     }
 }
 
