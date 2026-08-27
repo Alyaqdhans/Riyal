@@ -35,6 +35,23 @@ class SmsParserTest {
     }
 
     @Test
+    fun `money that arrived is not recorded as money that left`() {
+        // "لقد استلمت" - I received. The message also says "خدمات الدفع" (payment
+        // services), and "دفع" is an expense keyword, so with no income keyword to
+        // beat it these were filed as spending: 19 records in one real inbox, worth
+        // OMR 791.765, counted the wrong way round in every total on every screen.
+        val r = parser.parse(
+            "عزيزي الزبون، لقد استلمت OMR 2.000 من MOHAMMED ABDULLAH في حسابك " +
+                "0630XXXXXXXX0001 باستخدام خدمات الدفع عبر الهاتف النقال/ المحفظة " +
+                "الإلكترونية. رصيدك الحالي هو OMR 5.495"
+        )
+        assertTrue(r is SmsParser.Result.Parsed)
+        r as SmsParser.Result.Parsed
+        assertEquals(Direction.INCOME, r.direction)
+        assertEquals(2_000L, r.amountMinor)
+    }
+
+    @Test
     fun depositWithThousandsSeparatorParses() {
         val r = parser.parse("Deposit of OMR 1,250.000 to your account XX5678. Avl Bal OMR 1,600.000")
         assertTrue(r is SmsParser.Result.Parsed)

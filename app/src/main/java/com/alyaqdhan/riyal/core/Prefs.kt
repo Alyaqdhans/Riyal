@@ -155,7 +155,11 @@ class Prefs(context: Context) {
         val DEFAULT_INCOME_KEYWORDS = setOf(
             "deposit", "deposited",
             "credited", "received", "refund", "salary",
-            "إيداع", "ايداع", "راتب",
+            // "لقد استلمت OMR 2.000 من فلان" - money arriving. Without it the message
+            // was gated in by "الدفع" inside "خدمات الدفع" further along, and since the
+            // earliest keyword decides the direction, every one of these was recorded
+            // as spending: money coming in, counted as money going out.
+            "إيداع", "ايداع", "راتب", "استلمت",
         )
     }
 }
