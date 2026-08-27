@@ -194,7 +194,7 @@ private fun ConfirmBanner(count: Int, anyMissingBalance: Boolean, onConfirm: () 
         color = MaterialTheme.colorScheme.primaryContainer,
         modifier = Modifier.fillMaxWidth().popIn(),
     ) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,

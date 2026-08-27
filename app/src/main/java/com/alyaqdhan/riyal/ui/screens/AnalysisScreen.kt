@@ -256,7 +256,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
                 // ── donut + legend, either side of the ledger
                 Card(Modifier.fillMaxWidth()) {
                     Column(
-                        Modifier.padding(20.dp),
+                        Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
@@ -410,7 +410,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
                 // ── budget pacing, when there is a plan to pace against
                 budgetProgress?.let { progress ->
                     Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text("Budget pacing", style = MaterialTheme.typography.titleMedium)
                             Text(
                                 buildString {
@@ -447,7 +447,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
                 // ── what changed most since last period
                 if (movers.isNotEmpty()) {
                     Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text("Biggest movers", style = MaterialTheme.typography.titleMedium)
                             Text(
                                 "Against the ${slice.lengthDays} day(s) before this period.",
@@ -491,7 +491,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
                 if (merchants.isNotEmpty()) {
                     val biggestMerchant = merchants.first().amountMinor
                     Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text("Top merchants", style = MaterialTheme.typography.titleMedium)
                             merchants.forEach { m ->
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -533,7 +533,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
                 // ── what is going to happen again
                 if (recurring.isNotEmpty()) {
                     Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text("Looks recurring", style = MaterialTheme.typography.titleMedium)
                             Text(
                                 "Same merchant, steady amount, steady rhythm — so it will very " +
@@ -571,7 +571,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
 
                 // ── insights
                 Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Insights", style = MaterialTheme.typography.titleMedium)
                         InsightRow(
                             R.drawable.ic_insight_store, MaterialShapes.Cookie9Sided, "Top merchant",
@@ -621,7 +621,7 @@ private fun ChartsCard(
 ) {
     var showTrend by remember { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 SegmentedButton(
                     selected = !showTrend,

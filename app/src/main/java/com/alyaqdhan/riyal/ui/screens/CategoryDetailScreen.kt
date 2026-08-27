@@ -112,7 +112,7 @@ fun CategoryDetailScreen(vm: MainViewModel, categoryId: String, onBack: () -> Un
             item(key = "summary") {
                 Card(Modifier.fillMaxWidth().popIn()) {
                     Row(
-                        Modifier.padding(20.dp),
+                        Modifier.padding(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
