@@ -66,10 +66,11 @@ object Categorizer {
         "commission" to "fees", "vat" to "fees", "رسوم" to "fees",
         // cash
         "atm" to "cash", "cdm" to "cash", "cash" to "cash",
-        // transfers
-        "transfer" to "transfer", "remit" to "transfer", "western union" to "transfer",
-        "moneygram" to "transfer", "exchange" to "transfer", "تحويل" to "transfer",
-        "حوالة" to "transfer",
+        // money sent to someone else: real spending, unlike a TRANSFER between the
+        // user's own accounts, which is a record type and carries no category at all
+        "transfer" to "sending", "remit" to "sending", "western union" to "sending",
+        "moneygram" to "sending", "exchange" to "sending", "تحويل" to "sending",
+        "حوالة" to "sending",
         // income
         "salary" to "salary", "payroll" to "salary", "wages" to "salary", "pension" to "salary",
         "راتب" to "salary", "معاش" to "salary",

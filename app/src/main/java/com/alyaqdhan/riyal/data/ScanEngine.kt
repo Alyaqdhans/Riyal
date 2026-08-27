@@ -14,6 +14,11 @@ import java.time.format.DateTimeFormatter
  * One user-initiated pass over the inbox. Narrates every decision to [Verbose]:
  * what was queried, which messages matched, how each one was parsed, and, loudly -
  * which ones could not be read and why (those land in the Review tab).
+ *
+ * The pass is in two stages, because a record cannot name its account until the
+ * accounts exist: everything is parsed first, then accounts are discovered from those
+ * parses (on a first run), then each record is routed to one and paired transfers are
+ * nominated.
  */
 class ScanEngine(
     private val context: Context,
@@ -22,6 +27,13 @@ class ScanEngine(
 ) {
 
     data class Progress(val processed: Int, val total: Int)
+
+    /** A message that parsed cleanly, held until accounts are known. */
+    private data class ParsedMsg(
+        val id: String,
+        val msg: RawSms,
+        val result: SmsParser.Result.Parsed,
+    )
 
     suspend fun run(onProgress: (Progress) -> Unit): ScanSummary {
         val startedAt = System.currentTimeMillis()
@@ -66,7 +78,7 @@ class ScanEngine(
                     "auto-dismissed, restore them any time in Review"
             )
         }
-        val txns = LinkedHashMap<String, Txn>()
+        val parsedMsgs = LinkedHashMap<String, ParsedMsg>()
         val reviews = ArrayList<ReviewItem>()
         var skipped = 0
         var matched = 0
@@ -90,6 +102,7 @@ class ScanEngine(
 
         val learned = HashSet<String>()
 
+        // ── stage 1: read every message ───────────────────────────────────
         messages.forEachIndexed { index, msg ->
             if (index % 25 == 0) onProgress(Progress(index, messages.size))
 
@@ -110,7 +123,7 @@ class ScanEngine(
             // keyword-gated and parsed, but only a fully parsed transaction is kept,
             // and the sender is then learned as a bank. Their unreadable messages are
             // NOT sent to Review, so promo senders can't spam it.
-            val trustedSender = !bankOnly || allowlistOn || looksLikeBank(msg.sender) ||
+            val trustedSender = !bankOnly || allowlistOn || Banks.looksLikeBank(msg.sender) ||
                 msg.sender.lowercase() in allowlist || msg.sender.lowercase() in learned
 
             when (val result = parser.parse(msg.body)) {
@@ -159,33 +172,12 @@ class ScanEngine(
                         )
                     }
                     val id = hashOf(msg)
-                    if (txns.containsKey(id)) {
+                    if (parsedMsgs.containsKey(id)) {
                         duplicates++
                         logSkip("${msg.sender} · exact duplicate message, ignored")
                         return@forEachIndexed
                     }
-                    val cat = Categorizer.categorize(result.direction, result.merchant, msg.body, rules, msg.sender)
-                    Verbose.info("✉ ${msg.sender} · ${fmtDateTime(msg.atMillis)}")
-                    result.trace.forEach { Verbose.info("    · $it") }
-                    val catNote = cat.pattern?.let { "${cat.source} match \"$it\"" } ?: cat.source
-                    Verbose.info("    · category: ${Categories.byId(cat.categoryId).name} ($catNote)")
-                    Verbose.ok(
-                        "    ✓ recorded ${Money.formatSigned(result.amountMinor, result.currency, result.direction == Direction.EXPENSE)}" +
-                            " · confidence ${result.confidence}%"
-                    )
-                    txns[id] = Txn(
-                        id = id,
-                        atMillis = msg.atMillis,
-                        amountMinor = result.amountMinor,
-                        currency = result.currency,
-                        direction = result.direction,
-                        merchant = result.merchant,
-                        sender = msg.sender,
-                        body = msg.body,
-                        categoryId = cat.categoryId,
-                        categorySource = "auto",
-                        confidence = result.confidence,
-                    )
+                    parsedMsgs[id] = ParsedMsg(id, msg, result)
                 }
             }
         }
@@ -197,6 +189,101 @@ class ScanEngine(
             Verbose.scan("learned ${learned.size} new bank sender(s): ${learned.joinToString(", ")}")
         }
 
+        // ── stage 2: accounts ─────────────────────────────────────────────
+        var accounts = store.accounts.value
+        if (accounts.isEmpty() && parsedMsgs.isNotEmpty()) {
+            accounts = AccountDiscovery.propose(
+                parsedMsgs.values.map { pm ->
+                    AccountDiscovery.Observation(
+                        sender = pm.msg.sender,
+                        accountTail = pm.result.accountTail,
+                        currency = pm.result.currency,
+                        balanceMinor = pm.result.balanceMinor,
+                        atMillis = pm.msg.atMillis,
+                        signedMinor = if (pm.result.direction == Direction.EXPENSE) {
+                            -pm.result.amountMinor
+                        } else {
+                            pm.result.amountMinor
+                        },
+                    )
+                }
+            )
+            if (accounts.isNotEmpty()) {
+                store.replaceAccounts(accounts)
+                Verbose.scan("──────── accounts found ────────")
+                accounts.forEach { a ->
+                    Verbose.ok(
+                        "✦ ${a.displayName} (${a.currency})" +
+                            (a.last4?.let { " ···$it" } ?: "") + " · " +
+                            if (a.needsBalance) {
+                                "no balance quoted in any message, please enter it"
+                            } else {
+                                "opening balance ${Money.format(a.openingBalanceMinor, a.currency)} " +
+                                    "as of ${fmtDateTime(a.openingAtMillis)}"
+                            }
+                    )
+                }
+                Verbose.scan("→ check these on Home before trusting the balances")
+            }
+        }
+
+        // ── stage 3: build records, routed to an account ──────────────────
+        val txns = ArrayList<Txn>(parsedMsgs.size)
+        val hinted = HashSet<String>()
+        var unrouted = 0
+        for (pm in parsedMsgs.values) {
+            val result = pm.result
+            val accountId = AccountDiscovery.routeTo(accounts, pm.msg.sender, result.accountTail)
+            if (accountId == null) unrouted++
+            if (result.transferHint) hinted += pm.id
+            val cat = Categorizer.categorize(result.direction, result.merchant, pm.msg.body, rules, pm.msg.sender)
+            val type = TxnType.of(result.direction)
+            Verbose.info("✉ ${pm.msg.sender} · ${fmtDateTime(pm.msg.atMillis)}")
+            result.trace.forEach { Verbose.info("    · $it") }
+            val catNote = cat.pattern?.let { "${cat.source} match \"$it\"" } ?: cat.source
+            Verbose.info("    · category: ${Categories.byId(cat.categoryId).name} ($catNote)")
+            Verbose.info(
+                "    · account: " + (accounts.firstOrNull { it.id == accountId }?.displayName
+                    ?: "not matched, assign it from the transaction row")
+            )
+            Verbose.ok(
+                "    ✓ recorded ${Money.formatSigned(result.amountMinor, result.currency, type == TxnType.EXPENSE)}" +
+                    " · confidence ${result.confidence}%"
+            )
+            txns += Txn(
+                id = pm.id,
+                atMillis = pm.msg.atMillis,
+                amountMinor = result.amountMinor,
+                currency = result.currency,
+                type = type,
+                fromAccountId = if (type == TxnType.EXPENSE) accountId else null,
+                toAccountId = if (type == TxnType.INCOME) accountId else null,
+                merchant = result.merchant,
+                sender = pm.msg.sender,
+                body = pm.msg.body,
+                categoryId = cat.categoryId,
+                categorySource = "auto",
+                confidence = result.confidence,
+            )
+        }
+
+        // ── stage 4: nominate transfers ───────────────────────────────────
+        val proposals = TransferMatcher.propose(txns, hintedIds = hinted)
+        if (proposals.isNotEmpty()) {
+            Verbose.scan("──────── possible transfers ────────")
+            proposals.forEach { p ->
+                Verbose.scan(
+                    "⇄ ${Money.format(p.amountMinor, p.currency)} left " +
+                        "${accountName(accounts, p.fromAccountId)} and arrived in " +
+                        "${accountName(accounts, p.toAccountId)} around ${fmtDateTime(p.atMillis)}"
+                )
+            }
+            Verbose.scan(
+                "→ nothing was merged: confirm each one in Review, and only then does it " +
+                    "stop counting as spending and income"
+            )
+        }
+
         val summary = ScanSummary(
             at = System.currentTimeMillis(),
             tookMs = System.currentTimeMillis() - startedAt,
@@ -205,8 +292,9 @@ class ScanEngine(
             parsed = txns.size,
             review = needsReview,
             skipped = skipped,
+            transfers = proposals.size,
         )
-        store.replaceScanned(txns.values.toList(), reviews, seenSenders, summary)
+        store.replaceScanned(txns, proposals, reviews, seenSenders, summary)
 
         Verbose.scan("──────── scan finished in ${"%.1f".format(summary.tookMs / 1000f)}s ────────")
         Verbose.scan(
@@ -216,6 +304,12 @@ class ScanEngine(
         )
         if (needsReview > 0) {
             Verbose.scan("→ ${needsReview} message(s) could not be read, they are waiting in the Review tab")
+        }
+        if (unrouted > 0) {
+            Verbose.scan(
+                "→ $unrouted record(s) couldn't be matched to an account (the bank didn't quote " +
+                    "one); assign them by tapping the row in Activity"
+            )
         }
         if (autoDismissed > 0) {
             Verbose.scan(
@@ -228,21 +322,12 @@ class ScanEngine(
         return summary
     }
 
-    /**
-     * "BankMuscat", "Bank Dhofar", "بنك نزوى"… plus Omani banks that brand without the
-     * word "bank" (NBO, Sohar International, Meethaq, Muzn, Maisarah, Alizz…).
-     * Anything not listed here is still picked up by sender learning once one of its
-     * messages parses as a real transaction.
-     */
+    private fun accountName(accounts: List<Account>, id: String?): String =
+        accounts.firstOrNull { it.id == id }?.displayName ?: "an unassigned account"
+
     /** "+96891234567", "9123 4567"… anything that's just a phone number. */
     private fun isPhoneNumber(sender: String): Boolean =
         sender.isNotBlank() && sender.all { it.isDigit() || it in "+ -()" }
-
-    private fun looksLikeBank(sender: String): Boolean {
-        val s = sender.lowercase().replace(" ", "").replace("-", "").replace("_", "")
-        if ("bank" in s || "بنك" in s || "مصرف" in s) return true
-        return KNOWN_BANK_BRANDS.any { it in s }
-    }
 
     private fun hashOf(m: RawSms): String =
         MessageDigest.getInstance("SHA-256")
@@ -260,22 +345,5 @@ class ScanEngine(
 
     private companion object {
         const val MAX_SKIP_LINES = 400
-
-        // Omani (and common regional) bank sender brands that don't say "bank".
-        val KNOWN_BANK_BRANDS = listOf(
-            "nbo",          // National Bank of Oman
-            "soharintl", "soharisl", // Sohar International / Islamic
-            "meethaq",      // Bank Muscat Islamic
-            "muzn",         // NBO Islamic
-            "maisarah",     // Bank Dhofar Islamic
-            "alizz", "izzbank", // Alizz Islamic
-            "ahli",         // Ahli Bank
-            "hsbc",
-            "oab", "omanarab",  // Oman Arab Bank
-            "nizwa",
-            "dhofar",
-            "muscat",       // BankMuscat variants like "Muscat"
-            "cbd", "sib", "qnb", "sbi",
-        )
     }
 }
