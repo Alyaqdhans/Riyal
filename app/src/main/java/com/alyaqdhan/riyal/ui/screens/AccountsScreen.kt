@@ -22,11 +22,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -58,6 +58,7 @@ import com.alyaqdhan.riyal.ui.compose.DropdownField
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
+import com.alyaqdhan.riyal.ui.compose.ToolbarSpace
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
 import com.alyaqdhan.riyal.ui.theme.successColor
@@ -118,7 +119,7 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
             }
 
             LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = ToolbarSpace),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (needsConfirming) {
@@ -138,7 +139,6 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
                         account = account,
                         balance = balances[account.id] ?: account.openingBalanceMinor,
                         onEdit = { editing = account },
-                        onDelete = { confirmDelete = account },
                     )
                 }
                 item(key = "add") {
@@ -157,6 +157,10 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
             isNew = accounts.none { it.id == account.id },
             onSave = {
                 vm.saveAccount(it)
+                editing = null
+            },
+            onDelete = {
+                confirmDelete = account
                 editing = null
             },
             onDismiss = { editing = null },
@@ -203,25 +207,21 @@ private fun ConfirmBanner(count: Int, anyMissingBalance: Boolean, onConfirm: () 
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
+                    // One sentence, and only the one this state needs: the banner used
+                    // to say the same thing three ways before the button that ends it.
                     Text(
-                        "$count account(s) set up from your messages",
+                        if (anyMissingBalance) {
+                            "$count account(s) read from your bank's texts. One quoted no " +
+                                "balance and starts at zero — tap it to set the real figure."
+                        } else {
+                            "$count account(s) read from the balances your bank's texts quote. " +
+                                "Tap any that look wrong."
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
             }
-            Text(
-                if (anyMissingBalance) {
-                    "Riyal read these from the balances your bank quotes in its texts. One or more " +
-                        "never quoted a balance, so it starts at zero — tap Edit to set the real " +
-                        "figure. Correct anything that's off, then confirm."
-                } else {
-                    "Riyal read these from the balances your bank quotes in its texts. Check the " +
-                        "names and opening balances, fix anything that's off, then confirm."
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
             Button(
                 onClick = onConfirm,
                 modifier = Modifier.fillMaxWidth().pressBounce(),
@@ -258,74 +258,47 @@ private fun AccountCard(
     account: Account,
     balance: Long,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth().popIn()) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    Modifier
-                        .size(12.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Color(if (account.color != 0) account.color else Categories.colorFor("other"))
-                        ),
-                )
-                Column(Modifier.weight(1f)) {
-                    Text(account.displayName, style = MaterialTheme.typography.titleMedium)
-                    // The title already carries the bank and the digits unless the user
-                    // nicknamed the account, so the second line only fills in the rest.
-                    val nicknamed = account.name.isNotBlank()
+    // Two lines: which account, and what is in it. Everything else the card used to
+    // recite - the opening figure, the senders it reads, Edit and Delete - is in the
+    // editor this row opens, which is where it can actually be changed.
+    Surface(
+        onClick = onEdit,
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier
+            .fillMaxWidth()
+            .popIn()
+            .pressBounce(0.98f),
+    ) {
+        Row(
+            Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Color(if (account.color != 0) account.color else Categories.colorFor("other"))
+                    ),
+            )
+            Column(Modifier.weight(1f)) {
+                Text(account.displayName, style = MaterialTheme.typography.titleMedium)
+                if (account.needsBalance) {
                     Text(
-                        listOfNotNull(
-                            if (nicknamed) {
-                                account.bankName.ifBlank { null }
-                                    ?.plus(account.last4?.let { " · ···$it" }.orEmpty())
-                            } else {
-                                null
-                            },
-                            account.currency,
-                            account.senderIds.takeIf { it.isNotEmpty() }?.joinToString(", "),
-                        ).joinToString(" · "),
+                        "No balance in any message — tap to set it",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.tertiary,
                     )
                 }
-                Text(
-                    Money.format(balance, account.currency),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (balance < 0) MaterialTheme.colorScheme.error else successColor(),
-                )
             }
-            if (account.needsBalance) {
-                Text(
-                    "No balance was quoted in any message — set the real one so this figure means something.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.tertiary,
-                )
-            } else {
-                Text(
-                    "Started at ${Money.format(account.openingBalanceMinor, account.currency)} " +
-                        "on ${asOfFmt.format(Instant.ofEpochMilli(account.openingAtMillis).atZone(ZoneId.systemDefault()))}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (account.senderIds.isNotEmpty()) {
-                Text(
-                    "Messages from: ${account.senderIds.joinToString(", ")}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            HorizontalDivider()
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = onEdit) { Text("Edit") }
-                TextButton(onClick = onDelete) { Text("Delete") }
-            }
+            Text(
+                Money.format(balance, account.currency),
+                style = MaterialTheme.typography.titleMedium,
+                color = if (balance < 0) MaterialTheme.colorScheme.error else successColor(),
+            )
         }
     }
 }
@@ -335,6 +308,7 @@ private fun AccountEditorDialog(
     account: Account,
     isNew: Boolean,
     onSave: (Account) -> Unit,
+    onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var name by remember { mutableStateOf(account.name) }
@@ -454,7 +428,19 @@ private fun AccountEditorDialog(
                 },
             ) { Text("Save") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = {
+            Row {
+                if (!isNew) {
+                    TextButton(
+                        onClick = onDelete,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error,
+                        ),
+                    ) { Text("Delete") }
+                }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        },
     )
 }
 
