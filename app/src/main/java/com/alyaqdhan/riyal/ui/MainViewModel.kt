@@ -10,12 +10,16 @@ import androidx.lifecycle.viewModelScope
 import com.alyaqdhan.riyal.RiyalApp
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
+import com.alyaqdhan.riyal.data.Account
+import com.alyaqdhan.riyal.data.AccountDiscovery
+import com.alyaqdhan.riyal.data.BudgetPlan
 import com.alyaqdhan.riyal.data.Categories
-import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.ScanEngine
 import com.alyaqdhan.riyal.data.ScanSummary
+import com.alyaqdhan.riyal.data.TransferProposal
 import com.alyaqdhan.riyal.data.Txn
+import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.data.UserRule
 import java.time.Instant
 import java.time.LocalDateTime
@@ -26,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -41,10 +46,31 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val rules = store.rules
     val senders = store.senders
     val lastSummary = store.lastSummary
+    val accounts = store.accounts
+    val balances = store.balances
+    val budgets = store.budgets
+    val transfers = store.transfers
 
-    val pendingReviewCount: StateFlow<Int> = store.reviews
-        .map { list -> list.count { it.state == ReviewItem.STATE_PENDING } }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    val pendingTransfers: StateFlow<List<TransferProposal>> = store.transfers
+        .map { list -> list.filter { it.state == TransferProposal.STATE_PENDING } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /**
+     * What the Home card and the toolbar dot count: unreadable messages plus transfer
+     * pairs waiting on an answer. Both are "the app needs you to decide something".
+     */
+    val pendingReviewCount: StateFlow<Int> =
+        combine(store.reviews, store.transfers) { reviews, transfers ->
+            reviews.count { it.state == ReviewItem.STATE_PENDING } +
+                transfers.count { it.state == TransferProposal.STATE_PENDING }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    /** Accounts were proposed from SMS but the user hasn't checked them yet. */
+    private val _accountsConfirmed = MutableStateFlow(prefs.accountsConfirmed)
+    val accountsNeedConfirming: StateFlow<Boolean> =
+        combine(store.accounts, _accountsConfirmed) { accounts, confirmed ->
+            accounts.isNotEmpty() && !confirmed
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     // ─────────────────────────── scanning ───────────────────────────
 
@@ -144,6 +170,143 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (_scanState.value !is ScanState.Running) _scanState.value = ScanState.Idle
     }
 
+    // ─────────────────────────── accounts ───────────────────────────
+
+    fun balanceOf(account: Account): Long = AccountDiscovery.balanceOf(account, txns.value)
+
+    fun saveAccount(account: Account) = viewModelScope.launch(Dispatchers.IO) {
+        val existing = accounts.value.any { it.id == account.id }
+        if (existing) store.updateAccount(account) else store.addAccount(account)
+        Verbose.ok(
+            (if (existing) "account updated by you: " else "account added by you: ") +
+                "${account.displayName} · opening ${Money.format(account.openingBalanceMinor, account.currency)}"
+        )
+        Verbose.flush()
+    }
+
+    fun deleteAccount(id: String) = viewModelScope.launch(Dispatchers.IO) {
+        val name = accounts.value.firstOrNull { it.id == id }?.displayName ?: id
+        store.deleteAccount(id)
+        Verbose.info("account deleted by you: \"$name\" · its records kept, now unassigned")
+        Verbose.flush()
+    }
+
+    fun confirmAccounts() {
+        prefs.accountsConfirmed = true
+        _accountsConfirmed.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            // Confirming means the user vouched for these figures, so the "we never saw
+            // a balance for this one" flag has served its purpose and comes off.
+            accounts.value.filter { it.needsBalance }.forEach {
+                store.updateAccount(it.copy(needsBalance = false))
+            }
+            Verbose.ok("accounts confirmed by you: ${accounts.value.size} account(s) are now the source of your balances")
+            Verbose.flush()
+        }
+    }
+
+    fun setTxnAccount(txn: Txn, accountId: String) = viewModelScope.launch(Dispatchers.IO) {
+        store.setTxnAccount(txn.id, accountId)
+        val name = accounts.value.firstOrNull { it.id == accountId }?.displayName ?: accountId
+        Verbose.ok("account set by you: ${Money.format(txn.amountMinor, txn.currency)} → $name")
+        Verbose.flush()
+    }
+
+    // ─────────────────────────── transfers ───────────────────────────
+
+    fun acceptTransfer(proposal: TransferProposal) = viewModelScope.launch(Dispatchers.IO) {
+        store.acceptTransfer(proposal)
+        Verbose.ok(
+            "transfer confirmed by you: ${Money.format(proposal.amountMinor, proposal.currency)} " +
+                "moved between your accounts · it no longer counts as spending or income"
+        )
+        Verbose.flush()
+    }
+
+    fun rejectTransfer(proposal: TransferProposal) = viewModelScope.launch(Dispatchers.IO) {
+        store.rejectTransfer(proposal)
+        Verbose.info(
+            "transfer rejected by you: both messages stay a real expense and a real income, " +
+                "and this pair won't be suggested again"
+        )
+        Verbose.flush()
+    }
+
+    fun splitTransfer(txn: Txn) = viewModelScope.launch(Dispatchers.IO) {
+        store.splitTransfer(txn)
+        Verbose.info("transfer split by you: both sides count again")
+        Verbose.flush()
+    }
+
+    fun markAsTransfer(txn: Txn, fromAccountId: String?, toAccountId: String?) =
+        viewModelScope.launch(Dispatchers.IO) {
+            store.markAsTransfer(txn, fromAccountId, toAccountId)
+            Verbose.ok(
+                "marked as a transfer by you: ${Money.format(txn.amountMinor, txn.currency)} " +
+                    "no longer counts as spending or income"
+            )
+            Verbose.flush()
+        }
+
+    // ─────────────────────────── budgets ───────────────────────────
+
+    var budgetsEnabled: Boolean
+        get() = prefs.budgetsEnabled
+        set(v) {
+            prefs.budgetsEnabled = v
+            _budgetsOn.value = v
+        }
+
+    private val _budgetsOn = MutableStateFlow(prefs.budgetsEnabled)
+    val budgetsOn: StateFlow<Boolean> = _budgetsOn
+
+    fun addBudget(label: String, startMillis: Long, endExclusiveMillis: Long) =
+        viewModelScope.launch(Dispatchers.IO) {
+            store.addBudget(
+                BudgetPlan(
+                    id = BudgetPlan.ID_PREFIX + UUID.randomUUID().toString().take(8),
+                    label = label,
+                    startMillis = startMillis,
+                    endExclusiveMillis = endExclusiveMillis,
+                )
+            )
+            Verbose.ok("budget plan created by you: \"$label\"")
+            Verbose.flush()
+        }
+
+    fun setBudgetLine(planId: String, categoryId: String, minor: Long) =
+        viewModelScope.launch(Dispatchers.IO) {
+            store.setBudgetLine(planId, categoryId, minor)
+            Verbose.info(
+                if (minor > 0) "budget set by you: ${Categories.byId(categoryId).name} capped at $minor (minor units)"
+                else "budget removed by you: ${Categories.byId(categoryId).name}"
+            )
+            Verbose.flush()
+        }
+
+    fun deleteBudget(id: String) = viewModelScope.launch(Dispatchers.IO) {
+        val label = budgets.value.firstOrNull { it.id == id }?.label ?: id
+        store.deleteBudget(id)
+        Verbose.info("budget plan deleted by you: \"$label\"")
+        Verbose.flush()
+    }
+
+    /** Copies an existing plan's caps into a new period, the usual month-to-month move. */
+    fun copyBudget(source: BudgetPlan, label: String, startMillis: Long, endExclusiveMillis: Long) =
+        viewModelScope.launch(Dispatchers.IO) {
+            store.addBudget(
+                BudgetPlan(
+                    id = BudgetPlan.ID_PREFIX + UUID.randomUUID().toString().take(8),
+                    label = label,
+                    startMillis = startMillis,
+                    endExclusiveMillis = endExclusiveMillis,
+                    lines = source.lines,
+                )
+            )
+            Verbose.ok("budget plan copied by you: \"${source.label}\" → \"$label\"")
+            Verbose.flush()
+        }
+
     // ─────────────────────────── user edits ───────────────────────────
 
     fun setCategory(txn: Txn, categoryId: String, alsoRulePattern: String?) =
@@ -206,6 +369,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
     }
 
+    // ─────────────────────────── review ───────────────────────────
+
     fun dismissReview(item: ReviewItem, alsoSimilar: Boolean) = viewModelScope.launch(Dispatchers.IO) {
         val extra = store.dismissReview(item, smart = alsoSimilar)
         Verbose.info(
@@ -231,9 +396,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         item: ReviewItem,
         amountMinor: Long,
         currency: String,
-        direction: Direction,
+        type: TxnType,
         merchant: String?,
         categoryId: String,
+        fromAccountId: String?,
+        toAccountId: String?,
         learnSimilar: Boolean = true,
     ) = viewModelScope.launch(Dispatchers.IO) {
         val txn = Txn(
@@ -241,7 +408,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             atMillis = item.atMillis,
             amountMinor = amountMinor,
             currency = currency,
-            direction = direction,
+            type = type,
+            fromAccountId = fromAccountId,
+            toAccountId = toAccountId,
             merchant = merchant,
             sender = item.sender,
             body = item.body,
@@ -261,9 +430,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun addManual(
         amountMinor: Long,
         currency: String,
-        direction: Direction,
+        type: TxnType,
         merchant: String?,
         categoryId: String,
+        fromAccountId: String?,
+        toAccountId: String?,
         atMillis: Long = System.currentTimeMillis(),
     ) = viewModelScope.launch(Dispatchers.IO) {
         val txn = Txn(
@@ -271,7 +442,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             atMillis = atMillis,
             amountMinor = amountMinor,
             currency = currency,
-            direction = direction,
+            type = type,
+            fromAccountId = fromAccountId,
+            toAccountId = toAccountId,
             merchant = merchant,
             sender = "manual entry",
             body = "Added by you",
@@ -288,6 +461,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun wipeAll() = viewModelScope.launch(Dispatchers.IO) {
         store.wipe()
         prefs.wipe()
+        _budgetsOn.value = prefs.budgetsEnabled
+        _accountsConfirmed.value = prefs.accountsConfirmed
         Verbose.info("all data and settings wiped by you")
         Verbose.flush()
     }
@@ -295,17 +470,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun exportCsv(uri: Uri) = viewModelScope.launch(Dispatchers.IO) {
         try {
             val list = txns.value
+            val accountsById = accounts.value.associateBy { it.id }
+            fun accountName(id: String?) = id?.let { accountsById[it]?.displayName ?: it } ?: ""
             getApplication<Application>().contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { w ->
-                w.appendLine("id,datetime,direction,amount,currency,merchant,category,sender,confidence,manual")
+                w.appendLine(
+                    "id,datetime,type,amount,currency,from_account,to_account,merchant," +
+                        "category,sender,description,confidence,manual"
+                )
                 val fmt = DateTimeFormatter.ISO_LOCAL_DATE_TIME
                 for (t in list) {
                     val dt = LocalDateTime.ofInstant(Instant.ofEpochMilli(t.atMillis), ZoneId.systemDefault()).format(fmt)
                     w.appendLine(
                         listOf(
-                            t.id, dt, t.direction.name,
+                            t.id, dt, t.type.name,
                             Money.toMajor(t.amountMinor, t.currency).toPlainString(), t.currency,
+                            csv(accountName(t.fromAccountId)), csv(accountName(t.toAccountId)),
                             csv(t.merchant ?: ""), csv(Categories.byId(t.categoryId).name),
-                            csv(t.sender), t.confidence.toString(), t.manual.toString(),
+                            csv(t.sender), csv(t.body), t.confidence.toString(), t.manual.toString(),
                         ).joinToString(",")
                     )
                 }
