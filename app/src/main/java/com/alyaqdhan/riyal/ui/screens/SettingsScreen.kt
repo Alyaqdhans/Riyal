@@ -114,6 +114,7 @@ fun SettingsScreen(
     var scanOnLaunch by remember { mutableStateOf(prefs.scanOnLaunch) }
     var smartRules by remember { mutableStateOf(prefs.smartRules) }
     var budgetsEnabled by remember { mutableStateOf(prefs.budgetsEnabled) }
+    var autoConfirmTransfers by remember { mutableStateOf(prefs.autoConfirmTransfers) }
     var confirmWipe by remember { mutableStateOf(false) }
 
     fun note(text: String) {
@@ -201,6 +202,31 @@ fun SettingsScreen(
                             smartRules = it
                             prefs.smartRules = it
                             note("smart category learning ${if (it) "enabled" else "disabled"}")
+                        },
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Confirm transfers for me", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            if (autoConfirmTransfers) {
+                                "A matching pair — same amount and currency, two of your own " +
+                                    "accounts, minutes apart — is treated as one transfer straight " +
+                                    "away, so it never counts as spending or income. Any of them " +
+                                    "can be split back apart from its row."
+                            } else {
+                                "Off. Every matching pair waits in Review for your yes or no."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = autoConfirmTransfers,
+                        onCheckedChange = {
+                            autoConfirmTransfers = it
+                            vm.autoConfirmTransfers = it
+                            note("auto-confirm transfers ${if (it) "enabled" else "disabled"}")
                         },
                     )
                 }

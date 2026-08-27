@@ -279,8 +279,13 @@ class ScanEngine(
                 )
             }
             Verbose.scan(
-                "→ nothing was merged: confirm each one in Review, and only then does it " +
-                    "stop counting as spending and income"
+                if (prefs.autoConfirmTransfers) {
+                    "→ each pair is merged into one transfer straight away and stops counting " +
+                        "as spending and income; open a row in Activity to split it back apart"
+                } else {
+                    "→ nothing was merged: confirm each one in Review, and only then does it " +
+                        "stop counting as spending and income"
+                }
             )
         }
 

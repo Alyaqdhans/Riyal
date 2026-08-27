@@ -16,7 +16,7 @@ class RiyalApp : Application() {
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
-        store = Store(this)
+        store = Store(this, prefs.autoConfirmTransfers)
         DynamicColors.applyToActivitiesIfAvailable(this)
         Verbose.info("Riyal started · verbose processing log is live")
         Verbose.info("permissions declared: READ_SMS only, no INTERNET, no RECEIVE_SMS, no background work")

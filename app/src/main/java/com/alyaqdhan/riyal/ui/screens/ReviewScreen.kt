@@ -75,7 +75,21 @@ private val reviewDateFmt = DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a")
 fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
     val reviews by vm.reviews.collectAsState()
     val transfers by vm.pendingTransfers.collectAsState()
+    val allTransfers by vm.transfers.collectAsState()
+    val autoConfirmOn by vm.autoConfirmOn.collectAsState()
     val accounts by vm.accounts.collectAsState()
+    // Confirmed pairs never reach this queue, so the page says so rather than looking
+    // as if the app found nothing.
+    val autoConfirmed = remember(allTransfers) {
+        allTransfers.count { it.state == TransferProposal.STATE_ACCEPTED }
+    }
+    val autoNote = if (autoConfirmOn && autoConfirmed > 0) {
+        "$autoConfirmed matching pair(s) were confirmed as transfers for you, so they " +
+            "count as neither spending nor income. Open one in Activity to split it back " +
+            "apart, or turn off \"Confirm transfers for me\" in Settings to be asked each time."
+    } else {
+        null
+    }
     val pending = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_PENDING } }
     val dismissed = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_DISMISSED } }
     var resolving by remember { mutableStateOf<Pair<ReviewItem, Boolean>?>(null) }
@@ -102,7 +116,8 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                     style = FaceStyle.NORMAL,
                     mood = 0.9f,
                     title = "All clear",
-                    subtitle = "When a message matches your keywords but can't be read, it waits here for your decision, it is never guessed into your numbers.",
+                    subtitle = "When a message matches your keywords but can't be read, it waits here for your decision, it is never guessed into your numbers." +
+                        (autoNote?.let { "\n\n$it" } ?: ""),
                 )
             } else {
                 LazyColumn(
@@ -138,6 +153,16 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                                     scope.launch { snackbar.showSnackbar("Kept as separate records") }
                                 },
                                 modifier = Modifier.animateItem(),
+                            )
+                        }
+                    }
+                    autoNote?.let { note ->
+                        item(key = "auto-transfers") {
+                            Text(
+                                note,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = if (transfers.isEmpty()) 0.dp else 12.dp),
                             )
                         }
                     }

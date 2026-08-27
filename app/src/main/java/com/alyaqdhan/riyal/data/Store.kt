@@ -28,7 +28,14 @@ import org.json.JSONObject
  * output plus a yes/no per proposal, and [txns] is recomputed from both. That is what
  * makes "actually, that wasn't a transfer" a one-tap undo rather than a rescan.
  */
-class Store(context: Context) {
+class Store(context: Context, autoConfirmTransfers: Boolean = true) {
+
+    /**
+     * Whether a freshly matched pair counts as a transfer straight away instead of
+     * waiting in Review. Mirrors the Settings switch; a pair the user answered by hand
+     * is never touched by it, in either direction.
+     */
+    private var autoConfirm: Boolean = autoConfirmTransfers
 
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -129,6 +136,7 @@ class Store(context: Context) {
         _transfers.value = proposals.distinctBy { it.id }.map { p ->
             transferDecisions[p.id]?.let { p.copy(state = it) } ?: p
         }.sortedByDescending { it.atMillis }
+        applyAutoConfirmLocked()
         recomputeTxnsLocked()
 
         val previous = _reviews.value.associateBy { it.id }
@@ -213,7 +221,9 @@ class Store(context: Context) {
 
     /** Undoes an earlier answer, putting the pair back in the queue. */
     suspend fun reopenTransfer(proposalId: String) = mutex.withLock {
-        transferDecisions.remove(proposalId)
+        // Pending is recorded as a decision of its own: the user asked to be asked, and
+        // auto-confirm must not quietly answer for them on the next scan.
+        transferDecisions[proposalId] = TransferProposal.STATE_PENDING
         setTransferStateLocked(proposalId, TransferProposal.STATE_PENDING)
         recomputeTxnsLocked()
         persistLocked()
@@ -245,6 +255,52 @@ class Store(context: Context) {
         manualTransfers[txn.id] = fromAccountId to toAccountId
         recomputeTxnsLocked()
         persistLocked()
+    }
+
+    /**
+     * Turns auto-confirm on or off. Only pairs the user never answered move: switching
+     * it on confirms the ones still waiting, switching it off puts them back in the
+     * queue, and a hand-made yes or no survives both.
+     */
+    suspend fun setAutoConfirmTransfers(enabled: Boolean) = mutex.withLock {
+        if (autoConfirm == enabled) return@withLock
+        autoConfirm = enabled
+        applyAutoConfirmLocked()
+        recomputeTxnsLocked()
+        persistLocked()
+    }
+
+    /**
+     * Applies the auto-confirm setting to every proposal the user has not answered.
+     * Kept separate from the decision map so that "the app decided this" and "you
+     * decided this" never get confused: only the former is reversible by the switch.
+     */
+    private fun applyAutoConfirmLocked() {
+        var changed = 0
+        _transfers.value = _transfers.value.map { p ->
+            if (p.id in transferDecisions) return@map p
+            when {
+                autoConfirm && p.state == TransferProposal.STATE_PENDING -> {
+                    changed++
+                    p.copy(state = TransferProposal.STATE_ACCEPTED)
+                }
+                !autoConfirm && p.state == TransferProposal.STATE_ACCEPTED -> {
+                    changed++
+                    p.copy(state = TransferProposal.STATE_PENDING)
+                }
+                else -> p
+            }
+        }
+        if (changed > 0) {
+            Verbose.info(
+                if (autoConfirm) {
+                    "$changed matched pair(s) confirmed as transfers automatically · " +
+                        "they no longer count as spending or income, and each one can be split back apart"
+                } else {
+                    "$changed automatically confirmed transfer(s) moved back to Review for your answer"
+                }
+            )
+        }
     }
 
     private fun setTransferStateLocked(proposalId: String, state: String) {
@@ -588,6 +644,8 @@ class Store(context: Context) {
                     skipped = s.getInt("skipped"), transfers = s.optInt("transfers", 0),
                 )
             }
+            // A pair saved before auto-confirm was on is answered now, on the way in.
+            applyAutoConfirmLocked()
             recomputeTxnsLocked()
             Verbose.info(
                 "store: loaded ${_txns.value.size} transaction(s), " +

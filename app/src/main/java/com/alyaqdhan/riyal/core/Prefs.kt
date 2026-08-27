@@ -66,6 +66,18 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("accounts_confirmed", false)
         set(v) = sp.edit().putBoolean("accounts_confirmed", v).apply()
 
+    /**
+     * Whether a matched pair is treated as a transfer without being asked. On by
+     * default: the matcher only pairs an expense and an income of the same amount and
+     * currency, on two different accounts, minutes apart - a coincidence that would
+     * have to be engineered - and the alternative is a queue of thousands of identical
+     * yes/no questions. Every auto-confirmed pair is still listed and reversible, and
+     * turning this off puts the undecided ones back in Review.
+     */
+    var autoConfirmTransfers: Boolean
+        get() = sp.getBoolean("auto_confirm_transfers", true)
+        set(v) = sp.edit().putBoolean("auto_confirm_transfers", v).apply()
+
     var senderFilterEnabled: Boolean
         get() = sp.getBoolean("sender_filter_enabled", false)
         set(v) = sp.edit().putBoolean("sender_filter_enabled", v).apply()

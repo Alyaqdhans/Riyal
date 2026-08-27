@@ -232,6 +232,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
     }
 
+    /**
+     * The Settings switch: whether a matched pair becomes a transfer without being
+     * asked. Flipping it re-answers only the pairs the user never answered themselves.
+     */
+    var autoConfirmTransfers: Boolean
+        get() = prefs.autoConfirmTransfers
+        set(v) {
+            prefs.autoConfirmTransfers = v
+            _autoConfirmOn.value = v
+            viewModelScope.launch(Dispatchers.IO) {
+                store.setAutoConfirmTransfers(v)
+                Verbose.info(
+                    if (v) {
+                        "auto-confirm transfers on: matched pairs stop asking and stop " +
+                            "counting as spending or income"
+                    } else {
+                        "auto-confirm transfers off: every matched pair waits for your answer in Review"
+                    }
+                )
+                Verbose.flush()
+            }
+        }
+
+    private val _autoConfirmOn = MutableStateFlow(prefs.autoConfirmTransfers)
+    val autoConfirmOn: StateFlow<Boolean> = _autoConfirmOn
+
     fun splitTransfer(txn: Txn) = viewModelScope.launch(Dispatchers.IO) {
         store.splitTransfer(txn)
         Verbose.info("transfer split by you: both sides count again")
@@ -462,6 +488,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         store.wipe()
         prefs.wipe()
         _budgetsOn.value = prefs.budgetsEnabled
+        _autoConfirmOn.value = prefs.autoConfirmTransfers
+        store.setAutoConfirmTransfers(prefs.autoConfirmTransfers)
         _accountsConfirmed.value = prefs.accountsConfirmed
         Verbose.info("all data and settings wiped by you")
         Verbose.flush()
