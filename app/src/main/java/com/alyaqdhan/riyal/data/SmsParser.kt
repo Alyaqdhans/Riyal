@@ -15,6 +15,9 @@ import kotlin.math.max
  *     ر.ع ٢٥٫٥٠٠), "balance"-adjacent numbers excluded, the candidate closest to the
  *     keyword wins. Failure → NeedsReview with a human-readable reason.
  *  3. Merchant / counterparty via "at … / to … / from …" patterns.
+ *  4. Account context: the balance the bank quoted and the account tail it quoted it
+ *     for. These are not part of the transaction, they are what lets [AccountDiscovery]
+ *     seed a real account with a real balance instead of asking the user to type one.
  *
  * Every decision is appended to a trace so the UI can show exactly what happened.
  */
@@ -32,6 +35,12 @@ class SmsParser(
             val merchant: String?,
             val confidence: Int,
             val trace: List<String>,
+            /** The balance the bank quoted in this message, if it quoted one. */
+            val balanceMinor: Long? = null,
+            /** Last digits of the account this message is about ("a/c XXXX1234"). */
+            val accountTail: String? = null,
+            /** The wording suggests moving money between accounts rather than spending. */
+            val transferHint: Boolean = false,
         ) : Result()
 
         data class NeedsReview(val reason: String, val trace: List<String>) : Result()
@@ -110,7 +119,30 @@ class SmsParser(
             trace += "no merchant pattern matched"
         }
 
-        return Result.Parsed(minor, currency, hit.direction, merchant, confidence.coerceIn(5, 100), trace)
+        // 4 ── account context: the balance-like numbers the amount step rejected are
+        // exactly what an account needs, so keep the last one instead of dropping it.
+        val balanceMinor = candidates.lastOrNull { it.nearBalance }?.let { c ->
+            runCatching { Money.toMinor(BigDecimal(c.raw.replace(",", "")), currency) }.getOrNull()
+        }
+        if (balanceMinor != null) {
+            trace += "balance quoted: ${Money.format(balanceMinor, currency)} (used to set up your account, not counted)"
+        }
+        val accountTail = findAccountTail(body)
+        if (accountTail != null) trace += "account ending $accountTail"
+        val transferHint = TRANSFER_WORDS.any { it in lower }
+        if (transferHint) trace += "wording suggests a transfer between accounts"
+
+        return Result.Parsed(
+            amountMinor = minor,
+            currency = currency,
+            direction = hit.direction,
+            merchant = merchant,
+            confidence = confidence.coerceIn(5, 100),
+            trace = trace,
+            balanceMinor = balanceMinor,
+            accountTail = accountTail,
+            transferHint = transferHint,
+        )
     }
 
     // ───────────────────────────── internals ─────────────────────────────
@@ -145,6 +177,27 @@ class SmsParser(
     private fun isNearBalance(lower: String, pos: Int): Boolean {
         val ctx = lower.substring(max(0, pos - 22), pos)
         return "bal" in ctx || "رصيد" in ctx
+    }
+
+    /**
+     * "a/c 0427XXXXXXXX0019", "a/c ...1234", "account ending 4321", "card *5678".
+     * Banks mask the middle, the start, or nothing at all, so rather than describe
+     * every style the pattern grabs the whole account token and the tail is read off
+     * its trailing digits - which is the part the bank keeps quoting and the part that
+     * routes a message to an account.
+     *
+     * Deliberately never matched against a bare number: without one of these words in
+     * front, digits in a bank SMS are far more often a reference or a date.
+     */
+    private fun findAccountTail(body: String): String? {
+        for (m in accountTailPattern.findAll(body)) {
+            val token = m.groupValues[1].trimEnd { !it.isDigit() && !it.isLetter() }
+            // "رصيدك في الحساب 12.500" would otherwise read the balance as an account.
+            if (amountLike.matches(token)) continue
+            val digits = token.takeLastWhile { it.isDigit() }
+            if (digits.length >= 3) return digits.takeLast(4)
+        }
+        return null
     }
 
     private fun tokenToIso(token: String): String {
@@ -196,7 +249,7 @@ class SmsParser(
                 in '۰'..'۹' -> sb.append('0' + (ch - '۰')) // Eastern Arabic-Indic digits
                 '٫' -> sb.append('.')                       // Arabic decimal separator
                 '٬' -> sb.append(',')                       // Arabic thousands separator
-                ' ', ' ', ' ', '​', '‎', '‏' -> sb.append(' ')
+                ' ', ' ', ' ', '​', '‎', '‏' -> sb.append(' ')
                 else -> sb.append(ch)
             }
         }
@@ -223,6 +276,33 @@ class SmsParser(
         val toPattern = Regex("(?i)\\bto\\s+([^.,;\\n]{2,48})")
         val fromPattern = Regex("(?i)\\bfrom\\s+([^.,;\\n]{2,48})")
         val viaPattern = Regex("(?i)\\bvia\\s+([^.,;\\n]{2,48})")
+
+        /**
+         * Where a bank names the account a message is about. Both languages, because
+         * an Omani bank sends both and the Arabic half carries most of the volume:
+         *
+         *  - "from your a/c 0427XXXXXXXX0019", "account ending 5678", "card *4321"
+         *  - "من حسابك رقم 0630XXXXXXXX0001", "الحساب المنتهي ب 001"
+         *
+         * The Arabic word takes suffixes (حسابك = "your account") and the number often
+         * runs straight into the next word with no space, so the keyword allows
+         * trailing letters and the captured token simply stops at the first character
+         * that cannot belong to an account number.
+         */
+        val accountTailPattern = Regex(
+            "(?i)(?:\\ba/c|\\bacc(?:t|ount)?\\b|\\bcard\\b|حساب\\p{L}*)" +
+                "[\\s:]*" +
+                "(?:(?:no\\.?|number|#|ending(?:\\s+in)?|رقم|المنتهية?)\\s*(?:ب|في|in)?[\\s:]*)?" +
+                "([0-9Xx*\\u2022.\\u2026-]{3,32})"
+        )
+
+        /** A plain decimal is an amount, never an account number. */
+        val amountLike = Regex("""^\d+\.\d+$""")
+
+        val TRANSFER_WORDS = listOf(
+            "transfer", "transferred", "trf ", "own account", "between accounts",
+            "تحويل", "حوالة", "حوّل",
+        )
 
         val cutTail = Regex(
             "(?i)\\s+(?:on|dated|date|ref|reference|txn|trx|transaction|no|number|" +
