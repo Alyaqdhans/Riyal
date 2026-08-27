@@ -399,6 +399,18 @@ object Stats {
         val aheadOfPace: Boolean get() = elapsedFraction > 0f && fraction > elapsedFraction
     }
 
+    /**
+     * The [n] budget lines worth showing when there is not room for all of them: the
+     * ones closest to (or past) their cap, not the ones with the biggest caps.
+     *
+     * A summary that showed the largest plans could hide a small category already over
+     * its limit, which is the one thing on a budget card worth interrupting someone for.
+     */
+    fun mostAtRisk(lines: List<BudgetLineProgress>, n: Int): List<BudgetLineProgress> =
+        lines.sortedWith(
+            compareByDescending<BudgetLineProgress> { it.fraction }.thenByDescending { it.spentMinor },
+        ).take(n)
+
     fun budgetProgress(
         plan: BudgetPlan,
         txns: List<Txn>,

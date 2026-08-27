@@ -106,4 +106,28 @@ class BudgetTest {
         assertTrue(plan.overlaps(start - day, start + day))
         assertFalse(plan.overlaps(end, end + day))
     }
+
+    @Test
+    fun `the summary shows what is closest to its cap, not the biggest cap`() {
+        // A small category already over its limit must not be hidden behind "show all"
+        // by two large plans that are barely touched.
+        val lines = listOf(
+            Stats.BudgetLineProgress("food", spentMinor = 10_000, capMinor = 500_000),
+            Stats.BudgetLineProgress("transport", spentMinor = 5_000, capMinor = 300_000),
+            Stats.BudgetLineProgress("coffee", spentMinor = 12_000, capMinor = 10_000),
+            Stats.BudgetLineProgress("fuel", spentMinor = 40_000, capMinor = 50_000),
+        )
+        val shown = Stats.mostAtRisk(lines, 2)
+        assertEquals(listOf("coffee", "fuel"), shown.map { it.categoryId })
+        assertTrue(shown.first().over)
+    }
+
+    @Test
+    fun `a capless line never outranks one that is actually spending`() {
+        val lines = listOf(
+            Stats.BudgetLineProgress("broken", spentMinor = 90_000, capMinor = 0),
+            Stats.BudgetLineProgress("food", spentMinor = 5_000, capMinor = 100_000),
+        )
+        assertEquals("food", Stats.mostAtRisk(lines, 1).single().categoryId)
+    }
 }

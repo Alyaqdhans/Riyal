@@ -145,7 +145,14 @@ fun BudgetSection(
             BudgetTotal(progress, currency)
             // The total bar is the answer; two categories are the detail most people
             // want, and the rest is one tap away rather than a screenful of bars.
-            val shown = if (showAll) progress.lines else progress.lines.take(VISIBLE_LINES)
+            //
+            // Which two matters: the plan's own order is by cap size, and showing the
+            // two biggest caps would hide a small category that is already over its
+            // limit - the one thing on this card worth interrupting someone for. So the
+            // summary shows whichever are closest to (or past) their cap.
+            val shown = remember(progress, showAll) {
+                if (showAll) progress.lines else Stats.mostAtRisk(progress.lines, VISIBLE_LINES)
+            }
             shown.forEach { line ->
                 BudgetBar(
                     categoryId = line.categoryId,
