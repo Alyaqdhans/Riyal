@@ -222,9 +222,13 @@ class ScanEngine(
         onProgress(Progress(messages.size, messages.size))
 
         // ── stage 2: accounts ─────────────────────────────────────────────
+        // Discovery runs on every scan, not just the first: a bank that has never
+        // texted before owns no account yet, and after a fresh start that is every
+        // bank you have. Accounts already known are left exactly as they are.
         var accounts = existingAccounts
-        if (accounts.isEmpty() && parsedMsgs.isNotEmpty()) {
-            accounts = AccountDiscovery.propose(
+        if (parsedMsgs.isNotEmpty()) {
+            val found = AccountDiscovery.proposeMissing(
+                accounts,
                 parsedMsgs.values.map { pm ->
                     AccountDiscovery.Observation(
                         sender = pm.msg.sender,
@@ -237,13 +241,19 @@ class ScanEngine(
                         } else {
                             pm.result.amountMinor
                         },
+                        tailIsCard = pm.result.tailIsCard,
                     )
                 }
             )
-            if (accounts.isNotEmpty()) {
+            if (found.isNotEmpty()) {
+                val firstRun = accounts.isEmpty()
+                accounts = accounts + found
                 store.replaceAccounts(accounts)
-                Verbose.scan("──────── accounts found ────────")
-                accounts.forEach { a ->
+                Verbose.scan(
+                    if (firstRun) "──────── accounts found ────────"
+                    else "──────── new account(s) ────────"
+                )
+                found.forEach { a ->
                     Verbose.ok(
                         "✦ ${a.displayName} (${a.currency})" +
                             (a.last4?.let { " ···$it" } ?: "") + " · " +
@@ -255,7 +265,10 @@ class ScanEngine(
                             }
                     )
                 }
-                Verbose.scan("→ check these on Home before trusting the balances")
+                Verbose.scan(
+                    if (firstRun) "→ check these on Home before trusting the balances"
+                    else "→ this bank texted for the first time, so its account was created now"
+                )
             }
         }
 
@@ -278,7 +291,9 @@ class ScanEngine(
                 skippedNonBank++
                 continue
             }
-            val accountId = AccountDiscovery.routeTo(accounts, pm.msg.sender, result.accountTail)
+            val accountId = AccountDiscovery.routeTo(
+                accounts, pm.msg.sender, result.accountTail, result.tailIsCard,
+            )
             if (accountId == null) unrouted++
             if (result.transferHint) hinted += pm.id
             result.bankStamp?.let { bankStamps[pm.id] = pm.msg.sender.trim().lowercase() + "|" + it }

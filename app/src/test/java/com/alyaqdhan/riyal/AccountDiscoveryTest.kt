@@ -40,6 +40,18 @@ class AccountDiscoveryTest {
     }
 
     @Test
+    fun `a card's digits are told apart from an account number`() {
+        val card = parsed("Purchase of OMR 2.000 on card *4321 at LULU")
+        assertEquals("4321", card.accountTail)
+        assertTrue(card.tailIsCard)
+
+        // Both quoted: the message is about the account, the card is just how it was reached.
+        val both = parsed("Purchase of OMR 2.000 on card *4321 from a/c XXXX0019. Avl Bal OMR 10.000")
+        assertEquals("0019", both.accountTail)
+        assertFalse(both.tailIsCard)
+    }
+
+    @Test
     fun `the real Bank Muscat format, masked in the middle, yields its tail`() {
         // Verbatim shape from a live inbox; the mask sits between two digit runs,
         // which an earlier leading-mask-only pattern missed entirely.
@@ -174,6 +186,104 @@ class AccountDiscoveryTest {
         ).single()
         assertEquals(0L, account.openingBalanceMinor)
         assertTrue(account.needsBalance)
+    }
+
+    // ── accounts that appear later, one bank at a time ──
+
+    @Test
+    fun `a bank that never texted before gets an account on the scan that hears from it`() {
+        // What a fresh start looks like on day two: nothing existed, then one bank
+        // spoke, then another. The first account must survive the second discovery.
+        val muscat = AccountDiscovery.propose(
+            listOf(obs("BankMuscat", "0019", 350_250, base, -12_500))
+        )
+        val added = AccountDiscovery.proposeMissing(
+            muscat,
+            listOf(
+                obs("BankMuscat", "0019", 340_000, base + hours(2), -10_250),
+                obs("NBO", "1111", 40_000, base + hours(3), -500),
+            )
+        )
+        assertEquals(1, added.size)
+        assertEquals("National Bank of Oman", added.single().bankName)
+        assertEquals("1111", added.single().last4)
+    }
+
+    @Test
+    fun `messages that land in an account we already have add nothing`() {
+        val existing = AccountDiscovery.propose(
+            listOf(obs("BankMuscat", "0019", 350_250, base, -12_500))
+        )
+        val added = AccountDiscovery.proposeMissing(
+            existing,
+            listOf(
+                obs("BankMuscat", "0019", 340_000, base + hours(2), -10_250),
+                // No tail: it belongs to the sender's only account, not to a new one.
+                obs("BankMuscat", null, null, base + hours(3), -1_000),
+            )
+        )
+        assertTrue(added.isEmpty())
+    }
+
+    @Test
+    fun `a known bank's untailed message never mints a second account for it`() {
+        // The phantom-account bug, in its later-scan form: with two accounts already
+        // known, an untailed message routes nowhere - and must still invent nothing.
+        val existing = AccountDiscovery.propose(
+            listOf(
+                obs("BankMuscat", "0019", 350_250, base, -12_500),
+                obs("BankMuscat", "0022", 100_000, base, -1_000),
+            )
+        )
+        assertEquals(2, existing.size)
+        val added = AccountDiscovery.proposeMissing(
+            existing,
+            listOf(obs("BankMuscat", null, 900_000, base + hours(4), -2_000))
+        )
+        assertTrue(added.isEmpty())
+    }
+
+    @Test
+    fun `a new account number at a bank we know is still a new account`() {
+        // After a fresh start the accounts arrive one at a time, and the second one
+        // must not be swallowed by the first: the bank named a number we don't hold.
+        val existing = AccountDiscovery.propose(
+            listOf(obs("BankMuscat", "0019", 350_250, base, -12_500))
+        )
+        val added = AccountDiscovery.proposeMissing(
+            existing,
+            listOf(obs("BankMuscat", "0038", 5_000, base + hours(6), -500))
+        )
+        assertEquals("0038", added.single().last4)
+    }
+
+    @Test
+    fun `a card's digits never become an account`() {
+        // A card belongs to an account without sharing its number, so its digits can
+        // neither define an account nor keep a message out of the one it belongs to.
+        val existing = AccountDiscovery.propose(
+            listOf(obs("BankMuscat", "0019", 350_250, base, -12_500))
+        )
+        val card = AccountDiscovery.Observation(
+            sender = "BankMuscat", accountTail = "4321", currency = "OMR",
+            balanceMinor = 340_000, atMillis = base + hours(2), signedMinor = -2_000,
+            tailIsCard = true,
+        )
+        assertTrue(AccountDiscovery.proposeMissing(existing, listOf(card)).isEmpty())
+        assertEquals(
+            existing.single().id,
+            AccountDiscovery.routeTo(existing, "BankMuscat", "4321", tailIsCard = true),
+        )
+    }
+
+    @Test
+    fun `with nothing known yet it is an ordinary first discovery`() {
+        val added = AccountDiscovery.proposeMissing(
+            emptyList(),
+            listOf(obs("BankMuscat", "0019", 350_250, base, -12_500))
+        )
+        assertEquals(1, added.size)
+        assertEquals("0019", added.single().last4)
     }
 
     // ── the balance that comes out the other end ──

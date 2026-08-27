@@ -39,6 +39,12 @@ class SmsParser(
             val balanceMinor: Long? = null,
             /** Last digits of the account this message is about ("a/c XXXX1234"). */
             val accountTail: String? = null,
+            /**
+             * Whether that tail is a card's last digits rather than an account number.
+             * A card belongs to an account but does not share its number, so a card
+             * tail can say which account a message is about only by elimination.
+             */
+            val tailIsCard: Boolean = false,
             /** The wording suggests moving money between accounts rather than spending. */
             val transferHint: Boolean = false,
             /**
@@ -156,8 +162,11 @@ class SmsParser(
         if (balanceMinor != null) {
             trace += "balance quoted: ${Money.format(balanceMinor, currency)} (used to set up your account, not counted)"
         }
-        val accountTail = findAccountTail(body)
-        if (accountTail != null) trace += "account ending $accountTail"
+        val tail = findAccountTail(body)
+        val accountTail = tail?.digits
+        if (tail != null) {
+            trace += if (tail.fromCard) "card ending ${tail.digits}" else "account ending ${tail.digits}"
+        }
         val transferHint = TRANSFER_WORDS.any { it in lower }
         if (transferHint) trace += "wording suggests a transfer between accounts"
         // One message, both ends: the bank is telling you it moved money between two
@@ -180,6 +189,7 @@ class SmsParser(
             trace = trace,
             balanceMinor = balanceMinor,
             accountTail = accountTail,
+            tailIsCard = tail?.fromCard == true,
             transferHint = transferHint,
             bankStamp = bankStamp,
             selfTransferTo = selfTransferTo,
@@ -242,15 +252,24 @@ class SmsParser(
             m.groupValues[1] + " " + m.groupValues[2]
         }
 
-    private fun findAccountTail(body: String): String? {
+    /** The digits a message quotes, and whether they name a card or an account. */
+    private data class Tail(val digits: String, val fromCard: Boolean)
+
+    private fun findAccountTail(body: String): Tail? {
+        var card: Tail? = null
         for (m in accountTailPattern.findAll(body)) {
             val token = m.groupValues[1].trimEnd { !it.isDigit() && !it.isLetter() }
             // "رصيدك في الحساب 12.500" would otherwise read the balance as an account.
             if (amountLike.matches(token)) continue
             val digits = token.takeLastWhile { it.isDigit() }
-            if (digits.length >= 3) return digits.takeLast(4)
+            if (digits.length < 3) continue
+            val fromCard = m.groupValues[0].trimStart().lowercase().startsWith("card")
+            // A message that quotes both ("purchase on card *4321 from a/c ...0019")
+            // is about the account; the card is just how it was reached.
+            if (!fromCard) return Tail(digits.takeLast(4), fromCard = false)
+            if (card == null) card = Tail(digits.takeLast(4), fromCard = true)
         }
-        return null
+        return card
     }
 
     private fun tokenToIso(token: String): String {

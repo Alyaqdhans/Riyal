@@ -95,9 +95,14 @@ object AccountDiscovery {
         val atMillis: Long,
         /** Effect on the account: positive for money in, negative for money out. */
         val signedMinor: Long,
-    )
+        /** The tail names a card, which is not an account number. */
+        val tailIsCard: Boolean = false,
+    ) {
+        /** The digits only when they name an account, which is what an account is keyed by. */
+        val accountNumberTail: String? get() = accountTail?.takeUnless { tailIsCard }
+    }
 
-    fun propose(observations: List<Observation>): List<Account> {
+    fun propose(observations: List<Observation>, colorOffset: Int = 0): List<Account> {
         if (observations.isEmpty()) return emptyList()
 
         val bySender = observations.groupBy { it.sender.trim() }
@@ -106,7 +111,9 @@ object AccountDiscovery {
         val out = ArrayList<Account>()
 
         for ((sender, all) in bySender) {
-            val tails = all.mapNotNull { it.accountTail }.distinct()
+            // Card digits are not an account number, so they never define an account -
+            // otherwise every card you carry becomes a bank account you don't have.
+            val tails = all.mapNotNull { it.accountNumberTail }.distinct()
             // What to do with messages that never quote an account number:
             //  · sender names no account anywhere → it has one account, best effort
             //  · sender names exactly one → they belong to it
@@ -117,13 +124,43 @@ object AccountDiscovery {
             val groups: Map<String?, List<Observation>> = when (tails.size) {
                 0 -> mapOf(null to all)
                 1 -> mapOf(tails[0] as String? to all)
-                else -> all.filter { it.accountTail != null }.groupBy { it.accountTail }
+                else -> all.filter { it.accountNumberTail != null }.groupBy { it.accountNumberTail }
             }
             for ((tail, group) in groups) {
-                out += accountFor(sender, tail, group, indexHint = out.size)
+                out += accountFor(sender, tail, group, indexHint = out.size + colorOffset)
             }
         }
         return out.sortedWith(compareBy({ it.bankName }, { it.last4 ?: "" }))
+    }
+
+    /**
+     * The accounts these messages describe that [existing] does not cover yet - so an
+     * account can appear on the day its bank first texts, rather than only on a first
+     * run. That is the whole of "start fresh": the history begins empty and the banks
+     * introduce themselves one at a time.
+     *
+     * The test for "already covered" is [routeTo]: if a message would land in an
+     * account we have, it describes that account and nothing new. On top of that, a
+     * sender we already know only earns another account when the bank quoted a number
+     * for it - otherwise every message that happens to omit the account number would
+     * mint a duplicate of a bank you already have.
+     */
+    fun proposeMissing(existing: List<Account>, observations: List<Observation>): List<Account> {
+        if (observations.isEmpty()) return emptyList()
+        if (existing.isEmpty()) return propose(observations)
+
+        val unplaced = observations.filter {
+            routeTo(existing, it.sender, it.accountTail, it.tailIsCard) == null
+        }
+        if (unplaced.isEmpty()) return emptyList()
+
+        val knownSenders = existing.flatMap { it.senderIds }.mapTo(HashSet()) { it.trim().lowercase() }
+        val existingIds = existing.mapTo(HashSet()) { it.id }
+        return propose(unplaced, colorOffset = existing.size).filter { candidate ->
+            candidate.id !in existingIds &&
+                (candidate.last4 != null ||
+                    candidate.senderIds.none { it.trim().lowercase() in knownSenders })
+        }
     }
 
     /**
@@ -192,7 +229,12 @@ object AccountDiscovery {
         }
     }
 
-    fun routeTo(accounts: List<Account>, sender: String, tail: String?): String? {
+    fun routeTo(
+        accounts: List<Account>,
+        sender: String,
+        tail: String?,
+        tailIsCard: Boolean = false,
+    ): String? {
         if (accounts.isEmpty()) return null
         val s = sender.trim().lowercase()
         fun ownsSender(a: Account) = a.senderIds.any { it.trim().lowercase() == s }
@@ -202,6 +244,14 @@ object AccountDiscovery {
             accounts.firstOrNull { it.last4 == tail }?.let { return it.id }
         }
         val bySender = accounts.filter { ownsSender(it) }
+        // The bank named an account number and none of ours carries it. Dropping the
+        // money into "the sender's only account" would put it in the wrong balance and
+        // hide an account you actually have, so only an account whose number we never
+        // learned may take it. A card's digits carry no such claim: the card belongs to
+        // some account of that bank, so the old best-effort routing still applies.
+        if (tail != null && !tailIsCard && bySender.any { it.last4 != null }) {
+            return bySender.singleOrNull { it.last4 == null }?.id
+        }
         if (bySender.size == 1) return bySender[0].id
         val untailed = bySender.filter { it.last4 == null }
         return if (untailed.size == 1) untailed[0].id else null
