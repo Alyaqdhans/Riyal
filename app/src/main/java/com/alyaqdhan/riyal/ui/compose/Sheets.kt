@@ -30,18 +30,19 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -65,9 +66,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
+import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Categories
-import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.Txn
+import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
 import java.time.Instant
 import java.time.ZoneId
@@ -78,6 +80,13 @@ val CURRENCIES = listOf("OMR", "SAR", "AED", "KWD", "BHD", "QAR", "USD", "EUR", 
 
 /** Wraps text as a clipboard entry for the new suspend [androidx.compose.ui.platform.Clipboard] API. */
 fun plainText(text: String): ClipEntry = ClipEntry(ClipData.newPlainText("riyal", text))
+
+/** How each operation type is labelled everywhere the user picks one. */
+fun typeLabel(type: TxnType): String = when (type) {
+    TxnType.EXPENSE -> "Money out"
+    TxnType.INCOME -> "Money in"
+    TxnType.TRANSFER -> "Transfer"
+}
 
 /**
  * The scan bottom sheet: expressive LoadingIndicator while working, the live verbose
@@ -160,6 +169,13 @@ fun ScanSheetHost(vm: MainViewModel) {
                             MaterialTheme.colorScheme.primaryContainer,
                             MaterialTheme.colorScheme.onPrimaryContainer,
                         )
+                        if (s.summary.transfers > 0) {
+                            SummaryPill(
+                                "⇄ ${s.summary.transfers} possible transfer(s)",
+                                MaterialTheme.colorScheme.tertiaryContainer,
+                                MaterialTheme.colorScheme.onTertiaryContainer,
+                            )
+                        }
                         SummaryPill(
                             "? ${s.summary.review} need you",
                             if (s.summary.review > 0) MaterialTheme.colorScheme.errorContainer
@@ -234,25 +250,38 @@ fun ScanSheetHost(vm: MainViewModel) {
 }
 
 /**
- * Category picker: icon chips + a "remember" rule for this merchant. With smart rules
- * on (the default), remembering starts enabled, so one correction teaches the app.
+ * Everything you can do to one record from a tap: re-file it, tell the app which
+ * account it belongs to, or say it wasn't spending at all but a move between your own
+ * accounts. With smart rules on (the default), remembering starts enabled, so one
+ * correction teaches the app.
  */
 @Composable
-fun CategoryPickerSheet(
+fun TxnEditSheet(
     txn: Txn,
+    accounts: List<Account>,
     onApply: (categoryId: String, rulePattern: String?) -> Unit,
     onDismiss: () -> Unit,
     rememberByDefault: Boolean = false,
+    onSetAccount: ((String) -> Unit)? = null,
+    onMarkTransfer: ((fromAccountId: String?, toAccountId: String?) -> Unit)? = null,
+    onSplitTransfer: (() -> Unit)? = null,
 ) {
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     var makeRule by remember { mutableStateOf(rememberByDefault && !txn.merchant.isNullOrBlank()) }
+    var transferTarget by remember { mutableStateOf(false) }
+    val live = accounts.filter { !it.archived }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
-            Modifier.padding(start = 20.dp, end = 20.dp, bottom = 28.dp),
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(start = 20.dp, end = 20.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Pick a category", style = MaterialTheme.typography.titleLarge)
+            Text(
+                if (txn.isTransfer) "Transfer" else "Pick a category",
+                style = MaterialTheme.typography.titleLarge,
+            )
             Column {
                 Text(
                     txn.merchant ?: txn.sender,
@@ -262,22 +291,106 @@ fun CategoryPickerSheet(
                     txn.body,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            CategoryChips(
-                direction = txn.direction,
-                selectedId = txn.categoryId,
-                onSelect = { onApply(it, if (makeRule) txn.merchant?.lowercase() else null) },
-            )
-            if (!txn.merchant.isNullOrBlank()) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Switch(checked = makeRule, onCheckedChange = { makeRule = it })
+
+            if (txn.isTransfer) {
+                Text(
+                    "This is recorded as money moved between your own accounts, so it counts " +
+                        "as neither spending nor income.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                // Only a transfer derived from real records can go back to being
+                // them; one added by hand has nothing underneath it to restore.
+                if (onSplitTransfer != null && txn.legIds.isNotEmpty()) {
+                    Button(
+                        onClick = onSplitTransfer,
+                        modifier = Modifier.fillMaxWidth().pressBounce(),
+                    ) {
+                        Text(
+                            if (txn.legIds.size == 2) "It wasn't a transfer, split it back"
+                            else "It wasn't a transfer, undo this"
+                        )
+                    }
+                }
+            } else {
+                CategoryChips(
+                    type = txn.type,
+                    selectedId = txn.categoryId,
+                    onSelect = { onApply(it, if (makeRule) txn.merchant?.lowercase() else null) },
+                )
+                if (!txn.merchant.isNullOrBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Switch(checked = makeRule, onCheckedChange = { makeRule = it })
+                        Text(
+                            "Always: anything mentioning \"${txn.merchant}\" gets the category I pick",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+            }
+
+            if (live.isNotEmpty() && (onSetAccount != null || onMarkTransfer != null)) {
+                HorizontalDivider()
+                if (onSetAccount != null && !txn.isTransfer) {
+                    Text("Account", style = MaterialTheme.typography.labelLarge)
                     Text(
-                        "Always: anything mentioning \"${txn.merchant}\" gets the category I pick",
-                        style = MaterialTheme.typography.bodyMedium,
+                        if (txn.accountId == null) {
+                            "The bank didn't say which account this was, so it isn't in any balance yet."
+                        } else {
+                            "Move this record to a different account."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        live.forEach { acc ->
+                            FilterChip(
+                                selected = acc.id == txn.accountId,
+                                onClick = { onSetAccount(acc.id) },
+                                label = { Text(acc.name) },
+                                modifier = Modifier.pressBounce(0.92f),
+                            )
+                        }
+                    }
+                }
+                // Needs somewhere for the money to have gone: at least one account
+                // that isn't the one this record already sits in.
+                val otherAccounts = live.filter { it.id != txn.accountId }
+                if (onMarkTransfer != null && !txn.isTransfer && otherAccounts.isNotEmpty()) {
+                    if (!transferTarget) {
+                        TextButton(onClick = { transferTarget = true }) {
+                            Text("⇄  This was a transfer between my accounts")
+                        }
+                    } else {
+                        Text(
+                            if (txn.isExpense) "Which account did it arrive in?"
+                            else "Which account did it leave?",
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            otherAccounts.forEach { acc ->
+                                FilterChip(
+                                    selected = false,
+                                    onClick = {
+                                        if (txn.isExpense) {
+                                            onMarkTransfer(txn.accountId, acc.id)
+                                        } else {
+                                            onMarkTransfer(acc.id, txn.accountId)
+                                        }
+                                    },
+                                    label = { Text(acc.name) },
+                                    modifier = Modifier.pressBounce(0.92f),
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -290,19 +403,35 @@ fun ManualTxnDialog(
     title: String,
     atMillis: Long,
     defaultCurrency: String,
-    onSave: (amountMinor: Long, currency: String, direction: Direction, merchant: String?, categoryId: String) -> Unit,
+    accounts: List<Account>,
+    onSave: (
+        amountMinor: Long,
+        currency: String,
+        type: TxnType,
+        merchant: String?,
+        categoryId: String,
+        fromAccountId: String?,
+        toAccountId: String?,
+    ) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val live = remember(accounts) { accounts.filter { !it.archived } }
     var amount by remember { mutableStateOf("") }
     var currency by remember { mutableStateOf(defaultCurrency) }
-    var direction by remember { mutableStateOf(Direction.EXPENSE) }
+    var type by remember { mutableStateOf(TxnType.EXPENSE) }
     var merchant by remember { mutableStateOf("") }
     var categoryId by remember { mutableStateOf(Categories.DEFAULT_EXPENSE) }
-    LaunchedEffect(direction) {
-        categoryId = if (direction == Direction.INCOME) Categories.DEFAULT_INCOME else Categories.DEFAULT_EXPENSE
+    var fromAccount by remember { mutableStateOf(live.firstOrNull()) }
+    var toAccount by remember { mutableStateOf(live.getOrNull(1) ?: live.firstOrNull()) }
+
+    LaunchedEffect(type) {
+        categoryId = Categories.defaultFor(type)
     }
     val parsed = amount.trim().replace(",", "").toBigDecimalOrNull()
     val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a") }
+    // A transfer needs two different ends, otherwise it isn't a movement at all.
+    val transferValid = type != TxnType.TRANSFER ||
+        (fromAccount != null && toAccount != null && fromAccount?.id != toAccount?.id)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -313,16 +442,13 @@ fun ManualTxnDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    SegmentedButton(
-                        selected = direction == Direction.EXPENSE,
-                        onClick = { direction = Direction.EXPENSE },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                    ) { Text("Money out") }
-                    SegmentedButton(
-                        selected = direction == Direction.INCOME,
-                        onClick = { direction = Direction.INCOME },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                    ) { Text("Money in") }
+                    TxnType.entries.forEachIndexed { index, option ->
+                        SegmentedButton(
+                            selected = type == option,
+                            onClick = { type = option },
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = TxnType.entries.size),
+                        ) { Text(typeLabel(option)) }
+                    }
                 }
                 OutlinedTextField(
                     value = amount,
@@ -339,18 +465,72 @@ fun ManualTxnDialog(
                     display = { it },
                     onSelect = { currency = it },
                 )
-                OutlinedTextField(
-                    value = merchant,
-                    onValueChange = { merchant = it },
-                    label = { Text("Merchant / from (optional)") },
-                    singleLine = true,
-                )
-                Text("Category", style = MaterialTheme.typography.labelLarge)
-                CategoryChips(
-                    direction = direction,
-                    selectedId = categoryId,
-                    onSelect = { categoryId = it },
-                )
+
+                if (live.isNotEmpty()) {
+                    when (type) {
+                        TxnType.EXPENSE -> DropdownField(
+                            label = "From account",
+                            value = fromAccount?.displayName ?: "None",
+                            options = live,
+                            display = { it.displayName },
+                            onSelect = { fromAccount = it },
+                        )
+
+                        TxnType.INCOME -> DropdownField(
+                            label = "To account",
+                            value = toAccount?.displayName ?: "None",
+                            options = live,
+                            display = { it.displayName },
+                            onSelect = { toAccount = it },
+                        )
+
+                        TxnType.TRANSFER -> {
+                            DropdownField(
+                                label = "From account",
+                                value = fromAccount?.displayName ?: "None",
+                                options = live,
+                                display = { it.displayName },
+                                onSelect = { fromAccount = it },
+                            )
+                            DropdownField(
+                                label = "To account",
+                                value = toAccount?.displayName ?: "None",
+                                options = live,
+                                display = { it.displayName },
+                                onSelect = { toAccount = it },
+                            )
+                            if (!transferValid) {
+                                Text(
+                                    "Pick two different accounts, money can't move to where it already is.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (type != TxnType.TRANSFER) {
+                    OutlinedTextField(
+                        value = merchant,
+                        onValueChange = { merchant = it },
+                        label = { Text("Merchant / from (optional)") },
+                        singleLine = true,
+                    )
+                    Text("Category", style = MaterialTheme.typography.labelLarge)
+                    CategoryChips(
+                        type = type,
+                        selectedId = categoryId,
+                        onSelect = { categoryId = it },
+                    )
+                } else {
+                    Text(
+                        "A transfer has no category: it isn't spending or income, it's your own " +
+                            "money changing pocket.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Text(
                     "Date: ${dateFmt.format(Instant.ofEpochMilli(atMillis).atZone(ZoneId.systemDefault()))}",
                     style = MaterialTheme.typography.bodySmall,
@@ -360,14 +540,16 @@ fun ManualTxnDialog(
         },
         confirmButton = {
             TextButton(
-                enabled = parsed != null && parsed.signum() > 0,
+                enabled = parsed != null && parsed.signum() > 0 && transferValid,
                 onClick = {
                     onSave(
                         Money.toMinor(parsed!!, currency),
                         currency,
-                        direction,
+                        type,
                         merchant.trim().ifBlank { null },
                         categoryId,
+                        if (type == TxnType.INCOME) null else fromAccount?.id,
+                        if (type == TxnType.EXPENSE) null else toAccount?.id,
                     )
                 },
             ) { Text("Save") }
@@ -378,17 +560,17 @@ fun ManualTxnDialog(
 
 /**
  * The one category picker used everywhere: a chip per category for the given
- * direction, the current one selected. Same look in the correction sheet and the
+ * operation type, the current one selected. Same look in the correction sheet and the
  * manual-entry dialog, so "pick a category" is a single gesture app-wide.
  */
 @Composable
 fun CategoryChips(
-    direction: Direction,
+    type: TxnType,
     selectedId: String,
     onSelect: (String) -> Unit,
 ) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Categories.forDirection(direction).forEach { cat ->
+        Categories.forType(type).forEach { cat ->
             FilterChip(
                 selected = cat.id == selectedId,
                 onClick = { onSelect(cat.id) },

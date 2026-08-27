@@ -25,9 +25,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.alyaqdhan.riyal.core.LogLine
 import com.alyaqdhan.riyal.core.Money
+import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Categories
-import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.Txn
+import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.theme.successColor
 import java.time.Instant
 import java.time.LocalDate
@@ -58,11 +59,27 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** One transaction row; tap to re-categorize. */
+/**
+ * One transaction row; tap to re-categorize.
+ *
+ * A transfer is drawn deliberately differently: no red, no green, no leading sign.
+ * Those colours mean "this made you poorer / richer", and a transfer did neither - it
+ * reads as neutral movement between two of your own accounts, with both ends named.
+ */
 @Composable
-fun TxnRow(txn: Txn, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun TxnRow(
+    txn: Txn,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    accounts: List<Account> = emptyList(),
+) {
     val category = Categories.byId(txn.categoryId)
-    val expense = txn.direction == Direction.EXPENSE
+    val transfer = txn.type == TxnType.TRANSFER
+    val expense = txn.type == TxnType.EXPENSE
+
+    fun accountName(id: String?): String? =
+        id?.let { wanted -> accounts.firstOrNull { it.id == wanted }?.displayName }
+
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
@@ -79,19 +96,27 @@ fun TxnRow(txn: Txn, onClick: () -> Unit, modifier: Modifier = Modifier) {
             CategoryBadge(category.id)
             Column(Modifier.weight(1f)) {
                 Text(
-                    txn.merchant ?: category.name,
+                    if (transfer) "Transfer" else txn.merchant ?: category.name,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                val time = rowTimeFmt.format(Instant.ofEpochMilli(txn.atMillis).atZone(ZoneId.systemDefault()))
                 Text(
-                    "${txn.sender} · ${rowTimeFmt.format(Instant.ofEpochMilli(txn.atMillis).atZone(ZoneId.systemDefault()))}",
+                    if (transfer) {
+                        val from = accountName(txn.fromAccountId) ?: "unassigned"
+                        val to = accountName(txn.toAccountId) ?: "unassigned"
+                        "$from → $to · $time"
+                    } else {
+                        val account = accountName(txn.accountId)
+                        if (account != null) "$account · $time" else "${txn.sender} · $time"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (txn.categorySource == "auto" && txn.confidence < 70) {
+                if (!transfer && txn.categorySource == "auto" && txn.confidence < 70) {
                     Text(
                         "parser was ${txn.confidence}% sure, tap to fix",
                         style = MaterialTheme.typography.labelSmall,
@@ -101,13 +126,19 @@ fun TxnRow(txn: Txn, onClick: () -> Unit, modifier: Modifier = Modifier) {
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    Money.formatSigned(txn.amountMinor, txn.currency, expense),
+                    if (transfer) Money.format(txn.amountMinor, txn.currency)
+                    else Money.formatSigned(txn.amountMinor, txn.currency, expense),
                     style = MaterialTheme.typography.titleSmall,
-                    // Money direction is semantic: out = danger red, in = success green.
-                    color = if (expense) MaterialTheme.colorScheme.error else successColor(),
+                    // Money direction is semantic: out = danger red, in = success green,
+                    // moved between your own accounts = neither.
+                    color = when {
+                        transfer -> MaterialTheme.colorScheme.onSurfaceVariant
+                        expense -> MaterialTheme.colorScheme.error
+                        else -> successColor()
+                    },
                 )
                 Text(
-                    category.name,
+                    if (transfer) "not counted" else category.name,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
