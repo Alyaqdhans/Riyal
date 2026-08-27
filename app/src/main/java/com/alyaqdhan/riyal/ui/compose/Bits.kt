@@ -5,7 +5,9 @@ package com.alyaqdhan.riyal.ui.compose
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,6 +51,20 @@ fun dayLabel(date: LocalDate): String {
 
 fun localDateOf(millis: Long): LocalDate =
     Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+
+/**
+ * The room a scrolling page must leave at its end so its last row can be read rather
+ * than sitting under the floating toolbar, which hovers over the content instead of
+ * taking a row of its own.
+ *
+ * The toolbar already carries the navigation-bar inset itself, and a Scaffold hands its
+ * content the same inset, so this is only the pill: its height, the gap it floats above
+ * the system bar by, and enough space that the last row does not touch it.
+ */
+@Composable
+fun ToolbarSpacer() {
+    Spacer(Modifier.height(96.dp))
+}
 
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {

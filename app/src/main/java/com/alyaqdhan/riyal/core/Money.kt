@@ -30,6 +30,16 @@ object Money {
         return "$currency ${fmt.format(toMajor(minor, currency))}"
     }
 
+    /**
+     * Just the number: "269.907". For lines that have already said which currency they
+     * are in, where repeating the code on every figure is noise.
+     */
+    fun formatAmount(minor: Long, currency: String): String {
+        val decimals = decimalsFor(currency)
+        val pattern = if (decimals == 3) "#,##0.000" else "#,##0.00"
+        return DecimalFormat(pattern, DecimalFormatSymbols(Locale.US)).format(toMajor(minor, currency))
+    }
+
     /** "− OMR 4.500" / "+ OMR 12.000" style, for transaction rows. */
     fun formatSigned(minor: Long, currency: String, expense: Boolean): String =
         (if (expense) "− " else "+ ") + format(minor, currency)
