@@ -287,7 +287,7 @@ fun HomeScreen(
                             Text("SMS access is off", style = MaterialTheme.typography.titleMedium)
                         }
                         Text(
-                            "Reading is on-demand only, keyword-gated, and stays on this phone. You can revoke the permission at any time.",
+                            "Reading happens only when you ask, and never leaves this phone.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
