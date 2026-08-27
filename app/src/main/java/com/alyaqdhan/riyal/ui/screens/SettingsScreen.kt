@@ -183,7 +183,7 @@ fun SettingsScreen(
             SettingsCard("Smart") {
                 SettingRow(
                     title = "Learn from my corrections",
-                    summary = "Remember a merchant's category once you fix it",
+                    summary = "Remember a merchant once you fix it",
                     checked = smartRules,
                     onCheckedChange = {
                         smartRules = it
@@ -196,7 +196,7 @@ fun SettingsScreen(
                 )
                 SettingRow(
                     title = "Confirm transfers for me",
-                    summary = "Treat a matching pair as one transfer, without asking",
+                    summary = "Pair the two legs without asking",
                     checked = autoConfirmTransfers,
                     onCheckedChange = {
                         autoConfirmTransfers = it
@@ -234,7 +234,7 @@ fun SettingsScreen(
                 )
                 SettingRow(
                     title = "Budget",
-                    summary = "Plan what you spend per category, on Home",
+                    summary = "Plan spending per category, on Home",
                     checked = budgetsEnabled,
                     onCheckedChange = {
                         budgetsEnabled = it
@@ -345,7 +345,7 @@ fun SettingsScreen(
                 )
                 SettingRow(
                     title = "Only scan senders I approve",
-                    summary = "Ignore every sender not in the list below",
+                    summary = "Ignore senders not on the list",
                     checked = senderFilter,
                     onCheckedChange = {
                         senderFilter = it

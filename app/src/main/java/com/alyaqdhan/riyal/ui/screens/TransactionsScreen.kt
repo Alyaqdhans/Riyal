@@ -50,7 +50,6 @@ import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.ToolbarSpace
 import com.alyaqdhan.riyal.ui.compose.TxnRow
-import com.alyaqdhan.riyal.ui.compose.typeLabel
 import com.alyaqdhan.riyal.ui.compose.dayLabel
 import com.alyaqdhan.riyal.ui.compose.localDateOf
 import androidx.compose.ui.unit.dp
@@ -134,7 +133,10 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                         FilterChip(
                             selected = typeFilter == type.name,
                             onClick = { typeFilter = if (typeFilter == type.name) null else type.name },
-                            label = { Text(typeLabel(type)) },
+                            // Short here: the full "Money out" labels pushed
+                            // Transfer off the right edge of a row that doesn't look
+                            // scrollable, hiding a filter entirely.
+                            label = { Text(shortTypeLabel(type)) },
                         )
                     }
                 }
@@ -231,6 +233,12 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             },
         )
     }
+}
+
+private fun shortTypeLabel(type: TxnType): String = when (type) {
+    TxnType.EXPENSE -> "Out"
+    TxnType.INCOME -> "In"
+    TxnType.TRANSFER -> "Transfers"
 }
 
 @Composable

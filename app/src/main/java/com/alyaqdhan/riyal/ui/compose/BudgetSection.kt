@@ -141,25 +141,30 @@ fun BudgetSection(
                 modifier = Modifier.pressBounce(),
             ) { Text("Add a cap") }
         } else {
-            BudgetTotal(progress, currency)
-            // The total bar is the answer; two categories are the detail most people
-            // want, and the rest is one tap away rather than a screenful of bars.
-            //
-            // Which two matters: the plan's own order is by cap size, and showing the
-            // two biggest caps would hide a small category that is already over its
-            // limit - the one thing on this card worth interrupting someone for. So the
-            // summary shows whichever are closest to (or past) their cap.
-            val shown = remember(progress, showAll) {
-                if (showAll) progress.lines else Stats.mostAtRisk(progress.lines, VISIBLE_LINES)
-            }
-            shown.forEach { line ->
-                BudgetBar(
-                    categoryId = line.categoryId,
-                    spent = line.spentMinor,
-                    budget = line.capMinor,
-                    currency = currency,
-                    paceFraction = progress.elapsedFraction,
-                )
+            // With one capped category the total *is* that category: drawing both said
+            // "OMR 4.500 of OMR 60.000" twice, once with an icon.
+            val sole = progress.lines.singleOrNull()
+            BudgetTotal(progress, currency, soleCategoryId = sole?.categoryId)
+            if (sole == null) {
+                // The total bar is the answer; two categories are the detail most people
+                // want, and the rest is one tap away rather than a screenful of bars.
+                //
+                // Which two matters: the plan's own order is by cap size, and showing the
+                // two biggest caps would hide a small category that is already over its
+                // limit - the one thing on this card worth interrupting someone for. So the
+                // summary shows whichever are closest to (or past) their cap.
+                val shown = remember(progress, showAll) {
+                    if (showAll) progress.lines else Stats.mostAtRisk(progress.lines, VISIBLE_LINES)
+                }
+                shown.forEach { line ->
+                    BudgetBar(
+                        categoryId = line.categoryId,
+                        spent = line.spentMinor,
+                        budget = line.capMinor,
+                        currency = currency,
+                        paceFraction = progress.elapsedFraction,
+                    )
+                }
             }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -214,7 +219,11 @@ private const val VISIBLE_LINES = 2
 
 /** The whole plan at a glance, with the pace read that makes a percentage mean something. */
 @Composable
-private fun BudgetTotal(progress: Stats.BudgetProgress, currency: String) {
+private fun BudgetTotal(
+    progress: Stats.BudgetProgress,
+    currency: String,
+    soleCategoryId: String? = null,
+) {
     val used = progress.fraction
     val color = when {
         progress.over -> MaterialTheme.colorScheme.error
@@ -222,12 +231,30 @@ private fun BudgetTotal(progress: Stats.BudgetProgress, currency: String) {
         else -> successColor()
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(
-                Money.format(progress.totalSpentMinor, currency) + " of " +
-                    Money.format(progress.totalCapMinor, currency),
-                style = MaterialTheme.typography.bodyMedium,
-            )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (soleCategoryId != null) {
+                    CategoryIcon(soleCategoryId, size = 16.dp)
+                    Text(
+                        Categories.byId(soleCategoryId).name,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                Text(
+                    Money.format(progress.totalSpentMinor, currency) + " of " +
+                        Money.format(progress.totalCapMinor, currency),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (soleCategoryId != null) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onSurface,
+                )
+            }
             Text(
                 "${(used * 100).roundToInt()}%",
                 style = MaterialTheme.typography.titleMedium,
