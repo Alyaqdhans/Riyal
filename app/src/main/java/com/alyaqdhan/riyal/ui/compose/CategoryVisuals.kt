@@ -43,8 +43,13 @@ object CategoryVisuals {
         "education" -> R.drawable.ic_cat_education
         "fees" -> R.drawable.ic_cat_fees
         "cash" -> R.drawable.ic_cat_cash
+        "sending" -> R.drawable.ic_cat_transfer
         "transfer" -> R.drawable.ic_cat_transfer
         "salary" -> R.drawable.ic_cat_salary
+        "business" -> R.drawable.ic_cat_business
+        "investment" -> R.drawable.ic_cat_investment
+        "refund" -> R.drawable.ic_cat_refund
+        "gift" -> R.drawable.ic_cat_gift
         "income" -> R.drawable.ic_cat_income
         else -> R.drawable.ic_cat_other
     }
