@@ -51,6 +51,101 @@ class SmsParserTest {
         assertEquals(2_000L, r.amountMinor)
     }
 
+    // ── merchants in Arabic ──
+    //
+    // Every shape below is verbatim from a live inbox, digits aside. Before these, the
+    // merchant patterns were English-only and 468 of 481 real records carried no
+    // merchant at all - and with no merchant the category picker cannot offer to
+    // remember anything, so the same shop was filed by hand every single month.
+
+    private fun merchantOf(body: String): String? =
+        (parser.parse(body) as SmsParser.Result.Parsed).merchant
+
+    @Test
+    fun `a card purchase names the shop after في, without its till number`() {
+        assertEquals(
+            "Al Fatah Food Com LLC B",
+            merchantOf(
+                "تم خصم 3.400 OMR من حسابك رقم 0630XXXXXXXX0001 بإستخدام بطاقة الخصم " +
+                    "المباشر في 5842-Al Fatah Food Com LLC B بتاريخ 12/08/2026 19:02:41. " +
+                    "رصيدك الحالي هو 45.200 OMR."
+            ),
+        )
+    }
+
+    @Test
+    fun `money sent names the person after إلى, not the account it left`() {
+        assertEquals(
+            "MD REPON",
+            merchantOf(
+                "عزيزي الزبون، لقد قمت بإرسال OMR 5.000 إلى MD REPON من حسابك " +
+                    "0630XXXXXXXX0001 باستخدام خدمات الدفع عبر االهاتف النقال/ المحفظة " +
+                    "الإلكترونية. رقم المعاملةMTHQ123. رصيدك الحالي هو OMR 40.200."
+            ),
+        )
+    }
+
+    @Test
+    fun `money received names the sender after من`() {
+        assertEquals(
+            "SUHAIB MOHAMMED",
+            merchantOf(
+                "عزيزي الزبون، لقد استلمت OMR 12.000 من SUHAIB MOHAMMED في حسابك " +
+                    "0427XXXXXXXX0019 باستخدام خدمات الدفع عبر الهاتف النقال/ المحفظة " +
+                    "الإلكترونية. رقم المعاملةBMCT456. رصيدك الحالي هو OMR 52.200."
+            ),
+        )
+    }
+
+    @Test
+    fun `a message that only names its channel gives the channel`() {
+        // 113 of one inbox's records: no shop, no person, just how the money left.
+        assertEquals(
+            "MBI",
+            merchantOf(
+                "تم خصم 20.000 OMR من حسابك رقم  0630XXXXXXXX0001بتاريخ 26/08/2026 " +
+                    "13:41:05عن طريق MBI.رصيدك الحالي في الحساب هو 150.500 OMR."
+            ),
+        )
+    }
+
+    @Test
+    fun `the balance is never mistaken for a merchant`() {
+        // "في" sits before a balance as often as before a shop: "رصيدك الحالي في
+        // الحساب هو 150.500" would otherwise file 113 records under "الحساب هو 150",
+        // a different merchant for every balance the account happened to hold.
+        val m = merchantOf(
+            "تم خصم 20.000 OMR من حسابك رقم  0630XXXXXXXX0001بتاريخ 26/08/2026 " +
+                "13:41:05عن طريق MBI.رصيدك الحالي في الحساب هو 150.500 OMR."
+        )
+        assertTrue(m == null || !m!!.contains("حساب"))
+    }
+
+    @Test
+    fun `an English message keeps the name it always had`() {
+        // The bank writes "to NAME from your a/c", and "from" was not among the words
+        // that end a merchant name, so the name kept a dangling preposition.
+        assertEquals(
+            "SUHAIB MOHAMMED",
+            merchantOf(
+                "Dear Customer, You have sent OMR 8.000 to SUHAIB MOHAMMED from your " +
+                    "a/c 0427XXXXXXXX0019 on 26/08/2026 13:41:05 using Mobile Payment " +
+                    "services. Txn Id BMCT789. Avl Bal OMR 44.200."
+            ),
+        )
+    }
+
+    @Test
+    fun `a message that names nobody invents nobody`() {
+        assertEquals(
+            null,
+            merchantOf(
+                "OMR 12.500 is debited from your a/c 0427XXXXXXXX0019 on 28/08/2026 " +
+                    "14:05:11. New Available Balance is OMR 340.750."
+            ),
+        )
+    }
+
     @Test
     fun depositWithThousandsSeparatorParses() {
         val r = parser.parse("Deposit of OMR 1,250.000 to your account XX5678. Avl Bal OMR 1,600.000")

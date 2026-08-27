@@ -287,10 +287,12 @@ class SmsParser(
     }
 
     private fun findMerchant(body: String, keywordPos: Int, direction: Direction, lower: String): String? {
+        // English first, so nothing about an English message changes; an Arabic one
+        // falls through to the same prepositions in its own script.
         val patterns = if (direction == Direction.INCOME) {
-            listOf(fromPattern, viaPattern, atPattern)
+            listOf(fromPattern, viaPattern, atPattern, fromPatternAr, viaPatternAr, atPatternAr)
         } else {
-            listOf(atPattern, toPattern, viaPattern)
+            listOf(atPattern, toPattern, viaPattern, atPatternAr, toPatternAr, viaPatternAr)
         }
         for (rx in patterns) {
             val sorted = rx.findAll(body).sortedBy { abs(it.range.first - keywordPos) }
@@ -304,12 +306,20 @@ class SmsParser(
     private fun cleanMerchant(raw: String): String? {
         var s = raw.trim()
         s = cutTail.replace(s, "")
+        s = cutTailAr.replace(s, "")
+        // "5842-Al Fatah Food Com LLC" - the terminal number is the till, not the shop,
+        // and leaving it in makes every branch of one shop a different merchant.
+        s = s.replace(Regex("^\\d{2,}\\s*-\\s*"), "")
         s = s.replace(Regex("[\\d/:\\-]{4,}\\s*$"), "")
         s = s.replace(Regex("\\s{2,}"), " ")
         s = s.trim { it.isWhitespace() || it in TRIM_CHARS }
         if (s.length < 2) return null
         if (Regex("(?i)^(?:x+\\d*|\\d+|you|yours?)$").matches(s)) return null
         if (s.lowercase().startsWith("a/c")) return null
+        // "رصيدك الحالي في الحساب هو 150" - "في" is a preposition before a balance as
+        // often as before a shop, so a name that turns out to be the account or the
+        // balance is dropped and the next pattern gets its turn.
+        if (s.removePrefix("ال").let { it.startsWith("حساب") || it.startsWith("رصيد") }) return null
         return s.take(40)
     }
 
@@ -348,6 +358,22 @@ class SmsParser(
         val toPattern = Regex("(?i)\\bto\\s+([^.,;\\n]{2,48})")
         val fromPattern = Regex("(?i)\\bfrom\\s+([^.,;\\n]{2,48})")
         val viaPattern = Regex("(?i)\\bvia\\s+([^.,;\\n]{2,48})")
+
+        /**
+         * The same four prepositions in Arabic, which is the half of the inbox that was
+         * getting no merchant at all - and with no merchant there is no rule to save, so
+         * the same shop was re-filed by hand every month.
+         *
+         * `\b` is useless here: Java's word boundary is built from `[a-zA-Z0-9_]`, so
+         * between a space and an Arabic letter there is no boundary at all and the
+         * pattern would never fire. "Not preceded by a letter" does the same job for
+         * both scripts.
+         */
+        private const val NOT_LETTER = "(?<!\\p{L})"
+        val atPatternAr = Regex("$NOT_LETTER(?:في|لدى)\\s+([^.,;\\n]{2,48})")
+        val toPatternAr = Regex("$NOT_LETTER(?:إلى|الى)\\s+([^.,;\\n]{2,48})")
+        val fromPatternAr = Regex("${NOT_LETTER}من\\s+([^.,;\\n]{2,48})")
+        val viaPatternAr = Regex("$NOT_LETTER(?:عن\\s+طريق|بواسطة)\\s+([^.,;\\n]{2,48})")
 
         /**
          * Where a bank names the account a message is about. Both languages, because
@@ -422,7 +448,20 @@ class SmsParser(
 
         val cutTail = Regex(
             "(?i)\\s+(?:on|dated|date|ref|reference|txn|trx|transaction|no|number|" +
-                "a/c|acc|account|avl|available|bal|balance|ur|your|card|ending|has|was|is)\\b.*"
+                "a/c|acc|account|avl|available|bal|balance|ur|your|card|ending|has|was|is|" +
+                "from|using)\\b.*"
+        )
+
+        /**
+         * Where an Arabic message stops naming the counterparty and starts describing
+         * the transaction: the date, the account, the balance, the channel. The two
+         * "preposition + account" forms come first, or "في حسابك" would be cut at
+         * "حسابك" and leave a dangling "في" on the end of the name.
+         */
+        val cutTailAr = Regex(
+            "\\s+(?:في\\s+(?:ال)?حساب\\p{L}*|من\\s+(?:ال)?حساب\\p{L}*|إلى\\s+(?:ال)?حساب\\p{L}*|" +
+                "(?:ال)?حساب\\p{L}*|بتاريخ|(?:ال)?رصيد\\p{L}*|ب[اإ]ستخدام|عن\\s+طريق|بواسطة|رقم|والتي).*",
+            RegexOption.DOT_MATCHES_ALL,
         )
 
         val TRIM_CHARS = ".,;:-_*'\"()".toSet()
