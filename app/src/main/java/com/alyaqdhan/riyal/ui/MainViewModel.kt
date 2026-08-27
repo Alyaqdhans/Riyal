@@ -317,6 +317,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
     }
 
+    /**
+     * Moves a plan to a different period, which is how a plan stops being a calendar
+     * month: the screens step months, the plan carries its own bounds.
+     */
+    fun setBudgetPeriod(planId: String, label: String, startMillis: Long, endExclusiveMillis: Long) =
+        viewModelScope.launch(Dispatchers.IO) {
+            val plan = budgets.value.firstOrNull { it.id == planId } ?: return@launch
+            store.updateBudget(
+                plan.copy(
+                    label = label,
+                    startMillis = startMillis,
+                    endExclusiveMillis = endExclusiveMillis,
+                )
+            )
+            Verbose.info("budget period changed by you: \"${plan.label}\" → \"$label\"")
+            Verbose.flush()
+        }
+
     /** Copies an existing plan's caps into a new period, the usual month-to-month move. */
     fun copyBudget(source: BudgetPlan, label: String, startMillis: Long, endExclusiveMillis: Long) =
         viewModelScope.launch(Dispatchers.IO) {

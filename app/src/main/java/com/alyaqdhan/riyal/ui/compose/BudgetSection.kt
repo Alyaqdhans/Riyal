@@ -17,7 +17,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
@@ -25,6 +27,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,23 +51,27 @@ import com.alyaqdhan.riyal.ui.theme.successColor
 import kotlin.math.roundToInt
 
 /**
- * The budget card: one plan per period, a cap per expense category, and bars that say
- * not just how much is gone but whether it is going faster than the calendar. Being at
- * 85% of a cap is fine on the 28th and alarming on the 8th, so the pace marker is the
- * part that actually earns its place.
+ * The budget: one plan per period, a cap per expense category, and bars that say not
+ * just how much is gone but whether it is going faster than the calendar. Being at 85%
+ * of a cap is fine on the 28th and alarming on the 8th, so the pace marker is the part
+ * that actually earns its place.
+ *
+ * The period is the one the screen is already showing - Home's month selector drives it,
+ * rather than a second selector of its own. A plan whose period is not that month says
+ * so, and its period is changed from the editor.
  *
  * Switched on in Settings; the section simply isn't rendered while budgets are off.
  */
 @Composable
 fun BudgetSection(
     slice: TimeSlice,
-    onSliceChange: (TimeSlice) -> Unit,
     plans: List<BudgetPlan>,
     txns: List<Txn>,
     currency: String,
     onCreate: (label: String, start: Long, endExclusive: Long) -> Unit,
     onCopy: (source: BudgetPlan, label: String, start: Long, endExclusive: Long) -> Unit,
     onSetLine: (planId: String, categoryId: String, minor: Long) -> Unit,
+    onSetPeriod: (planId: String, label: String, start: Long, endExclusive: Long) -> Unit,
     onDelete: (planId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -79,71 +86,91 @@ fun BudgetSection(
     }
     var showEditor by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var showAll by remember { mutableStateOf(false) }
 
-    Card(modifier.fillMaxWidth()) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Budget", style = MaterialTheme.typography.titleMedium)
-                if (plan != null) {
-                    Row {
-                        TextButton(onClick = { showEditor = true }) { Text("Edit") }
-                        TextButton(onClick = { confirmDelete = true }) { Text("Delete") }
-                    }
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SectionTitle("Budget")
+            if (plan != null) {
+                Row {
+                    TextButton(onClick = { showEditor = true }) { Text("Edit") }
+                    TextButton(onClick = { confirmDelete = true }) { Text("Delete") }
                 }
             }
+        }
 
-            PeriodBar(slice = slice, onChange = onSliceChange, txns = txns, allowFuture = true)
+        // Only worth saying when the plan is not the period on screen - otherwise the
+        // month selector above has already said it.
+        if (plan != null && (plan.startMillis != slice.start || plan.endExclusiveMillis != slice.endExclusive)) {
+            Text(
+                "Plan runs ${plan.label}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
-            if (plan == null || progress == null) {
-                Text(
-                    "No plan for ${slice.label} yet. Set a cap per category and this card tracks " +
-                        "how much of it you've used.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        if (plan == null || progress == null) {
+            Text(
+                "No plan for ${slice.label} yet.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(
+                    onClick = { onCreate(slice.label, slice.start, slice.endExclusive) },
+                    modifier = Modifier.pressBounce(),
+                ) { Text("Create plan") }
+                val previous = plans.firstOrNull { it.endExclusiveMillis <= slice.start }
+                if (previous != null && previous.lines.isNotEmpty()) {
+                    TextButton(onClick = {
+                        onCopy(previous, slice.label, slice.start, slice.endExclusive)
+                    }) { Text("Copy ${previous.label}") }
+                }
+            }
+        } else if (plan.lines.isEmpty()) {
+            Text(
+                "No caps yet.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FilledTonalButton(
+                onClick = { showEditor = true },
+                modifier = Modifier.pressBounce(),
+            ) { Text("Add a cap") }
+        } else {
+            BudgetTotal(progress, currency)
+            // The total bar is the answer; two categories are the detail most people
+            // want, and the rest is one tap away rather than a screenful of bars.
+            val shown = if (showAll) progress.lines else progress.lines.take(VISIBLE_LINES)
+            shown.forEach { line ->
+                BudgetBar(
+                    categoryId = line.categoryId,
+                    spent = line.spentMinor,
+                    budget = line.capMinor,
+                    currency = currency,
+                    paceFraction = progress.elapsedFraction,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(
-                        onClick = { onCreate(slice.label, slice.start, slice.endExclusive) },
-                        modifier = Modifier.pressBounce(),
-                    ) { Text("Create plan") }
-                    val previous = plans.firstOrNull { it.endExclusiveMillis <= slice.start }
-                    if (previous != null && previous.lines.isNotEmpty()) {
-                        TextButton(onClick = {
-                            onCopy(previous, slice.label, slice.start, slice.endExclusive)
-                        }) { Text("Copy ${previous.label}") }
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (progress.lines.size > VISIBLE_LINES) {
+                    TextButton(onClick = { showAll = !showAll }) {
+                        Text(
+                            if (showAll) "Show less"
+                            else "Show all ${progress.lines.size}",
+                        )
                     }
                 }
-            } else if (plan.lines.isEmpty()) {
-                Text(
-                    "This plan has no caps yet. Tap Edit to cap what you spend on a category.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                FilledTonalButton(
-                    onClick = { showEditor = true },
-                    modifier = Modifier.pressBounce(),
-                ) { Text("Add a cap") }
-            } else {
-                BudgetTotal(progress, currency)
-                progress.lines.forEach { line ->
-                    BudgetBar(
-                        categoryId = line.categoryId,
-                        spent = line.spentMinor,
-                        budget = line.capMinor,
-                        currency = currency,
-                        paceFraction = progress.elapsedFraction,
-                    )
-                }
                 if (progress.unbudgetedMinor > 0) {
-                    Text(
-                        "${Money.format(progress.unbudgetedMinor, currency)} more went to categories " +
-                            "you haven't capped, so it isn't in the bars above.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    AssistChip(
+                        onClick = { showEditor = true },
+                        label = { Text("${Money.formatAmount(progress.unbudgetedMinor, currency)} uncapped") },
                     )
                 }
             }
@@ -155,6 +182,7 @@ fun BudgetSection(
             plan = plan,
             currency = currency,
             onSetLine = { categoryId, minor -> onSetLine(plan.id, categoryId, minor) },
+            onSetPeriod = { label, start, end -> onSetPeriod(plan.id, label, start, end) },
             onDismiss = { showEditor = false },
         )
     }
@@ -174,6 +202,9 @@ fun BudgetSection(
         )
     }
 }
+
+/** How many category bars the card shows before "Show all". */
+private const val VISIBLE_LINES = 2
 
 /** The whole plan at a glance, with the pace read that makes a percentage mean something. */
 @Composable
@@ -302,22 +333,35 @@ private fun BudgetEditorDialog(
     plan: BudgetPlan,
     currency: String,
     onSetLine: (categoryId: String, minor: Long) -> Unit,
+    onSetPeriod: (label: String, start: Long, endExclusive: Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var selected by remember { mutableStateOf(Categories.forType(TxnType.EXPENSE).first().id) }
     var amount by remember { mutableStateOf("") }
     // Local view so the list updates live as caps are added or removed.
     var current by remember { mutableStateOf(plan.lines) }
+    var label by remember { mutableStateOf(plan.label) }
+    var showRange by remember { mutableStateOf(false) }
     val parsed = amount.trim().replace(",", "").toBigDecimalOrNull()
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(plan.label) },
+        title = { Text(label) },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                // A plan need not be a calendar month, so this is where a plan stops
+                // being one - the screen itself only ever steps months.
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Period", style = MaterialTheme.typography.labelLarge)
+                    TextButton(onClick = { showRange = true }) { Text("Change") }
+                }
                 if (current.isNotEmpty()) {
                     current.entries.sortedByDescending { it.value }.forEach { (catId, minor) ->
                         Row(
@@ -367,6 +411,31 @@ private fun BudgetEditorDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Done") } },
     )
+
+    if (showRange) {
+        val rangeState = rememberDateRangePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showRange = false },
+            confirmButton = {
+                TextButton(
+                    enabled = rangeState.selectedStartDateMillis != null &&
+                        rangeState.selectedEndDateMillis != null,
+                    onClick = {
+                        val slice = TimeSlice.ofDays(
+                            TimeSlice.utcDay(rangeState.selectedStartDateMillis!!),
+                            TimeSlice.utcDay(rangeState.selectedEndDateMillis!!),
+                        )
+                        onSetPeriod(slice.label, slice.start, slice.endExclusive)
+                        label = slice.label
+                        showRange = false
+                    },
+                ) { Text("Apply") }
+            },
+            dismissButton = { TextButton(onClick = { showRange = false }) { Text("Cancel") } },
+        ) {
+            DateRangePicker(state = rangeState, modifier = Modifier.height(460.dp))
+        }
+    }
 }
 
 /** Small colored dot used by legends and budget rows. */
