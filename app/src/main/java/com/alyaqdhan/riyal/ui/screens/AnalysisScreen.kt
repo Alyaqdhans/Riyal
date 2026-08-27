@@ -31,7 +31,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
@@ -56,10 +56,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -272,10 +271,6 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
                             ) { Text("Income") }
                         }
                         Box(contentAlignment = Alignment.Center) {
-                            // Multi-color category donut out of stock M3 wavy indicators:
-                            // one layer per category at its cumulative fraction, drawn
-                            // largest-first so each layer on top masks the start of the
-                            // one below, leaving exactly that category's share visible.
                             val grow = remember(slices) { Animatable(0f) }
                             LaunchedEffect(slices) {
                                 grow.animateTo(
@@ -286,50 +281,30 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String) -> Unit) {
                                     ),
                                 )
                             }
-                            // Thick stroke + forced amplitude: the defaults are a thin
-                            // 4dp line whose wave flattens near 0% and 100%. Long
-                            // wavelength so the thick ring carries few, broad waves.
-                            val gaugeStroke = Stroke(
-                                width = with(LocalDensity.current) { 14.dp.toPx() },
-                                cap = StrokeCap.Round,
+                            // The empty track, then each category as its own arc on top
+                            // of it. The ring underneath is what draws the circle when
+                            // there is nothing to show.
+                            DonutRing(
+                                progress = { 0f },
+                                color = Color.Transparent,
+                                trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             )
-                            val cumulative = remember(slices) {
-                                var acc = 0f
-                                slices.map { s ->
-                                    acc += s.fraction
-                                    acc.coerceAtMost(1f) to Categories.colorFor(s.categoryId)
-                                }
-                            }
-                            if (cumulative.isEmpty()) {
-                                CircularWavyProgressIndicator(
-                                    progress = { 0f },
-                                    trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    stroke = gaugeStroke,
-                                    trackStroke = gaugeStroke,
-                                    amplitude = { 1f },
-                                    wavelength = 42.dp,
-                                    modifier = Modifier.size(210.dp),
+                            var startFraction = 0f
+                            slices.forEach { s ->
+                                val from = startFraction
+                                startFraction += s.fraction
+                                DonutRing(
+                                    // Each arc is turned to where its share begins and
+                                    // sweeps only its own width, so the colours sit side
+                                    // by side instead of being stacked and masked.
+                                    rotationDegrees = from * 360f + DonutGapDegrees / 2f,
+                                    progress = {
+                                        val sweep = s.fraction * 360f - DonutGapDegrees
+                                        (sweep.coerceAtLeast(1f) / 360f) * grow.value
+                                    },
+                                    color = Color(Categories.colorFor(s.categoryId)),
+                                    trackColor = Color.Transparent,
                                 )
-                            } else {
-                                cumulative.asReversed().forEachIndexed { index, (fraction, colorInt) ->
-                                    CircularWavyProgressIndicator(
-                                        progress = { fraction * grow.value },
-                                        color = Color(colorInt),
-                                        trackColor = if (index == 0) {
-                                            MaterialTheme.colorScheme.surfaceContainerHigh
-                                        } else {
-                                            Color.Transparent
-                                        },
-                                        stroke = gaugeStroke,
-                                        trackStroke = gaugeStroke,
-                                        amplitude = { 1f },
-                                        // Static wave: layered rings must share the exact
-                                        // same phase or the color boundaries shimmer.
-                                        waveSpeed = 0.dp,
-                                        wavelength = 42.dp,
-                                        modifier = Modifier.size(210.dp),
-                                    )
-                                }
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
@@ -741,6 +716,34 @@ private fun amountAxisFormatter(currency: String) = CartesianValueFormatter { _,
 
 private fun labelAxisFormatter() = CartesianValueFormatter { context, x, _ ->
     context.model.extraStore[ChartLabelsKey].getOrNull(x.toInt()) ?: ""
+}
+
+/**
+ * The gap between two neighbouring arcs, in degrees. Butt caps and a hairline of
+ * background between the colours read as separate slices; rounded caps would have to
+ * be pushed several times this far apart before they stopped overlapping each other.
+ */
+private const val DonutGapDegrees = 2f
+
+/** One arc of the donut: a stock determinate ring, turned to where its share starts. */
+@Composable
+private fun DonutRing(
+    progress: () -> Float,
+    color: Color,
+    trackColor: Color,
+    rotationDegrees: Float = 0f,
+) {
+    CircularProgressIndicator(
+        progress = progress,
+        modifier = Modifier
+            .size(210.dp)
+            .rotate(rotationDegrees),
+        color = color,
+        strokeWidth = 16.dp,
+        trackColor = trackColor,
+        strokeCap = StrokeCap.Butt,
+        gapSize = 0.dp,
+    )
 }
 
 /**
