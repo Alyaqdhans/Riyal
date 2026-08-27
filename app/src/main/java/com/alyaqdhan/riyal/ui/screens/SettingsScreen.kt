@@ -25,8 +25,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -82,7 +84,11 @@ import kotlinx.coroutines.launch
  * echoed into the verbose log.
  */
 @Composable
-fun SettingsScreen(vm: MainViewModel) {
+fun SettingsScreen(
+    vm: MainViewModel,
+    onOpenAccounts: () -> Unit,
+    onOpenCategories: () -> Unit,
+) {
     val context = LocalContext.current
     val prefs = vm.prefs
     val clipboard = LocalClipboard.current
@@ -91,10 +97,9 @@ fun SettingsScreen(vm: MainViewModel) {
     val hasPerm by vm.hasSmsPermission.collectAsState()
     val knownSenders by vm.senders.collectAsState()
     val rules by vm.rules.collectAsState()
+    val accounts by vm.accounts.collectAsState()
     val customCategories by vm.categories.collectAsState()
-    // null = closed; a Category = editing it; the sentinel below = adding new.
-    var categoryEditor by remember { mutableStateOf<com.alyaqdhan.riyal.data.Category?>(null) }
-    var showCategoryEditor by remember { mutableStateOf(false) }
+    val budgets by vm.budgets.collectAsState()
 
     var expenseKw by remember { mutableStateOf(prefs.expenseKeywords) }
     var incomeKw by remember { mutableStateOf(prefs.incomeKeywords) }
@@ -108,13 +113,7 @@ fun SettingsScreen(vm: MainViewModel) {
     var bankOnly by remember { mutableStateOf(prefs.bankSendersOnly) }
     var scanOnLaunch by remember { mutableStateOf(prefs.scanOnLaunch) }
     var smartRules by remember { mutableStateOf(prefs.smartRules) }
-    var budgetText by remember {
-        mutableStateOf(
-            if (prefs.monthlyBudgetMinor > 0) {
-                Money.toMajor(prefs.monthlyBudgetMinor, prefs.defaultCurrency).toPlainString()
-            } else "",
-        )
-    }
+    var budgetsEnabled by remember { mutableStateOf(prefs.budgetsEnabled) }
     var confirmWipe by remember { mutableStateOf(false) }
 
     fun note(text: String) {
@@ -205,35 +204,52 @@ fun SettingsScreen(vm: MainViewModel) {
                         },
                     )
                 }
-                Text("Monthly budget", style = MaterialTheme.typography.titleSmall)
-                Text(
-                    "Home shows how much of it this month's spending has used. Leave empty to turn it off.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            }
+
+            // ── money: the two pages that own accounts and categories, and the switch
+            // that decides whether Home carries a budget section at all.
+            SettingsCard("Money") {
+                NavRow(
+                    title = "Bank accounts",
+                    subtitle = if (accounts.isEmpty()) {
+                        "None yet — a scan sets them up from your bank's own messages."
+                    } else {
+                        accounts.joinToString(", ") { it.displayName }
+                    },
+                    onClick = onOpenAccounts,
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    OutlinedTextField(
-                        value = budgetText,
-                        onValueChange = { budgetText = it },
-                        label = { Text("Budget in ${prefs.defaultCurrency}") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.weight(1f),
-                    )
-                    FilledTonalButton(onClick = {
-                        val parsed = budgetText.trim().replace(",", "").toBigDecimalOrNull()
-                        val minor = if (parsed != null && parsed.signum() > 0) {
-                            Money.toMinor(parsed, prefs.defaultCurrency)
-                        } else 0L
-                        prefs.monthlyBudgetMinor = minor
-                        note(
-                            if (minor > 0) "monthly budget → ${Money.format(minor, prefs.defaultCurrency)}"
-                            else "monthly budget turned off",
+                NavRow(
+                    title = "Categories",
+                    subtitle = if (customCategories.isEmpty()) {
+                        "Browse what you spend and earn, and add your own categories."
+                    } else {
+                        "${customCategories.size} of your own, plus the built-in ones"
+                    },
+                    onClick = onOpenCategories,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Budget", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            if (budgetsEnabled) {
+                                "Home shows a budget section: cap what you spend per category " +
+                                    "for any period, with progress bars." +
+                                    if (budgets.isNotEmpty()) " ${budgets.size} plan(s) so far." else ""
+                            } else {
+                                "Off. Turn it on to plan spending per category on the Home screen."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }) { Text("Save") }
+                    }
+                    Switch(
+                        checked = budgetsEnabled,
+                        onCheckedChange = {
+                            budgetsEnabled = it
+                            vm.budgetsEnabled = it
+                            note("budget planning ${if (it) "enabled" else "disabled"}")
+                        },
+                    )
                 }
             }
 
@@ -415,49 +431,6 @@ fun SettingsScreen(vm: MainViewModel) {
                 }
             }
 
-            // ── custom categories
-            SettingsCard("Your categories") {
-                Text(
-                    "Add your own categories to file transactions under. Built-in ones can't be edited, but yours can be renamed, recolored, or removed.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (customCategories.isEmpty()) {
-                    Text(
-                        "No custom categories yet.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                customCategories.forEach { cat ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Box(
-                            Modifier
-                                .size(16.dp)
-                                .clip(CircleShape)
-                                .background(Color(Categories.colorFor(cat.id))),
-                        )
-                        Text(
-                            cat.name + if (cat.income) "  · income" else "",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        TextButton(onClick = { categoryEditor = cat; showCategoryEditor = true }) {
-                            Text("Edit")
-                        }
-                        IconButton(onClick = { vm.deleteCategory(cat.id) }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete ${cat.name}")
-                        }
-                    }
-                }
-                FilledTonalButton(onClick = { categoryEditor = null; showCategoryEditor = true }) {
-                    Text("Add category")
-                }
-            }
-
             // ── rules
             SettingsCard("Your category rules") {
                 if (rules.isEmpty()) {
@@ -539,14 +512,6 @@ fun SettingsScreen(vm: MainViewModel) {
         }
     }
 
-    if (showCategoryEditor) {
-        CategoryEditorDialog(
-            editing = categoryEditor,
-            onAdd = { name, income, color -> vm.addCategory(name, income, color) },
-            onUpdate = { id, name, color -> vm.updateCategory(id, name, color) },
-            onDismiss = { showCategoryEditor = false },
-        )
-    }
 
     if (confirmWipe) {
         AlertDialog(
@@ -630,84 +595,32 @@ private fun AddKeywordRow(
  * whether it's income or expense. Direction is fixed once created, since moving a
  * category between income and expense would strand its transactions on the wrong side.
  */
+/** A settings entry that leads somewhere rather than toggling something. */
 @Composable
-private fun CategoryEditorDialog(
-    editing: com.alyaqdhan.riyal.data.Category?,
-    onAdd: (name: String, income: Boolean, color: Int) -> Unit,
-    onUpdate: (id: String, name: String, color: Int) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var name by remember { mutableStateOf(editing?.name ?: "") }
-    var income by remember { mutableStateOf(editing?.income ?: false) }
-    var color by remember {
-        mutableStateOf(
-            editing?.color?.takeIf { it != 0 } ?: Categories.PALETTE.first(),
+private fun NavRow(title: String, subtitle: String, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-    val trimmed = name.trim()
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (editing == null) "New category" else "Edit category") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (editing == null) {
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = !income,
-                            onClick = { income = false },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        ) { Text("Expense") }
-                        SegmentedButton(
-                            selected = income,
-                            onClick = { income = true },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        ) { Text("Income") }
-                    }
-                }
-                Text("Color", style = MaterialTheme.typography.labelLarge)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Categories.PALETTE.forEach { swatch ->
-                        Box(
-                            Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color(swatch))
-                                .clickable { color = swatch },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (swatch == color) {
-                                Icon(
-                                    Icons.Filled.Check,
-                                    contentDescription = "Selected",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                enabled = trimmed.isNotEmpty(),
-                onClick = {
-                    if (editing == null) onAdd(trimmed, income, color)
-                    else onUpdate(editing.id, trimmed, color)
-                    onDismiss()
-                },
-            ) { Text("Save") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
 }
 
 private fun appVersion(context: android.content.Context): String = try {

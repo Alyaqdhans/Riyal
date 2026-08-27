@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -30,7 +31,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -52,7 +52,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,12 +60,14 @@ import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.ui.MainViewModel
-import com.alyaqdhan.riyal.ui.compose.CategoryPickerSheet
+import com.alyaqdhan.riyal.ui.compose.BudgetSection
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
+import com.alyaqdhan.riyal.ui.compose.TimeSlice
+import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
@@ -75,17 +76,26 @@ import com.alyaqdhan.riyal.ui.theme.successColor
 import com.alyaqdhan.riyal.ui.theme.successContainer
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 private val monthFmt = DateTimeFormatter.ofPattern("MMMM uuuu")
 
 @Composable
-fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit, onOpenReview: () -> Unit) {
+fun HomeScreen(
+    vm: MainViewModel,
+    onRequestPermission: () -> Unit,
+    onOpenReview: () -> Unit,
+    onOpenAccounts: () -> Unit,
+) {
     val txns by vm.txns.collectAsState()
     val hasPerm by vm.hasSmsPermission.collectAsState()
     val scan by vm.scanState.collectAsState()
     val reviews by vm.reviews.collectAsState()
+    val accounts by vm.accounts.collectAsState()
+    val budgets by vm.budgets.collectAsState()
+    val budgetsOn by vm.budgetsOn.collectAsState()
+    val needsAccountCheck by vm.accountsNeedConfirming.collectAsState()
+    val pendingTransfers by vm.pendingTransfers.collectAsState()
 
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
     // The dashboard is per-month: chevrons walk back through any month the inbox covers.
@@ -94,6 +104,8 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit, onOpenReview:
     val totals = remember(txns, currency, month) { Stats.totalsFor(txns, month, currency) }
     val pending = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_PENDING } }
     var picker by remember { mutableStateOf<Txn?>(null) }
+    // The budget card follows its own period, since a plan need not be a calendar month.
+    var budgetSlice by remember { mutableStateOf(TimeSlice.thisMonth()) }
 
     val scope = rememberCoroutineScope()
     val faceRotation = remember { Animatable(0f) }
@@ -177,7 +189,7 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit, onOpenReview:
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        val net = totals.received - totals.spent
+                        val net = totals.net
                         Text(
                             (if (net < 0) "− " else "") + Money.format(kotlin.math.abs(net), currency),
                             style = MaterialTheme.typography.headlineSmall,
@@ -228,48 +240,36 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit, onOpenReview:
                 )
             }
 
-            // ── budget: wavy bar against the monthly budget from Settings
-            val budget = vm.prefs.monthlyBudgetMinor
-            if (budget > 0) {
-                val used = totals.spent.toFloat() / budget.toFloat()
-                val budgetColor = when {
-                    used >= 1f -> MaterialTheme.colorScheme.error
-                    used > 0.8f -> MaterialTheme.colorScheme.primary
-                    else -> successColor()
-                }
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .popIn(140),
-                ) {
-                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Budget", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "${(used * 100).roundToInt()}%",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = budgetColor,
-                            )
-                        }
-                        LinearWavyProgressIndicator(
-                            progress = { used.coerceIn(0f, 1f) },
-                            color = budgetColor,
-                            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            amplitude = { 1f },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        val left = budget - totals.spent
-                        Text(
-                            if (left >= 0) {
-                                "${Money.format(left, currency)} left of ${Money.format(budget, currency)}"
-                            } else {
-                                "${Money.format(-left, currency)} over your ${Money.format(budget, currency)} budget"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
+            // ── accounts: balances read from SMS are a first guess until the user says
+            // otherwise, so this asks once and then gets out of the way for good.
+            if (needsAccountCheck) {
+                ActionCard(
+                    face = FaceStyle.CONFUSED,
+                    mood = 0.3f,
+                    title = "Check your accounts",
+                    subtitle = "${accounts.size} account(s) were set up from your messages. " +
+                        "Confirm the balances are right.",
+                    container = MaterialTheme.colorScheme.primaryContainer,
+                    content = MaterialTheme.colorScheme.onPrimaryContainer,
+                    onClick = onOpenAccounts,
+                    modifier = Modifier.popIn(140),
+                )
+            }
+
+            // ── budget: only present once switched on in Settings
+            if (budgetsOn) {
+                BudgetSection(
+                    slice = budgetSlice,
+                    onSliceChange = { budgetSlice = it },
+                    plans = budgets,
+                    txns = txns,
+                    currency = currency,
+                    onCreate = { label, start, end -> vm.addBudget(label, start, end) },
+                    onCopy = { source, label, start, end -> vm.copyBudget(source, label, start, end) },
+                    onSetLine = { planId, categoryId, minor -> vm.setBudgetLine(planId, categoryId, minor) },
+                    onDelete = { vm.deleteBudget(it) },
+                    modifier = Modifier.popIn(160),
+                )
             }
 
             // ── permission: the only reason scanning could be unavailable
@@ -277,7 +277,7 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit, onOpenReview:
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .popIn(160),
+                        .popIn(180),
                 ) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(
@@ -310,42 +310,22 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit, onOpenReview:
                 }
             }
 
-            // ── needs review: one tappable row leading to the inner review page
-            if (pending.isNotEmpty()) {
-                Surface(
-                    onClick = onOpenReview,
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .popIn(200)
-                        .pressBounce(0.97f),
-                ) {
-                    Row(
-                        Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Face(mood = -0.2f, style = FaceStyle.CONFUSED, modifier = Modifier.size(44.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                "Needs review",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            )
-                            Text(
-                                "${pending.size} message(s) couldn't be read, tap to decide",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            )
-                        }
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                        )
-                    }
+            // ── needs review: unreadable messages and transfer pairs both wait here
+            if (pending.isNotEmpty() || pendingTransfers.isNotEmpty()) {
+                val parts = buildList {
+                    if (pendingTransfers.isNotEmpty()) add("${pendingTransfers.size} possible transfer(s)")
+                    if (pending.isNotEmpty()) add("${pending.size} unreadable message(s)")
                 }
+                ActionCard(
+                    face = FaceStyle.CONFUSED,
+                    mood = -0.2f,
+                    title = "Needs review",
+                    subtitle = parts.joinToString(" · ") + ", tap to decide",
+                    container = MaterialTheme.colorScheme.tertiaryContainer,
+                    content = MaterialTheme.colorScheme.onTertiaryContainer,
+                    onClick = onOpenReview,
+                    modifier = Modifier.popIn(200),
+                )
             }
 
             // ── recent transactions
@@ -361,7 +341,12 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit, onOpenReview:
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     recent.forEachIndexed { index, txn ->
-                        TxnRow(txn, onClick = { picker = txn }, modifier = Modifier.popIn(index * 40))
+                        TxnRow(
+                            txn,
+                            onClick = { picker = txn },
+                            modifier = Modifier.popIn(index * 40),
+                            accounts = accounts,
+                        )
                     }
                 }
             }
@@ -373,15 +358,67 @@ fun HomeScreen(vm: MainViewModel, onRequestPermission: () -> Unit, onOpenReview:
 
     ScanSheetHost(vm)
     picker?.let { txn ->
-        CategoryPickerSheet(
+        TxnEditSheet(
             txn = txn,
+            accounts = accounts,
             onApply = { categoryId, rulePattern ->
                 vm.setCategory(txn, categoryId, rulePattern)
                 picker = null
             },
             onDismiss = { picker = null },
             rememberByDefault = vm.prefs.smartRules,
+            onSetAccount = {
+                vm.setTxnAccount(txn, it)
+                picker = null
+            },
+            onMarkTransfer = { from, to ->
+                vm.markAsTransfer(txn, from, to)
+                picker = null
+            },
+            onSplitTransfer = {
+                vm.splitTransfer(txn)
+                picker = null
+            },
         )
+    }
+}
+
+/** A tappable prompt card: mascot, one line of why, and a chevron into the page. */
+@Composable
+private fun ActionCard(
+    face: FaceStyle,
+    mood: Float,
+    title: String,
+    subtitle: String,
+    container: Color,
+    content: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(24.dp),
+        color = container,
+        modifier = modifier
+            .fillMaxWidth()
+            .pressBounce(0.97f),
+    ) {
+        Row(
+            Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Face(mood = mood, style = face, modifier = Modifier.size(44.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = content)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = content)
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = content,
+            )
+        }
     }
 }
 
@@ -413,4 +450,3 @@ private fun StatCard(
         }
     }
 }
-

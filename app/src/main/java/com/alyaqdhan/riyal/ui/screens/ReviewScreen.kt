@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -43,14 +44,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.core.Money
+import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.MsgTemplate
 import com.alyaqdhan.riyal.data.ReviewItem
+import com.alyaqdhan.riyal.data.TransferProposal
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
 import com.alyaqdhan.riyal.ui.compose.SummaryPill
+import com.alyaqdhan.riyal.ui.theme.successColor
 import com.alyaqdhan.riyal.ui.compose.pressBounce
 import java.time.Instant
 import java.time.ZoneId
@@ -69,6 +74,8 @@ private val reviewDateFmt = DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a")
 @Composable
 fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
     val reviews by vm.reviews.collectAsState()
+    val transfers by vm.pendingTransfers.collectAsState()
+    val accounts by vm.accounts.collectAsState()
     val pending = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_PENDING } }
     val dismissed = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_DISMISSED } }
     var resolving by remember { mutableStateOf<Pair<ReviewItem, Boolean>?>(null) }
@@ -90,7 +97,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         Column(Modifier.padding(padding)) {
-            if (pending.isEmpty() && dismissed.isEmpty()) {
+            if (pending.isEmpty() && dismissed.isEmpty() && transfers.isEmpty()) {
                 EmptyState(
                     style = FaceStyle.NORMAL,
                     mood = 0.9f,
@@ -102,15 +109,48 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    item {
+                    if (transfers.isNotEmpty()) {
+                        item(key = "transfer-header") {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    "Transfers to confirm (${transfers.size})",
+                                    style = MaterialTheme.typography.titleSmall,
+                                )
+                                Text(
+                                    "Two messages that look like one movement of your own money. " +
+                                        "Confirm and it stops counting as both spending and income; " +
+                                        "reject and both stay exactly as they are.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        items(transfers, key = { "t-" + it.id }) { proposal ->
+                            TransferCard(
+                                proposal = proposal,
+                                accounts = accounts,
+                                onAccept = {
+                                    vm.acceptTransfer(proposal)
+                                    scope.launch { snackbar.showSnackbar("Merged into one transfer") }
+                                },
+                                onReject = {
+                                    vm.rejectTransfer(proposal)
+                                    scope.launch { snackbar.showSnackbar("Kept as separate records") }
+                                },
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
+                    }
+                    item(key = "intro") {
                         Text(
-                            if (pending.isEmpty()) {
-                                "All clear, nothing is waiting for you."
-                            } else {
-                                "These matched your keywords but couldn't be read automatically. Nothing was recorded for them, you decide."
+                            when {
+                                pending.isEmpty() && transfers.isEmpty() -> "All clear, nothing is waiting for you."
+                                pending.isEmpty() -> "Nothing unreadable — just the transfers above."
+                                else -> "These matched your keywords but couldn't be read automatically. Nothing was recorded for them, you decide."
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = if (transfers.isEmpty()) 0.dp else 12.dp),
                         )
                     }
                     items(pending, key = { it.id }) { item ->
@@ -164,7 +204,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            items(dismissed, key = { "d-${it.id}" }) { item ->
+                            items(dismissed, key = { "d-" + it.id }) { item ->
                                 DismissedCard(
                                     item = item,
                                     onRestore = {
@@ -186,12 +226,87 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
             title = "What was this?",
             atMillis = item.atMillis,
             defaultCurrency = vm.prefs.defaultCurrency,
-            onSave = { amountMinor, currency, direction, merchant, categoryId ->
-                vm.resolveReview(item, amountMinor, currency, direction, merchant, categoryId, learnSimilar = learn)
+            accounts = accounts,
+            onSave = { amountMinor, currency, type, merchant, categoryId, from, to ->
+                vm.resolveReview(
+                    item, amountMinor, currency, type, merchant, categoryId,
+                    fromAccountId = from, toAccountId = to, learnSimilar = learn,
+                )
                 resolving = null
             },
             onDismiss = { resolving = null },
         )
+    }
+}
+
+/**
+ * One nominated transfer, shown as the two messages it came from so the user can see
+ * exactly what would be merged. Deliberately a two-button decision with no default:
+ * accepting wrongly quietly erases a real expense and a real income from every total,
+ * so it is never something the app does on its own.
+ */
+@Composable
+private fun TransferCard(
+    proposal: TransferProposal,
+    accounts: List<Account>,
+    onAccept: () -> Unit,
+    onReject: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    fun name(id: String?): String =
+        accounts.firstOrNull { it.id == id }?.displayName ?: "an unassigned account"
+
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        ),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("⇄", style = MaterialTheme.typography.headlineSmall)
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        Money.format(proposal.amountMinor, proposal.currency),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    )
+                    Text(
+                        reviewDateFmt.format(
+                            Instant.ofEpochMilli(proposal.atMillis).atZone(ZoneId.systemDefault())
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    )
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    "− ${Money.format(proposal.amountMinor, proposal.currency)} left ${name(proposal.fromAccountId)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                Text(
+                    "+ ${Money.format(proposal.amountMinor, proposal.currency)} arrived in ${name(proposal.toAccountId)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = successColor(),
+                )
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            ) {
+                TextButton(onClick = onReject) { Text("No, keep both") }
+                Button(
+                    onClick = onAccept,
+                    shapes = ButtonDefaults.shapes(),
+                    modifier = Modifier.pressBounce(),
+                ) { Text("Yes, it's a transfer") }
+            }
+        }
     }
 }
 

@@ -39,15 +39,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
-import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.Txn
+import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryIcon
-import com.alyaqdhan.riyal.ui.compose.CategoryPickerSheet
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
+import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.TxnRow
+import com.alyaqdhan.riyal.ui.compose.typeLabel
 import com.alyaqdhan.riyal.ui.compose.dayLabel
 import com.alyaqdhan.riyal.ui.compose.localDateOf
 import androidx.compose.ui.unit.dp
@@ -57,11 +58,18 @@ import java.time.LocalDate
 fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     val txns by vm.txns.collectAsState()
     val scan by vm.scanState.collectAsState()
+    val accounts by vm.accounts.collectAsState()
     var filter by rememberSaveable { mutableStateOf("all") }
+    var typeFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    var accountFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var picker by remember { mutableStateOf<Txn?>(null) }
 
-    val filtered = remember(txns, filter) {
-        if (filter == "all") txns else txns.filter { it.categoryId == filter }
+    val filtered = remember(txns, filter, typeFilter, accountFilter) {
+        txns.filter { t ->
+            (filter == "all" || t.categoryId == filter) &&
+                (typeFilter == null || t.type.name == typeFilter) &&
+                (accountFilter == null || t.touches(accountFilter!!))
+        }
     }
     val categoriesPresent = remember(txns) {
         Categories.ALL.filter { cat -> txns.any { it.categoryId == cat.id } }
@@ -102,11 +110,34 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             ) {
                 item {
                     FilterChip(
-                        selected = filter == "all",
-                        onClick = { filter = "all" },
+                        selected = typeFilter == null && accountFilter == null && filter == "all",
+                        onClick = {
+                            typeFilter = null
+                            accountFilter = null
+                            filter = "all"
+                        },
                         label = { Text("All (${txns.size})") },
                     )
                 }
+                items(TxnType.entries) { type ->
+                    FilterChip(
+                        selected = typeFilter == type.name,
+                        onClick = { typeFilter = if (typeFilter == type.name) null else type.name },
+                        label = { Text(typeLabel(type)) },
+                    )
+                }
+                items(accounts) { acc ->
+                    FilterChip(
+                        selected = accountFilter == acc.id,
+                        onClick = { accountFilter = if (accountFilter == acc.id) null else acc.id },
+                        label = { Text(acc.name) },
+                    )
+                }
+            }
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 items(categoriesPresent) { cat ->
                     FilterChip(
                         selected = filter == cat.id,
@@ -138,7 +169,12 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     grouped.forEach { (date, dayTxns) ->
                         item(key = "header-$date") { DayHeader(date, dayTxns) }
                         items(dayTxns, key = { it.id }) { txn ->
-                            TxnRow(txn, onClick = { picker = txn }, modifier = Modifier.animateItem())
+                            TxnRow(
+                                txn,
+                                onClick = { picker = txn },
+                                modifier = Modifier.animateItem(),
+                                accounts = accounts,
+                            )
                         }
                     }
                 }
@@ -149,14 +185,27 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
 
     ScanSheetHost(vm)
     picker?.let { txn ->
-        CategoryPickerSheet(
+        TxnEditSheet(
             txn = txn,
+            accounts = accounts,
             onApply = { categoryId, rulePattern ->
                 vm.setCategory(txn, categoryId, rulePattern)
                 picker = null
             },
             onDismiss = { picker = null },
             rememberByDefault = vm.prefs.smartRules,
+            onSetAccount = {
+                vm.setTxnAccount(txn, it)
+                picker = null
+            },
+            onMarkTransfer = { from, to ->
+                vm.markAsTransfer(txn, from, to)
+                picker = null
+            },
+            onSplitTransfer = {
+                vm.splitTransfer(txn)
+                picker = null
+            },
         )
     }
 }
@@ -164,7 +213,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
 @Composable
 private fun DayHeader(date: LocalDate, dayTxns: List<Txn>) {
     val spentByCurrency = dayTxns
-        .filter { it.direction == Direction.EXPENSE }
+        .filter { it.type == TxnType.EXPENSE }
         .groupBy { it.currency }
         .map { (currency, list) -> "− ${Money.format(list.sumOf { it.amountMinor }, currency)}" }
     Row(
