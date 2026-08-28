@@ -313,7 +313,17 @@ data class ReviewItem(
     }
 }
 
-data class UserRule(val pattern: String, val categoryId: String)
+data class UserRule(val pattern: String, val categoryId: String) {
+    companion object {
+        /**
+         * The one spelling a counterparty is keyed by - as a rule, and as a name the
+         * user asked to be asked about every time. Two call sites normalising it
+         * slightly differently is exactly how a name gets marked and then quietly
+         * earns a rule anyway.
+         */
+        fun patternOf(merchant: String): String = merchant.trim().lowercase()
+    }
+}
 
 /**
  * A kind of message the user dismissed from Review: similar future messages are
