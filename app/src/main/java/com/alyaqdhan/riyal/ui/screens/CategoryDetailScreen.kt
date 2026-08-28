@@ -81,6 +81,7 @@ fun CategoryDetailScreen(
     var editing by remember { mutableStateOf<Txn?>(null) }
     var confirmRemove by remember { mutableStateOf<Txn?>(null) }
     val archivedIds by vm.archivedIds.collectAsState()
+    val askEachTime by vm.askEachTime.collectAsState()
 
     val order = TxnSort.valueOf(sort)
     val inCategory = remember(txns, categoryId, slice, order) {
@@ -200,6 +201,8 @@ fun CategoryDetailScreen(
             },
             onDismiss = { editing = null },
             rememberByDefault = vm.prefs.smartRules,
+            askEachTime = askEachTime,
+            onAskEachTime = { vm.setAskEachTime(txn.merchant.orEmpty(), it) },
             onSetAccount = {
                 vm.setTxnAccount(txn, it)
                 editing = null

@@ -45,6 +45,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val txns = store.txns
     val reviews = store.reviews
     val rules = store.rules
+
+    /** Counterparties the user asked to be asked about every time, never rule-able. */
+    val askEachTime = store.askEachTime
     val senders = store.senders
     val lastSummary = store.lastSummary
     val accounts = store.accounts
@@ -434,8 +437,33 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun removeRule(pattern: String) = viewModelScope.launch(Dispatchers.IO) {
-        store.removeRule(pattern)
-        Verbose.info("rule removed: \"$pattern\"")
+        val changed = store.removeRule(pattern)
+        Verbose.info(
+            "rule removed: \"$pattern\"" +
+                if (changed > 0) " · $changed record(s) it had filed were answered again" else ""
+        )
+        Verbose.flush()
+    }
+
+    /**
+     * Marks a counterparty as one to be asked about every time, or lets it be
+     * remembered again. Marking is also an undo: whatever rule was already saved for
+     * that name goes with it, along with the filings it made.
+     */
+    fun setAskEachTime(merchant: String, on: Boolean) = viewModelScope.launch(Dispatchers.IO) {
+        val pattern = UserRule.patternOf(merchant)
+        if (pattern.isBlank()) return@launch
+        val undone = store.setAskEachTime(pattern, on)
+        Verbose.info(
+            if (on) {
+                "\"$pattern\" will be asked about every time, no rule will be saved for it" +
+                    if (undone > 0) {
+                        " · its rule is gone and $undone record(s) it had filed were answered again"
+                    } else ""
+            } else {
+                "\"$pattern\" can be remembered by a rule again"
+            }
+        )
         Verbose.flush()
     }
 

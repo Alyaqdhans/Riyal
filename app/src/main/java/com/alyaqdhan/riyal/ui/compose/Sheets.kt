@@ -70,6 +70,7 @@ import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
+import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.MainViewModel
 import java.time.Instant
 import java.time.ZoneId
@@ -262,12 +263,16 @@ fun TxnEditSheet(
     onApply: (categoryId: String, rulePattern: String?) -> Unit,
     onDismiss: () -> Unit,
     rememberByDefault: Boolean = false,
+    askEachTime: Set<String> = emptySet(),
+    onAskEachTime: ((Boolean) -> Unit)? = null,
     onSetAccount: ((String) -> Unit)? = null,
     onMarkTransfer: ((fromAccountId: String?, toAccountId: String?) -> Unit)? = null,
     onSplitTransfer: (() -> Unit)? = null,
 ) {
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
-    var makeRule by remember { mutableStateOf(rememberByDefault && !txn.merchant.isNullOrBlank()) }
+    val pattern = txn.merchant?.takeIf { it.isNotBlank() }?.let { UserRule.patternOf(it) }
+    val marked = pattern != null && pattern in askEachTime
+    var makeRule by remember { mutableStateOf(rememberByDefault && pattern != null && !marked) }
     var transferTarget by remember { mutableStateOf(false) }
     val live = accounts.filter { !it.archived }
 
@@ -320,18 +325,42 @@ fun TxnEditSheet(
                 CategoryChips(
                     type = txn.type,
                     selectedId = txn.categoryId,
-                    onSelect = { onApply(it, if (makeRule) txn.merchant?.lowercase() else null) },
+                    onSelect = { onApply(it, if (makeRule && !marked) pattern else null) },
                 )
-                if (!txn.merchant.isNullOrBlank()) {
+                if (pattern != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Switch(checked = makeRule, onCheckedChange = { makeRule = it })
+                        Switch(
+                            checked = makeRule && !marked,
+                            enabled = !marked,
+                            onCheckedChange = { makeRule = it },
+                        )
                         Text(
                             "Always: anything mentioning \"${txn.merchant}\" gets the category I pick",
                             style = MaterialTheme.typography.bodyMedium,
+                            color = if (marked) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onSurface,
                         )
+                    }
+                    if (marked) {
+                        Text(
+                            "You asked to be asked each time for this name.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    // Offered right here because this is where the problem shows itself:
+                    // picking a category for the same person for the second time, and
+                    // seeing that the first answer was not a fact about them.
+                    if (onAskEachTime != null) {
+                        TextButton(onClick = { onAskEachTime(!marked) }) {
+                            Text(
+                                if (marked) "Remember this name after all"
+                                else "Always ask for this name"
+                            )
+                        }
                     }
                 }
             }

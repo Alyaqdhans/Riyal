@@ -97,6 +97,7 @@ fun HomeScreen(
     val needsCategory by vm.needsCategoryCount.collectAsState()
     val needsAccountCheck by vm.accountsNeedConfirming.collectAsState()
     val pendingTransfers by vm.pendingTransfers.collectAsState()
+    val askEachTime by vm.askEachTime.collectAsState()
 
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
     // The dashboard is per-month: chevrons walk back through any month the inbox covers.
@@ -379,6 +380,8 @@ fun HomeScreen(
             },
             onDismiss = { picker = null },
             rememberByDefault = vm.prefs.smartRules,
+            askEachTime = askEachTime,
+            onAskEachTime = { vm.setAskEachTime(txn.merchant.orEmpty(), it) },
             onSetAccount = {
                 vm.setTxnAccount(txn, it)
                 picker = null
