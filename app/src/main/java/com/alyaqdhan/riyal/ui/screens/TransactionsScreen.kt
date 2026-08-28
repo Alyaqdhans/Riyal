@@ -54,7 +54,7 @@ import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.SwipeableTxnRow
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
-import com.alyaqdhan.riyal.ui.compose.ToolbarSpace
+import com.alyaqdhan.riyal.ui.compose.toolbarSpace
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.SortChip
 import com.alyaqdhan.riyal.ui.compose.TxnSort
@@ -193,7 +193,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(
-                        start = 16.dp, end = 16.dp, top = 10.dp, bottom = ToolbarSpace,
+                        start = 16.dp, end = 16.dp, top = 10.dp, bottom = toolbarSpace,
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
