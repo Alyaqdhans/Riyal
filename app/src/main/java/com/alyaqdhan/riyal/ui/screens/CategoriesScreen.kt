@@ -88,6 +88,8 @@ fun CategoriesScreen(
     val txns by vm.txns.collectAsState()
     // Read so a create/rename/delete recomposes the list built from the registry.
     val custom by vm.categories.collectAsState()
+    val rules by vm.rules.collectAsState()
+    val askEachTime by vm.askEachTime.collectAsState()
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
     var slice by remember { mutableStateOf(TimeSlice.thisMonth()) }
     var editing by remember { mutableStateOf<Category?>(null) }
@@ -174,6 +176,55 @@ fun CategoriesScreen(
                     onClick = { editing = Category(id = "", name = "", color = Categories.PALETTE.random()) },
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp).pressBounce(),
                 ) { Text("Add a category") }
+            }
+
+            // What the app has been taught, and the only place it can be untaught. A
+            // rule re-files past records as well as future ones, which is too much to
+            // do invisibly: it should be possible to read back every name that was
+            // learned and take any of them away.
+            item(key = "learned-title") { SectionTitle("What Riyal has learned") }
+            item(key = "learned-intro") {
+                Text(
+                    if (rules.isEmpty() && askEachTime.isEmpty()) {
+                        "Nothing yet. Filing a record with \"Always\" left on saves the name " +
+                            "here, and every later message mentioning it is filed the same way " +
+                            "without asking."
+                    } else {
+                        "Names filed without asking, and names always asked about. Forgetting " +
+                            "a rule also re-answers the records it had filed."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
+            val sortedRules = rules.sortedBy { it.pattern }
+            items(sortedRules, key = { "rule-" + it.pattern + "-" + it.categoryId }) { rule ->
+                LearnedRow(
+                    name = rule.pattern,
+                    detail = "filed as ${Categories.byId(rule.categoryId).name}",
+                    categoryId = rule.categoryId,
+                    actionLabel = "Forget",
+                    onAction = { vm.removeRule(rule.pattern) },
+                )
+            }
+            if (askEachTime.isNotEmpty()) {
+                item(key = "asked-title") {
+                    Text(
+                        "Asked every time",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
+                    )
+                }
+                items(askEachTime.sorted(), key = { "ask-$it" }) { name ->
+                    LearnedRow(
+                        name = name,
+                        detail = "never saved as a rule",
+                        categoryId = null,
+                        actionLabel = "Remove",
+                        onAction = { vm.setAskEachTime(name, false) },
+                    )
+                }
             }
         }
     }
@@ -284,6 +335,43 @@ private fun CategoryRow(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp),
             )
+        }
+    }
+}
+
+/**
+ * One thing the app has learned: the name, what it does, and how to undo it. Used for
+ * both halves of the list, because "a rule" and "a name to ask about" are the same kind
+ * of thing to the reader - something remembered about a counterparty.
+ */
+@Composable
+private fun LearnedRow(
+    name: String,
+    detail: String,
+    categoryId: String?,
+    actionLabel: String,
+    onAction: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier.fillMaxWidth().popIn(),
+    ) {
+        Row(
+            Modifier.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (categoryId != null) CategoryBadge(categoryId, size = 32.dp)
+            Column(Modifier.weight(1f)) {
+                Text(name, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    detail,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            TextButton(onClick = onAction) { Text(actionLabel) }
         }
     }
 }
