@@ -231,10 +231,10 @@ fun SettingsScreen(
                 )
                 NavRow(
                     title = "Categories",
-                    subtitle = if (customCategories.isEmpty()) {
-                        "Browse what you spend and earn, and add your own categories."
+                    subtitle = if (rules.isEmpty()) {
+                        "Your categories, and the names Riyal has learned"
                     } else {
-                        "${customCategories.size} of your own, plus the built-in ones"
+                        "${rules.size} learned name(s), plus every category"
                     },
                     onClick = onOpenCategories,
                 )
@@ -437,34 +437,6 @@ fun SettingsScreen(
                                     label = { Text(sender) },
                                 )
                             }
-                        }
-                    }
-                }
-            }
-
-            // ── rules
-            SettingsCard("Your category rules") {
-                if (rules.isEmpty()) {
-                    Text(
-                        "None yet. Create one from any transaction: pick a category and switch on “Always”.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                rules.forEach { rule ->
-                    val cat = Categories.byId(rule.categoryId)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        CategoryIcon(cat.id)
-                        Text(
-                            "\"${rule.pattern}\" → ${cat.name}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        IconButton(onClick = { vm.removeRule(rule.pattern) }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete rule")
                         }
                     }
                 }
