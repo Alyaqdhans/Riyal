@@ -451,8 +451,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun addRule(pattern: String, categoryId: String) = viewModelScope.launch(Dispatchers.IO) {
-        val changed = store.addRule(UserRule(pattern.trim().lowercase(), categoryId))
-        Verbose.ok("rule saved: \"${pattern.trim().lowercase()}\" → ${Categories.byId(categoryId).name} · re-categorized $changed transaction(s)")
+        val key = UserRule.patternOf(pattern)
+        // Reachable now that a keyword can be typed rather than only picked up from a
+        // merchant: the store refuses a rule for a name marked "ask me every time", and
+        // reporting "rule saved" for one it dropped would be a lie in the log.
+        if (key in store.askEachTime.value) {
+            Verbose.info("no rule saved for \"$key\": you asked to be asked about this name every time")
+            Verbose.flush()
+            return@launch
+        }
+        val changed = store.addRule(UserRule(key, categoryId))
+        Verbose.ok("rule saved: \"$key\" → ${Categories.byId(categoryId).name} · re-categorized $changed transaction(s)")
         Verbose.flush()
     }
 

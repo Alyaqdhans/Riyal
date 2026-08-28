@@ -63,14 +63,17 @@ import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Category
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
+import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
+import com.alyaqdhan.riyal.ui.compose.CategoryChips
 import com.alyaqdhan.riyal.ui.compose.CategoryVisuals
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
+import com.alyaqdhan.riyal.ui.compose.rememberCategoryOrder
 import com.alyaqdhan.riyal.ui.theme.successColor
 import kotlin.math.roundToInt
 
@@ -92,10 +95,12 @@ fun CategoriesScreen(
     val custom by vm.categories.collectAsState()
     val rules by vm.rules.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
+    val categoryUse by vm.categoryUse.collectAsState()
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
     var slice by remember { mutableStateOf(TimeSlice.thisMonth()) }
     var editing by remember { mutableStateOf<Category?>(null) }
     var confirmDelete by remember { mutableStateOf<Category?>(null) }
+    var addingKeyword by remember { mutableStateOf(false) }
 
     val expenses = remember(txns, slice, currency, custom) {
         Stats.breakdownIn(txns, slice.start, slice.endExclusive, currency, type = TxnType.EXPENSE)
@@ -190,7 +195,7 @@ fun CategoriesScreen(
                     if (rules.isEmpty() && askEachTime.isEmpty()) {
                         "Nothing yet. Filing a record with \"Always\" left on saves the name " +
                             "here, and every later message mentioning it is filed the same way " +
-                            "without asking."
+                            "without asking. You can also add a word yourself, below."
                     } else {
                         "Names filed without asking, and names always asked about. Forgetting " +
                             "a rule also re-answers the records it had filed."
@@ -199,6 +204,12 @@ fun CategoriesScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 4.dp),
                 )
+            }
+            item(key = "learned-add") {
+                FilledTonalButton(
+                    onClick = { addingKeyword = true },
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).pressBounce(),
+                ) { Text("Add a keyword") }
             }
             val sortedRules = rules.sortedBy { it.pattern }
             items(sortedRules, key = { "rule-" + it.pattern + "-" + it.categoryId }) { rule ->
@@ -229,6 +240,18 @@ fun CategoriesScreen(
                 }
             }
         }
+    }
+
+    if (addingKeyword) {
+        KeywordRuleDialog(
+            askEachTime = askEachTime,
+            categoryUse = categoryUse,
+            onSave = { pattern, categoryId ->
+                vm.addRule(pattern, categoryId)
+                addingKeyword = false
+            },
+            onDismiss = { addingKeyword = false },
+        )
     }
 
     editing?.let { cat ->
@@ -376,6 +399,110 @@ private fun LearnedRow(
             TextButton(onClick = onAction) { Text(actionLabel) }
         }
     }
+}
+
+/**
+ * Teaches a keyword by hand, rather than waiting to correct a record and leaving
+ * "Always" on. It writes exactly the same [UserRule] that switch does, so there is one
+ * mechanism and one list, not two.
+ *
+ * The rule is scoped to one side of the ledger on purpose: the same counterparty can
+ * pay you and be paid, and a category chosen for one direction must not file the other.
+ */
+@Composable
+private fun KeywordRuleDialog(
+    askEachTime: Set<String>,
+    categoryUse: Map<String, Int>,
+    onSave: (pattern: String, categoryId: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var text by remember { mutableStateOf("") }
+    var income by remember { mutableStateOf(false) }
+    var categoryId by remember { mutableStateOf(Categories.DEFAULT_EXPENSE) }
+    val order = rememberCategoryOrder(categoryUse)
+
+    val type = if (income) TxnType.INCOME else TxnType.EXPENSE
+    val pattern = UserRule.patternOf(text)
+    // A name marked "ask me every time" would have its rule dropped the moment it was
+    // written, so say so here instead of accepting the word and silently discarding it.
+    val blocked = pattern.isNotBlank() && pattern in askEachTime
+    // Matching mirrors Categorizer.contains: short ASCII words match whole only.
+    val wholeWord = pattern.length <= 4 && pattern.all { it in 'a'..'z' }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add a keyword") },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("Word to look for") },
+                    singleLine = true,
+                    isError = blocked,
+                )
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        selected = !income,
+                        onClick = {
+                            income = false
+                            categoryId = Categories.defaultFor(TxnType.EXPENSE)
+                        },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                    ) { Text("Money out") }
+                    SegmentedButton(
+                        selected = income,
+                        onClick = {
+                            income = true
+                            categoryId = Categories.defaultFor(TxnType.INCOME)
+                        },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                    ) { Text("Money in") }
+                }
+                CategoryChips(
+                    type = type,
+                    selectedId = categoryId,
+                    onSelect = { categoryId = it },
+                    order = order,
+                )
+                if (blocked) {
+                    Text(
+                        "\"$pattern\" is a name you asked to be asked about every time, so no " +
+                            "rule can be saved for it. Remove it from the list below first.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                } else if (pattern.isNotBlank()) {
+                    Text(
+                        "Any " + (if (income) "money in" else "money out") +
+                            " mentioning \"$pattern\" is filed as " +
+                            "${Categories.byId(categoryId).name}, including records already " +
+                            "read. Anything you filed by hand is left alone.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (wholeWord) {
+                        Text(
+                            "Short words are matched whole, so this matches \"$pattern\" on its " +
+                                "own and not inside a longer word.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = pattern.isNotBlank() && !blocked,
+                onClick = { onSave(pattern, categoryId) },
+            ) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 /** Create or rename a user category, and pick its colour from the shared palette. */
