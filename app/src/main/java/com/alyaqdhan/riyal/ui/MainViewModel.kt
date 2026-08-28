@@ -482,14 +482,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     val categories = store.categories
 
-    fun addCategory(name: String, income: Boolean, color: Int) = viewModelScope.launch(Dispatchers.IO) {
-        store.addCategory(name.trim(), income, color)
+    fun addCategory(name: String, income: Boolean, color: Int, icon: String) = viewModelScope.launch(Dispatchers.IO) {
+        store.addCategory(name.trim(), income, color, icon)
         Verbose.ok("category added by you: \"${name.trim()}\" (${if (income) "income" else "expense"})")
         Verbose.flush()
     }
 
-    fun updateCategory(id: String, name: String, color: Int) = viewModelScope.launch(Dispatchers.IO) {
-        store.updateCategory(id, name.trim(), color)
+    fun updateCategory(id: String, name: String, color: Int, icon: String) = viewModelScope.launch(Dispatchers.IO) {
+        store.updateCategory(id, name.trim(), color, icon)
         Verbose.info("category updated by you: \"${name.trim()}\"")
         Verbose.flush()
     }

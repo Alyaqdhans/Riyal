@@ -56,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
@@ -64,6 +65,7 @@ import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
+import com.alyaqdhan.riyal.ui.compose.CategoryVisuals
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
@@ -232,9 +234,9 @@ fun CategoriesScreen(
     editing?.let { cat ->
         CategoryEditorDialog(
             category = cat,
-            onSave = { name, income, color ->
-                if (cat.id.isBlank()) vm.addCategory(name, income, color)
-                else vm.updateCategory(cat.id, name, color)
+            onSave = { name, income, color, icon ->
+                if (cat.id.isBlank()) vm.addCategory(name, income, color, icon)
+                else vm.updateCategory(cat.id, name, color, icon)
                 editing = null
             },
             onDelete = if (cat.id.isNotBlank()) ({
@@ -380,7 +382,7 @@ private fun LearnedRow(
 @Composable
 private fun CategoryEditorDialog(
     category: Category,
-    onSave: (name: String, income: Boolean, color: Int) -> Unit,
+    onSave: (name: String, income: Boolean, color: Int, icon: String) -> Unit,
     onDelete: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
@@ -390,6 +392,7 @@ private fun CategoryEditorDialog(
     var color by remember {
         mutableStateOf(if (category.color != 0) category.color else Categories.PALETTE.first())
     }
+    var icon by remember { mutableStateOf(category.icon.ifBlank { CategoryVisuals.KEYS.first() }) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -419,6 +422,38 @@ private fun CategoryEditorDialog(
                             onClick = { income = true },
                             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                         ) { Text("Income") }
+                    }
+                }
+                // Shown above the swatches because the icon is what the badge reads as
+                // at a glance in a list; the colour only tells it apart from its
+                // neighbours.
+                Text("Icon", style = MaterialTheme.typography.labelLarge)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    CategoryVisuals.KEYS.forEach { key ->
+                        val picked = key == icon
+                        Box(
+                            Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (picked) Color(color).copy(alpha = 0.24f)
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                )
+                                .clickable { icon = key }
+                                .pressBounce(0.9f),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painterResource(CategoryVisuals.byKey(key)),
+                                contentDescription = key,
+                                tint = if (picked) Color(color)
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
                     }
                 }
                 Text("Colour", style = MaterialTheme.typography.labelLarge)
@@ -451,7 +486,7 @@ private fun CategoryEditorDialog(
         confirmButton = {
             TextButton(
                 enabled = name.isNotBlank(),
-                onClick = { onSave(name.trim(), income, color) },
+                onClick = { onSave(name.trim(), income, color, icon) },
             ) { Text("Save") }
         },
         dismissButton = {

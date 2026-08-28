@@ -554,17 +554,17 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     // ─────────────────────────── custom categories ───────────────────────────
 
     /** Creates a new user category and returns its generated id. */
-    suspend fun addCategory(name: String, income: Boolean, color: Int): String = mutex.withLock {
+    suspend fun addCategory(name: String, income: Boolean, color: Int, icon: String): String = mutex.withLock {
         val id = Categories.CUSTOM_ID_PREFIX + System.currentTimeMillis().toString(36)
-        _categories.value = _categories.value + Category(id, name, income, color, custom = true)
+        _categories.value = _categories.value + Category(id, name, income, color, custom = true, icon = icon)
         Categories.setCustom(_categories.value)
         persistLocked()
         id
     }
 
-    suspend fun updateCategory(id: String, name: String, color: Int) = mutex.withLock {
+    suspend fun updateCategory(id: String, name: String, color: Int, icon: String) = mutex.withLock {
         _categories.value = _categories.value.map {
-            if (it.id == id) it.copy(name = name, color = color) else it
+            if (it.id == id) it.copy(name = name, color = color, icon = icon) else it
         }
         Categories.setCustom(_categories.value)
         persistLocked()
@@ -958,14 +958,19 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
 
     private fun categoryToJson(c: Category) = JSONObject().apply {
         put("id", c.id); put("name", c.name); put("income", c.income); put("color", c.color)
+        put("icon", c.icon)
     }
 
+    // optString, not getString: a category saved before icons existed has no such key,
+    // and a row that threw here would be dropped by toListOf and the category would
+    // vanish along with the name and colour the user chose. Hence no schema bump.
     private fun categoryFromJson(o: JSONObject) = Category(
         id = o.getString("id"),
         name = o.getString("name"),
         income = o.optBoolean("income", false),
         color = o.optInt("color", 0),
         custom = true,
+        icon = o.optString("icon", ""),
     )
 
     private fun mutedToJson(m: MutedTemplate) = JSONObject().apply {

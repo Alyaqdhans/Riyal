@@ -31,6 +31,14 @@ data class Category(
     val color: Int = 0,
     /** True for user-created categories, which can be renamed, recolored, deleted. */
     val custom: Boolean = false,
+    /**
+     * Which drawable to draw, as a key into
+     * [com.alyaqdhan.riyal.ui.compose.CategoryVisuals]. Only user categories carry
+     * one - a built-in is resolved from its id. Blank means "no icon chosen", which
+     * draws the generic shape, so an old saved category that predates this field
+     * still loads and still renders.
+     */
+    val icon: String = "",
 )
 
 /**

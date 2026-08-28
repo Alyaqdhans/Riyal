@@ -87,9 +87,16 @@ object CategoryVisuals {
     /** Every icon a custom category may choose, in the order the picker shows them. */
     val KEYS: List<String> = BY_KEY.keys.toList()
 
+    /**
+     * Art for a category id: built-ins resolve straight off their own id, and a user
+     * category falls through to whichever icon it was given. An unrecognised id, or a
+     * user category with no icon chosen, gets the generic one.
+     */
     @DrawableRes
     fun iconFor(id: String): Int =
-        BY_KEY[ALIAS[id] ?: id] ?: R.drawable.ic_cat_other
+        BY_KEY[ALIAS[id] ?: id]
+            ?: BY_KEY[Categories.byId(id).icon]
+            ?: R.drawable.ic_cat_other
 
     @DrawableRes
     fun byKey(key: String): Int = BY_KEY[key] ?: R.drawable.ic_cat_other
