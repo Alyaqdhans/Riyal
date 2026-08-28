@@ -7,6 +7,7 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -568,6 +569,17 @@ private fun CategoryEditorDialog(
                                 .background(
                                     if (picked) Color(color).copy(alpha = 0.24f)
                                     else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                )
+                                // The tint alone is not enough to say which one is
+                                // picked: it is the colour being chosen next to it, and
+                                // some of the palette sits close to the theme's own
+                                // grey. The ring does not depend on that colour.
+                                .then(
+                                    if (picked) Modifier.border(
+                                        2.dp,
+                                        MaterialTheme.colorScheme.primary,
+                                        CircleShape,
+                                    ) else Modifier
                                 )
                                 .clickable { icon = key }
                                 .pressBounce(0.9f),
