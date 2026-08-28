@@ -41,16 +41,35 @@ data class Category(
  */
 object Categories {
 
+    /**
+     * The order here is display order, and it is the ranking a picker falls back to
+     * before it knows anything about how the user files. Ids are permanent - records,
+     * rules and budget lines point at them - so nothing in this list is ever renamed
+     * or renumbered; new categories only ever get new ids.
+     */
     val BUILTIN = listOf(
         Category("food", "Food & Dining"),
         Category("groceries", "Groceries"),
         Category("transport", "Transport & Fuel"),
-        Category("bills", "Bills & Telecom"),
+        // "bills" once meant telecom AND electricity/water together. Utilities moved
+        // out to their own category, so the name narrowed to what is left. The id
+        // stays, so every record and rule already pointing here still resolves.
+        Category("bills", "Phone & Internet"),
+        Category("utilities", "Utilities"),
+        Category("rent", "Rent"),
         Category("shopping", "Shopping"),
         Category("health", "Health"),
         Category("entertainment", "Entertainment"),
+        Category("subscriptions", "Subscriptions"),
         Category("travel", "Travel"),
         Category("education", "Education"),
+        Category("personalcare", "Personal Care"),
+        Category("home", "Home & Furniture"),
+        Category("insurance", "Insurance"),
+        Category("loan", "Loan & Credit"),
+        Category("charity", "Charity & Zakat"),
+        Category("giving", "Gifts Given"),
+        Category("government", "Government & Taxes"),
         Category("fees", "Fees & Charges"),
         Category("cash", "Cash & ATM"),
         Category("sending", "Money Sent"),
@@ -59,8 +78,12 @@ object Categories {
         Category("salary", "Salary", income = true),
         Category("business", "Business & Freelance", income = true),
         Category("investment", "Investment & Interest", income = true),
+        Category("rental", "Rent Received", income = true),
+        Category("reimbursement", "Reimbursement", income = true),
+        Category("cashback", "Cashback & Rewards", income = true),
         Category("refund", "Refunds", income = true),
         Category("gift", "Gifts & Support", income = true),
+        Category("borrowed", "Loan Received", income = true),
         Category("income", "Other Income", income = true),
     )
 
@@ -117,11 +140,21 @@ object Categories {
         "groceries" to 0xFF26A69A.toInt(),
         "transport" to 0xFF42A5F5.toInt(),
         "bills" to 0xFFFFB300.toInt(),
+        "utilities" to 0xFFF9A825.toInt(),
+        "rent" to 0xFF00838F.toInt(),
         "shopping" to 0xFFEC407A.toInt(),
         "health" to 0xFF66BB6A.toInt(),
         "entertainment" to 0xFFAB47BC.toInt(),
+        "subscriptions" to 0xFF7C4DFF.toInt(),
         "travel" to 0xFF29B6F6.toInt(),
         "education" to 0xFF7E57C2.toInt(),
+        "personalcare" to 0xFF8E24AA.toInt(),
+        "home" to 0xFF6D4C41.toInt(),
+        "insurance" to 0xFF546E7A.toInt(),
+        "loan" to 0xFFC62828.toInt(),
+        "charity" to 0xFFAD1457.toInt(),
+        "giving" to 0xFFE64A19.toInt(),
+        "government" to 0xFF455A64.toInt(),
         "fees" to 0xFF8D6E63.toInt(),
         "cash" to 0xFF78909C.toInt(),
         "sending" to 0xFFFF8A65.toInt(),
@@ -130,8 +163,12 @@ object Categories {
         "salary" to 0xFF43A047.toInt(),
         "business" to 0xFF00897B.toInt(),
         "investment" to 0xFF5C6BC0.toInt(),
+        "rental" to 0xFF00BFA5.toInt(),
+        "reimbursement" to 0xFF0288D1.toInt(),
+        "cashback" to 0xFFAFB42B.toInt(),
         "refund" to 0xFF26C6DA.toInt(),
         "gift" to 0xFFD4A017.toInt(),
+        "borrowed" to 0xFFEF6C00.toInt(),
         "income" to 0xFF9CCC65.toInt(),
     )
 
