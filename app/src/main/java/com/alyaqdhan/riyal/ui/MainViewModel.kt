@@ -388,21 +388,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * makes it stick to messages that have not arrived yet; the explicit filing covers
      * the records in front of the user right now, so nothing they just answered for can
      * come back on the next scan.
+     *
+     * A name marked "ask me every time" is filed just the same and remembered not at
+     * all: those records still need a category today, and answering four of them in one
+     * tap is worth as much for a person as for a shop. Only the rule is skipped.
      */
     fun fileMerchant(group: Stats.MerchantGroup, categoryId: String) =
         viewModelScope.launch(Dispatchers.IO) {
-            val pattern = group.merchant.trim().lowercase()
+            val pattern = UserRule.patternOf(group.merchant)
             val filed = store.setCategories(group.txnIds, categoryId)
-            val byRule = store.addRule(UserRule(pattern, categoryId))
             Verbose.ok(
                 "filed by you: ${group.count} record(s) from \"${group.merchant}\" → " +
                     Categories.byId(categoryId).name
             )
-            Verbose.ok(
-                "rule saved: \"$pattern\" → ${Categories.byId(categoryId).name} · " +
-                    "$filed record(s) filed now, $byRule more re-categorized, and anything " +
-                    "matching from now on lands there without being asked"
-            )
+            if (pattern in store.askEachTime.value) {
+                Verbose.info(
+                    "no rule saved for \"$pattern\": you asked to be asked about this name " +
+                        "every time, so the next message from it comes back to you"
+                )
+            } else {
+                val byRule = store.addRule(UserRule(pattern, categoryId))
+                Verbose.ok(
+                    "rule saved: \"$pattern\" → ${Categories.byId(categoryId).name} · " +
+                        "$filed record(s) filed now, $byRule more re-categorized, and anything " +
+                        "matching from now on lands there without being asked"
+                )
+            }
             Verbose.flush()
         }
 

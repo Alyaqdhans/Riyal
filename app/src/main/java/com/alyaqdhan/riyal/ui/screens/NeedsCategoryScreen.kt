@@ -42,6 +42,7 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
+import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryChips
 import com.alyaqdhan.riyal.ui.compose.EmptyState
@@ -66,6 +67,7 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
     val txns by vm.txns.collectAsState()
     val archived by vm.archivedIds.collectAsState()
     val custom by vm.categories.collectAsState()
+    val askEachTime by vm.askEachTime.collectAsState()
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
 
     val groups = remember(txns, archived, currency, custom) {
@@ -125,7 +127,9 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
             items(groups, key = { it.merchant.lowercase() + "|" + it.type }) { group ->
                 MerchantCard(
                     group = group,
+                    marked = UserRule.patternOf(group.merchant) in askEachTime,
                     onFile = { vm.fileMerchant(group, it) },
+                    onAskEachTime = { vm.setAskEachTime(group.merchant, it) },
                 )
             }
 
@@ -151,11 +155,18 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
  * One decision: who, how many, how much, and the categories to put them in. The chips
  * stay folded until asked for, so the list reads as a ranking of what is waiting rather
  * than a wall of every category repeated per row.
+ *
+ * A [marked] name is still one decision - four records from one person still need a
+ * category, and one tap is still better than four. What it loses is the memory: the
+ * answer covers these records and no future ones, which the card says out loud so the
+ * saving is never mistaken for one it isn't.
  */
 @Composable
 private fun MerchantCard(
     group: Stats.MerchantGroup,
+    marked: Boolean,
     onFile: (String) -> Unit,
+    onAskEachTime: (Boolean) -> Unit,
 ) {
     var open by rememberSaveable(group.merchant, group.type) { mutableStateOf(false) }
 
@@ -188,9 +199,14 @@ private fun MerchantCard(
                 }
             }
 
-            if (!open) {
-                TextButton(onClick = { open = true }) { Text("Pick a category") }
+            if (marked) {
+                Text(
+                    "Asked every time - no rule is saved for this name.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
+
             AnimatedVisibility(
                 visible = open,
                 enter = fadeIn() + expandVertically(),
@@ -206,10 +222,28 @@ private fun MerchantCard(
                         onSelect = onFile,
                     )
                     Text(
-                        "Files all ${group.count}, and anything from ${group.merchant} later.",
+                        if (marked) {
+                            "Files all ${group.count}. You'll be asked again next time."
+                        } else {
+                            "Files all ${group.count}, and anything from ${group.merchant} later."
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (!open) {
+                    TextButton(onClick = { open = true }) { Text("Pick a category") }
+                }
+                // Marking someone while working the backlog, rather than having to file
+                // them first and undo it afterwards.
+                TextButton(onClick = { onAskEachTime(!marked) }) {
+                    Text(if (marked) "Remember this name" else "Always ask for this name")
                 }
             }
         }
