@@ -45,10 +45,12 @@ import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryChips
+import com.alyaqdhan.riyal.ui.compose.CategoryOrder
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.popIn
+import com.alyaqdhan.riyal.ui.compose.rememberCategoryOrder
 
 /**
  * The backlog of records the scan could not place, as decisions rather than rows.
@@ -68,6 +70,10 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
     val archived by vm.archivedIds.collectAsState()
     val custom by vm.categories.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
+    // Frozen for the whole screen, not per card: working a backlog files record after
+    // record, and every one of those changes the counts. The chips have to sit still
+    // while the list they belong to is being emptied.
+    val order = rememberCategoryOrder(vm.categoryUse.collectAsState().value)
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
 
     val groups = remember(txns, archived, currency, custom) {
@@ -128,6 +134,7 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                 MerchantCard(
                     group = group,
                     marked = UserRule.patternOf(group.merchant) in askEachTime,
+                    order = order,
                     onFile = { vm.fileMerchant(group, it) },
                     onAskEachTime = { vm.setAskEachTime(group.merchant, it) },
                 )
@@ -165,6 +172,7 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
 private fun MerchantCard(
     group: Stats.MerchantGroup,
     marked: Boolean,
+    order: CategoryOrder,
     onFile: (String) -> Unit,
     onAskEachTime: (Boolean) -> Unit,
 ) {
@@ -215,6 +223,10 @@ private fun MerchantCard(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     CategoryChips(
                         type = group.type,
+                        order = order,
+                        // One picker per merchant card, several on screen at once: a
+                        // filter field on each would cost more room than it saves.
+                        allowSearch = false,
                         // Nothing is preselected: the category it currently carries is
                         // the fallback, and showing it as a choice already made is how
                         // a backlog gets "confirmed" without being read.

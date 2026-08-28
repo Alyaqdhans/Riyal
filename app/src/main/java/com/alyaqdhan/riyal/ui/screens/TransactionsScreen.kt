@@ -68,6 +68,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     val txns by vm.txns.collectAsState()
     val scan by vm.scanState.collectAsState()
     val accounts by vm.accounts.collectAsState()
+    val categoryUse by vm.categoryUse.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
     var categoryFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var typeFilter by rememberSaveable { mutableStateOf<String?>(null) }
@@ -267,6 +268,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             },
             onDismiss = { picker = null },
             rememberByDefault = vm.prefs.smartRules,
+            categoryUse = categoryUse,
             askEachTime = askEachTime,
             onAskEachTime = { vm.setAskEachTime(txn.merchant.orEmpty(), it) },
             onSetAccount = {

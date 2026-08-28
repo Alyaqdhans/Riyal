@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,12 +51,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +71,8 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Categories
+import com.alyaqdhan.riyal.data.Category
+import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.data.UserRule
@@ -263,6 +268,7 @@ fun TxnEditSheet(
     onApply: (categoryId: String, rulePattern: String?) -> Unit,
     onDismiss: () -> Unit,
     rememberByDefault: Boolean = false,
+    categoryUse: Map<String, Int> = emptyMap(),
     askEachTime: Set<String> = emptySet(),
     onAskEachTime: ((Boolean) -> Unit)? = null,
     onSetAccount: ((String) -> Unit)? = null,
@@ -270,6 +276,9 @@ fun TxnEditSheet(
     onSplitTransfer: (() -> Unit)? = null,
 ) {
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
+    // Frozen for this sheet session: applying a category updates the counts at once,
+    // and the chips must not rearrange behind the sheet that is doing the applying.
+    val order = rememberCategoryOrder(categoryUse)
     val pattern = txn.merchant?.takeIf { it.isNotBlank() }?.let { UserRule.patternOf(it) }
     val marked = pattern != null && pattern in askEachTime
     var makeRule by remember { mutableStateOf(rememberByDefault && pattern != null && !marked) }
@@ -326,6 +335,7 @@ fun TxnEditSheet(
                     type = txn.type,
                     selectedId = txn.categoryId,
                     onSelect = { onApply(it, if (makeRule && !marked) pattern else null) },
+                    order = order,
                 )
                 if (pattern != null) {
                     Row(
@@ -443,8 +453,10 @@ fun ManualTxnDialog(
         toAccountId: String?,
     ) -> Unit,
     onDismiss: () -> Unit,
+    categoryUse: Map<String, Int> = emptyMap(),
 ) {
     val live = remember(accounts) { accounts.filter { !it.archived } }
+    val order = rememberCategoryOrder(categoryUse)
     var amount by remember { mutableStateOf("") }
     var currency by remember { mutableStateOf(defaultCurrency) }
     var type by remember { mutableStateOf(TxnType.EXPENSE) }
@@ -551,6 +563,7 @@ fun ManualTxnDialog(
                         type = type,
                         selectedId = categoryId,
                         onSelect = { categoryId = it },
+                        order = order,
                     )
                 } else {
                     Text(
@@ -588,24 +601,118 @@ fun ManualTxnDialog(
 }
 
 /**
- * The one category picker used everywhere: a chip per category for the given
- * operation type, the current one selected. Same look in the correction sheet and the
- * manual-entry dialog, so "pick a category" is a single gesture app-wide.
+ * A frozen snapshot of how often the user files into each category, taken once by the
+ * composition that owns a picker and not updated afterwards.
+ *
+ * Frozen deliberately. Filing a record changes these counts the instant it happens, so
+ * a live ranking would reorder the chips between two taps - and a chip that moves under
+ * a finger is worse than one sitting further down the list.
+ */
+@Immutable
+class CategoryOrder private constructor(private val use: Map<String, Int>) {
+    fun sort(cats: List<Category>): List<Category> = Stats.rankCategories(cats, use)
+
+    companion object {
+        val Empty = CategoryOrder(emptyMap())
+        internal fun of(use: Map<String, Int>) = CategoryOrder(use)
+    }
+}
+
+/**
+ * Freezes [use] for as long as this composition lives. Call it at whatever scope should
+ * hold the order still: inside a sheet, and it lasts that sheet session; at the top of
+ * the backlog screen, and the whole backlog can be worked without the chips moving.
+ */
+@Composable
+fun rememberCategoryOrder(use: Map<String, Int>): CategoryOrder =
+    remember { CategoryOrder.of(use) }
+
+/** How many chips the folded picker shows before it offers the rest. */
+private const val TOP_CHIPS = 6
+
+/** Past this many categories, reading the list stops being faster than typing. */
+private const val SEARCH_THRESHOLD = 20
+
+/**
+ * The one category picker used everywhere: the correction sheet, the manual-entry
+ * dialog, the budget editor and the backlog card, so "pick a category" is a single
+ * gesture app-wide and no two of them can disagree about the order.
+ *
+ * It opens folded to the categories the user files into most, because the common case
+ * is one tap and every extra chip is one more thing to read past. Whatever is already
+ * selected stays visible even when it is not in that first handful - re-filing a record
+ * must never hide where it currently sits.
+ *
+ * [allowSearch] is off for the backlog card, which draws one picker per merchant and
+ * has to stay compact. Even where it is on, the field only appears once the list is
+ * long enough that reading it is the slower option.
  */
 @Composable
 fun CategoryChips(
     type: TxnType,
     selectedId: String,
     onSelect: (String) -> Unit,
+    order: CategoryOrder = CategoryOrder.Empty,
+    allowSearch: Boolean = true,
 ) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Categories.forType(type).forEach { cat ->
-            FilterChip(
-                selected = cat.id == selectedId,
-                onClick = { onSelect(cat.id) },
-                label = { Text(cat.name) },
-                leadingIcon = { CategoryIcon(cat.id) },
-                modifier = Modifier.pressBounce(0.92f),
+    val all = remember(type, order) { order.sort(Categories.forType(type)) }
+    var expanded by rememberSaveable(type) { mutableStateOf(false) }
+    var query by rememberSaveable(type) { mutableStateOf("") }
+
+    val searchable = allowSearch && all.size > SEARCH_THRESHOLD
+    val filtering = expanded && searchable && query.isNotBlank()
+    val shown = when {
+        filtering -> all.filter { it.name.contains(query.trim(), ignoreCase = true) }
+        expanded -> all
+        else -> {
+            val top = all.take(TOP_CHIPS)
+            if (top.none { it.id == selectedId }) top + all.filter { it.id == selectedId } else top
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (expanded && searchable) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                label = { Text("Find a category") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            shown.forEach { cat ->
+                FilterChip(
+                    selected = cat.id == selectedId,
+                    onClick = { onSelect(cat.id) },
+                    label = { Text(cat.name) },
+                    leadingIcon = { CategoryIcon(cat.id) },
+                    modifier = Modifier.pressBounce(0.92f),
+                )
+            }
+            if (!expanded && all.size > shown.size) {
+                AssistChip(
+                    onClick = { expanded = true },
+                    label = { Text("More (${all.size - shown.size})") },
+                    modifier = Modifier.pressBounce(0.92f),
+                )
+            }
+            if (expanded && !filtering) {
+                AssistChip(
+                    onClick = { expanded = false; query = "" },
+                    label = { Text("Less") },
+                    modifier = Modifier.pressBounce(0.92f),
+                )
+            }
+        }
+        if (filtering && shown.isEmpty()) {
+            Text(
+                "No category matches that.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

@@ -74,6 +74,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * the Home card the same way review items are: something the app needs a decision
      * on, said once, where it will be seen.
      */
+    /**
+     * How often the user has filed into each category. Every category picker reads it
+     * to put the chips they actually use first; each picker freezes it for its own
+     * lifetime, so this updating mid-edit never moves a chip under a finger.
+     */
+    val categoryUse: StateFlow<Map<String, Int>> = store.txns
+        .map { Stats.categoryUse(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
     val needsCategoryCount: StateFlow<Int> =
         combine(store.txns, store.archivedIds) { txns, archived ->
             Stats.unfiled(txns, archived).size

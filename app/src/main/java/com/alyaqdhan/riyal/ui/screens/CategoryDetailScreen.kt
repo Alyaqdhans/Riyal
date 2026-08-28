@@ -72,6 +72,7 @@ fun CategoryDetailScreen(
 ) {
     val txns by vm.txns.collectAsState()
     val accounts by vm.accounts.collectAsState()
+    val categoryUse by vm.categoryUse.collectAsState()
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
     val category = remember(categoryId) { Categories.byId(categoryId) }
     // The period the caller was reading, not today's: this page is opened by tapping a
@@ -201,6 +202,7 @@ fun CategoryDetailScreen(
             },
             onDismiss = { editing = null },
             rememberByDefault = vm.prefs.smartRules,
+            categoryUse = categoryUse,
             askEachTime = askEachTime,
             onAskEachTime = { vm.setAskEachTime(txn.merchant.orEmpty(), it) },
             onSetAccount = {

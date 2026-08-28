@@ -92,6 +92,7 @@ class MainActivity : AppCompatActivity() {
                 // beside the toolbar rather than inside one screen.
                 val showAdd by vm.manualAddVisible.collectAsState()
                 val accounts by vm.accounts.collectAsState()
+                val categoryUse by vm.categoryUse.collectAsState()
                 if (showAdd) {
                     ManualTxnDialog(
                         title = "Add transaction",
@@ -103,6 +104,7 @@ class MainActivity : AppCompatActivity() {
                             vm.dismissManualAdd()
                         },
                         onDismiss = { vm.dismissManualAdd() },
+                        categoryUse = categoryUse,
                     )
                 }
             }

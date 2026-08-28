@@ -92,6 +92,7 @@ fun HomeScreen(
     val scan by vm.scanState.collectAsState()
     val reviews by vm.reviews.collectAsState()
     val accounts by vm.accounts.collectAsState()
+    val categoryUse by vm.categoryUse.collectAsState()
     val budgets by vm.budgets.collectAsState()
     val budgetsOn by vm.budgetsOn.collectAsState()
     val needsCategory by vm.needsCategoryCount.collectAsState()
@@ -380,6 +381,7 @@ fun HomeScreen(
             },
             onDismiss = { picker = null },
             rememberByDefault = vm.prefs.smartRules,
+            categoryUse = categoryUse,
             askEachTime = askEachTime,
             onAskEachTime = { vm.setAskEachTime(txn.merchant.orEmpty(), it) },
             onSetAccount = {
