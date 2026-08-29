@@ -327,6 +327,10 @@ data class MutedTemplate(
 )
 
 object MsgTemplate {
+
+    // Compiled once: a scan fingerprints every message in the inbox.
+    private val ANY_NUMBER = Regex("[0-9٠-٩][0-9٠-٩.,:/-]*")
+    private val RUN_OF_SPACE = Regex("\\s+")
     /**
      * Fingerprint of "the same kind of message": the sender plus the body with every
      * number blanked out, so two balance alerts or two promos from one sender look
@@ -334,8 +338,8 @@ object MsgTemplate {
      */
     fun of(sender: String, body: String): String {
         val norm = body.lowercase()
-            .replace(Regex("[0-9٠-٩][0-9٠-٩.,:/-]*"), "#")
-            .replace(Regex("\\s+"), " ")
+            .replace(ANY_NUMBER, "#")
+            .replace(RUN_OF_SPACE, " ")
             .trim()
         return sender.trim().lowercase() + "|" + norm
     }
