@@ -25,11 +25,22 @@ object Verbose {
     private var pendingSinceFlush = 0
 
     private val _lines = MutableStateFlow<List<LogLine>>(emptyList())
+
     val lines: StateFlow<List<LogLine>> = _lines
+
+    /**
+     * Whether anything is watching. A scan writes ~68,000 lines over a full inbox, and
+     * every one of them formatted a timestamp and crossed into logcat even when the
+     * verbose screen was closed. The buffer is still filled either way - the log is a
+     * record you can open after the fact, so dropping lines would break it - but the
+     * two costs that only exist for a live reader are skipped while nobody reads.
+     */
+    @Volatile
+    var mirrorToLogcat: Boolean = false
 
     @Synchronized
     fun log(kind: LogLine.Kind, text: String) {
-        Log.d("RiyalVerbose", text)
+        if (mirrorToLogcat) Log.d("RiyalVerbose", text)
         buffer.addLast(LogLine(LocalTime.now().format(timeFmt), kind, text))
         while (buffer.size > MAX_LINES) buffer.removeFirst()
         if (++pendingSinceFlush >= FLUSH_EVERY) flushLocked()
@@ -43,6 +54,7 @@ object Verbose {
 
     @Synchronized
     fun flush() = flushLocked()
+
 
     private fun flushLocked() {
         pendingSinceFlush = 0
