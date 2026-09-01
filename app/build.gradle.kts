@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     // AGP 9 built-in Kotlin compiles the Kotlin sources (no kotlin-android plugin),
@@ -16,8 +18,29 @@ android {
         applicationId = "com.alyaqdhan.riyal"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.5"
+    }
+
+    // The key that signs a published build. Its location and passwords come from
+    // local.properties, which is gitignored, so the keystore itself never enters the
+    // repository. Absent that, there is no release signing config at all and the
+    // release build comes out unsigned - deliberately, because an APK signed with any
+    // other key cannot update the one already installed on someone's phone.
+    signingConfigs {
+        val props = Properties().apply {
+            val f = rootProject.file("local.properties")
+            if (f.exists()) f.inputStream().use { load(it) }
+        }
+        val store = props.getProperty("riyal.storeFile")?.let { rootProject.file(it) }
+        if (store != null && store.exists()) {
+            create("release") {
+                storeFile = store
+                storePassword = props.getProperty("riyal.storePassword")
+                keyAlias = props.getProperty("riyal.keyAlias")
+                keyPassword = props.getProperty("riyal.keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -27,10 +50,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Signed with the debug key so the release build can actually be installed
-            // and measured on a device. A real release needs its own keystore; this is
-            // not it, and an APK signed this way must not be published.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
     compileOptions {
