@@ -241,12 +241,25 @@ class AnalysisFragment : ScreenFragment() {
 }
 
 class SettingsFragment : ScreenFragment() {
+
+    // The same document picker Activity uses: exporting is one action with two doors,
+    // not two features.
+    private val exportCsv = registerForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri != null) {
+            vm.exportCsv(uri)
+        } else {
+            Verbose.info("CSV export cancelled by you, nothing was written")
+            Verbose.flush()
+        }
+    }
+
     @Composable
     override fun Screen() {
         SettingsScreen(
             vm,
             onOpenAccounts = { findNavController().navigate(R.id.accountsFragment) },
             onOpenCategories = { findNavController().navigate(R.id.categoriesFragment) },
+            onExport = { exportCsv.launch("riyal-transactions.csv") },
         )
     }
 }

@@ -195,6 +195,9 @@ fun BudgetSection(
             onSetLine = { categoryId, minor -> onSetLine(plan.id, categoryId, minor) },
             onSetPeriod = { label, start, end -> onSetPeriod(plan.id, label, start, end) },
             onDismiss = { showEditor = false },
+            // The section already has every record; no need to route the counts in
+            // from the view model to reach the same answer.
+            categoryUse = Stats.categoryUse(txns),
         )
     }
 
@@ -368,8 +371,10 @@ private fun BudgetEditorDialog(
     onSetLine: (categoryId: String, minor: Long) -> Unit,
     onSetPeriod: (label: String, start: Long, endExclusive: Long) -> Unit,
     onDismiss: () -> Unit,
+    categoryUse: Map<String, Int> = emptyMap(),
 ) {
-    var selected by remember { mutableStateOf(Categories.forType(TxnType.EXPENSE).first().id) }
+    val order = rememberCategoryOrder(categoryUse)
+    var selected by remember { mutableStateOf(order.sort(Categories.forType(TxnType.EXPENSE)).first().id) }
     var amount by remember { mutableStateOf("") }
     // Local view so the list updates live as caps are added or removed.
     var current by remember { mutableStateOf(plan.lines) }
@@ -420,6 +425,7 @@ private fun BudgetEditorDialog(
                     type = TxnType.EXPENSE,
                     selectedId = selected,
                     onSelect = { selected = it },
+                    order = order,
                 )
                 OutlinedTextField(
                     value = amount,

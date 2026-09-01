@@ -7,6 +7,7 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,19 +57,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Category
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
+import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
+import com.alyaqdhan.riyal.ui.compose.CategoryChips
+import com.alyaqdhan.riyal.ui.compose.CategoryVisuals
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
+import com.alyaqdhan.riyal.ui.compose.rememberCategoryOrder
 import com.alyaqdhan.riyal.ui.theme.successColor
 import kotlin.math.roundToInt
 
@@ -88,10 +94,14 @@ fun CategoriesScreen(
     val txns by vm.txns.collectAsState()
     // Read so a create/rename/delete recomposes the list built from the registry.
     val custom by vm.categories.collectAsState()
+    val rules by vm.rules.collectAsState()
+    val askEachTime by vm.askEachTime.collectAsState()
+    val categoryUse by vm.categoryUse.collectAsState()
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
     var slice by remember { mutableStateOf(TimeSlice.thisMonth()) }
     var editing by remember { mutableStateOf<Category?>(null) }
     var confirmDelete by remember { mutableStateOf<Category?>(null) }
+    var addingKeyword by remember { mutableStateOf(false) }
 
     val expenses = remember(txns, slice, currency, custom) {
         Stats.breakdownIn(txns, slice.start, slice.endExclusive, currency, type = TxnType.EXPENSE)
@@ -175,15 +185,82 @@ fun CategoriesScreen(
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp).pressBounce(),
                 ) { Text("Add a category") }
             }
+
+            // What the app has been taught, and the only place it can be untaught. A
+            // rule re-files past records as well as future ones, which is too much to
+            // do invisibly: it should be possible to read back every name that was
+            // learned and take any of them away.
+            item(key = "learned-title") { SectionTitle("What Riyal has learned") }
+            item(key = "learned-intro") {
+                Text(
+                    if (rules.isEmpty() && askEachTime.isEmpty()) {
+                        "Nothing yet. Filing a record with \"Always\" left on saves the name " +
+                            "here, and every later message mentioning it is filed the same way " +
+                            "without asking. You can also add a word yourself, below."
+                    } else {
+                        "Names filed without asking, and names always asked about. Forgetting " +
+                            "a rule also re-answers the records it had filed."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
+            item(key = "learned-add") {
+                FilledTonalButton(
+                    onClick = { addingKeyword = true },
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).pressBounce(),
+                ) { Text("Add a keyword") }
+            }
+            val sortedRules = rules.sortedBy { it.pattern }
+            items(sortedRules, key = { "rule-" + it.pattern + "-" + it.categoryId }) { rule ->
+                LearnedRow(
+                    name = rule.pattern,
+                    detail = "filed as ${Categories.byId(rule.categoryId).name}",
+                    categoryId = rule.categoryId,
+                    actionLabel = "Forget",
+                    onAction = { vm.removeRule(rule.pattern) },
+                )
+            }
+            if (askEachTime.isNotEmpty()) {
+                item(key = "asked-title") {
+                    Text(
+                        "Asked every time",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
+                    )
+                }
+                items(askEachTime.sorted(), key = { "ask-$it" }) { name ->
+                    LearnedRow(
+                        name = name,
+                        detail = "never saved as a rule",
+                        categoryId = null,
+                        actionLabel = "Remove",
+                        onAction = { vm.setAskEachTime(name, false) },
+                    )
+                }
+            }
         }
+    }
+
+    if (addingKeyword) {
+        KeywordRuleDialog(
+            askEachTime = askEachTime,
+            categoryUse = categoryUse,
+            onSave = { pattern, categoryId ->
+                vm.addRule(pattern, categoryId)
+                addingKeyword = false
+            },
+            onDismiss = { addingKeyword = false },
+        )
     }
 
     editing?.let { cat ->
         CategoryEditorDialog(
             category = cat,
-            onSave = { name, income, color ->
-                if (cat.id.isBlank()) vm.addCategory(name, income, color)
-                else vm.updateCategory(cat.id, name, color)
+            onSave = { name, income, color, icon ->
+                if (cat.id.isBlank()) vm.addCategory(name, income, color, icon)
+                else vm.updateCategory(cat.id, name, color, icon)
                 editing = null
             },
             onDelete = if (cat.id.isNotBlank()) ({
@@ -288,11 +365,152 @@ private fun CategoryRow(
     }
 }
 
+/**
+ * One thing the app has learned: the name, what it does, and how to undo it. Used for
+ * both halves of the list, because "a rule" and "a name to ask about" are the same kind
+ * of thing to the reader - something remembered about a counterparty.
+ */
+@Composable
+private fun LearnedRow(
+    name: String,
+    detail: String,
+    categoryId: String?,
+    actionLabel: String,
+    onAction: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier.fillMaxWidth().popIn(),
+    ) {
+        Row(
+            Modifier.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (categoryId != null) CategoryBadge(categoryId, size = 32.dp)
+            Column(Modifier.weight(1f)) {
+                Text(name, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    detail,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            TextButton(onClick = onAction) { Text(actionLabel) }
+        }
+    }
+}
+
+/**
+ * Teaches a keyword by hand, rather than waiting to correct a record and leaving
+ * "Always" on. It writes exactly the same [UserRule] that switch does, so there is one
+ * mechanism and one list, not two.
+ *
+ * The rule is scoped to one side of the ledger on purpose: the same counterparty can
+ * pay you and be paid, and a category chosen for one direction must not file the other.
+ */
+@Composable
+private fun KeywordRuleDialog(
+    askEachTime: Set<String>,
+    categoryUse: Map<String, Int>,
+    onSave: (pattern: String, categoryId: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var text by remember { mutableStateOf("") }
+    var income by remember { mutableStateOf(false) }
+    var categoryId by remember { mutableStateOf(Categories.DEFAULT_EXPENSE) }
+    val order = rememberCategoryOrder(categoryUse)
+
+    val type = if (income) TxnType.INCOME else TxnType.EXPENSE
+    val pattern = UserRule.patternOf(text)
+    // A name marked "ask me every time" would have its rule dropped the moment it was
+    // written, so say so here instead of accepting the word and silently discarding it.
+    val blocked = pattern.isNotBlank() && pattern in askEachTime
+    // Matching mirrors Categorizer.contains: short ASCII words match whole only.
+    val wholeWord = pattern.length <= 4 && pattern.all { it in 'a'..'z' }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add a keyword") },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("Word to look for") },
+                    singleLine = true,
+                    isError = blocked,
+                )
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        selected = !income,
+                        onClick = {
+                            income = false
+                            categoryId = Categories.defaultFor(TxnType.EXPENSE)
+                        },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                    ) { Text("Money out") }
+                    SegmentedButton(
+                        selected = income,
+                        onClick = {
+                            income = true
+                            categoryId = Categories.defaultFor(TxnType.INCOME)
+                        },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                    ) { Text("Money in") }
+                }
+                CategoryChips(
+                    type = type,
+                    selectedId = categoryId,
+                    onSelect = { categoryId = it },
+                    order = order,
+                )
+                if (blocked) {
+                    Text(
+                        "\"$pattern\" is a name you asked to be asked about every time, so no " +
+                            "rule can be saved for it. Remove it from the list below first.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                } else if (pattern.isNotBlank()) {
+                    Text(
+                        "Any " + (if (income) "money in" else "money out") +
+                            " mentioning \"$pattern\" is filed as " +
+                            "${Categories.byId(categoryId).name}, including records already " +
+                            "read. Anything you filed by hand is left alone.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (wholeWord) {
+                        Text(
+                            "Short words are matched whole, so this matches \"$pattern\" on its " +
+                                "own and not inside a longer word.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = pattern.isNotBlank() && !blocked,
+                onClick = { onSave(pattern, categoryId) },
+            ) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
 /** Create or rename a user category, and pick its colour from the shared palette. */
 @Composable
 private fun CategoryEditorDialog(
     category: Category,
-    onSave: (name: String, income: Boolean, color: Int) -> Unit,
+    onSave: (name: String, income: Boolean, color: Int, icon: String) -> Unit,
     onDelete: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
@@ -302,6 +520,7 @@ private fun CategoryEditorDialog(
     var color by remember {
         mutableStateOf(if (category.color != 0) category.color else Categories.PALETTE.first())
     }
+    var icon by remember { mutableStateOf(category.icon.ifBlank { CategoryVisuals.KEYS.first() }) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -331,6 +550,49 @@ private fun CategoryEditorDialog(
                             onClick = { income = true },
                             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                         ) { Text("Income") }
+                    }
+                }
+                // Shown above the swatches because the icon is what the badge reads as
+                // at a glance in a list; the colour only tells it apart from its
+                // neighbours.
+                Text("Icon", style = MaterialTheme.typography.labelLarge)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    CategoryVisuals.KEYS.forEach { key ->
+                        val picked = key == icon
+                        Box(
+                            Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (picked) Color(color).copy(alpha = 0.24f)
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                )
+                                // The tint alone is not enough to say which one is
+                                // picked: it is the colour being chosen next to it, and
+                                // some of the palette sits close to the theme's own
+                                // grey. The ring does not depend on that colour.
+                                .then(
+                                    if (picked) Modifier.border(
+                                        2.dp,
+                                        MaterialTheme.colorScheme.primary,
+                                        CircleShape,
+                                    ) else Modifier
+                                )
+                                .clickable { icon = key }
+                                .pressBounce(0.9f),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painterResource(CategoryVisuals.byKey(key)),
+                                contentDescription = key,
+                                tint = if (picked) Color(color)
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
                     }
                 }
                 Text("Colour", style = MaterialTheme.typography.labelLarge)
@@ -363,7 +625,7 @@ private fun CategoryEditorDialog(
         confirmButton = {
             TextButton(
                 enabled = name.isNotBlank(),
-                onClick = { onSave(name.trim(), income, color) },
+                onClick = { onSave(name.trim(), income, color, icon) },
             ) { Text("Save") }
         },
         dismissButton = {

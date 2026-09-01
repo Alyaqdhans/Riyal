@@ -45,6 +45,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val txns = store.txns
     val reviews = store.reviews
     val rules = store.rules
+
+    /** Counterparties the user asked to be asked about every time, never rule-able. */
+    val askEachTime = store.askEachTime
     val senders = store.senders
     val lastSummary = store.lastSummary
     val accounts = store.accounts
@@ -71,6 +74,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * the Home card the same way review items are: something the app needs a decision
      * on, said once, where it will be seen.
      */
+    /**
+     * How often the user has filed into each category. Every category picker reads it
+     * to put the chips they actually use first; each picker freezes it for its own
+     * lifetime, so this updating mid-edit never moves a chip under a finger.
+     */
+    val categoryUse: StateFlow<Map<String, Int>> = store.txns
+        .map { Stats.categoryUse(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
     val needsCategoryCount: StateFlow<Int> =
         combine(store.txns, store.archivedIds) { txns, archived ->
             Stats.unfiled(txns, archived).size
@@ -385,21 +397,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * makes it stick to messages that have not arrived yet; the explicit filing covers
      * the records in front of the user right now, so nothing they just answered for can
      * come back on the next scan.
+     *
+     * A name marked "ask me every time" is filed just the same and remembered not at
+     * all: those records still need a category today, and answering four of them in one
+     * tap is worth as much for a person as for a shop. Only the rule is skipped.
      */
     fun fileMerchant(group: Stats.MerchantGroup, categoryId: String) =
         viewModelScope.launch(Dispatchers.IO) {
-            val pattern = group.merchant.trim().lowercase()
+            val pattern = UserRule.patternOf(group.merchant)
             val filed = store.setCategories(group.txnIds, categoryId)
-            val byRule = store.addRule(UserRule(pattern, categoryId))
             Verbose.ok(
                 "filed by you: ${group.count} record(s) from \"${group.merchant}\" → " +
                     Categories.byId(categoryId).name
             )
-            Verbose.ok(
-                "rule saved: \"$pattern\" → ${Categories.byId(categoryId).name} · " +
-                    "$filed record(s) filed now, $byRule more re-categorized, and anything " +
-                    "matching from now on lands there without being asked"
-            )
+            if (pattern in store.askEachTime.value) {
+                Verbose.info(
+                    "no rule saved for \"$pattern\": you asked to be asked about this name " +
+                        "every time, so the next message from it comes back to you"
+                )
+            } else {
+                val byRule = store.addRule(UserRule(pattern, categoryId))
+                Verbose.ok(
+                    "rule saved: \"$pattern\" → ${Categories.byId(categoryId).name} · " +
+                        "$filed record(s) filed now, $byRule more re-categorized, and anything " +
+                        "matching from now on lands there without being asked"
+                )
+            }
             Verbose.flush()
         }
 
@@ -428,14 +451,48 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun addRule(pattern: String, categoryId: String) = viewModelScope.launch(Dispatchers.IO) {
-        val changed = store.addRule(UserRule(pattern.trim().lowercase(), categoryId))
-        Verbose.ok("rule saved: \"${pattern.trim().lowercase()}\" → ${Categories.byId(categoryId).name} · re-categorized $changed transaction(s)")
+        val key = UserRule.patternOf(pattern)
+        // Reachable now that a keyword can be typed rather than only picked up from a
+        // merchant: the store refuses a rule for a name marked "ask me every time", and
+        // reporting "rule saved" for one it dropped would be a lie in the log.
+        if (key in store.askEachTime.value) {
+            Verbose.info("no rule saved for \"$key\": you asked to be asked about this name every time")
+            Verbose.flush()
+            return@launch
+        }
+        val changed = store.addRule(UserRule(key, categoryId))
+        Verbose.ok("rule saved: \"$key\" → ${Categories.byId(categoryId).name} · re-categorized $changed transaction(s)")
         Verbose.flush()
     }
 
     fun removeRule(pattern: String) = viewModelScope.launch(Dispatchers.IO) {
-        store.removeRule(pattern)
-        Verbose.info("rule removed: \"$pattern\"")
+        val changed = store.removeRule(pattern)
+        Verbose.info(
+            "rule removed: \"$pattern\"" +
+                if (changed > 0) " · $changed record(s) it had filed were answered again" else ""
+        )
+        Verbose.flush()
+    }
+
+    /**
+     * Marks a counterparty as one to be asked about every time, or lets it be
+     * remembered again. Marking is also an undo: whatever rule was already saved for
+     * that name goes with it, along with the filings it made.
+     */
+    fun setAskEachTime(merchant: String, on: Boolean) = viewModelScope.launch(Dispatchers.IO) {
+        val pattern = UserRule.patternOf(merchant)
+        if (pattern.isBlank()) return@launch
+        val undone = store.setAskEachTime(pattern, on)
+        Verbose.info(
+            if (on) {
+                "\"$pattern\" will be asked about every time, no rule will be saved for it" +
+                    if (undone > 0) {
+                        " · its rule is gone and $undone record(s) it had filed were answered again"
+                    } else ""
+            } else {
+                "\"$pattern\" can be remembered by a rule again"
+            }
+        )
         Verbose.flush()
     }
 
@@ -443,14 +500,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     val categories = store.categories
 
-    fun addCategory(name: String, income: Boolean, color: Int) = viewModelScope.launch(Dispatchers.IO) {
-        store.addCategory(name.trim(), income, color)
+    fun addCategory(name: String, income: Boolean, color: Int, icon: String) = viewModelScope.launch(Dispatchers.IO) {
+        store.addCategory(name.trim(), income, color, icon)
         Verbose.ok("category added by you: \"${name.trim()}\" (${if (income) "income" else "expense"})")
         Verbose.flush()
     }
 
-    fun updateCategory(id: String, name: String, color: Int) = viewModelScope.launch(Dispatchers.IO) {
-        store.updateCategory(id, name.trim(), color)
+    fun updateCategory(id: String, name: String, color: Int, icon: String) = viewModelScope.launch(Dispatchers.IO) {
+        store.updateCategory(id, name.trim(), color, icon)
         Verbose.info("category updated by you: \"${name.trim()}\"")
         Verbose.flush()
     }

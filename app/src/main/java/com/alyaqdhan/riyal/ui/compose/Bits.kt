@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -23,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.alyaqdhan.riyal.core.LogLine
@@ -53,22 +57,33 @@ fun localDateOf(millis: Long): LocalDate =
     Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
 
 /**
+ * The pill itself: its height, the gap it floats above the system bar by, and enough
+ * clearance that the last row is readable rather than touching it.
+ *
+ * This is only half the answer - see [toolbarSpace].
+ */
+private val ToolbarPill = 96.dp
+
+/**
  * The room a scrolling page must leave at its end so its last row can be read rather
  * than sitting under the floating toolbar, which hovers over the content instead of
  * taking a row of its own.
  *
- * The toolbar already carries the navigation-bar inset itself, and a Scaffold hands its
- * content the same inset, so this is only the pill: its height, the gap it floats above
- * the system bar by, and enough space that the last row does not touch it.
+ * The toolbar sits above the navigation bar, so the space it occupies is the pill plus
+ * whatever the system bar takes - which is 24dp of gesture pill on one phone and three
+ * times that with button navigation. A fixed number was right for exactly one of those
+ * and cut the last row off on the other, so it is measured rather than assumed.
  *
  * For the four tab screens only - a pushed page hides the toolbar, so it needs nothing
  * more than ordinary padding at its end.
  */
-val ToolbarSpace = 96.dp
+val toolbarSpace: Dp
+    @Composable get() = ToolbarPill +
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
 @Composable
 fun ToolbarSpacer() {
-    Spacer(Modifier.height(ToolbarSpace))
+    Spacer(Modifier.height(toolbarSpace))
 }
 
 @Composable

@@ -54,6 +54,19 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private val _rules = MutableStateFlow<List<UserRule>>(emptyList())
     val rules: StateFlow<List<UserRule>> = _rules
 
+    /**
+     * Counterparties the user marked "ask me every time", keyed exactly like a rule.
+     *
+     * A rule assumes a name means a category, which is true of a shop and false of a
+     * person: money from the same relative is a gift one month, a repayment the next,
+     * a share of a bill after that. A rule keyed on their name would file every future
+     * message into whichever answer happened to be given first, silently. These names
+     * are the ones for which no rule may exist - [addRule] refuses them outright, so
+     * the promise holds however the rule was going to be written.
+     */
+    private val _askEachTime = MutableStateFlow<Set<String>>(emptySet())
+    val askEachTime: StateFlow<Set<String>> = _askEachTime
+
     private val _senders = MutableStateFlow<Set<String>>(emptySet())
     val senders: StateFlow<Set<String>> = _senders
 
@@ -463,6 +476,14 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
 
     /** Adds/replaces a rule and re-categorizes auto-categorized transactions. Returns how many changed. */
     suspend fun addRule(rule: UserRule): Int = mutex.withLock {
+        // A name the user asked to be asked about never gets a rule, whoever is asking
+        // for one. Enforcing it here rather than in each screen is what makes the mark
+        // a fact about the data instead of a habit of the UI.
+        if (rule.pattern in _askEachTime.value) {
+            Verbose.info("rule not saved: \"${rule.pattern}\" is a name you asked to be asked about")
+            Verbose.flush()
+            return@withLock 0
+        }
         // Replacing by pattern alone would let a rule for money in delete the one for
         // money out under the same name, since a counterparty can be both. One rule
         // per pattern per side of the ledger.
@@ -470,6 +491,32 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         _rules.value = _rules.value.filterNot {
             it.pattern == rule.pattern && Categories.byId(it.categoryId).income == incoming
         } + rule
+        val changed = recategorizeAutoLocked()
+        recomputeTxnsLocked()
+        persistLocked()
+        changed
+    }
+
+    /**
+     * Forgets a rule, and undoes what it did. Dropping the rule alone would leave every
+     * record it had already mis-filed sitting under the wrong category with no rule left
+     * to explain it, so the auto-filed ones are answered again without it. Records the
+     * user filed by hand are untouched - their source is "user", not "auto".
+     */
+    suspend fun removeRule(pattern: String): Int = mutex.withLock {
+        if (_rules.value.none { it.pattern == pattern }) return@withLock 0
+        _rules.value = _rules.value.filter { it.pattern != pattern }
+        val changed = recategorizeAutoLocked()
+        recomputeTxnsLocked()
+        persistLocked()
+        changed
+    }
+
+    /**
+     * Answers every auto-filed record again against the current rules. Returns how many
+     * landed somewhere new.
+     */
+    private fun recategorizeAutoLocked(): Int {
         var changed = 0
         rawTxns = rawTxns.map { t ->
             if (t.categorySource == "auto" && t.type != TxnType.TRANSFER) {
@@ -481,30 +528,43 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
                 } else t
             } else t
         }
-        recomputeTxnsLocked()
-        persistLocked()
-        changed
+        return changed
     }
 
-    suspend fun removeRule(pattern: String) = mutex.withLock {
-        _rules.value = _rules.value.filter { it.pattern != pattern }
+    /**
+     * Marks (or unmarks) a counterparty as one to ask about every time. Marking deletes
+     * any rule already saved for that name and undoes its filings, because the moment
+     * this gets used is the moment a rule turns out to have been a mistake. Returns how
+     * many records the deleted rule had claimed.
+     */
+    suspend fun setAskEachTime(pattern: String, on: Boolean): Int = mutex.withLock {
+        val key = UserRule.patternOf(pattern)
+        if (key.isBlank()) return@withLock 0
+        _askEachTime.value = if (on) _askEachTime.value + key else _askEachTime.value - key
+        var undone = 0
+        if (on && _rules.value.any { it.pattern == key }) {
+            _rules.value = _rules.value.filter { it.pattern != key }
+            undone = recategorizeAutoLocked()
+            recomputeTxnsLocked()
+        }
         persistLocked()
+        undone
     }
 
     // ─────────────────────────── custom categories ───────────────────────────
 
     /** Creates a new user category and returns its generated id. */
-    suspend fun addCategory(name: String, income: Boolean, color: Int): String = mutex.withLock {
+    suspend fun addCategory(name: String, income: Boolean, color: Int, icon: String): String = mutex.withLock {
         val id = Categories.CUSTOM_ID_PREFIX + System.currentTimeMillis().toString(36)
-        _categories.value = _categories.value + Category(id, name, income, color, custom = true)
+        _categories.value = _categories.value + Category(id, name, income, color, custom = true, icon = icon)
         Categories.setCustom(_categories.value)
         persistLocked()
         id
     }
 
-    suspend fun updateCategory(id: String, name: String, color: Int) = mutex.withLock {
+    suspend fun updateCategory(id: String, name: String, color: Int, icon: String) = mutex.withLock {
         _categories.value = _categories.value.map {
-            if (it.id == id) it.copy(name = name, color = color) else it
+            if (it.id == id) it.copy(name = name, color = color, icon = icon) else it
         }
         Categories.setCustom(_categories.value)
         persistLocked()
@@ -609,6 +669,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         _txns.value = emptyList()
         _reviews.value = emptyList()
         _rules.value = emptyList()
+        _askEachTime.value = emptySet()
         _senders.value = emptySet()
         _muted.value = emptyList()
         _needed.value = emptySet()
@@ -657,6 +718,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             rawTxns = root.optJSONArray("txns").toListOf(::txnFromJson).sortedByDescending { it.atMillis }
             _reviews.value = root.optJSONArray("reviews").toListOf(::reviewFromJson).sortedByDescending { it.atMillis }
             _rules.value = root.optJSONArray("rules").toListOf(::ruleFromJson)
+            _askEachTime.value = root.optJSONArray("askEachTime").toStringSet()
             _senders.value = root.optJSONArray("senders").toStringSet()
             _muted.value = root.optJSONArray("muted").toListOf(::mutedFromJson)
             _needed.value = root.optJSONArray("needed").toStringSet()
@@ -720,6 +782,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             root.put("txns", JSONArray().apply { rawTxns.forEach { put(txnToJson(it)) } })
             root.put("reviews", JSONArray().apply { _reviews.value.forEach { put(reviewToJson(it)) } })
             root.put("rules", JSONArray().apply { _rules.value.forEach { put(ruleToJson(it)) } })
+            root.put("askEachTime", JSONArray().apply { _askEachTime.value.forEach { put(it) } })
             root.put("senders", JSONArray().apply { _senders.value.forEach { put(it) } })
             root.put("muted", JSONArray().apply { _muted.value.forEach { put(mutedToJson(it)) } })
             root.put("needed", JSONArray().apply { _needed.value.forEach { put(it) } })
@@ -895,14 +958,19 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
 
     private fun categoryToJson(c: Category) = JSONObject().apply {
         put("id", c.id); put("name", c.name); put("income", c.income); put("color", c.color)
+        put("icon", c.icon)
     }
 
+    // optString, not getString: a category saved before icons existed has no such key,
+    // and a row that threw here would be dropped by toListOf and the category would
+    // vanish along with the name and colour the user chose. Hence no schema bump.
     private fun categoryFromJson(o: JSONObject) = Category(
         id = o.getString("id"),
         name = o.getString("name"),
         income = o.optBoolean("income", false),
         color = o.optInt("color", 0),
         custom = true,
+        icon = o.optString("icon", ""),
     )
 
     private fun mutedToJson(m: MutedTemplate) = JSONObject().apply {

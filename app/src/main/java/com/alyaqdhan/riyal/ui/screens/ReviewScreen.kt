@@ -78,6 +78,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
     val allTransfers by vm.transfers.collectAsState()
     val autoConfirmOn by vm.autoConfirmOn.collectAsState()
     val accounts by vm.accounts.collectAsState()
+    val categoryUse by vm.categoryUse.collectAsState()
     // Confirmed pairs never reach this queue, so the page says so rather than looking
     // as if the app found nothing.
     val autoConfirmed = remember(allTransfers) {
@@ -252,6 +253,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
             atMillis = item.atMillis,
             defaultCurrency = vm.prefs.defaultCurrency,
             accounts = accounts,
+            categoryUse = categoryUse,
             onSave = { amountMinor, currency, type, merchant, categoryId, from, to ->
                 vm.resolveReview(
                     item, amountMinor, currency, type, merchant, categoryId,

@@ -54,7 +54,7 @@ import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.SwipeableTxnRow
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
-import com.alyaqdhan.riyal.ui.compose.ToolbarSpace
+import com.alyaqdhan.riyal.ui.compose.toolbarSpace
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.SortChip
 import com.alyaqdhan.riyal.ui.compose.TxnSort
@@ -68,6 +68,8 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     val txns by vm.txns.collectAsState()
     val scan by vm.scanState.collectAsState()
     val accounts by vm.accounts.collectAsState()
+    val categoryUse by vm.categoryUse.collectAsState()
+    val askEachTime by vm.askEachTime.collectAsState()
     var categoryFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var typeFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var accountFilter by rememberSaveable { mutableStateOf<String?>(null) }
@@ -192,7 +194,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(
-                        start = 16.dp, end = 16.dp, top = 10.dp, bottom = ToolbarSpace,
+                        start = 16.dp, end = 16.dp, top = 10.dp, bottom = toolbarSpace,
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -266,6 +268,9 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             },
             onDismiss = { picker = null },
             rememberByDefault = vm.prefs.smartRules,
+            categoryUse = categoryUse,
+            askEachTime = askEachTime,
+            onAskEachTime = { vm.setAskEachTime(txn.merchant.orEmpty(), it) },
             onSetAccount = {
                 vm.setTxnAccount(txn, it)
                 picker = null

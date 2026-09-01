@@ -263,6 +263,25 @@ object Stats {
      * money and send it, and an expense category on an income record is a wrong answer
      * that looks like a right one.
      */
+    /**
+     * How often the user has filed into each category, counting their own answers
+     * only. The parser's guesses are excluded on purpose: this decides which chips a
+     * picker shows first, and it should reflect the choices the user made, not the
+     * defaults they never looked at.
+     */
+    fun categoryUse(txns: List<Txn>): Map<String, Int> =
+        txns.filter { it.categorySource == "user" && it.type != TxnType.TRANSFER }
+            .groupingBy { it.categoryId }
+            .eachCount()
+
+    /**
+     * [cats] most-used first. sortedByDescending is a stable sort, so everything the
+     * user has never filed into keeps the order it was declared in rather than being
+     * shuffled by the tie.
+     */
+    fun rankCategories(cats: List<Category>, use: Map<String, Int>): List<Category> =
+        cats.sortedByDescending { use[it.id] ?: 0 }
+
     data class MerchantGroup(
         val merchant: String,
         val type: TxnType,
