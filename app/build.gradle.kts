@@ -27,6 +27,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Signed with the debug key so the release build can actually be installed
+            // and measured on a device. A real release needs its own keystore; this is
+            // not it, and an APK signed this way must not be published.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {

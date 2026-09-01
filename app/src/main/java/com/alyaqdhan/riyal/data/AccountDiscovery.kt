@@ -38,11 +38,18 @@ object Banks {
     private fun squash(sender: String) =
         sender.lowercase().replace(" ", "").replace("-", "").replace("_", "")
 
+    // Compiled once. looksLikeBank asks matches() about every brand it knows, and a
+    // scan asks that about every message, so a Regex built per call was compiled
+    // thousands of times over an inbox.
+    private val CAMEL_BREAK = Regex("(?<=[a-z])(?=[A-Z])")
+    private val NON_WORD = Regex("[^\\p{L}\\p{N}]+")
+    private val RUN_OF_SPACE = Regex("\\s+")
+
     /** The sender split into words, with camelCase treated as a word break. */
     private fun words(sender: String): List<String> =
-        sender.replace(Regex("(?<=[a-z])(?=[A-Z])"), " ")
+        sender.replace(CAMEL_BREAK, " ")
             .lowercase()
-            .split(Regex("[^\\p{L}\\p{N}]+"))
+            .split(NON_WORD)
             .filter { it.isNotEmpty() }
 
     /**
@@ -68,8 +75,8 @@ object Banks {
     fun displayName(sender: String): String {
         BRANDS.entries.firstOrNull { matches(it.key, sender) }?.let { return it.value }
         return sender.trim()
-            .replace(Regex("(?<=[a-z])(?=[A-Z])"), " ")
-            .replace(Regex("\\s+"), " ")
+            .replace(CAMEL_BREAK, " ")
+            .replace(RUN_OF_SPACE, " ")
             .ifBlank { sender }
     }
 }

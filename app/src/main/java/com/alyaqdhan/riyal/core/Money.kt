@@ -23,22 +23,29 @@ object Money {
     fun toMajor(minor: Long, currency: String): BigDecimal =
         BigDecimal.valueOf(minor).movePointLeft(decimalsFor(currency))
 
-    fun format(minor: Long, currency: String): String {
-        val decimals = decimalsFor(currency)
-        val pattern = if (decimals == 3) "#,##0.000" else "#,##0.00"
-        val fmt = DecimalFormat(pattern, DecimalFormatSymbols(Locale.US))
-        return "$currency ${fmt.format(toMajor(minor, currency))}"
+    /**
+     * Building a DecimalFormat means building DecimalFormatSymbols, which loads ICU
+     * locale data every time - measurably the most expensive thing a transaction row
+     * did, and every row formats at least twice. There are only two patterns, so hold
+     * one of each. DecimalFormat is not thread-safe, hence the lock; contention is nil
+     * because formatting happens on the UI thread.
+     */
+    private val threeDecimalFmt by lazy { DecimalFormat("#,##0.000", DecimalFormatSymbols(Locale.US)) }
+    private val twoDecimalFmt by lazy { DecimalFormat("#,##0.00", DecimalFormatSymbols(Locale.US)) }
+
+    private fun formatFor(minor: Long, currency: String): String {
+        val fmt = if (decimalsFor(currency) == 3) threeDecimalFmt else twoDecimalFmt
+        val major = toMajor(minor, currency)
+        return synchronized(fmt) { fmt.format(major) }
     }
+
+    fun format(minor: Long, currency: String): String = "$currency ${formatFor(minor, currency)}"
 
     /**
      * Just the number: "269.907". For lines that have already said which currency they
      * are in, where repeating the code on every figure is noise.
      */
-    fun formatAmount(minor: Long, currency: String): String {
-        val decimals = decimalsFor(currency)
-        val pattern = if (decimals == 3) "#,##0.000" else "#,##0.00"
-        return DecimalFormat(pattern, DecimalFormatSymbols(Locale.US)).format(toMajor(minor, currency))
-    }
+    fun formatAmount(minor: Long, currency: String): String = formatFor(minor, currency)
 
     /** "− OMR 4.500" / "+ OMR 12.000" style, for transaction rows. */
     fun formatSigned(minor: Long, currency: String, expense: Boolean): String =

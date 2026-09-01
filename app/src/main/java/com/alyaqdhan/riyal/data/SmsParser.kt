@@ -273,7 +273,7 @@ class SmsParser(
     }
 
     private fun tokenToIso(token: String): String {
-        val t = token.uppercase().replace(Regex("[.\\s]"), "")
+        val t = token.uppercase().replace(dotOrSpace, "")
         return when (t) {
             "RO", "رع" -> "OMR"
             "SR", "رس" -> "SAR"
@@ -309,12 +309,12 @@ class SmsParser(
         s = cutTailAr.replace(s, "")
         // "5842-Al Fatah Food Com LLC" - the terminal number is the till, not the shop,
         // and leaving it in makes every branch of one shop a different merchant.
-        s = s.replace(Regex("^\\d{2,}\\s*-\\s*"), "")
-        s = s.replace(Regex("[\\d/:\\-]{4,}\\s*$"), "")
-        s = s.replace(Regex("\\s{2,}"), " ")
+        s = s.replace(tillPrefix, "")
+        s = s.replace(digitTail, "")
+        s = s.replace(doubleSpace, " ")
         s = s.trim { it.isWhitespace() || it in TRIM_CHARS }
         if (s.length < 2) return null
-        if (Regex("(?i)^(?:x+\\d*|\\d+|you|yours?)$").matches(s)) return null
+        if (notAName.matches(s)) return null
         if (s.lowercase().startsWith("a/c")) return null
         // "رصيدك الحالي في الحساب هو 150" - "في" is a preposition before a balance as
         // often as before a shop, so a name that turns out to be the account or the
@@ -335,7 +335,7 @@ class SmsParser(
                 else -> sb.append(ch)
             }
         }
-        return sb.toString().replace(Regex("\\s+"), " ").trim()
+        return sb.toString().replace(runOfSpace, " ").trim()
     }
 
     private companion object {
@@ -469,6 +469,18 @@ class SmsParser(
                 "(?:ال)?حساب\\p{L}*|بتاريخ|(?:ال)?رصيد\\p{L}*|ب[اإ]ستخدام|عن\\s+طريق|بواسطة|رقم|والتي).*",
             RegexOption.DOT_MATCHES_ALL,
         )
+
+        /**
+         * The rest of what cleanMerchant strips. Hoisted beside cutTail for the same
+         * reason: a Regex built inside the function is recompiled for every message,
+         * and a scan of a full inbox runs this thousands of times.
+         */
+        val dotOrSpace = Regex("[.\\s]")
+        val runOfSpace = Regex("\\s+")
+        val tillPrefix = Regex("^\\d{2,}\\s*-\\s*")
+        val digitTail = Regex("[\\d/:\\-]{4,}\\s*$")
+        val doubleSpace = Regex("\\s{2,}")
+        val notAName = Regex("(?i)^(?:x+\\d*|\\d+|you|yours?)$")
 
         val TRIM_CHARS = ".,;:-_*'\"()".toSet()
     }
