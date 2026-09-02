@@ -236,7 +236,8 @@ fun SettingsScreen(
                                     note("scan range → $label")
                                 },
                                 shape = SegmentedButtonDefaults.itemShape(index = index, count = ranges.size),
-                            ) { Text(label) }
+                                modifier = Modifier.weight(1f),
+                            ) { Text(label, maxLines = 1, style = MaterialTheme.typography.labelMedium) }
                         }
                     }
                 }

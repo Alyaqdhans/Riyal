@@ -263,12 +263,14 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                 selected = donutType == TxnType.EXPENSE,
                                 onClick = { donutType = TxnType.EXPENSE },
                                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                            ) { Text("Spending") }
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Spending", maxLines = 1) }
                             SegmentedButton(
                                 selected = donutType == TxnType.INCOME,
                                 onClick = { donutType = TxnType.INCOME },
                                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                            ) { Text("Income") }
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Income", maxLines = 1) }
                         }
                         Box(contentAlignment = Alignment.Center) {
                             val grow = remember(slices) { Animatable(0f) }
@@ -589,12 +591,14 @@ private fun ChartsCard(
                     selected = !showTrend,
                     onClick = { showTrend = false },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                ) { Text("Cashflow") }
+                    modifier = Modifier.weight(1f),
+                ) { Text("Cashflow", maxLines = 1) }
                 SegmentedButton(
                     selected = showTrend,
                     onClick = { showTrend = true },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                ) { Text("Running total") }
+                    modifier = Modifier.weight(1f),
+                ) { Text("Running total", maxLines = 1) }
             }
             Text(
                 if (showTrend) {

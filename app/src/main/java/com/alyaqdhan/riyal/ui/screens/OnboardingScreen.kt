@@ -112,7 +112,18 @@ fun OnboardingScreen(
                                     index = index,
                                     count = ScanHistory.entries.size,
                                 ),
-                            ) { Text(choice.label) }
+                                // An equal share each. Left to size themselves the four
+                                // segments took the width of their own labels, so "All"
+                                // was a third of "3 months" and the long ones wrapped on
+                                // to a second line, leaving the row visibly ragged.
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    choice.label,
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            }
                         }
                     }
                     Text(
