@@ -110,6 +110,15 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("auto_confirm_transfers", true)
         set(v) = sp.edit().putBoolean("auto_confirm_transfers", v).apply()
 
+    /**
+     * Whether the Activity list has already explained that its rows can be swiped. The
+     * gesture is the only way to archive or remove a record and nothing on screen says
+     * so, which leaves it undiscoverable until someone swipes by accident.
+     */
+    var swipeHintSeen: Boolean
+        get() = sp.getBoolean("swipe_hint_seen", false)
+        set(v) = sp.edit().putBoolean("swipe_hint_seen", v).apply()
+
     var senderFilterEnabled: Boolean
         get() = sp.getBoolean("sender_filter_enabled", false)
         set(v) = sp.edit().putBoolean("sender_filter_enabled", v).apply()

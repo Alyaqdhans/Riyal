@@ -82,6 +82,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     val archivedIds by vm.archivedIds.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    var swipeHintSeen by remember { mutableStateOf(vm.prefs.swipeHintSeen) }
 
     // Unarchiving the last record used to strand you here. The way back out is only
     // drawn while something is archived, and the choice outlives leaving the screen, so
@@ -184,6 +185,34 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                         else "Archived (${archivedIds.size})",
                         style = MaterialTheme.typography.labelLarge,
                     )
+                }
+            }
+            if (!swipeHintSeen && filtered.isNotEmpty()) {
+                // Swiping is the only way to archive or remove a record and nothing on
+                // screen said so, which left the gesture to be found by accident.
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .popIn(),
+                ) {
+                    Row(
+                        Modifier.padding(start = 16.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "Swipe a row: right to archive it, left to remove it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = {
+                            vm.prefs.swipeHintSeen = true
+                            swipeHintSeen = true
+                        }) { Text("Got it") }
+                    }
                 }
             }
             if (filtered.isEmpty()) {
