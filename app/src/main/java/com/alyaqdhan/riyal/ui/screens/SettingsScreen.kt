@@ -130,6 +130,7 @@ fun SettingsScreen(
     var budgetsEnabled by remember { mutableStateOf(prefs.budgetsEnabled) }
     var autoConfirmTransfers by remember { mutableStateOf(prefs.autoConfirmTransfers) }
     var confirmWipe by remember { mutableStateOf(false) }
+    var confirmExport by remember { mutableStateOf(false) }
     var pickCurrency by remember { mutableStateOf(false) }
 
     fun note(text: String) {
@@ -439,11 +440,13 @@ fun SettingsScreen(
             SettingsCard("Your data") {
                 ActionLine(
                     title = "Export transactions",
-                    value = "${txns.size} record(s)",
+                    // The count belongs to the moment you ask for the file, not to a row
+                    // you are only reading past. It is said in the confirmation instead.
+                    value = null,
                     detail = "Writes every record to a CSV file you choose: date, type, amount, " +
                         "accounts, merchant, category and the message it was read from.",
                     actionLabel = "Export",
-                    onAction = onExport,
+                    onAction = { confirmExport = true },
                 )
                 ExpandLine(
                     title = "Verbose log",
@@ -521,6 +524,36 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmWipe = false }) { Text("Cancel") }
+            },
+        )
+    }
+
+    if (confirmExport) {
+        AlertDialog(
+            onDismissRequest = { confirmExport = false },
+            title = { Text("Export ${txns.size} record(s)?") },
+            text = {
+                Text(
+                    if (txns.isEmpty()) {
+                        "There is nothing recorded yet, so the file would be empty. Scan your " +
+                            "messages first."
+                    } else {
+                        "Every record Riyal holds goes into one CSV file, and you choose where " +
+                            "it is written. Nothing leaves the phone on its own."
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = txns.isNotEmpty(),
+                    onClick = {
+                        confirmExport = false
+                        onExport()
+                    },
+                ) { Text("Export") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmExport = false }) { Text("Cancel") }
             },
         )
     }
