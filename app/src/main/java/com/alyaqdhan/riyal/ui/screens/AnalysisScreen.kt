@@ -352,7 +352,10 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     DeltaText(s.amountMinor, previousSlices[s.categoryId] ?: 0L)
                                 }
                                 Text(
-                                    Money.format(s.amountMinor, currency),
+                                    // Bare figure: the donut's own centre names the
+                                    // currency directly above, so printing "OMR" again
+                                    // on all six rows is six readings of one fact.
+                                    Money.formatAmount(s.amountMinor, currency),
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                                 Text(
@@ -762,21 +765,33 @@ private fun SummaryTile(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        // The currency used to have a line of its own in all three tiles - one line of
+        // height each to say the same three letters. It shares the label's line, which
+        // has room to spare, rather than the figure's, which does not: a negative Net
+        // is wide enough that "OMR" beside it was cut off.
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                currency,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Text(
             (if (signed && amount < 0) "− " else "") + Money.formatAmount(abs(amount), currency),
             style = MaterialTheme.typography.titleMedium,
             color = if (signed && amount < 0) MaterialTheme.colorScheme.error
             else MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            currency,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            softWrap = false,
+            maxLines = 1,
         )
         DeltaText(amount, previous, upIsGood = upIsGood)
     }

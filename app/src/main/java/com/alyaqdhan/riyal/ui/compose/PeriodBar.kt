@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -87,7 +89,10 @@ fun PeriodBar(
         if (!slice.isThisMonth) {
             TextButton(
                 onClick = { onChange(TimeSlice.thisMonth()) },
-                modifier = Modifier.align(Alignment.CenterHorizontally),
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .heightIn(min = 32.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
             ) { Text("Back to this month", style = MaterialTheme.typography.labelMedium) }
         }
     }
