@@ -3,7 +3,6 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,20 +13,20 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -39,6 +38,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -60,6 +60,7 @@ import com.alyaqdhan.riyal.ui.compose.SortChip
 import com.alyaqdhan.riyal.ui.compose.TxnSort
 import com.alyaqdhan.riyal.ui.compose.dayLabel
 import com.alyaqdhan.riyal.ui.compose.localDateOf
+import com.alyaqdhan.riyal.ui.compose.popIn
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 
@@ -77,8 +78,10 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     var sort by rememberSaveable { mutableStateOf(TxnSort.NEWEST.name) }
     var showArchived by rememberSaveable { mutableStateOf(false) }
     var picker by remember { mutableStateOf<Txn?>(null) }
-    var confirmDelete by remember { mutableStateOf<Txn?>(null) }
     val archivedIds by vm.archivedIds.collectAsState()
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
 
     val filtered = remember(txns, categoryFilter, typeFilter, accountFilter, archivedIds, showArchived) {
         txns.filter { t ->
@@ -105,6 +108,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = { Text("Activity") },
@@ -204,8 +208,9 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                             items(dayTxns, key = { it.id }) { txn ->
                                 SwipeableTxnRow(
                                     archived = txn.id in archivedIds,
-                                    onArchive = { vm.archiveTxn(txn, txn.id !in archivedIds) },
-                                    onRequestDelete = { confirmDelete = txn },
+                                    onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
+                                    onDelete = { removeForGood(vm, snackbar, scope, txn) },
+                                    deletePrompt = deletePromptFor(txn),
                                     modifier = Modifier.animateItem(),
                                 ) {
                                     TxnRow(txn, onClick = { picker = txn }, accounts = accounts)
@@ -216,8 +221,9 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                         items(ranked, key = { it.id }) { txn ->
                             SwipeableTxnRow(
                                 archived = txn.id in archivedIds,
-                                onArchive = { vm.archiveTxn(txn, txn.id !in archivedIds) },
-                                onRequestDelete = { confirmDelete = txn },
+                                onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
+                                onDelete = { removeForGood(vm, snackbar, scope, txn) },
+                                deletePrompt = deletePromptFor(txn),
                                 modifier = Modifier.animateItem(),
                             ) {
                                 TxnRow(txn, onClick = { picker = txn }, accounts = accounts)
@@ -228,17 +234,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             }
         }
         }
-    }
-
-    confirmDelete?.let { txn ->
-        RemoveTxnDialog(
-            txn = txn,
-            onConfirm = {
-                vm.ignoreTxn(txn)
-                confirmDelete = null
-            },
-            onDismiss = { confirmDelete = null },
-        )
     }
 
     if (showFilters) {
