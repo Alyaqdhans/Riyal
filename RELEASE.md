@@ -127,12 +127,24 @@ the key is wrong - find that out here, not from someone whose records are gone.
 
 ## The signing key
 
-Releases 1.0 and 1.1 were signed with a self-signed certificate:
+Three different keys have signed a published Riyal, where one should have
+signed all of them. Each change broke updates for everyone on the release
+before it:
 
-```
-CN=riyal, O=riyal, OU=riyal
-SHA-256  13:83:5D:4C:F6:B9:45:07:61:98:A7:66:E5:E9:ED:8E:E5:9F:86:2B:B5:A9:1B:2E:F1:E7:01:37:35:FB:88:9C
-```
+| Releases | Certificate | SHA-256 |
+|---|---|---|
+| 1.0, 1.1 | `CN=riyal, O=riyal, OU=riyal` | `13:83:5D:4C:...:88:9C` |
+| 1.5 | `C=riyal, ST=riyal, L=riyal, CN=riyal` | `d1:98:f7:b7:...:bb:c2` |
+| 1.51 onward | `CN=riyal, OU=riyal, O=riyal, L=Muscat, ST=Muscat, C=OM` | `E5:C4:F9:55:...:50:6B` |
+
+The current key lives at `/home/linuxbrew/riyal-release.jks`, alias `riyal`,
+RSA 4096, valid to January 2054. **It is the only one whose password is known.**
+The 1.0/1.1 keystore was never on this machine and the 1.5 one cannot be opened,
+which is why 1.51 starts a third lineage: users of 1.5 must uninstall before
+they can install 1.51, and they lose their hand-filed categories doing it.
+
+That is the whole cost of a lost keystore, paid twice. Do not let it happen to
+this one.
 
 Check a keystore is the right one before trusting it:
 
