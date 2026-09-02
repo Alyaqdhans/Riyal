@@ -117,7 +117,11 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbar) },
+        // Clear of the floating toolbar, which is drawn over this screen by the activity
+        // and otherwise sits on top of the message and its Undo.
+        snackbarHost = {
+            SnackbarHost(snackbar, modifier = Modifier.padding(bottom = toolbarSpace))
+        },
         topBar = {
             TopAppBar(
                 title = { Text("Activity") },
