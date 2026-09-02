@@ -238,7 +238,8 @@ fun SettingsScreen(
                                 },
                                 shape = SegmentedButtonDefaults.itemShape(index = index, count = ranges.size),
                                 modifier = Modifier.weight(1f),
-                            ) { Text(label, maxLines = 1, style = MaterialTheme.typography.labelMedium) }
+                                icon = {},
+                            ) { Text(label, softWrap = false, maxLines = 1, style = MaterialTheme.typography.labelMedium) }
                         }
                     }
                 }

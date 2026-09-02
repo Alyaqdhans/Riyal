@@ -4,6 +4,7 @@ package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -117,9 +118,19 @@ fun OnboardingScreen(
                                 // was a third of "3 months" and the long ones wrapped on
                                 // to a second line, leaving the row visibly ragged.
                                 modifier = Modifier.weight(1f),
+                                // Four equal segments leave no room for the selection
+                                // tick as well as the word; the filled segment already
+                                // says which one is chosen.
+                                icon = {},
+                                // The default padding is generous for a segment that has
+                                // a quarter of the width to work with.
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
                             ) {
                                 Text(
                                     choice.label,
+                                    // maxLines alone still breaks at the space and then
+                                    // shows only the first line - "3 months" became "3".
+                                    softWrap = false,
                                     maxLines = 1,
                                     style = MaterialTheme.typography.labelMedium,
                                 )

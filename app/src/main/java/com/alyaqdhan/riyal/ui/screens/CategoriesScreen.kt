@@ -454,7 +454,7 @@ private fun KeywordRuleDialog(
                         },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                         modifier = Modifier.weight(1f),
-                    ) { Text("Money out", maxLines = 1) }
+                    ) { Text("Money out", softWrap = false, maxLines = 1) }
                     SegmentedButton(
                         selected = income,
                         onClick = {
@@ -463,7 +463,7 @@ private fun KeywordRuleDialog(
                         },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                         modifier = Modifier.weight(1f),
-                    ) { Text("Money in", maxLines = 1) }
+                    ) { Text("Money in", softWrap = false, maxLines = 1) }
                 }
                 CategoryChips(
                     type = type,
@@ -547,13 +547,13 @@ private fun CategoryEditorDialog(
                             onClick = { income = false },
                             shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                             modifier = Modifier.weight(1f),
-                        ) { Text("Expense", maxLines = 1) }
+                        ) { Text("Expense", softWrap = false, maxLines = 1) }
                         SegmentedButton(
                             selected = income,
                             onClick = { income = true },
                             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                             modifier = Modifier.weight(1f),
-                        ) { Text("Income", maxLines = 1) }
+                        ) { Text("Income", softWrap = false, maxLines = 1) }
                     }
                 }
                 // Shown above the swatches because the icon is what the badge reads as

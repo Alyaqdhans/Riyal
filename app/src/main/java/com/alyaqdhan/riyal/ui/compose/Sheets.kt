@@ -489,7 +489,8 @@ fun ManualTxnDialog(
                             onClick = { type = option },
                             shape = SegmentedButtonDefaults.itemShape(index = index, count = TxnType.entries.size),
                             modifier = Modifier.weight(1f),
-                        ) { Text(typeLabel(option), maxLines = 1) }
+                            icon = {},
+                        ) { Text(typeLabel(option), softWrap = false, maxLines = 1) }
                     }
                 }
                 OutlinedTextField(
