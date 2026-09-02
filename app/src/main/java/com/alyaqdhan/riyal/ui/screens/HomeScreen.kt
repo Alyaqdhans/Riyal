@@ -246,8 +246,10 @@ fun HomeScreen(
                     face = FaceStyle.CONFUSED,
                     mood = 0.3f,
                     title = "Check your accounts",
-                    subtitle = "${accounts.size} account(s) were set up from your messages. " +
-                        "Confirm the balances are right.",
+                    // The title already says what to do, so the line under it only has to
+                    // say what there is - three lines of prompt on a screen you are
+                    // trying to read past is the prompt shouting.
+                    subtitle = "${accounts.size} read from your messages",
                     container = MaterialTheme.colorScheme.primaryContainer,
                     content = MaterialTheme.colorScheme.onPrimaryContainer,
                     onClick = onOpenAccounts,
@@ -335,7 +337,8 @@ fun HomeScreen(
                     face = FaceStyle.CONFUSED,
                     mood = 0f,
                     title = "$needsCategory record(s) need a category",
-                    subtitle = "Grouped by shop, biggest first - one tap files them all",
+                    // How they are ordered is something the page itself shows on arrival.
+                    subtitle = "One tap files a whole shop",
                     container = MaterialTheme.colorScheme.secondaryContainer,
                     content = MaterialTheme.colorScheme.onSecondaryContainer,
                     onClick = onOpenNeedsCategory,
