@@ -42,6 +42,10 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private val rowTimeFmt = DateTimeFormatter.ofPattern("dd MMM · h:mm a")
+// For a list already broken into days: the header above the row states the date, so
+// repeating it in the row is one more thing to read that says nothing new - and it was
+// the segment that pushed the account name into an ellipsis on every single row.
+private val rowClockFmt = DateTimeFormatter.ofPattern("h:mm a")
 private val dayFmt = DateTimeFormatter.ofPattern("EEEE, dd MMM uuuu")
 
 fun dayLabel(date: LocalDate): String {
@@ -108,6 +112,10 @@ fun TxnRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     accounts: List<Account> = emptyList(),
+    /** False where a day header above the row already gives the date. */
+    showDate: Boolean = true,
+    /** False where the whole list has been filtered to one account already. */
+    showAccount: Boolean = true,
 ) {
     val category = Categories.byId(txn.categoryId)
     val transfer = txn.type == TxnType.TRANSFER
@@ -137,15 +145,16 @@ fun TxnRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val time = rowTimeFmt.format(Instant.ofEpochMilli(txn.atMillis).atZone(ZoneId.systemDefault()))
+                val time = (if (showDate) rowTimeFmt else rowClockFmt)
+                    .format(Instant.ofEpochMilli(txn.atMillis).atZone(ZoneId.systemDefault()))
                 Text(
                     if (transfer) {
                         val from = accountName(txn.fromAccountId) ?: "unassigned"
                         val to = accountName(txn.toAccountId) ?: "unassigned"
                         "$from → $to · $time"
                     } else {
-                        val account = accountName(txn.accountId)
-                        if (account != null) "$account · $time" else "${txn.sender} · $time"
+                        val account = accountName(txn.accountId) ?: txn.sender
+                        if (showAccount) "$account · $time" else time
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -3,7 +3,6 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,20 +13,20 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -35,10 +34,12 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -60,6 +61,7 @@ import com.alyaqdhan.riyal.ui.compose.SortChip
 import com.alyaqdhan.riyal.ui.compose.TxnSort
 import com.alyaqdhan.riyal.ui.compose.dayLabel
 import com.alyaqdhan.riyal.ui.compose.localDateOf
+import com.alyaqdhan.riyal.ui.compose.popIn
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 
@@ -77,8 +79,18 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     var sort by rememberSaveable { mutableStateOf(TxnSort.NEWEST.name) }
     var showArchived by rememberSaveable { mutableStateOf(false) }
     var picker by remember { mutableStateOf<Txn?>(null) }
-    var confirmDelete by remember { mutableStateOf<Txn?>(null) }
     val archivedIds by vm.archivedIds.collectAsState()
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    var swipeHintSeen by remember { mutableStateOf(vm.prefs.swipeHintSeen) }
+
+    // Unarchiving the last record used to strand you here. The way back out is only
+    // drawn while something is archived, and the choice outlives leaving the screen, so
+    // an emptied archive became a view with nothing in it and no exit. Fall back to the
+    // ordinary list the moment the archive empties.
+    LaunchedEffect(archivedIds.isEmpty()) {
+        if (archivedIds.isEmpty()) showArchived = false
+    }
 
     val filtered = remember(txns, categoryFilter, typeFilter, accountFilter, archivedIds, showArchived) {
         txns.filter { t ->
@@ -105,6 +117,11 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     }
 
     Scaffold(
+        // Clear of the floating toolbar, which is drawn over this screen by the activity
+        // and otherwise sits on top of the message and its Undo.
+        snackbarHost = {
+            SnackbarHost(snackbar, modifier = Modifier.padding(bottom = toolbarSpace))
+        },
         topBar = {
             TopAppBar(
                 title = { Text("Activity") },
@@ -162,7 +179,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     )
                 }
             }
-            if (archivedIds.isNotEmpty()) {
+            if (archivedIds.isNotEmpty() || showArchived) {
                 TextButton(
                     onClick = { showArchived = !showArchived },
                     modifier = Modifier.padding(start = 8.dp),
@@ -172,6 +189,34 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                         else "Archived (${archivedIds.size})",
                         style = MaterialTheme.typography.labelLarge,
                     )
+                }
+            }
+            if (!swipeHintSeen && filtered.isNotEmpty()) {
+                // Swiping is the only way to archive or remove a record and nothing on
+                // screen said so, which left the gesture to be found by accident.
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .popIn(),
+                ) {
+                    Row(
+                        Modifier.padding(start = 16.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "Swipe a row: right to archive it, left to remove it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = {
+                            vm.prefs.swipeHintSeen = true
+                            swipeHintSeen = true
+                        }) { Text("Got it") }
+                    }
                 }
             }
             if (filtered.isEmpty()) {
@@ -204,11 +249,18 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                             items(dayTxns, key = { it.id }) { txn ->
                                 SwipeableTxnRow(
                                     archived = txn.id in archivedIds,
-                                    onArchive = { vm.archiveTxn(txn, txn.id !in archivedIds) },
-                                    onRequestDelete = { confirmDelete = txn },
+                                    onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
+                                    onDelete = { removeForGood(vm, snackbar, scope, txn) },
+                                    deletePrompt = deletePromptFor(txn),
                                     modifier = Modifier.animateItem(),
                                 ) {
-                                    TxnRow(txn, onClick = { picker = txn }, accounts = accounts)
+                                    TxnRow(
+                                        txn,
+                                        onClick = { picker = txn },
+                                        accounts = accounts,
+                                        showDate = false,
+                                        showAccount = accountFilter == null,
+                                    )
                                 }
                             }
                         }
@@ -216,11 +268,17 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                         items(ranked, key = { it.id }) { txn ->
                             SwipeableTxnRow(
                                 archived = txn.id in archivedIds,
-                                onArchive = { vm.archiveTxn(txn, txn.id !in archivedIds) },
-                                onRequestDelete = { confirmDelete = txn },
+                                onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
+                                onDelete = { removeForGood(vm, snackbar, scope, txn) },
+                                deletePrompt = deletePromptFor(txn),
                                 modifier = Modifier.animateItem(),
                             ) {
-                                TxnRow(txn, onClick = { picker = txn }, accounts = accounts)
+                                TxnRow(
+                                    txn,
+                                    onClick = { picker = txn },
+                                    accounts = accounts,
+                                    showAccount = accountFilter == null,
+                                )
                             }
                         }
                     }
@@ -228,17 +286,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             }
         }
         }
-    }
-
-    confirmDelete?.let { txn ->
-        RemoveTxnDialog(
-            txn = txn,
-            onConfirm = {
-                vm.ignoreTxn(txn)
-                confirmDelete = null
-            },
-            onDismiss = { confirmDelete = null },
-        )
     }
 
     if (showFilters) {
@@ -302,7 +349,7 @@ private fun DayHeader(date: LocalDate, dayTxns: List<Txn>) {
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(top = 10.dp, bottom = 2.dp),
+            .padding(top = 20.dp, bottom = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(

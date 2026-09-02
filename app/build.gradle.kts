@@ -18,8 +18,8 @@ android {
         applicationId = "com.alyaqdhan.riyal"
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.5"
+        versionCode = 3
+        versionName = "1.51"
     }
 
     // The key that signs a published build. Its location and passwords come from

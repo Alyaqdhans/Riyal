@@ -456,4 +456,49 @@ class AccountDiscoveryTest {
         assertFalse(AccountDiscovery.isKnownSender(accounts, "Ooredoo"))
         assertFalse(AccountDiscovery.isKnownSender(accounts, ""))
     }
+
+    // ── one bank, spelled several ways ──
+
+    @Test
+    fun `a bank that varies how it spells its sender is still one account`() {
+        // A tester's two banks came back as six accounts. Senders were grouped by their
+        // exact text, so every casing the bank used started another account.
+        val accounts = AccountDiscovery.propose(
+            listOf(
+                obs("BankMuscat", "1234", 350_250, base, -12_500),
+                obs("BANKMUSCAT", "1234", 340_000, base + hours(1), -10_250),
+                obs("bankmuscat", "1234", 330_000, base + hours(2), -10_000),
+            )
+        )
+        assertEquals(1, accounts.size)
+        assertEquals("1234", accounts.single().last4)
+    }
+
+    @Test
+    fun `every proposed account has an id of its own`() {
+        // The ids are derived from the lowercased sender, so spelling variants collided
+        // on one id while still being separate accounts. Two rows sharing a key is what
+        // brought the accounts screen down: LazyColumn rejects a duplicate key outright.
+        val accounts = AccountDiscovery.propose(
+            listOf(
+                obs("BankMuscat", null, 350_250, base, -12_500),
+                obs("BANKMUSCAT", null, 340_000, base + hours(1), -10_250),
+                obs("Bank Muscat", null, 330_000, base + hours(2), -10_000),
+                obs("NBO", "1111", 40_000, base, -500),
+                obs("nbo", "1111", 39_500, base + hours(1), -500),
+            )
+        )
+        assertEquals(accounts.size, accounts.map { it.id }.distinct().size)
+    }
+
+    @Test
+    fun `a sender that differs only by surrounding space is one account`() {
+        val accounts = AccountDiscovery.propose(
+            listOf(
+                obs("NBO", "1111", 40_000, base, -500),
+                obs(" NBO ", "1111", 39_500, base + hours(1), -500),
+            )
+        )
+        assertEquals(1, accounts.size)
+    }
 }
