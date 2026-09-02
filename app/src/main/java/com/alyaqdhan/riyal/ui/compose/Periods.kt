@@ -34,6 +34,9 @@ data class TimeSlice(
 
     fun contains(millis: Long): Boolean = millis in start until endExclusive
 
+    /** Whether this is the calendar month we are in - the period every screen opens on. */
+    val isThisMonth: Boolean get() = month != null && month == YearMonth.now()
+
     fun shifted(back: Boolean): TimeSlice {
         if (month != null) return ofMonth(if (back) month.minusMonths(1) else month.plusMonths(1))
         val zone = ZoneId.systemDefault()

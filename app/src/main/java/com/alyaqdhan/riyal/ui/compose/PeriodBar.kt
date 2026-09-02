@@ -52,31 +52,43 @@ fun PeriodBar(
     var showPicker by remember { mutableStateOf(false) }
     var showRange by remember { mutableStateOf(false) }
 
-    Row(
-        modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = { onChange(slice.shifted(back = true)) }) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Earlier period")
-        }
-        AnimatedContent(targetState = slice.label, label = "sliceTitle") { label ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                ) { showPicker = true },
+    Column(modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = { onChange(slice.shifted(back = true)) }) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Earlier period")
+            }
+            AnimatedContent(targetState = slice.label, label = "sliceTitle") { label ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { showPicker = true },
+                ) {
+                    Text(label, style = MaterialTheme.typography.titleMedium)
+                    Icon(Icons.Filled.ArrowDropDown, contentDescription = "Pick a period")
+                }
+            }
+            IconButton(
+                onClick = { onChange(slice.shifted(back = false)) },
+                enabled = allowFuture || slice.endExclusive <= System.currentTimeMillis(),
             ) {
-                Text(label, style = MaterialTheme.typography.titleMedium)
-                Icon(Icons.Filled.ArrowDropDown, contentDescription = "Pick a period")
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Later period")
             }
         }
-        IconButton(
-            onClick = { onChange(slice.shifted(back = false)) },
-            enabled = allowFuture || slice.endExclusive <= System.currentTimeMillis(),
-        ) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Later period")
+        // Now that the chosen period outlives the screen, there has to be one tap back to
+        // the present - otherwise a month picked in March is still what greets you in June,
+        // and the way home is three taps into the picker. It only appears when there is
+        // somewhere to come back from.
+        if (!slice.isThisMonth) {
+            TextButton(
+                onClick = { onChange(TimeSlice.thisMonth()) },
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            ) { Text("Back to this month", style = MaterialTheme.typography.labelMedium) }
         }
     }
 

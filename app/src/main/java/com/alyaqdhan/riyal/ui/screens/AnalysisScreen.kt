@@ -117,7 +117,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
     val budgetsOn by vm.budgetsOn.collectAsState()
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
 
-    var slice by remember { mutableStateOf(TimeSlice.thisMonth()) }
+    val slice by vm.analysisSlice.collectAsState()
     var accountId by remember { mutableStateOf<String?>(null) }
     var donutType by remember { mutableStateOf(TxnType.EXPENSE) }
 
@@ -211,7 +211,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                PeriodBar(slice = slice, onChange = { slice = it }, txns = txns)
+                PeriodBar(slice = slice, onChange = { vm.setAnalysisSlice(it) }, txns = txns)
 
                 // ── the three headline numbers, each against the period before
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

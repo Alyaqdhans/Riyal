@@ -22,6 +22,7 @@ import com.alyaqdhan.riyal.data.TransferProposal
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.data.UserRule
+import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -425,6 +426,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             Verbose.flush()
         }
+
+    /**
+     * The period Analysis is reading. It lives here rather than in the screen because
+     * opening a category destroys that screen's composition, and coming back rebuilt it
+     * on the current month - so the answer you had gone to look up was gone by the time
+     * you returned to it.
+     */
+    private val _analysisSlice = MutableStateFlow(TimeSlice.thisMonth())
+    val analysisSlice: StateFlow<TimeSlice> = _analysisSlice
+
+    fun setAnalysisSlice(slice: TimeSlice) {
+        _analysisSlice.value = slice
+    }
 
     val archivedIds = store.archivedIds
 
