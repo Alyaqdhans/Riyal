@@ -254,7 +254,13 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                                     deletePrompt = deletePromptFor(txn),
                                     modifier = Modifier.animateItem(),
                                 ) {
-                                    TxnRow(txn, onClick = { picker = txn }, accounts = accounts)
+                                    TxnRow(
+                                        txn,
+                                        onClick = { picker = txn },
+                                        accounts = accounts,
+                                        showDate = false,
+                                        showAccount = accountFilter == null,
+                                    )
                                 }
                             }
                         }
@@ -267,7 +273,12 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                                 deletePrompt = deletePromptFor(txn),
                                 modifier = Modifier.animateItem(),
                             ) {
-                                TxnRow(txn, onClick = { picker = txn }, accounts = accounts)
+                                TxnRow(
+                                    txn,
+                                    onClick = { picker = txn },
+                                    accounts = accounts,
+                                    showAccount = accountFilter == null,
+                                )
                             }
                         }
                     }
@@ -338,7 +349,7 @@ private fun DayHeader(date: LocalDate, dayTxns: List<Txn>) {
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(top = 10.dp, bottom = 2.dp),
+            .padding(top = 20.dp, bottom = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
