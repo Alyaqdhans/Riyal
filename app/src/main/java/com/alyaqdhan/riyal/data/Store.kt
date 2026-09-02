@@ -334,15 +334,22 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
 
     // ─────────────────────────── accounts ───────────────────────────
 
-    /** Replaces the account list wholesale, used by first-run confirmation. */
+    /**
+     * Replaces the account list wholesale, used by first-run confirmation. Ids are made
+     * unique on the way in, as reviews and transfer proposals already are: the accounts
+     * screen keys its rows by id, and a repeated key takes the screen down rather than
+     * merely drawing something odd.
+     */
     suspend fun replaceAccounts(list: List<Account>) = mutex.withLock {
-        _accounts.value = list
+        _accounts.value = list.distinctBy { it.id }
         recomputeTxnsLocked()
         persistLocked()
     }
 
     suspend fun addAccount(account: Account): String = mutex.withLock {
-        val id = account.id.ifBlank { Account.ID_PREFIX + UUID.randomUUID().toString().take(8) }
+        val taken = _accounts.value.mapTo(HashSet()) { it.id }
+        var id = account.id.ifBlank { Account.ID_PREFIX + UUID.randomUUID().toString().take(8) }
+        while (id in taken) id = Account.ID_PREFIX + UUID.randomUUID().toString().take(8)
         _accounts.value = _accounts.value + account.copy(id = id)
         persistLocked()
         id
@@ -724,7 +731,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             _needed.value = root.optJSONArray("needed").toStringSet()
             _categories.value = root.optJSONArray("categories").toListOf(::categoryFromJson)
             Categories.setCustom(_categories.value)
-            _accounts.value = root.optJSONArray("accounts").toListOf(::accountFromJson)
+            _accounts.value = root.optJSONArray("accounts").toListOf(::accountFromJson).distinctBy { it.id }
             _budgets.value = root.optJSONArray("budgets").toListOf(::budgetFromJson)
                 .sortedByDescending { it.startMillis }
             _transfers.value = root.optJSONArray("transfers").toListOf(::transferFromJson)
