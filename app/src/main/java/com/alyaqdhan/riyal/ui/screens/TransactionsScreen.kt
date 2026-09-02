@@ -34,6 +34,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -82,6 +83,13 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    // Unarchiving the last record used to strand you here. The way back out is only
+    // drawn while something is archived, and the choice outlives leaving the screen, so
+    // an emptied archive became a view with nothing in it and no exit. Fall back to the
+    // ordinary list the moment the archive empties.
+    LaunchedEffect(archivedIds.isEmpty()) {
+        if (archivedIds.isEmpty()) showArchived = false
+    }
 
     val filtered = remember(txns, categoryFilter, typeFilter, accountFilter, archivedIds, showArchived) {
         txns.filter { t ->
@@ -166,7 +174,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     )
                 }
             }
-            if (archivedIds.isNotEmpty()) {
+            if (archivedIds.isNotEmpty() || showArchived) {
                 TextButton(
                     onClick = { showArchived = !showArchived },
                     modifier = Modifier.padding(start = 8.dp),
