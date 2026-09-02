@@ -13,8 +13,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -22,14 +20,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -80,7 +80,8 @@ fun CategoryDetailScreen(
     var slice by remember { mutableStateOf(initialSlice ?: TimeSlice.thisMonth()) }
     var sort by rememberSaveable { mutableStateOf(TxnSort.NEWEST.name) }
     var editing by remember { mutableStateOf<Txn?>(null) }
-    var confirmRemove by remember { mutableStateOf<Txn?>(null) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val archivedIds by vm.archivedIds.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
 
@@ -104,6 +105,7 @@ fun CategoryDetailScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = { Text(category.name) },
@@ -182,8 +184,9 @@ fun CategoryDetailScreen(
                     // each row was permanent deletion one mis-tap away.
                     SwipeableTxnRow(
                         archived = txn.id in archivedIds,
-                        onArchive = { vm.archiveTxn(txn, txn.id !in archivedIds) },
-                        onRequestDelete = { confirmRemove = txn },
+                        onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
+                        onDelete = { removeForGood(vm, snackbar, scope, txn) },
+                        deletePrompt = deletePromptFor(txn),
                     ) {
                         TxnRow(txn, onClick = { editing = txn }, accounts = accounts)
                     }
@@ -220,16 +223,6 @@ fun CategoryDetailScreen(
         )
     }
 
-    confirmRemove?.let { txn ->
-        RemoveTxnDialog(
-            txn = txn,
-            onConfirm = {
-                vm.ignoreTxn(txn)
-                confirmRemove = null
-            },
-            onDismiss = { confirmRemove = null },
-        )
-    }
 }
 
 /** "up 18% on the period before", or an honest silence when there's nothing to compare. */
@@ -247,30 +240,5 @@ private fun ComparisonLine(now: Long, before: Long, currency: String) {
         text,
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
-/** Shared confirmation for "this isn't a real transaction". */
-@Composable
-fun RemoveTxnDialog(txn: Txn, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Remove this transaction?") },
-        text = {
-            Text(
-                when {
-                    txn.manual -> "This was added manually. It will be deleted."
-                    txn.isTransfer ->
-                        "This transfer stands for two messages, and both will be removed and " +
-                            "kept out of future scans. Your SMS inbox is untouched."
-                    else ->
-                        "The app read this from an SMS but you're saying it isn't a real " +
-                            "transaction. It'll be removed and kept out of future scans. " +
-                            "Your SMS inbox is untouched."
-                }
-            )
-        },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Remove") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

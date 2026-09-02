@@ -453,7 +453,8 @@ private fun KeywordRuleDialog(
                             categoryId = Categories.defaultFor(TxnType.EXPENSE)
                         },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                    ) { Text("Money out") }
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Money out", softWrap = false, maxLines = 1) }
                     SegmentedButton(
                         selected = income,
                         onClick = {
@@ -461,7 +462,8 @@ private fun KeywordRuleDialog(
                             categoryId = Categories.defaultFor(TxnType.INCOME)
                         },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                    ) { Text("Money in") }
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Money in", softWrap = false, maxLines = 1) }
                 }
                 CategoryChips(
                     type = type,
@@ -544,12 +546,14 @@ private fun CategoryEditorDialog(
                             selected = !income,
                             onClick = { income = false },
                             shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        ) { Text("Expense") }
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Expense", softWrap = false, maxLines = 1) }
                         SegmentedButton(
                             selected = income,
                             onClick = { income = true },
                             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        ) { Text("Income") }
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Income", softWrap = false, maxLines = 1) }
                     }
                 }
                 // Shown above the swatches because the icon is what the badge reads as

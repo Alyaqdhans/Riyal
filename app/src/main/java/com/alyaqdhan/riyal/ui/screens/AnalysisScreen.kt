@@ -117,7 +117,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
     val budgetsOn by vm.budgetsOn.collectAsState()
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
 
-    var slice by remember { mutableStateOf(TimeSlice.thisMonth()) }
+    val slice by vm.analysisSlice.collectAsState()
     var accountId by remember { mutableStateOf<String?>(null) }
     var donutType by remember { mutableStateOf(TxnType.EXPENSE) }
 
@@ -211,7 +211,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                PeriodBar(slice = slice, onChange = { slice = it }, txns = txns)
+                PeriodBar(slice = slice, onChange = { vm.setAnalysisSlice(it) }, txns = txns)
 
                 // ── the three headline numbers, each against the period before
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -263,12 +263,14 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                 selected = donutType == TxnType.EXPENSE,
                                 onClick = { donutType = TxnType.EXPENSE },
                                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                            ) { Text("Spending") }
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Spending", softWrap = false, maxLines = 1) }
                             SegmentedButton(
                                 selected = donutType == TxnType.INCOME,
                                 onClick = { donutType = TxnType.INCOME },
                                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                            ) { Text("Income") }
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Income", softWrap = false, maxLines = 1) }
                         }
                         Box(contentAlignment = Alignment.Center) {
                             val grow = remember(slices) { Animatable(0f) }
@@ -350,7 +352,10 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     DeltaText(s.amountMinor, previousSlices[s.categoryId] ?: 0L)
                                 }
                                 Text(
-                                    Money.format(s.amountMinor, currency),
+                                    // Bare figure: the donut's own centre names the
+                                    // currency directly above, so printing "OMR" again
+                                    // on all six rows is six readings of one fact.
+                                    Money.formatAmount(s.amountMinor, currency),
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                                 Text(
@@ -589,12 +594,14 @@ private fun ChartsCard(
                     selected = !showTrend,
                     onClick = { showTrend = false },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                ) { Text("Cashflow") }
+                    modifier = Modifier.weight(1f),
+                ) { Text("Cashflow", softWrap = false, maxLines = 1) }
                 SegmentedButton(
                     selected = showTrend,
                     onClick = { showTrend = true },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                ) { Text("Running total") }
+                    modifier = Modifier.weight(1f),
+                ) { Text("Running total", softWrap = false, maxLines = 1) }
             }
             Text(
                 if (showTrend) {
@@ -758,21 +765,33 @@ private fun SummaryTile(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        // The currency used to have a line of its own in all three tiles - one line of
+        // height each to say the same three letters. It shares the label's line, which
+        // has room to spare, rather than the figure's, which does not: a negative Net
+        // is wide enough that "OMR" beside it was cut off.
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                currency,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Text(
             (if (signed && amount < 0) "− " else "") + Money.formatAmount(abs(amount), currency),
             style = MaterialTheme.typography.titleMedium,
             color = if (signed && amount < 0) MaterialTheme.colorScheme.error
             else MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            currency,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            softWrap = false,
+            maxLines = 1,
         )
         DeltaText(amount, previous, upIsGood = upIsGood)
     }

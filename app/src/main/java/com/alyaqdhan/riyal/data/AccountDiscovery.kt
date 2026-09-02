@@ -112,12 +112,22 @@ object AccountDiscovery {
     fun propose(observations: List<Observation>, colorOffset: Int = 0): List<Account> {
         if (observations.isEmpty()) return emptyList()
 
-        val bySender = observations.groupBy { it.sender.trim() }
+        // Banks are not consistent about how they spell their own sender id: the same
+        // bank arrives as "BankMuscat", "BANKMUSCAT" and "Bank Muscat". Grouping on the
+        // exact text gave every spelling an account of its own - a tester's two banks
+        // came back as six - and since the id below is built from the lowercased sender,
+        // those extra accounts all claimed the same id. Two rows sharing a key is what
+        // brought the accounts screen down.
+        val bySender = observations.groupBy { it.sender.trim().lowercase() }
             .filterKeys { it.isNotBlank() }
-            .filter { (sender, group) -> holdsAnAccount(sender, group) }
         val out = ArrayList<Account>()
 
-        for ((sender, all) in bySender) {
+        for ((_, all) in bySender) {
+            // The spelling the bank used most often speaks for the group; it is what the
+            // account is named after and keyed by.
+            val sender = all.groupingBy { it.sender.trim() }.eachCount()
+                .maxByOrNull { it.value }?.key ?: continue
+            if (!holdsAnAccount(sender, all)) continue
             // Card digits are not an account number, so they never define an account -
             // otherwise every card you carry becomes a bank account you don't have.
             val tails = all.mapNotNull { it.accountNumberTail }.distinct()
