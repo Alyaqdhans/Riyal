@@ -44,6 +44,15 @@ android {
     }
 
     buildTypes {
+        // A debug build must never be able to take the published app's place. Both
+        // carried one applicationId, so installing a test build over a real one was
+        // refused for the signature - and the only way past that refusal is an
+        // uninstall, which takes the user's records with it. Its own id means the two
+        // sit side by side and a test cannot cost anything.
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
