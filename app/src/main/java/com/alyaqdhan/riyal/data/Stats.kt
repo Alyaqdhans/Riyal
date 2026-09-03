@@ -285,22 +285,30 @@ object Stats {
     data class MerchantGroup(
         val merchant: String,
         val type: TxnType,
-        val count: Int,
         val amountMinor: Long,
         val currency: String,
-        val txnIds: List<String>,
-    )
+        /** Newest first, the way every other list in the app reads. */
+        val txns: List<Txn>,
+    ) {
+        val count: Int get() = txns.size
+        val txnIds: List<String> get() = txns.map { it.id }
+    }
 
     /**
      * Records the scan could not place: still on the category it falls back to, and
      * never touched by the user. A category the user chose - even if they chose Other -
      * is an answer, and answers are not asked again.
      */
-    fun unfiled(txns: List<Txn>, archived: Set<String> = emptySet()): List<Txn> = txns.filter {
+    fun unfiled(
+        txns: List<Txn>,
+        archived: Set<String> = emptySet(),
+        deferred: Set<String> = emptySet(),
+    ): List<Txn> = txns.filter {
         it.type != TxnType.TRANSFER &&
             it.categorySource != "user" &&
             it.categoryId == Categories.defaultFor(it.type) &&
-            it.id !in archived
+            it.id !in archived &&
+            it.id !in deferred
     }
 
     /**
@@ -315,7 +323,8 @@ object Stats {
         txns: List<Txn>,
         currency: String,
         archived: Set<String> = emptySet(),
-    ): List<MerchantGroup> = unfiled(txns, archived)
+        deferred: Set<String> = emptySet(),
+    ): List<MerchantGroup> = unfiled(txns, archived, deferred)
         .filter { !it.merchant.isNullOrBlank() && it.currency == currency }
         // Keyed the way a rule is keyed, so the row the user answers and the rule that
         // answer saves cover the same records. It also folds the spellings one bank
@@ -325,10 +334,9 @@ object Stats {
             MerchantGroup(
                 merchant = displayName(list),
                 type = key.second,
-                count = list.size,
                 amountMinor = list.sumOf { it.amountMinor },
                 currency = currency,
-                txnIds = list.map { it.id },
+                txns = list.sortedByDescending { it.atMillis },
             )
         }
         .sortedWith(compareByDescending<MerchantGroup> { it.amountMinor }.thenBy { it.merchant })

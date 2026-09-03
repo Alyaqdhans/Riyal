@@ -85,9 +85,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     val needsCategoryCount: StateFlow<Int> =
-        combine(store.txns, store.archivedIds) { txns, archived ->
-            Stats.unfiled(txns, archived).size
+        combine(store.txns, store.archivedIds, store.deferredIds) { txns, archived, deferred ->
+            Stats.unfiled(txns, archived, deferred).size
         }.stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    /** Records left under Other for now. They come back on the next scan. */
+    val deferredIds = store.deferredIds
 
     /** Accounts were proposed from SMS but the user hasn't checked them yet. */
     private val _accountsConfirmed = MutableStateFlow(prefs.accountsConfirmed)
@@ -403,29 +406,60 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * all: those records still need a category today, and answering four of them in one
      * tap is worth as much for a person as for a shop. Only the rule is skipped.
      */
-    fun fileMerchant(group: Stats.MerchantGroup, categoryId: String) =
+    fun fileMerchant(
+        group: Stats.MerchantGroup,
+        categoryId: String,
+        txnIds: Collection<String> = group.txnIds,
+    ) =
         viewModelScope.launch(Dispatchers.IO) {
+            if (txnIds.isEmpty()) return@launch
             val pattern = UserRule.patternOf(group.merchant)
-            val filed = store.setCategories(group.txnIds, categoryId)
+            val filed = store.setCategories(txnIds, categoryId)
             Verbose.ok(
-                "filed by you: ${group.count} record(s) from \"${group.merchant}\" → " +
+                "filed by you: ${txnIds.size} record(s) from \"${group.merchant}\" → " +
                     Categories.byId(categoryId).name
             )
-            if (pattern in store.askEachTime.value) {
-                Verbose.info(
+            // A rule is a statement about the name, so it may only be saved when the
+            // answer was about the name. Picking four of a merchant's six records means
+            // the other two are something else - a rule here would file them wrong, and
+            // sweep in every future message besides.
+            val wholeName = txnIds.toSet().containsAll(group.txnIds)
+            when {
+                !wholeName -> Verbose.info(
+                    "no rule saved for \"$pattern\": you filed ${txnIds.size} of " +
+                        "${group.count} record(s) from this name, so it does not all belong " +
+                        "in one place and the rest are still waiting"
+                )
+                pattern in store.askEachTime.value -> Verbose.info(
                     "no rule saved for \"$pattern\": you asked to be asked about this name " +
                         "every time, so the next message from it comes back to you"
                 )
-            } else {
-                val byRule = store.addRule(UserRule(pattern, categoryId))
-                Verbose.ok(
-                    "rule saved: \"$pattern\" → ${Categories.byId(categoryId).name} · " +
-                        "$filed record(s) filed now, $byRule more re-categorized, and anything " +
-                        "matching from now on lands there without being asked"
-                )
+                else -> {
+                    val byRule = store.addRule(UserRule(pattern, categoryId))
+                    Verbose.ok(
+                        "rule saved: \"$pattern\" → ${Categories.byId(categoryId).name} · " +
+                            "$filed record(s) filed now, $byRule more re-categorized, and anything " +
+                            "matching from now on lands there without being asked"
+                    )
+                }
             }
             Verbose.flush()
         }
+
+    /**
+     * Clears the backlog without answering it. The records stay under the category they
+     * fell back to, no rule is saved and nothing is marked as the user's answer, so the
+     * next scan puts every one of them back - which is what the screen promises before
+     * it does this.
+     */
+    fun deferAll(txnIds: Collection<String>) = viewModelScope.launch(Dispatchers.IO) {
+        val set = store.deferCategory(txnIds)
+        Verbose.info(
+            "$set record(s) left under Other for now · they were not answered, and the " +
+                "next scan asks about them again"
+        )
+        Verbose.flush()
+    }
 
     /**
      * The period Analysis is reading. It lives here rather than in the screen because

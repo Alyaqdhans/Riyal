@@ -167,4 +167,29 @@ class UnfiledTest {
         assertTrue(UserRule.patternOf("  to  ").isNotBlank())
     }
 
+    @Test
+    fun `a record left under Other is out of the backlog, not answered`() {
+        val all = listOf(txn("1", 10_000, "Al Fatah"), txn("2", 9_000, "Turkish Days"))
+        val groups = Stats.unfiledByMerchant(all, "OMR", deferred = setOf("1"))
+        assertEquals(listOf("Turkish Days"), groups.map { it.merchant })
+        assertEquals(listOf("2"), Stats.unfiled(all, deferred = setOf("1")).map { it.id })
+        // Nothing about the record itself changed - drop the deferral and it is back,
+        // which is what "you'll be asked again next time" has to mean.
+        assertEquals(2, Stats.unfiled(all).size)
+    }
+
+    @Test
+    fun `a group carries its records, newest first`() {
+        val groups = Stats.unfiledByMerchant(
+            listOf(
+                txn("old", 1_000, "Al Fatah").copy(atMillis = 1_000L),
+                txn("new", 2_000, "Al Fatah").copy(atMillis = 3_000L),
+                txn("mid", 3_000, "Al Fatah").copy(atMillis = 2_000L),
+            ),
+            "OMR",
+        )
+        assertEquals(listOf("new", "mid", "old"), groups.single().txnIds)
+        assertEquals(3, groups.single().count)
+    }
+
 }
