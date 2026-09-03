@@ -47,6 +47,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -131,8 +132,16 @@ fun TxnRow(
     val transfer = txn.type == TxnType.TRANSFER
     val expense = txn.type == TxnType.EXPENSE
 
-    fun accountName(id: String?): String? =
-        id?.let { wanted -> accounts.firstOrNull { it.id == wanted }?.displayName }
+    // TxnRow already drops the date when a day header states it and the account when a
+    // filter has narrowed to one. A bank name on every row of a one-bank inbox is the
+    // same fact stated for the same reason, so it goes the same way.
+    val oneBank = remember(accounts) {
+        accounts.mapNotNull { it.bankName.trim().takeIf(String::isNotEmpty) }.distinct().size <= 1
+    }
+
+    fun accountName(id: String?): String? = id?.let { wanted ->
+        accounts.firstOrNull { it.id == wanted }?.let { if (oneBank) it.shortName else it.displayName }
+    }
 
     Surface(
         onClick = onClick,

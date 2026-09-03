@@ -229,6 +229,18 @@ data class Account(
     val displayName: String
         get() = name.trim().ifEmpty { defaultNameOf(bankName, last4) }
 
+    /**
+     * The same account named for a list where every row already says the same bank:
+     * "0019" rather than "Bank Muscat · 0019". With one bank in the data the bank name
+     * separates nothing and is simply on every row, pushing the record's own words into
+     * an ellipsis. A nickname the user set always wins, because they chose those words
+     * for exactly this position.
+     */
+    val shortName: String
+        get() = name.trim().ifEmpty {
+            last4?.trim()?.takeIf { it.isNotEmpty() } ?: bankName.trim().ifEmpty { displayName }
+        }
+
     companion object {
         const val ID_PREFIX = "acc_"
 
