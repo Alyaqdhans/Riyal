@@ -192,11 +192,19 @@ fun TxnRow(
                         else -> successColor()
                     },
                 )
-                Text(
-                    if (transfer) "not counted" else category.name,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // Only the transfer note. The category was already stated by the badge
+                // at the head of the row, and saying it again in words cost about a
+                // third of the width - which is why the merchant and the account line
+                // were both ellipsed at once, leaving two Oman Oil stations looking
+                // identical. "not counted" is not a repeat of anything: it is why a
+                // transfer's amount is neither red nor green.
+                if (transfer) {
+                    Text(
+                        "not counted",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
