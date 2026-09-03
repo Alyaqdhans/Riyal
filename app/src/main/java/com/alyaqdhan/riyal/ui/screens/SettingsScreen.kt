@@ -69,6 +69,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CURRENCIES
@@ -128,6 +129,7 @@ fun SettingsScreen(
     var scanOnLaunch by remember { mutableStateOf(prefs.scanOnLaunch) }
     var smartRules by remember { mutableStateOf(prefs.smartRules) }
     var budgetsEnabled by remember { mutableStateOf(prefs.budgetsEnabled) }
+    var helpOnPage by remember { mutableStateOf(prefs.showHelpText) }
     var autoConfirmTransfers by remember { mutableStateOf(prefs.autoConfirmTransfers) }
     var confirmWipe by remember { mutableStateOf(false) }
     var confirmExport by remember { mutableStateOf(false) }
@@ -178,7 +180,7 @@ fun SettingsScreen(
                 )
                 SwitchLine(
                     title = "Budget",
-                    value = if (budgetsEnabled && budgets.isNotEmpty()) "${budgets.size} plan(s)" else null,
+                    value = if (budgetsEnabled && budgets.isNotEmpty()) countOf(budgets.size, "plan") else null,
                     checked = budgetsEnabled,
                     onCheckedChange = {
                         budgetsEnabled = it
@@ -316,8 +318,8 @@ fun SettingsScreen(
                     title = "Who is read",
                     value = senderSummary(bankOnly, senderFilter, allowlist.size),
                     detail = "Two filters over the sender name, on top of the gate keywords. " +
-                        "Banks that don't brand themselves as banks — NBO, Sohar Intl, " +
-                        "Meethaq — are approved by name in the list instead.",
+                        "Banks that don't brand themselves as banks (NBO, Sohar Intl, " +
+                        "Meethaq) are approved by name in the list instead.",
                 ) {
                     SwitchLine(
                         title = "Bank senders only",
@@ -477,10 +479,22 @@ fun SettingsScreen(
             }
 
             SettingsCard("About") {
+                SwitchLine(
+                    title = "Explain screens",
+                    checked = helpOnPage,
+                    onCheckedChange = {
+                        helpOnPage = it
+                        vm.helpOnPage = it
+                        note("on-page help ${if (it) "enabled" else "disabled"}")
+                    },
+                    detail = "Screens keep their explanation behind the (i) beside the " +
+                        "title, so the page opens on the work rather than on a paragraph. " +
+                        "Turn this on to have it written out on the page as well.",
+                )
                 ValueLine(
                     title = "Riyal",
                     value = appVersion(context),
-                    detail = "Made for Oman 🇴🇲 — OMR-first, with Arabic SMS support.",
+                    detail = "Made for Oman 🇴🇲 · OMR-first, with Arabic SMS support.",
                 )
             }
 
@@ -532,7 +546,7 @@ fun SettingsScreen(
     if (confirmExport) {
         AlertDialog(
             onDismissRequest = { confirmExport = false },
-            title = { Text("Export ${txns.size} record(s)?") },
+            title = { Text("Export " + countOf(txns.size, "record") + "?") },
             text = {
                 Text(
                     if (txns.isEmpty()) {
@@ -582,9 +596,9 @@ private fun StatusCard(
             )
             Text(
                 listOfNotNull(
-                    "$records record(s)",
-                    "$accounts account(s)",
-                    messagesRead?.let { "$it message(s) read" },
+                    countOf(records, "record"),
+                    countOf(accounts, "account"),
+                    messagesRead?.let { countOf(it, "message") + " read" },
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -598,9 +612,9 @@ private fun relativeTime(millis: Long): String {
     val minutes = (System.currentTimeMillis() - millis) / 60_000
     return when {
         minutes < 1 -> "just now"
-        minutes < 60 -> "$minutes minute(s) ago"
-        minutes < 60 * 24 -> "${minutes / 60} hour(s) ago"
-        minutes < 60 * 24 * 7 -> "${minutes / (60 * 24)} day(s) ago"
+        minutes < 60 -> countOf(minutes.toInt(), "minute") + " ago"
+        minutes < 60 * 24 -> countOf((minutes / 60).toInt(), "hour") + " ago"
+        minutes < 60 * 24 * 7 -> countOf((minutes / (60 * 24)).toInt(), "day") + " ago"
         else -> "on " + settingsDayFmt.format(
             Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())
         )

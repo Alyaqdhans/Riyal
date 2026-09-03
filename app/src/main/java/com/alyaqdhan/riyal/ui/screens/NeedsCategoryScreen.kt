@@ -59,6 +59,9 @@ import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryChips
 import com.alyaqdhan.riyal.ui.compose.CategoryOrder
 import com.alyaqdhan.riyal.ui.compose.EmptyState
+import com.alyaqdhan.riyal.ui.compose.countOf
+import com.alyaqdhan.riyal.ui.compose.HelpAction
+import com.alyaqdhan.riyal.ui.compose.HelpNote
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.localDateOf
@@ -67,6 +70,20 @@ import com.alyaqdhan.riyal.ui.compose.rememberCategoryOrder
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+
+/**
+ * Everything the screen used to say on the page. It is one explanation, read once, and
+ * it sat above a list that is the reason anyone opens this screen.
+ */
+private const val HELP =
+    "One row is one place you paid, biggest first. Filing a row files every record " +
+        "under it and remembers the answer, so the same place is never asked about " +
+        "twice.\n\n" +
+        "Open a row to see its records and read the message each came from. Untick any " +
+        "and only the ticked ones are filed, with no rule saved: part of a name is not " +
+        "an answer about the name.\n\n" +
+        "\"Leave the rest under Other\" clears the list without answering it. Those " +
+        "records keep the category they fell back to, and the next scan asks again."
 
 private val recordFmt = DateTimeFormatter.ofPattern("d MMM uu")
 private val recordClockFmt = DateTimeFormatter.ofPattern("h:mm a")
@@ -95,6 +112,7 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
     val deferred by vm.deferredIds.collectAsState()
     val custom by vm.categories.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
+    val helpOnPage by vm.helpShown.collectAsState()
     // Frozen for the whole screen, not per card: working a backlog files record after
     // record, and every one of those changes the counts. The chips have to sit still
     // while the list they belong to is being emptied.
@@ -136,6 +154,7 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = { HelpAction("Needs a category", HELP) },
             )
         },
     ) { padding ->
@@ -152,11 +171,10 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                     EmptyState(
                         style = if (waiting > 0) FaceStyle.SLEEPY else FaceStyle.NORMAL,
                         title = if (waiting > 0) "Left for next time" else "Everything is filed",
-                        subtitle = when {
-                            waiting > 0 ->
-                                "$waiting record(s) are under Other for now. Nothing was " +
-                                    "decided about them, so the next scan asks again."
-                            else -> "Nothing is waiting for a category."
+                        subtitle = if (waiting > 0) {
+                            countOf(waiting, "record") + " are under Other. The next scan asks again."
+                        } else {
+                            "Nothing is waiting for a category."
                         },
                         mood = if (waiting > 0) 0f else 0.2f,
                     )
@@ -166,15 +184,18 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
 
             if (groups.isNotEmpty()) {
                 item(key = "intro") {
-                    Text(
-                        "$records record(s) from ${groups.size} place(s), biggest first. " +
-                            "Filing one files all of its records and remembers the answer. " +
-                            "Open a place to read the messages behind it, or to file only " +
-                            "some of them.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 4.dp),
-                    )
+                    Column {
+                        // What is left to do, and nothing else. The paragraph that used
+                        // to be here is behind the (i), or on the page for someone who
+                        // asked for that in Settings.
+                        Text(
+                            countOf(records, "record") + " · " + countOf(groups.size, "place"),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 4.dp),
+                        )
+                        HelpNote(HELP, visible = helpOnPage)
+                    }
                 }
             }
 
@@ -193,9 +214,7 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                     Column {
                         SectionTitle("Can't be grouped")
                         Text(
-                            "${unnamed.size} record(s) name no shop or person - the bank didn't " +
-                                "say who was paid. There is nothing to remember them by, so they " +
-                                "stay one-at-a-time from Activity.",
+                            countOf(unnamed.size, "record") + " name nobody. File them from Activity.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -236,10 +255,8 @@ private fun LeaveAsOtherDialog(
         title = { Text("Leave the rest under Other?") },
         text = {
             Text(
-                "All $records record(s) still waiting stay exactly where they are, under " +
-                    "Other. Nothing is answered and no rule is remembered.\n\n" +
-                    "They come back the next time Riyal scans, so this clears the list " +
-                    "without deciding anything."
+                "All $records stay under Other. Nothing is answered, no rule is saved, " +
+                    "and the next scan asks about them again."
             )
         },
         confirmButton = { TextButton(onClick = onConfirm) { Text("Leave under Other") } },
@@ -300,7 +317,7 @@ private fun MerchantCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        "${group.count} record(s) · " +
+                        countOf(group.count, "record") + " · " +
                             if (group.type == TxnType.INCOME) "money in" else "money out",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -326,7 +343,7 @@ private fun MerchantCard(
 
             if (marked) {
                 Text(
-                    "Asked every time - no rule is saved for this name.",
+                    "Always asked · no rule saved",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -380,39 +397,33 @@ private fun MerchantCard(
                         selectedId = "",
                         onSelect = { if (chosen.isNotEmpty()) onFile(it, chosen.toSet()) },
                     )
+                    // One short line, and only the part that is not already obvious
+                    // from the ticks above it. The reasoning moved into the help.
                     Text(
                         when {
-                            chosen.isEmpty() ->
-                                "Nothing is ticked, so there is nothing to file."
+                            chosen.isEmpty() -> "Nothing ticked"
                             chosen.size < group.count ->
-                                "Files the ${chosen.size} you ticked. The other " +
-                                    "${group.count - chosen.size} stay here, and no rule is " +
-                                    "saved - part of a name is not an answer about the name."
-                            marked ->
-                                "Files all ${group.count}. You'll be asked again next time."
-                            else ->
-                                "Files all ${group.count}, and anything from " +
-                                    "${group.merchant} later."
+                                "Files ${chosen.size} of ${group.count} · no rule saved"
+                            marked -> "Files all ${group.count} · asked again next time"
+                            else -> "Files all ${group.count} · and future ones"
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    // Marking someone while working the backlog, rather than having to
+                    // file them first and undo it afterwards. Inside the card, because
+                    // it is the rarer of the two things to do with a name and it was
+                    // costing a line of text on every row at rest.
+                    TextButton(
+                        onClick = { onAskEachTime(!marked) },
+                        contentPadding = PaddingValues(horizontal = 4.dp),
+                    ) {
+                        Text(if (marked) "Remember this name" else "Always ask for this name")
+                    }
                 }
             }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (!open) {
-                    TextButton(onClick = { open = true }) { Text("Pick a category") }
-                }
-                // Marking someone while working the backlog, rather than having to file
-                // them first and undo it afterwards.
-                TextButton(onClick = { onAskEachTime(!marked) }) {
-                    Text(if (marked) "Remember this name" else "Always ask for this name")
-                }
-            }
+
         }
     }
 }

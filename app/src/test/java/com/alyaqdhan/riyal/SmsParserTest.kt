@@ -12,7 +12,7 @@ import org.junit.Test
 
 /**
  * The parser is pure Kotlin, so the whole read-classify pipeline is verified here
- * against realistic Omani bank message shapes — including Arabic digits and the
+ * against realistic Omani bank message shapes, including Arabic digits and the
  * strict "withdraw/deposit only" gate.
  */
 class SmsParserTest {

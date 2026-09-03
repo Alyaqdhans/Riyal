@@ -48,6 +48,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Categories
@@ -57,6 +58,7 @@ import com.alyaqdhan.riyal.ui.compose.DropdownField
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
+import com.alyaqdhan.riyal.ui.compose.HelpAction
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
 import com.alyaqdhan.riyal.ui.theme.successColor
@@ -74,6 +76,15 @@ private val asOfFmt = DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a")
  * read out of SMS - a good first guess, not gospel. So the page opens by saying exactly
  * that and asking the user to vouch for the numbers before anything relies on them.
  */
+/** What the page is for, behind the (i) rather than above the work. */
+private const val HELP =
+    "The accounts Riyal found in your bank's own messages, and the balance each one " +
+        "last quoted. A balance read out of a text is a good first guess and nothing " +
+        "more, so open any account to set the real figure and the date it was true.\n\n" +
+        "An account also carries the sender names that belong to it, which is how a " +
+        "message gets routed to the right balance. Archiving one keeps its records, " +
+        "because the money still moved."
+
 @Composable
 fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
     val accounts by vm.accounts.collectAsState()
@@ -91,6 +102,7 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = { HelpAction("Bank accounts", HELP) },
             )
         },
     ) { padding ->
@@ -171,7 +183,7 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
             title = { Text("Delete ${account.displayName}?") },
             text = {
                 Text(
-                    "Its transactions are kept — the money still moved — but they'll no longer " +
+                    "Its transactions are kept, because the money still moved, but they'll no longer " +
                         "belong to any account, so they stop counting towards a balance."
                 )
             },
@@ -209,10 +221,10 @@ private fun ConfirmBanner(count: Int, anyMissingBalance: Boolean, onConfirm: () 
                     // to say the same thing three ways before the button that ends it.
                     Text(
                         if (anyMissingBalance) {
-                            "$count account(s) read from your bank's texts. One quoted no " +
-                                "balance and starts at zero — tap it to set the real figure."
+                            countOf(count, "account") + " read from your bank's texts. One quoted no " +
+                                "balance and starts at zero. Tap it to set the real figure."
                         } else {
-                            "$count account(s) read from the balances your bank's texts quote. " +
+                            countOf(count, "account") + " read from the balances your bank's texts quote. " +
                                 "Tap any that look wrong."
                         },
                         style = MaterialTheme.typography.bodySmall,
@@ -286,7 +298,7 @@ private fun AccountCard(
                 Text(account.displayName, style = MaterialTheme.typography.titleMedium)
                 if (account.needsBalance) {
                     Text(
-                        "No balance in any message — tap to set it",
+                        "No balance in any message, tap to set it",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.tertiary,
                     )

@@ -277,7 +277,7 @@ private fun BudgetTotal(
                 progress.over ->
                     "Over by ${Money.format(progress.totalSpentMinor - progress.totalCapMinor, currency)}"
                 progress.aheadOfPace ->
-                    "$elapsedPct% of the period gone, ${(used * 100).roundToInt()}% of the budget spent — running ahead"
+                    "$elapsedPct% of the period gone, ${(used * 100).roundToInt()}% of the budget spent · running ahead"
                 else ->
                     "$elapsedPct% of the period gone, ${Money.format(progress.totalCapMinor - progress.totalSpentMinor, currency)} still to spend"
             },

@@ -90,6 +90,16 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putBoolean("budgets_enabled", v).apply()
 
     /**
+     * Whether screens write their explanation onto the page as well as keeping it
+     * behind the (i) in the title bar. Off by default: a screen that explains itself
+     * at rest has to be read before it can be used, and the explanation is the same
+     * every time while the list under it is the reason for opening the screen.
+     */
+    var showHelpText: Boolean
+        get() = sp.getBoolean("help_on_page", false)
+        set(v) = sp.edit().putBoolean("help_on_page", v).apply()
+
+    /**
      * Set once the user has checked the accounts the first scan proposed. Until then
      * Home shows the confirmation prompt, because balances read out of SMS are a good
      * first guess and nothing more.
