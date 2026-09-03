@@ -7,19 +7,23 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -30,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -42,6 +47,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.core.Money
@@ -162,8 +168,9 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                 item(key = "intro") {
                     Text(
                         "$records record(s) from ${groups.size} place(s), biggest first. " +
-                            "Filing one files all of its records, and remembers the answer for " +
-                            "next month - or open it and pick only the records you mean.",
+                            "Filing one files all of its records and remembers the answer. " +
+                            "Open a place to read the messages behind it, or to file only " +
+                            "some of them.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 4.dp),
@@ -266,7 +273,16 @@ private fun MerchantCard(
     var open by rememberSaveable(group.merchant, group.type) { mutableStateOf(false) }
     // Keyed on the ids, so a card whose records changed under it starts from "all of
     // them" again rather than holding a selection of records that are no longer there.
-    var excluded by remember(group.txnIds) { mutableStateOf(emptySet<String>()) }
+    //
+    // Saveable, not merely remembered: a rotation or a theme change rebuilds the
+    // activity, and silently restoring every tick under someone who had just unticked
+    // three of ten records turns their next tap into filing all ten. Held as a list
+    // because that is what survives a Bundle.
+    val cardKey = remember(group.txnIds) { group.txnIds.joinToString(",") }
+    var excluded by rememberSaveable(cardKey) { mutableStateOf(listOf<String>()) }
+    // Which messages are open. Several at once, because deciding between two records
+    // usually means reading both.
+    var showing by rememberSaveable(cardKey) { mutableStateOf(listOf<String>()) }
     val chosen = remember(group.txnIds, excluded) { group.txnIds.filter { it !in excluded } }
 
     Card(Modifier.fillMaxWidth().popIn()) {
@@ -327,6 +343,7 @@ private fun MerchantCard(
                         RecordRow(
                             txn = txn,
                             checked = txn.id !in excluded,
+                            showing = txn.id in showing,
                             onToggle = {
                                 excluded = if (txn.id in excluded) {
                                     excluded - txn.id
@@ -334,11 +351,18 @@ private fun MerchantCard(
                                     excluded + txn.id
                                 }
                             },
+                            onShow = {
+                                showing = if (txn.id in showing) {
+                                    showing - txn.id
+                                } else {
+                                    showing + txn.id
+                                }
+                            },
                         )
                     }
                     // Only worth a control once there is a mixed state to get out of.
                     if (excluded.isNotEmpty()) {
-                        TextButton(onClick = { excluded = emptySet() }) {
+                        TextButton(onClick = { excluded = emptyList() }) {
                             Text("Select all ${group.count}")
                         }
                     }
@@ -393,33 +417,99 @@ private fun MerchantCard(
     }
 }
 
-/** One record inside a merchant's card: enough to recognise it, and a tick to leave it out. */
+/**
+ * One record inside a merchant's card: enough to recognise it, a tick to leave it out,
+ * and the message it was read from.
+ *
+ * The message is the whole point of the row. "ALSUTUE ALAMTE TRAD BAH" is not a shop
+ * anyone recognises, and a category picked without reading what the bank actually said
+ * is a guess - so the text is one tap away, on the row itself, rather than somewhere
+ * else in the app that loses the place in the backlog to get to.
+ *
+ * The tick and the message are separate targets on purpose. Tapping a row to read it
+ * must never quietly change what is about to be filed, so selection stays on the
+ * checkbox alone and everything else in the row opens the text.
+ */
 @Composable
-private fun RecordRow(txn: Txn, checked: Boolean, onToggle: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onToggle),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(checked = checked, onCheckedChange = { onToggle() })
-        Column(Modifier.weight(1f)) {
+private fun RecordRow(
+    txn: Txn,
+    checked: Boolean,
+    showing: Boolean,
+    onToggle: () -> Unit,
+    onShow: () -> Unit,
+) {
+    Column {
+        Row(
+            Modifier.fillMaxWidth().clickable(onClick = onShow),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(checked = checked, onCheckedChange = { onToggle() })
+            Column(Modifier.weight(1f)) {
+                Text(
+                    recordFmt.format(localDateOf(txn.atMillis)),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    recordClockFmt.format(
+                        Instant.ofEpochMilli(txn.atMillis).atZone(ZoneId.systemDefault())
+                    ) + " · " + txn.sender,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Text(
-                recordFmt.format(localDateOf(txn.atMillis)),
+                Money.formatAmount(txn.amountMinor, txn.currency),
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Text(
-                recordClockFmt.format(
-                    Instant.ofEpochMilli(txn.atMillis).atZone(ZoneId.systemDefault())
-                ) + " · " + txn.sender,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            Icon(
+                Icons.Outlined.MailOutline,
+                contentDescription = if (showing) "Hide the message" else "Read the message",
+                tint = if (showing) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier.size(20.dp),
             )
         }
-        Text(
-            Money.formatAmount(txn.amountMinor, txn.currency),
-            style = MaterialTheme.typography.bodyMedium,
-        )
+
+        AnimatedVisibility(
+            visible = showing,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            // Quoted, not restated: the bank's own words, in a block of their own, with
+            // no attempt to tidy the mixed Arabic and English the message arrived in.
+            //
+            // Outlined rather than only tinted. Inside a card the container colours sit
+            // a shade apart at most, which in the dark theme left the message looking
+            // like loose text rather than something quoted - the border reads as an
+            // edge in both themes, whatever the fill underneath happens to be.
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                shape = MaterialTheme.shapes.medium,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+            ) {
+                SelectionContainer {
+                    Text(
+                        txn.body,
+                        // The app's layout is left-to-right, so an Arabic message was
+                        // being aligned to the left edge - every line ending where an
+                        // Arabic reader starts. Content direction lets each message
+                        // take the side its own first letter asks for, which is what
+                        // makes a bilingual inbox readable in one place.
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            textDirection = TextDirection.Content,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    )
+                }
+            }
+        }
     }
 }
