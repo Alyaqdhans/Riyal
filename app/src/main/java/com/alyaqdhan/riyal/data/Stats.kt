@@ -317,11 +317,13 @@ object Stats {
         archived: Set<String> = emptySet(),
     ): List<MerchantGroup> = unfiled(txns, archived)
         .filter { !it.merchant.isNullOrBlank() && it.currency == currency }
-        .groupBy { it.merchant!!.trim().lowercase() to it.type }
+        // Keyed the way a rule is keyed, so the row the user answers and the rule that
+        // answer saves cover the same records. It also folds the spellings one bank
+        // produces in two languages into the single shop they are.
+        .groupBy { UserRule.patternOf(it.merchant!!) to it.type }
         .map { (key, list) ->
             MerchantGroup(
-                // The spelling the bank used, not the lowercased key.
-                merchant = list.first().merchant!!.trim(),
+                merchant = displayName(list),
                 type = key.second,
                 count = list.size,
                 amountMinor = list.sumOf { it.amountMinor },
@@ -330,6 +332,19 @@ object Stats {
             )
         }
         .sortedWith(compareByDescending<MerchantGroup> { it.amountMinor }.thenBy { it.merchant })
+
+    /**
+     * Which of a group's spellings to put on the row. The bank's own words and its own
+     * capitalisation, never the flattened key - but when it used several, the one it
+     * used most, and on a tie the shortest. Records stored before the parser learned to
+     * drop a dangling connector still carry one, so the spellings are cleaned first:
+     * the row should not be titled with the leftover the grouping just saw past.
+     */
+    private fun displayName(list: List<Txn>): String =
+        list.groupingBy { UserRule.stripDangling(it.merchant!!) }.eachCount()
+            .entries
+            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key.length })
+            .first().key
 
     // ── the shape of a period's spending ──
 

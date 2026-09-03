@@ -3,6 +3,7 @@ package com.alyaqdhan.riyal
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
+import com.alyaqdhan.riyal.data.UserRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -130,4 +131,40 @@ class UnfiledTest {
         assertEquals(1, groups.single().count)
         assertTrue(groups.single().amountMinor == 1_000L)
     }
+    @Test
+    fun `two spellings of one shop are one decision`() {
+        // The Arabic message named the shop and stopped; the English one ran on into
+        // the account, and the leftover "in" made it a second shop with its own row.
+        val groups = Stats.unfiledByMerchant(
+            listOf(
+                txn("1", 25_000, "ALIS SALIM"),
+                txn("2", 25_000, "ALIS SALIM in"),
+                txn("3", 10_000, "alis salim"),
+            ),
+            "OMR",
+        )
+        assertEquals(1, groups.size)
+        assertEquals(3, groups.single().count)
+        assertEquals(60_000L, groups.single().amountMinor)
+        // The bank's own capitalisation, and the spelling it used most.
+        assertEquals("ALIS SALIM", groups.single().merchant)
+        assertEquals(listOf("1", "2", "3"), groups.single().txnIds)
+    }
+
+    @Test
+    fun `a connector inside the name does not merge two shops`() {
+        val groups = Stats.unfiledByMerchant(
+            listOf(txn("1", 1_000, "Made in Oman"), txn("2", 1_000, "Made")),
+            "OMR",
+        )
+        assertEquals(2, groups.size)
+    }
+
+    @Test
+    fun `a name that is nothing but connectors still keys to something`() {
+        // A blank pattern is a rule that matches every message ever sent.
+        assertTrue(UserRule.patternOf("in").isNotBlank())
+        assertTrue(UserRule.patternOf("  to  ").isNotBlank())
+    }
+
 }
