@@ -1,0 +1,5 @@
+<resources>
+    <!-- Two identical icons in the launcher is how a test build gets mistaken for the
+         real one. The debug build says so on its own icon. -->
+    <string name="app_name">Riyal debug</string>
+</resources>
