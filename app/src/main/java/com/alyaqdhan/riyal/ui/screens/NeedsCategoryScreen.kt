@@ -140,15 +140,19 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
         ) {
             if (groups.isEmpty() && unnamed.isEmpty()) {
                 item(key = "empty") {
+                    // "Everything is filed" over "nothing was decided about them" is
+                    // the exact confusion the dialog was written to prevent, so the
+                    // title has to know the difference too.
                     EmptyState(
-                        style = FaceStyle.NORMAL,
-                        title = "Everything is filed",
+                        style = if (waiting > 0) FaceStyle.SLEEPY else FaceStyle.NORMAL,
+                        title = if (waiting > 0) "Left for next time" else "Everything is filed",
                         subtitle = when {
                             waiting > 0 ->
                                 "$waiting record(s) are under Other for now. Nothing was " +
                                     "decided about them, so the next scan asks again."
                             else -> "Nothing is waiting for a category."
                         },
+                        mood = if (waiting > 0) 0f else 0.2f,
                     )
                 }
                 return@LazyColumn

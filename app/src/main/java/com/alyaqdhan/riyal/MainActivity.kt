@@ -130,6 +130,7 @@ class MainActivity : AppCompatActivity() {
             R.id.onboardingFragment,
             R.id.reviewFragment,
             R.id.accountsFragment,
+            R.id.needsCategoryFragment,
             R.id.categoriesFragment,
             R.id.categoryDetailFragment,
         )
