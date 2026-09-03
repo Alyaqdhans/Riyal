@@ -111,6 +111,25 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 }
 
 /**
+ * A masked counterparty name, shortened for display only.
+ *
+ * Omani banks blank the middle of a name: "SAIFXXXXXXXXXXHMED", and sometimes all of
+ * it after the first few letters. Rendered whole, the X's fill the row and the end of
+ * the name - the half that identifies it - is what gets ellipsed away. Collapsing the
+ * run puts both readable ends back on screen: "SAIF…HMED".
+ *
+ * Display only. The stored merchant string is untouched, because rules and the
+ * backlog's grouping key on it and a name shortened in storage would key differently
+ * from the same name in a message.
+ *
+ * Four is the shortest run worth collapsing: it saves nothing below that, and real
+ * names do carry two or three capitals in a row.
+ */
+private val maskedRun = Regex("X{4,}")
+
+fun unmasked(name: String): String = maskedRun.replace(name.trim(), "…")
+
+/**
  * One transaction row; tap to re-categorize.
  *
  * A transfer is drawn deliberately differently: no red, no green, no leading sign.
@@ -159,7 +178,7 @@ fun TxnRow(
             CategoryBadge(category.id)
             Column(Modifier.weight(1f)) {
                 Text(
-                    if (transfer) "Transfer" else txn.merchant ?: category.name,
+                    if (transfer) "Transfer" else txn.merchant?.let(::unmasked) ?: category.name,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
