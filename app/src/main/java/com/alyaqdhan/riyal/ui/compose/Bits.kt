@@ -47,6 +47,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -110,6 +111,25 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 }
 
 /**
+ * A masked counterparty name, shortened for display only.
+ *
+ * Omani banks blank the middle of a name: "SAIFXXXXXXXXXXHMED", and sometimes all of
+ * it after the first few letters. Rendered whole, the X's fill the row and the end of
+ * the name - the half that identifies it - is what gets ellipsed away. Collapsing the
+ * run puts both readable ends back on screen: "SAIF…HMED".
+ *
+ * Display only. The stored merchant string is untouched, because rules and the
+ * backlog's grouping key on it and a name shortened in storage would key differently
+ * from the same name in a message.
+ *
+ * Four is the shortest run worth collapsing: it saves nothing below that, and real
+ * names do carry two or three capitals in a row.
+ */
+private val maskedRun = Regex("X{4,}")
+
+fun unmasked(name: String): String = maskedRun.replace(name.trim(), "…")
+
+/**
  * One transaction row; tap to re-categorize.
  *
  * A transfer is drawn deliberately differently: no red, no green, no leading sign.
@@ -131,8 +151,16 @@ fun TxnRow(
     val transfer = txn.type == TxnType.TRANSFER
     val expense = txn.type == TxnType.EXPENSE
 
-    fun accountName(id: String?): String? =
-        id?.let { wanted -> accounts.firstOrNull { it.id == wanted }?.displayName }
+    // TxnRow already drops the date when a day header states it and the account when a
+    // filter has narrowed to one. A bank name on every row of a one-bank inbox is the
+    // same fact stated for the same reason, so it goes the same way.
+    val oneBank = remember(accounts) {
+        accounts.mapNotNull { it.bankName.trim().takeIf(String::isNotEmpty) }.distinct().size <= 1
+    }
+
+    fun accountName(id: String?): String? = id?.let { wanted ->
+        accounts.firstOrNull { it.id == wanted }?.let { if (oneBank) it.shortName else it.displayName }
+    }
 
     Surface(
         onClick = onClick,
@@ -150,7 +178,7 @@ fun TxnRow(
             CategoryBadge(category.id)
             Column(Modifier.weight(1f)) {
                 Text(
-                    if (transfer) "Transfer" else txn.merchant ?: category.name,
+                    if (transfer) "Transfer" else txn.merchant?.let(::unmasked) ?: category.name,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -192,11 +220,19 @@ fun TxnRow(
                         else -> successColor()
                     },
                 )
-                Text(
-                    if (transfer) "not counted" else category.name,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // Only the transfer note. The category was already stated by the badge
+                // at the head of the row, and saying it again in words cost about a
+                // third of the width - which is why the merchant and the account line
+                // were both ellipsed at once, leaving two Oman Oil stations looking
+                // identical. "not counted" is not a repeat of anything: it is why a
+                // transfer's amount is neither red nor green.
+                if (transfer) {
+                    Text(
+                        "not counted",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
