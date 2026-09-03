@@ -15,10 +15,11 @@ import kotlinx.coroutines.launch
  * out of future scans too - so the prompt says which of the three things is about to
  * happen rather than a bare "Remove?".
  */
-internal fun deletePromptFor(txn: Txn): String = when {
-    txn.manual -> "Delete this?"
-    txn.isTransfer -> "Remove both legs?"
-    else -> "Remove for good?"
+/** The word on the revealed button. A label now, not a question: nothing is asked. */
+internal fun deleteLabelFor(txn: Txn): String = when {
+    txn.manual -> "Delete"
+    txn.isTransfer -> "Remove both"
+    else -> "Remove"
 }
 
 internal fun archiveWithUndo(

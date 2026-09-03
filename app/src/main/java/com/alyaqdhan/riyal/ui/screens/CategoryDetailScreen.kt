@@ -187,7 +187,7 @@ fun CategoryDetailScreen(
                         archived = txn.id in archivedIds,
                         onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
                         onDelete = { removeForGood(vm, snackbar, scope, txn) },
-                        deletePrompt = deletePromptFor(txn),
+                        deleteLabel = deleteLabelFor(txn),
                     ) {
                         TxnRow(txn, onClick = { editing = txn }, accounts = accounts)
                     }

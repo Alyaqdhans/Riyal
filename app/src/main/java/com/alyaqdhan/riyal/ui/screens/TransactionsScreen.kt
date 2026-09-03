@@ -207,7 +207,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            "Swipe a row: right to archive it, left to remove it.",
+                            "Swipe a row, then tap Archive or Remove.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             modifier = Modifier.weight(1f),
@@ -251,7 +251,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                                     archived = txn.id in archivedIds,
                                     onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
                                     onDelete = { removeForGood(vm, snackbar, scope, txn) },
-                                    deletePrompt = deletePromptFor(txn),
+                                    deleteLabel = deleteLabelFor(txn),
                                     modifier = Modifier.animateItem(),
                                 ) {
                                     TxnRow(
@@ -270,7 +270,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                                 archived = txn.id in archivedIds,
                                 onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
                                 onDelete = { removeForGood(vm, snackbar, scope, txn) },
-                                deletePrompt = deletePromptFor(txn),
+                                deleteLabel = deleteLabelFor(txn),
                                 modifier = Modifier.animateItem(),
                             ) {
                                 TxnRow(
