@@ -59,6 +59,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Category
@@ -66,6 +67,7 @@ import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.HelpAction
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.CategoryChips
 import com.alyaqdhan.riyal.ui.compose.CategoryVisuals
@@ -85,6 +87,14 @@ import kotlin.math.roundToInt
  * This is also where custom categories are created and edited - it used to be a block
  * buried in Settings, which is a strange place to manage something you look at daily.
  */
+/** What the page is for, behind the (i) rather than above the work. */
+private const val HELP =
+    "Every category and what it came to in the period shown, spending and income " +
+        "kept apart. Open one to see its records; make your own with the button, and " +
+        "edit or delete the ones you made.\n\n" +
+        "Below them are the names Riyal has learned: the ones it files without asking, " +
+        "and the ones you asked to be asked about every time."
+
 @Composable
 fun CategoriesScreen(
     vm: MainViewModel,
@@ -122,6 +132,7 @@ fun CategoriesScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = { HelpAction("Categories", HELP) },
             )
         },
     ) { padding ->
@@ -171,7 +182,7 @@ fun CategoriesScreen(
                 if (moved > 0) {
                     Text(
                         "${Money.format(moved, currency)} moved between your own accounts in this " +
-                            "period. Transfers have no category — they're neither spending nor income.",
+                            "period. Transfers have no category: they're neither spending nor income.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 12.dp),
@@ -331,7 +342,7 @@ private fun CategoryRow(
                 }
                 Text(
                     if (count == 0) "nothing in this period"
-                    else "$count record(s) · ${(fraction * 100).roundToInt()}% of ${if (income) "income" else "spending"}",
+                    else countOf(count, "record") + " · ${(fraction * 100).roundToInt()}% of ${if (income) "income" else "spending"}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

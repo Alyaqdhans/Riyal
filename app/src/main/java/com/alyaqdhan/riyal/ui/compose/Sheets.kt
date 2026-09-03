@@ -67,6 +67,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Account
@@ -177,7 +178,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                         )
                         if (s.summary.transfers > 0) {
                             SummaryPill(
-                                "⇄ ${s.summary.transfers} possible transfer(s)",
+                                "⇄ " + countOf(s.summary.transfers, "possible transfer"),
                                 MaterialTheme.colorScheme.tertiaryContainer,
                                 MaterialTheme.colorScheme.onTertiaryContainer,
                             )

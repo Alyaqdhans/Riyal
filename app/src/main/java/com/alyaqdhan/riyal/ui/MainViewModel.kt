@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.RiyalApp
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
@@ -227,7 +228,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             accounts.value.filter { it.needsBalance }.forEach {
                 store.updateAccount(it.copy(needsBalance = false))
             }
-            Verbose.ok("accounts confirmed by you: ${accounts.value.size} account(s) are now the source of your balances")
+            Verbose.ok("accounts confirmed by you: " + countOf(accounts.value.size, "account") + " are now the source of your balances")
             Verbose.flush()
         }
     }
@@ -313,6 +314,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _budgetsOn = MutableStateFlow(prefs.budgetsEnabled)
     val budgetsOn: StateFlow<Boolean> = _budgetsOn
 
+    /** Whether a screen also writes its explanation onto the page. See [Prefs.showHelpText]. */
+    var helpOnPage: Boolean
+        get() = prefs.showHelpText
+        set(v) {
+            prefs.showHelpText = v
+            _helpOnPage.value = v
+        }
+
+    private val _helpOnPage = MutableStateFlow(prefs.showHelpText)
+    val helpShown: StateFlow<Boolean> = _helpOnPage
+
     fun addBudget(label: String, startMillis: Long, endExclusiveMillis: Long) =
         viewModelScope.launch(Dispatchers.IO) {
             store.addBudget(
@@ -390,7 +402,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val changed = store.addRule(UserRule(alsoRulePattern.trim().lowercase(), categoryId))
                 Verbose.ok(
                     "rule saved: \"${alsoRulePattern.trim().lowercase()}\" → ${Categories.byId(categoryId).name}" +
-                        " · re-categorized $changed past transaction(s)"
+                        " · re-categorized " + countOf(changed, "past transaction")
                 )
             }
             Verbose.flush()
@@ -416,7 +428,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val pattern = UserRule.patternOf(group.merchant)
             val filed = store.setCategories(txnIds, categoryId)
             Verbose.ok(
-                "filed by you: ${txnIds.size} record(s) from \"${group.merchant}\" → " +
+                "filed by you: " + countOf(txnIds.size, "record") + " from \"${group.merchant}\" → " +
                     Categories.byId(categoryId).name
             )
             // A rule is a statement about the name, so it may only be saved when the
@@ -427,7 +439,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             when {
                 !wholeName -> Verbose.info(
                     "no rule saved for \"$pattern\": you filed ${txnIds.size} of " +
-                        "${group.count} record(s) from this name, so it does not all belong " +
+                        countOf(group.count, "record") + " from this name, so it does not all belong " +
                         "in one place and the rest are still waiting"
                 )
                 pattern in store.askEachTime.value -> Verbose.info(
@@ -438,7 +450,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     val byRule = store.addRule(UserRule(pattern, categoryId))
                     Verbose.ok(
                         "rule saved: \"$pattern\" → ${Categories.byId(categoryId).name} · " +
-                            "$filed record(s) filed now, $byRule more re-categorized, and anything " +
+                            countOf(filed, "record") + " filed now, $byRule more re-categorized, and anything " +
                             "matching from now on lands there without being asked"
                     )
                 }
@@ -455,7 +467,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun deferAll(txnIds: Collection<String>) = viewModelScope.launch(Dispatchers.IO) {
         val set = store.deferCategory(txnIds)
         Verbose.info(
-            "$set record(s) left under Other for now · they were not answered, and the " +
+            countOf(set, "record") + " left under Other for now · they were not answered, and the " +
                 "next scan asks about them again"
         )
         Verbose.flush()
@@ -509,7 +521,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             return@launch
         }
         val changed = store.addRule(UserRule(key, categoryId))
-        Verbose.ok("rule saved: \"$key\" → ${Categories.byId(categoryId).name} · re-categorized $changed transaction(s)")
+        Verbose.ok("rule saved: \"$key\" → ${Categories.byId(categoryId).name} · re-categorized " + countOf(changed, "transaction"))
         Verbose.flush()
     }
 
@@ -517,7 +529,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val changed = store.removeRule(pattern)
         Verbose.info(
             "rule removed: \"$pattern\"" +
-                if (changed > 0) " · $changed record(s) it had filed were answered again" else ""
+                if (changed > 0) " · " + countOf(changed, "record") + " it had filed were answered again" else ""
         )
         Verbose.flush()
     }
@@ -535,7 +547,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             if (on) {
                 "\"$pattern\" will be asked about every time, no rule will be saved for it" +
                     if (undone > 0) {
-                        " · its rule is gone and $undone record(s) it had filed were answered again"
+                        " · its rule is gone and " + countOf(undone, "record") + " it had filed were answered again"
                     } else ""
             } else {
                 "\"$pattern\" can be remembered by a rule again"
@@ -574,7 +586,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.info(
             "review item dismissed by you (${item.sender}, ${item.reason})" +
                 if (alsoSimilar) {
-                    " · remembered: $extra similar message(s) dismissed with it, future ones " +
+                    " · remembered: " + countOf(extra, "similar message") + " dismissed with it, future ones " +
                         "will be auto-dismissed (restore any time in Review)"
                 } else ""
         )
@@ -585,7 +597,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val extra = store.restoreReview(item)
         Verbose.info(
             "review item restored by you" +
-                if (extra > 0) " together with $extra similar message(s), that kind is no longer auto-dismissed" else ""
+                if (extra > 0) " together with " + countOf(extra, "similar message") + ", that kind is no longer auto-dismissed" else ""
         )
         Verbose.flush()
     }
@@ -691,7 +703,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 }
             }
-            Verbose.ok("exported ${list.size} transaction(s) to the CSV file you picked, stayed on your device")
+            Verbose.ok("exported " + countOf(list.size, "transaction") + " to the CSV file you picked, stayed on your device")
         } catch (e: Exception) {
             Verbose.fail("CSV export failed: ${e.message}")
         }

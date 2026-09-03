@@ -40,6 +40,16 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 
 private val rowTimeFmt = DateTimeFormatter.ofPattern("dd MMM · h:mm a")
 // For a list already broken into days: the header above the row states the date, so
@@ -257,4 +267,59 @@ fun SummaryPill(text: String, container: Color, content: Color) {
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
         )
     }
+}
+
+/**
+ * "1 record(s)" is not English, and it appears wherever a count does. One place to
+ * decide it, so a screen counting things never has to think about the s.
+ */
+fun countOf(n: Int, noun: String): String = "$n $noun" + if (n == 1) "" else "s"
+
+// ─────────────────────────── a screen's own explanation ───────────────────────────
+
+/**
+ * What a screen would have said about itself, behind the (i) in its title bar.
+ *
+ * Settings learned this first: an explanation is read once and a screen is used many
+ * times, so a paragraph that sits on the page at rest is read once and then scrolled
+ * past forever after, having pushed the actual work down the screen every time. The
+ * same paragraph one tap away costs nothing to the people who already know.
+ *
+ * The dialog, not a tooltip, because the text is a paragraph and a tooltip that needs
+ * scrolling is worse than no tooltip.
+ */
+@Composable
+fun HelpAction(title: String, help: String) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    IconButton(onClick = { open = true }) {
+        Icon(
+            Icons.Outlined.Info,
+            contentDescription = "About $title",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    if (open) {
+        AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text(title) },
+            text = { Text(help) },
+            confirmButton = { TextButton(onClick = { open = false }) { Text("Got it") } },
+        )
+    }
+}
+
+/**
+ * The same text on the page, for someone who asked in Settings to be told rather than
+ * to go looking. Off by default: a screen that explains itself at rest has to be read
+ * before it can be used.
+ */
+@Composable
+fun HelpNote(help: String, visible: Boolean, modifier: Modifier = Modifier) {
+    if (!visible) return
+    Text(
+        help,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(vertical = 4.dp),
+    )
 }

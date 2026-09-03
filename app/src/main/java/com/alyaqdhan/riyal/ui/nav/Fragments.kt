@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.navOptions
+import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.ScanHistory
 import com.alyaqdhan.riyal.core.Verbose
@@ -304,7 +305,7 @@ class OnboardingFragment : ScreenFragment() {
             "you chose to read " + when (choice) {
                 ScanHistory.ALL -> "the whole inbox"
                 ScanHistory.FROM_NOW -> "nothing older than today; history starts here"
-                else -> "the last ${choice.months} month(s)"
+                else -> "the last " + countOf(choice.months, "month")
             }
         )
         Verbose.flush()
