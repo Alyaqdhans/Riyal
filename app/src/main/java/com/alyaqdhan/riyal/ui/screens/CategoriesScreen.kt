@@ -52,6 +52,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -110,6 +111,7 @@ fun CategoriesScreen(
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
     var slice by remember { mutableStateOf(TimeSlice.thisMonth()) }
     var editing by remember { mutableStateOf<Category?>(null) }
+    var showEmpty by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf<Category?>(null) }
     var addingKeyword by remember { mutableStateOf(false) }
 
@@ -136,6 +138,11 @@ fun CategoriesScreen(
             )
         },
     ) { padding ->
+        // Counted outside the list: it decides whether the toggle is worth a row at all.
+        val hidden = remember(counts) {
+            (Categories.forType(TxnType.EXPENSE) + Categories.forType(TxnType.INCOME))
+                .count { (counts[it.id] ?: 0) == 0 }
+        }
         LazyColumn(
             modifier = Modifier.padding(padding),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
@@ -146,7 +153,7 @@ fun CategoriesScreen(
             }
 
             item(key = "expense-title") { SectionTitle("Spending") }
-            val expenseCats = Categories.forType(TxnType.EXPENSE)
+            val expenseCats = shown(Categories.forType(TxnType.EXPENSE), counts, showEmpty)
             items(expenseCats, key = { "e-" + it.id }) { cat ->
                 val row = expenses.firstOrNull { it.categoryId == cat.id }
                 CategoryRow(
@@ -162,7 +169,7 @@ fun CategoriesScreen(
             }
 
             item(key = "income-title") { SectionTitle("Income") }
-            val incomeCats = Categories.forType(TxnType.INCOME)
+            val incomeCats = shown(Categories.forType(TxnType.INCOME), counts, showEmpty)
             items(incomeCats, key = { "i-" + it.id }) { cat ->
                 val row = incomes.firstOrNull { it.categoryId == cat.id }
                 CategoryRow(
@@ -175,6 +182,24 @@ fun CategoriesScreen(
                     onClick = { onOpenCategory(cat.id, slice) },
                     onEdit = if (cat.custom) ({ editing = cat }) else null,
                 )
+            }
+
+            // The categories with nothing in them are still worth having - they are what
+            // a record gets filed into next - but this screen is for reading a period,
+            // and eight rows of "nothing in this period · OMR 0.000" is most of what was
+            // on it. They are one tap away instead.
+            if (hidden > 0 || showEmpty) {
+                item(key = "show-empty") {
+                    TextButton(
+                        onClick = { showEmpty = !showEmpty },
+                        modifier = Modifier.padding(top = 4.dp),
+                    ) {
+                        Text(
+                            if (showEmpty) "Hide empty categories"
+                            else "Show all categories ($hidden empty)"
+                        )
+                    }
+                }
             }
 
             item(key = "transfers") {
@@ -652,4 +677,19 @@ private fun CategoryEditorDialog(
             }
         },
     )
+}
+
+/**
+ * The categories worth a row, most spent first, with the empty ones dropped unless
+ * asked for. Ordering by what is in them rather than by the order they were declared
+ * is the point: the one category carrying the period should not be the ninth row.
+ */
+private fun shown(
+    cats: List<Category>,
+    counts: Map<String, Int>,
+    showEmpty: Boolean,
+): List<Category> {
+    val used = cats.filter { (counts[it.id] ?: 0) > 0 }
+        .sortedByDescending { counts[it.id] ?: 0 }
+    return if (showEmpty) used + cats.filterNot { it in used } else used
 }
