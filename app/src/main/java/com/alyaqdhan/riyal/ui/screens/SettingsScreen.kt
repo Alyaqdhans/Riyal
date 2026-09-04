@@ -473,8 +473,11 @@ fun SettingsScreen(
                     title = "Where it lives",
                     value = "this phone only",
                     detail = "Everything lives in one JSON file inside this app's private " +
-                        "storage. Backups are disabled. The manifest declares no INTERNET " +
-                        "permission, verifiable with any APK inspector.",
+                        "storage, and backups are disabled. The app does reach the network, " +
+                        "for one thing: it asks GitHub whether a newer release exists, and " +
+                        "downloads that APK if you ask it to. Nothing goes the other way. No " +
+                        "record, message, account or figure is ever put in a request, and " +
+                        "there is no analytics and no backend.",
                 )
             }
 
