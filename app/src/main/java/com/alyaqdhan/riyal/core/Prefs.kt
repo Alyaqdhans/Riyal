@@ -145,6 +145,15 @@ class Prefs(context: Context) {
         get() = sp.getStringSet("kw_income", null)?.toSet() ?: DEFAULT_INCOME_KEYWORDS
         set(v) = sp.edit().putStringSet("kw_income", v.toSet()).apply()
 
+    /**
+     * When GitHub was last asked about a release. At most once a day: a new version
+     * appears a few times a year, and a request on every launch would be a daily habit
+     * of talking to a server for an answer that is nearly always "no".
+     */
+    var lastUpdateCheckAt: Long
+        get() = sp.getLong("last_update_check_at", 0L)
+        set(v) = sp.edit().putLong("last_update_check_at", v).apply()
+
     var lastScanAt: Long
         get() = sp.getLong("last_scan_at", 0L)
         set(v) = sp.edit().putLong("last_scan_at", v).apply()

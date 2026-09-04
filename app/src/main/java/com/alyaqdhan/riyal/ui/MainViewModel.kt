@@ -22,6 +22,8 @@ import com.alyaqdhan.riyal.data.ScanSummary
 import com.alyaqdhan.riyal.data.TransferProposal
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
+import com.alyaqdhan.riyal.data.UpdateApi
+import com.alyaqdhan.riyal.data.Updates
 import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import java.time.Instant
@@ -313,6 +315,53 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _budgetsOn = MutableStateFlow(prefs.budgetsEnabled)
     val budgetsOn: StateFlow<Boolean> = _budgetsOn
+
+    // ─────────────────────────── updates ───────────────────────────
+
+    /**
+     * The release GitHub is offering, once it has been found to be newer than what is
+     * installed. Null the rest of the time, which is nearly always, and the Settings row
+     * shows the current version and says nothing.
+     */
+    private val _update = MutableStateFlow<Updates.Release?>(null)
+    val update: StateFlow<Updates.Release?> = _update
+
+    /**
+     * Asks GitHub whether there is a newer release, at most once a day.
+     *
+     * Everything about this is quiet. A check that fails - offline, no releases yet, a
+     * rate limit - writes a line in the verbose log and leaves the Settings row exactly
+     * as it was, because an update check nobody asked for is not something to interrupt
+     * anyone about. [force] is the user tapping "Check now", which skips the throttle
+     * and is the only path that a person is waiting on.
+     */
+    fun checkForUpdate(currentVersion: String, force: Boolean = false) =
+        viewModelScope.launch(Dispatchers.IO) {
+            val since = System.currentTimeMillis() - prefs.lastUpdateCheckAt
+            if (!force && since < DAY_MS) return@launch
+            prefs.lastUpdateCheckAt = System.currentTimeMillis()
+
+            val release = UpdateApi.latestRelease()
+            if (release == null) {
+                Verbose.flush()
+                return@launch
+            }
+            if (Updates.isNewer(release.tag, currentVersion)) {
+                _update.value = release
+                Verbose.ok(
+                    "${release.tag} is newer than the ${currentVersion} you have · " +
+                        if (release.hasApk) {
+                            "Settings offers to download it"
+                        } else {
+                            "but the release carries no APK, so there is nothing to download"
+                        }
+                )
+            } else {
+                _update.value = null
+                Verbose.info("you are on ${currentVersion}, which is the latest (GitHub has ${release.tag})")
+            }
+            Verbose.flush()
+        }
 
     /** Whether a screen also writes its explanation onto the page. See [Prefs.showHelpText]. */
     var helpOnPage: Boolean
@@ -711,4 +760,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun csv(s: String) = "\"" + s.replace("\"", "\"\"") + "\""
+
+    private companion object {
+        /** How often GitHub is asked. A release lands a few times a year. */
+        const val DAY_MS = 24L * 60 * 60 * 1000
+    }
+
 }
