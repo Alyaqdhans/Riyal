@@ -2,6 +2,10 @@ package com.alyaqdhan.riyal.ui
 
 import android.Manifest
 import android.app.Application
+import android.app.DownloadManager
+import android.content.Intent
+import android.os.Environment
+import androidx.core.net.toUri
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.content.ContextCompat
@@ -362,6 +366,73 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             Verbose.flush()
         }
+
+    /**
+     * Puts the release's APK in the phone's public Downloads folder and opens the
+     * Downloads screen so the user can tap it themselves.
+     *
+     * DownloadManager does the work: progress, retries, its own notification, and no
+     * storage permission at all for this destination. What it deliberately does not do
+     * is install anything. The app asks for neither REQUEST_INSTALL_PACKAGES nor a
+     * FileProvider, so the last step is a person choosing to install a file they can
+     * see - which is also the step where they will be told, by Android, if the APK is
+     * signed with a different key than the copy they already have.
+     *
+     * Returns false when there is nothing to download, so the caller can say so rather
+     * than opening an empty Downloads screen.
+     */
+    fun downloadUpdate(): Boolean {
+        val release = _update.value ?: return false
+        val url = release.apkUrl ?: run {
+            Verbose.fail(
+                "${release.tag} has no APK attached to it, so there is nothing to " +
+                    "download here - the release page on GitHub will have it"
+            )
+            Verbose.flush()
+            return false
+        }
+        val context = getApplication<Application>()
+        return try {
+            val name = release.apkName ?: "Riyal-${release.tag}.apk"
+            val request = DownloadManager.Request(url.toUri())
+                .setTitle(name)
+                .setDescription("Riyal ${release.tag}")
+                .setMimeType("application/vnd.android.package-archive")
+                .setNotificationVisibility(
+                    DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                )
+                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
+            val manager = context.getSystemService(DownloadManager::class.java)
+            manager.enqueue(request)
+            Verbose.ok(
+                "downloading $name to your Downloads folder · nothing installs on its " +
+                    "own, tap the file there when it has finished"
+            )
+            Verbose.flush()
+            openDownloads(context)
+            true
+        } catch (e: Exception) {
+            Verbose.fail("could not start the download (${e.javaClass.simpleName})")
+            Verbose.flush()
+            false
+        }
+    }
+
+    /** The system Downloads screen, where the file will appear. */
+    private fun openDownloads(context: Application) {
+        try {
+            context.startActivity(
+                Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            )
+        } catch (e: Exception) {
+            // A phone with no Downloads UI. The file still arrives; the notification
+            // DownloadManager posts is another way to reach it.
+            Verbose.info("no Downloads screen on this phone, use the download notification")
+            Verbose.flush()
+        }
+    }
 
     /** Whether a screen also writes its explanation onto the page. See [Prefs.showHelpText]. */
     var helpOnPage: Boolean
