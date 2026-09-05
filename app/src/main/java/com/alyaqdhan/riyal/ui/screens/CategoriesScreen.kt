@@ -52,6 +52,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Category
@@ -66,6 +68,7 @@ import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.HelpAction
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.CategoryChips
 import com.alyaqdhan.riyal.ui.compose.CategoryVisuals
@@ -85,6 +88,14 @@ import kotlin.math.roundToInt
  * This is also where custom categories are created and edited - it used to be a block
  * buried in Settings, which is a strange place to manage something you look at daily.
  */
+/** What the page is for, behind the (i) rather than above the work. */
+private const val HELP =
+    "Every category and what it came to in the period shown, spending and income " +
+        "kept apart. Open one to see its records; make your own with the button, and " +
+        "edit or delete the ones you made.\n\n" +
+        "Below them are the names Riyal has learned: the ones it files without asking, " +
+        "and the ones you asked to be asked about every time."
+
 @Composable
 fun CategoriesScreen(
     vm: MainViewModel,
@@ -100,6 +111,7 @@ fun CategoriesScreen(
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
     var slice by remember { mutableStateOf(TimeSlice.thisMonth()) }
     var editing by remember { mutableStateOf<Category?>(null) }
+    var showEmpty by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf<Category?>(null) }
     var addingKeyword by remember { mutableStateOf(false) }
 
@@ -122,9 +134,15 @@ fun CategoriesScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = { HelpAction("Categories", HELP) },
             )
         },
     ) { padding ->
+        // Counted outside the list: it decides whether the toggle is worth a row at all.
+        val hidden = remember(counts) {
+            (Categories.forType(TxnType.EXPENSE) + Categories.forType(TxnType.INCOME))
+                .count { (counts[it.id] ?: 0) == 0 }
+        }
         LazyColumn(
             modifier = Modifier.padding(padding),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
@@ -135,7 +153,7 @@ fun CategoriesScreen(
             }
 
             item(key = "expense-title") { SectionTitle("Spending") }
-            val expenseCats = Categories.forType(TxnType.EXPENSE)
+            val expenseCats = shown(Categories.forType(TxnType.EXPENSE), counts, showEmpty)
             items(expenseCats, key = { "e-" + it.id }) { cat ->
                 val row = expenses.firstOrNull { it.categoryId == cat.id }
                 CategoryRow(
@@ -151,7 +169,7 @@ fun CategoriesScreen(
             }
 
             item(key = "income-title") { SectionTitle("Income") }
-            val incomeCats = Categories.forType(TxnType.INCOME)
+            val incomeCats = shown(Categories.forType(TxnType.INCOME), counts, showEmpty)
             items(incomeCats, key = { "i-" + it.id }) { cat ->
                 val row = incomes.firstOrNull { it.categoryId == cat.id }
                 CategoryRow(
@@ -166,12 +184,30 @@ fun CategoriesScreen(
                 )
             }
 
+            // The categories with nothing in them are still worth having - they are what
+            // a record gets filed into next - but this screen is for reading a period,
+            // and eight rows of "nothing in this period · OMR 0.000" is most of what was
+            // on it. They are one tap away instead.
+            if (hidden > 0 || showEmpty) {
+                item(key = "show-empty") {
+                    TextButton(
+                        onClick = { showEmpty = !showEmpty },
+                        modifier = Modifier.padding(top = 4.dp),
+                    ) {
+                        Text(
+                            if (showEmpty) "Hide empty categories"
+                            else "Show all categories ($hidden empty)"
+                        )
+                    }
+                }
+            }
+
             item(key = "transfers") {
                 val moved = Stats.transferTotalIn(txns, slice.start, slice.endExclusive, currency)
                 if (moved > 0) {
                     Text(
                         "${Money.format(moved, currency)} moved between your own accounts in this " +
-                            "period. Transfers have no category — they're neither spending nor income.",
+                            "period. Transfers have no category: they're neither spending nor income.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 12.dp),
@@ -331,7 +367,7 @@ private fun CategoryRow(
                 }
                 Text(
                     if (count == 0) "nothing in this period"
-                    else "$count record(s) · ${(fraction * 100).roundToInt()}% of ${if (income) "income" else "spending"}",
+                    else countOf(count, "record") + " · ${(fraction * 100).roundToInt()}% of ${if (income) "income" else "spending"}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -641,4 +677,19 @@ private fun CategoryEditorDialog(
             }
         },
     )
+}
+
+/**
+ * The categories worth a row, most spent first, with the empty ones dropped unless
+ * asked for. Ordering by what is in them rather than by the order they were declared
+ * is the point: the one category carrying the period should not be the ninth row.
+ */
+private fun shown(
+    cats: List<Category>,
+    counts: Map<String, Int>,
+    showEmpty: Boolean,
+): List<Category> {
+    val used = cats.filter { (counts[it.id] ?: 0) > 0 }
+        .sortedByDescending { counts[it.id] ?: 0 }
+    return if (showEmpty) used + cats.filterNot { it in used } else used
 }

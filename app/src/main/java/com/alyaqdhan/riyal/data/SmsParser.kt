@@ -313,6 +313,10 @@ class SmsParser(
         s = s.replace(digitTail, "")
         s = s.replace(doubleSpace, " ")
         s = s.trim { it.isWhitespace() || it in TRIM_CHARS }
+        // Whatever the cuts above removed took its introducing word's meaning with it:
+        // "ALIS SALIM in a/c 0019" is cut at "a/c" and would otherwise be remembered as
+        // "alis salim in", a second shop that is the same shop.
+        s = UserRule.stripDangling(s)
         if (s.length < 2) return null
         if (notAName.matches(s)) return null
         if (s.lowercase().startsWith("a/c")) return null

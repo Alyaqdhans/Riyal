@@ -80,7 +80,7 @@ fun OnboardingScreen(
             Text("Riyal", style = MaterialTheme.typography.displaySmall)
             Spacer(Modifier.height(6.dp))
             Text(
-                "Your spending, sorted from your bank SMS —\nquietly, and only on this phone.",
+                "Your spending, sorted from your bank SMS,\nquietly, and only on this phone.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -92,7 +92,7 @@ fun OnboardingScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Promise("Reads only when you ask", "No background listener, ever.")
-                    Promise("Stays on your phone", "No internet permission — data can't leave.")
+                    Promise("Your money stays here", "Nothing about it is ever sent. Updates are all it asks for.")
                     Promise("Only what matters", "Bank messages with money words. The rest is ignored.")
                     Promise("You're in control", "Anything unclear is yours to decide, every step logged.")
                 }

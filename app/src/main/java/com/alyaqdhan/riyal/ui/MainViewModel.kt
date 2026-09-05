@@ -2,11 +2,16 @@ package com.alyaqdhan.riyal.ui
 
 import android.Manifest
 import android.app.Application
+import android.app.DownloadManager
+import android.content.Intent
+import android.os.Environment
+import androidx.core.net.toUri
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.RiyalApp
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
@@ -21,6 +26,8 @@ import com.alyaqdhan.riyal.data.ScanSummary
 import com.alyaqdhan.riyal.data.TransferProposal
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
+import com.alyaqdhan.riyal.data.UpdateApi
+import com.alyaqdhan.riyal.data.Updates
 import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import java.time.Instant
@@ -85,9 +92,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     val needsCategoryCount: StateFlow<Int> =
-        combine(store.txns, store.archivedIds) { txns, archived ->
-            Stats.unfiled(txns, archived).size
+        combine(store.txns, store.archivedIds, store.deferredIds) { txns, archived, deferred ->
+            Stats.unfiled(txns, archived, deferred).size
         }.stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    /** Records left under Other for now. They come back on the next scan. */
+    val deferredIds = store.deferredIds
 
     /** Accounts were proposed from SMS but the user hasn't checked them yet. */
     private val _accountsConfirmed = MutableStateFlow(prefs.accountsConfirmed)
@@ -224,7 +234,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             accounts.value.filter { it.needsBalance }.forEach {
                 store.updateAccount(it.copy(needsBalance = false))
             }
-            Verbose.ok("accounts confirmed by you: ${accounts.value.size} account(s) are now the source of your balances")
+            Verbose.ok("accounts confirmed by you: " + countOf(accounts.value.size, "account") + " are now the source of your balances")
             Verbose.flush()
         }
     }
@@ -310,6 +320,131 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _budgetsOn = MutableStateFlow(prefs.budgetsEnabled)
     val budgetsOn: StateFlow<Boolean> = _budgetsOn
 
+    // ─────────────────────────── updates ───────────────────────────
+
+    /**
+     * The release GitHub is offering, once it has been found to be newer than what is
+     * installed. Null the rest of the time, which is nearly always, and the Settings row
+     * shows the current version and says nothing.
+     */
+    private val _update = MutableStateFlow<Updates.Release?>(null)
+    val update: StateFlow<Updates.Release?> = _update
+
+    /**
+     * Asks GitHub whether there is a newer release, at most once a day.
+     *
+     * Everything about this is quiet. A check that fails - offline, no releases yet, a
+     * rate limit - writes a line in the verbose log and leaves the Settings row exactly
+     * as it was, because an update check nobody asked for is not something to interrupt
+     * anyone about. [force] is the user tapping "Check now", which skips the throttle
+     * and is the only path that a person is waiting on.
+     */
+    fun checkForUpdate(currentVersion: String, force: Boolean = false) =
+        viewModelScope.launch(Dispatchers.IO) {
+            val since = System.currentTimeMillis() - prefs.lastUpdateCheckAt
+            if (!force && since < DAY_MS) return@launch
+            prefs.lastUpdateCheckAt = System.currentTimeMillis()
+
+            val release = UpdateApi.latestRelease()
+            if (release == null) {
+                Verbose.flush()
+                return@launch
+            }
+            if (Updates.isNewer(release.tag, currentVersion)) {
+                _update.value = release
+                Verbose.ok(
+                    "${release.tag} is newer than the ${currentVersion} you have · " +
+                        if (release.hasApk) {
+                            "Settings offers to download it"
+                        } else {
+                            "but the release carries no APK, so there is nothing to download"
+                        }
+                )
+            } else {
+                _update.value = null
+                Verbose.info("you are on ${currentVersion}, which is the latest (GitHub has ${release.tag})")
+            }
+            Verbose.flush()
+        }
+
+    /**
+     * Puts the release's APK in the phone's public Downloads folder and opens the
+     * Downloads screen so the user can tap it themselves.
+     *
+     * DownloadManager does the work: progress, retries, its own notification, and no
+     * storage permission at all for this destination. What it deliberately does not do
+     * is install anything. The app asks for neither REQUEST_INSTALL_PACKAGES nor a
+     * FileProvider, so the last step is a person choosing to install a file they can
+     * see - which is also the step where they will be told, by Android, if the APK is
+     * signed with a different key than the copy they already have.
+     *
+     * Returns false when there is nothing to download, so the caller can say so rather
+     * than opening an empty Downloads screen.
+     */
+    fun downloadUpdate(): Boolean {
+        val release = _update.value ?: return false
+        val url = release.apkUrl ?: run {
+            Verbose.fail(
+                "${release.tag} has no APK attached to it, so there is nothing to " +
+                    "download here - the release page on GitHub will have it"
+            )
+            Verbose.flush()
+            return false
+        }
+        val context = getApplication<Application>()
+        return try {
+            val name = release.apkName ?: "Riyal-${release.tag}.apk"
+            val request = DownloadManager.Request(url.toUri())
+                .setTitle(name)
+                .setDescription("Riyal ${release.tag}")
+                .setMimeType("application/vnd.android.package-archive")
+                .setNotificationVisibility(
+                    DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                )
+                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
+            val manager = context.getSystemService(DownloadManager::class.java)
+            manager.enqueue(request)
+            Verbose.ok(
+                "downloading $name to your Downloads folder · nothing installs on its " +
+                    "own, tap the file there when it has finished"
+            )
+            Verbose.flush()
+            openDownloads(context)
+            true
+        } catch (e: Exception) {
+            Verbose.fail("could not start the download (${e.javaClass.simpleName})")
+            Verbose.flush()
+            false
+        }
+    }
+
+    /** The system Downloads screen, where the file will appear. */
+    private fun openDownloads(context: Application) {
+        try {
+            context.startActivity(
+                Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            )
+        } catch (e: Exception) {
+            // A phone with no Downloads UI. The file still arrives; the notification
+            // DownloadManager posts is another way to reach it.
+            Verbose.info("no Downloads screen on this phone, use the download notification")
+            Verbose.flush()
+        }
+    }
+
+    /** Whether a screen also writes its explanation onto the page. See [Prefs.showHelpText]. */
+    var helpOnPage: Boolean
+        get() = prefs.showHelpText
+        set(v) {
+            prefs.showHelpText = v
+            _helpOnPage.value = v
+        }
+
+    private val _helpOnPage = MutableStateFlow(prefs.showHelpText)
+    val helpShown: StateFlow<Boolean> = _helpOnPage
+
     fun addBudget(label: String, startMillis: Long, endExclusiveMillis: Long) =
         viewModelScope.launch(Dispatchers.IO) {
             store.addBudget(
@@ -387,7 +522,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val changed = store.addRule(UserRule(alsoRulePattern.trim().lowercase(), categoryId))
                 Verbose.ok(
                     "rule saved: \"${alsoRulePattern.trim().lowercase()}\" → ${Categories.byId(categoryId).name}" +
-                        " · re-categorized $changed past transaction(s)"
+                        " · re-categorized " + countOf(changed, "past transaction")
                 )
             }
             Verbose.flush()
@@ -403,29 +538,60 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * all: those records still need a category today, and answering four of them in one
      * tap is worth as much for a person as for a shop. Only the rule is skipped.
      */
-    fun fileMerchant(group: Stats.MerchantGroup, categoryId: String) =
+    fun fileMerchant(
+        group: Stats.MerchantGroup,
+        categoryId: String,
+        txnIds: Collection<String> = group.txnIds,
+    ) =
         viewModelScope.launch(Dispatchers.IO) {
+            if (txnIds.isEmpty()) return@launch
             val pattern = UserRule.patternOf(group.merchant)
-            val filed = store.setCategories(group.txnIds, categoryId)
+            val filed = store.setCategories(txnIds, categoryId)
             Verbose.ok(
-                "filed by you: ${group.count} record(s) from \"${group.merchant}\" → " +
+                "filed by you: " + countOf(txnIds.size, "record") + " from \"${group.merchant}\" → " +
                     Categories.byId(categoryId).name
             )
-            if (pattern in store.askEachTime.value) {
-                Verbose.info(
+            // A rule is a statement about the name, so it may only be saved when the
+            // answer was about the name. Picking four of a merchant's six records means
+            // the other two are something else - a rule here would file them wrong, and
+            // sweep in every future message besides.
+            val wholeName = txnIds.toSet().containsAll(group.txnIds)
+            when {
+                !wholeName -> Verbose.info(
+                    "no rule saved for \"$pattern\": you filed ${txnIds.size} of " +
+                        countOf(group.count, "record") + " from this name, so it does not all belong " +
+                        "in one place and the rest are still waiting"
+                )
+                pattern in store.askEachTime.value -> Verbose.info(
                     "no rule saved for \"$pattern\": you asked to be asked about this name " +
                         "every time, so the next message from it comes back to you"
                 )
-            } else {
-                val byRule = store.addRule(UserRule(pattern, categoryId))
-                Verbose.ok(
-                    "rule saved: \"$pattern\" → ${Categories.byId(categoryId).name} · " +
-                        "$filed record(s) filed now, $byRule more re-categorized, and anything " +
-                        "matching from now on lands there without being asked"
-                )
+                else -> {
+                    val byRule = store.addRule(UserRule(pattern, categoryId))
+                    Verbose.ok(
+                        "rule saved: \"$pattern\" → ${Categories.byId(categoryId).name} · " +
+                            countOf(filed, "record") + " filed now, $byRule more re-categorized, and anything " +
+                            "matching from now on lands there without being asked"
+                    )
+                }
             }
             Verbose.flush()
         }
+
+    /**
+     * Clears the backlog without answering it. The records stay under the category they
+     * fell back to, no rule is saved and nothing is marked as the user's answer, so the
+     * next scan puts every one of them back - which is what the screen promises before
+     * it does this.
+     */
+    fun deferAll(txnIds: Collection<String>) = viewModelScope.launch(Dispatchers.IO) {
+        val set = store.deferCategory(txnIds)
+        Verbose.info(
+            countOf(set, "record") + " left under Other for now · they were not answered, and the " +
+                "next scan asks about them again"
+        )
+        Verbose.flush()
+    }
 
     /**
      * The period Analysis is reading. It lives here rather than in the screen because
@@ -475,7 +641,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             return@launch
         }
         val changed = store.addRule(UserRule(key, categoryId))
-        Verbose.ok("rule saved: \"$key\" → ${Categories.byId(categoryId).name} · re-categorized $changed transaction(s)")
+        Verbose.ok("rule saved: \"$key\" → ${Categories.byId(categoryId).name} · re-categorized " + countOf(changed, "transaction"))
         Verbose.flush()
     }
 
@@ -483,7 +649,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val changed = store.removeRule(pattern)
         Verbose.info(
             "rule removed: \"$pattern\"" +
-                if (changed > 0) " · $changed record(s) it had filed were answered again" else ""
+                if (changed > 0) " · " + countOf(changed, "record") + " it had filed were answered again" else ""
         )
         Verbose.flush()
     }
@@ -501,7 +667,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             if (on) {
                 "\"$pattern\" will be asked about every time, no rule will be saved for it" +
                     if (undone > 0) {
-                        " · its rule is gone and $undone record(s) it had filed were answered again"
+                        " · its rule is gone and " + countOf(undone, "record") + " it had filed were answered again"
                     } else ""
             } else {
                 "\"$pattern\" can be remembered by a rule again"
@@ -540,7 +706,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.info(
             "review item dismissed by you (${item.sender}, ${item.reason})" +
                 if (alsoSimilar) {
-                    " · remembered: $extra similar message(s) dismissed with it, future ones " +
+                    " · remembered: " + countOf(extra, "similar message") + " dismissed with it, future ones " +
                         "will be auto-dismissed (restore any time in Review)"
                 } else ""
         )
@@ -551,7 +717,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val extra = store.restoreReview(item)
         Verbose.info(
             "review item restored by you" +
-                if (extra > 0) " together with $extra similar message(s), that kind is no longer auto-dismissed" else ""
+                if (extra > 0) " together with " + countOf(extra, "similar message") + ", that kind is no longer auto-dismissed" else ""
         )
         Verbose.flush()
     }
@@ -657,7 +823,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 }
             }
-            Verbose.ok("exported ${list.size} transaction(s) to the CSV file you picked, stayed on your device")
+            Verbose.ok("exported " + countOf(list.size, "transaction") + " to the CSV file you picked, stayed on your device")
         } catch (e: Exception) {
             Verbose.fail("CSV export failed: ${e.message}")
         }
@@ -665,4 +831,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun csv(s: String) = "\"" + s.replace("\"", "\"\"") + "\""
+
+    private companion object {
+        /** How often GitHub is asked. A release lands a few times a year. */
+        const val DAY_MS = 24L * 60 * 60 * 1000
+    }
+
 }

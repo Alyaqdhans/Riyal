@@ -229,6 +229,18 @@ data class Account(
     val displayName: String
         get() = name.trim().ifEmpty { defaultNameOf(bankName, last4) }
 
+    /**
+     * The same account named for a list where every row already says the same bank:
+     * "0019" rather than "Bank Muscat · 0019". With one bank in the data the bank name
+     * separates nothing and is simply on every row, pushing the record's own words into
+     * an ellipsis. A nickname the user set always wins, because they chose those words
+     * for exactly this position.
+     */
+    val shortName: String
+        get() = name.trim().ifEmpty {
+            last4?.trim()?.takeIf { it.isNotEmpty() } ?: bankName.trim().ifEmpty { displayName }
+        }
+
     companion object {
         const val ID_PREFIX = "acc_"
 
@@ -360,13 +372,46 @@ data class ReviewItem(
 
 data class UserRule(val pattern: String, val categoryId: String) {
     companion object {
+
+        private val runOfSpace = Regex("\\s+")
+
         /**
-         * The one spelling a counterparty is keyed by - as a rule, and as a name the
-         * user asked to be asked about every time. Two call sites normalising it
-         * slightly differently is exactly how a name gets marked and then quietly
-         * earns a rule anyway.
+         * Connector words that can only be left over. A bank naming the counterparty
+         * writes "to ALIS SALIM in a/c 0019", and the clause from "a/c" onwards is cut
+         * as description rather than name - which leaves the "in" that introduced it
+         * stranded on the end. The same shop written in Arabic has no such clause, so
+         * one merchant arrives under two spellings and is asked about twice.
+         *
+         * Only a trailing run is dropped, never a word inside the name: "Made in Oman"
+         * keeps its "in", "ALIS SALIM in" does not.
          */
-        fun patternOf(merchant: String): String = merchant.trim().lowercase()
+        private val danglingTail = Regex(
+            "(?:\\s+(?:in|on|at|to|from|for|with|by|of|via|and|into|" +
+                "في|فى|من|إلى|الى|لدى|عن|و|ب|ل))+$",
+            RegexOption.IGNORE_CASE,
+        )
+
+        /**
+         * Drops the connector words a cut sentence left behind. A name that is nothing
+         * but connectors is returned whole: it is a bad name either way, and an empty
+         * one becomes a rule pattern that matches every message ever sent.
+         */
+        fun stripDangling(name: String): String {
+            val flat = name.trim().replace(runOfSpace, " ")
+            return danglingTail.replace(flat, "").trim().ifBlank { flat }
+        }
+
+        /**
+         * The one spelling a counterparty is keyed by - as a rule, as a name the user
+         * asked to be asked about every time, and as a row in the backlog. Two call
+         * sites normalising it slightly differently is exactly how a name gets marked
+         * and then quietly earns a rule anyway.
+         *
+         * Case and spacing are flattened and a dangling tail is dropped; punctuation
+         * inside the name is left exactly as it is, because a pattern is matched
+         * against the raw message and "h m" would never find "H&M".
+         */
+        fun patternOf(merchant: String): String = stripDangling(merchant).lowercase()
     }
 }
 

@@ -90,6 +90,16 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putBoolean("budgets_enabled", v).apply()
 
     /**
+     * Whether screens write their explanation onto the page as well as keeping it
+     * behind the (i) in the title bar. Off by default: a screen that explains itself
+     * at rest has to be read before it can be used, and the explanation is the same
+     * every time while the list under it is the reason for opening the screen.
+     */
+    var showHelpText: Boolean
+        get() = sp.getBoolean("help_on_page", false)
+        set(v) = sp.edit().putBoolean("help_on_page", v).apply()
+
+    /**
      * Set once the user has checked the accounts the first scan proposed. Until then
      * Home shows the confirmation prompt, because balances read out of SMS are a good
      * first guess and nothing more.
@@ -134,6 +144,15 @@ class Prefs(context: Context) {
     var incomeKeywords: Set<String>
         get() = sp.getStringSet("kw_income", null)?.toSet() ?: DEFAULT_INCOME_KEYWORDS
         set(v) = sp.edit().putStringSet("kw_income", v.toSet()).apply()
+
+    /**
+     * When GitHub was last asked about a release. At most once a day: a new version
+     * appears a few times a year, and a request on every launch would be a daily habit
+     * of talking to a server for an answer that is nearly always "no".
+     */
+    var lastUpdateCheckAt: Long
+        get() = sp.getLong("last_update_check_at", 0L)
+        set(v) = sp.edit().putLong("last_update_check_at", v).apply()
 
     var lastScanAt: Long
         get() = sp.getLong("last_scan_at", 0L)

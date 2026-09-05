@@ -44,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.MsgTemplate
@@ -53,6 +54,7 @@ import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
+import com.alyaqdhan.riyal.ui.compose.HelpAction
 import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
 import com.alyaqdhan.riyal.ui.compose.SummaryPill
 import com.alyaqdhan.riyal.ui.theme.successColor
@@ -71,6 +73,15 @@ private val reviewDateFmt = DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a")
  * teaches the app: dismissing hides similar messages too (restorable below), recording
  * marks that kind of message as wanted.
  */
+/** What the page is for, behind the (i) rather than above the work. */
+private const val HELP =
+    "These messages matched your keywords but could not be read automatically, so " +
+        "nothing was recorded for them. Resolve one to record it, or dismiss it to " +
+        "say it was never a transaction.\n\n" +
+        "Transfers appear here too: two messages that look like one movement between " +
+        "your own accounts. Confirming a pair stops it counting as both spending and " +
+        "income."
+
 @Composable
 fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
     val reviews by vm.reviews.collectAsState()
@@ -85,7 +96,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
         allTransfers.count { it.state == TransferProposal.STATE_ACCEPTED }
     }
     val autoNote = if (autoConfirmOn && autoConfirmed > 0) {
-        "$autoConfirmed matching pair(s) were confirmed as transfers for you, so they " +
+        countOf(autoConfirmed, "matching pair") + " were confirmed as transfers for you, so they " +
             "count as neither spending nor income. Open one in Activity to split it back " +
             "apart, or turn off \"Confirm transfers for me\" in Settings to be asked each time."
     } else {
@@ -107,6 +118,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = { HelpAction("Needs review", HELP) },
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
@@ -171,8 +183,8 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                         Text(
                             when {
                                 pending.isEmpty() && transfers.isEmpty() -> "All clear, nothing is waiting for you."
-                                pending.isEmpty() -> "Nothing unreadable — just the transfers above."
-                                else -> "These matched your keywords but couldn't be read automatically. Nothing was recorded for them, you decide."
+                                pending.isEmpty() -> "Nothing unreadable, just the transfers above."
+                                else -> "Nothing was recorded for these. You decide."
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,

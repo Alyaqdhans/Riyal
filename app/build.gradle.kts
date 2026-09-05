@@ -18,8 +18,8 @@ android {
         applicationId = "com.alyaqdhan.riyal"
         minSdk = 29
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.51"
+        versionCode = 4
+        versionName = "1.6.0"
     }
 
     // The key that signs a published build. Its location and passwords come from
@@ -44,6 +44,15 @@ android {
     }
 
     buildTypes {
+        // A debug build must never be able to take the published app's place. Both
+        // carried one applicationId, so installing a test build over a real one was
+        // refused for the signature - and the only way past that refusal is an
+        // uninstall, which takes the user's records with it. Its own id means the two
+        // sit side by side and a test cannot cost anything.
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(

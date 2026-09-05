@@ -40,6 +40,17 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 
 private val rowTimeFmt = DateTimeFormatter.ofPattern("dd MMM · h:mm a")
 // For a list already broken into days: the header above the row states the date, so
@@ -100,6 +111,25 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 }
 
 /**
+ * A masked counterparty name, shortened for display only.
+ *
+ * Omani banks blank the middle of a name: "SAIFXXXXXXXXXXHMED", and sometimes all of
+ * it after the first few letters. Rendered whole, the X's fill the row and the end of
+ * the name - the half that identifies it - is what gets ellipsed away. Collapsing the
+ * run puts both readable ends back on screen: "SAIF…HMED".
+ *
+ * Display only. The stored merchant string is untouched, because rules and the
+ * backlog's grouping key on it and a name shortened in storage would key differently
+ * from the same name in a message.
+ *
+ * Four is the shortest run worth collapsing: it saves nothing below that, and real
+ * names do carry two or three capitals in a row.
+ */
+private val maskedRun = Regex("X{4,}")
+
+fun unmasked(name: String): String = maskedRun.replace(name.trim(), "…")
+
+/**
  * One transaction row; tap to re-categorize.
  *
  * A transfer is drawn deliberately differently: no red, no green, no leading sign.
@@ -121,8 +151,16 @@ fun TxnRow(
     val transfer = txn.type == TxnType.TRANSFER
     val expense = txn.type == TxnType.EXPENSE
 
-    fun accountName(id: String?): String? =
-        id?.let { wanted -> accounts.firstOrNull { it.id == wanted }?.displayName }
+    // TxnRow already drops the date when a day header states it and the account when a
+    // filter has narrowed to one. A bank name on every row of a one-bank inbox is the
+    // same fact stated for the same reason, so it goes the same way.
+    val oneBank = remember(accounts) {
+        accounts.mapNotNull { it.bankName.trim().takeIf(String::isNotEmpty) }.distinct().size <= 1
+    }
+
+    fun accountName(id: String?): String? = id?.let { wanted ->
+        accounts.firstOrNull { it.id == wanted }?.let { if (oneBank) it.shortName else it.displayName }
+    }
 
     Surface(
         onClick = onClick,
@@ -140,7 +178,7 @@ fun TxnRow(
             CategoryBadge(category.id)
             Column(Modifier.weight(1f)) {
                 Text(
-                    if (transfer) "Transfer" else txn.merchant ?: category.name,
+                    if (transfer) "Transfer" else txn.merchant?.let(::unmasked) ?: category.name,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -182,11 +220,19 @@ fun TxnRow(
                         else -> successColor()
                     },
                 )
-                Text(
-                    if (transfer) "not counted" else category.name,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // Only the transfer note. The category was already stated by the badge
+                // at the head of the row, and saying it again in words cost about a
+                // third of the width - which is why the merchant and the account line
+                // were both ellipsed at once, leaving two Oman Oil stations looking
+                // identical. "not counted" is not a repeat of anything: it is why a
+                // transfer's amount is neither red nor green.
+                if (transfer) {
+                    Text(
+                        "not counted",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
@@ -257,4 +303,59 @@ fun SummaryPill(text: String, container: Color, content: Color) {
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
         )
     }
+}
+
+/**
+ * "1 record(s)" is not English, and it appears wherever a count does. One place to
+ * decide it, so a screen counting things never has to think about the s.
+ */
+fun countOf(n: Int, noun: String): String = "$n $noun" + if (n == 1) "" else "s"
+
+// ─────────────────────────── a screen's own explanation ───────────────────────────
+
+/**
+ * What a screen would have said about itself, behind the (i) in its title bar.
+ *
+ * Settings learned this first: an explanation is read once and a screen is used many
+ * times, so a paragraph that sits on the page at rest is read once and then scrolled
+ * past forever after, having pushed the actual work down the screen every time. The
+ * same paragraph one tap away costs nothing to the people who already know.
+ *
+ * The dialog, not a tooltip, because the text is a paragraph and a tooltip that needs
+ * scrolling is worse than no tooltip.
+ */
+@Composable
+fun HelpAction(title: String, help: String) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    IconButton(onClick = { open = true }) {
+        Icon(
+            Icons.Outlined.Info,
+            contentDescription = "About $title",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    if (open) {
+        AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text(title) },
+            text = { Text(help) },
+            confirmButton = { TextButton(onClick = { open = false }) { Text("Got it") } },
+        )
+    }
+}
+
+/**
+ * The same text on the page, for someone who asked in Settings to be told rather than
+ * to go looking. Off by default: a screen that explains itself at rest has to be read
+ * before it can be used.
+ */
+@Composable
+fun HelpNote(help: String, visible: Boolean, modifier: Modifier = Modifier) {
+    if (!visible) return
+    Text(
+        help,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(vertical = 4.dp),
+    )
 }

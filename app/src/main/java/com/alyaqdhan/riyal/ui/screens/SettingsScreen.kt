@@ -69,6 +69,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CURRENCIES
@@ -128,6 +129,7 @@ fun SettingsScreen(
     var scanOnLaunch by remember { mutableStateOf(prefs.scanOnLaunch) }
     var smartRules by remember { mutableStateOf(prefs.smartRules) }
     var budgetsEnabled by remember { mutableStateOf(prefs.budgetsEnabled) }
+    var helpOnPage by remember { mutableStateOf(prefs.showHelpText) }
     var autoConfirmTransfers by remember { mutableStateOf(prefs.autoConfirmTransfers) }
     var confirmWipe by remember { mutableStateOf(false) }
     var confirmExport by remember { mutableStateOf(false) }
@@ -178,7 +180,7 @@ fun SettingsScreen(
                 )
                 SwitchLine(
                     title = "Budget",
-                    value = if (budgetsEnabled && budgets.isNotEmpty()) "${budgets.size} plan(s)" else null,
+                    value = if (budgetsEnabled && budgets.isNotEmpty()) countOf(budgets.size, "plan") else null,
                     checked = budgetsEnabled,
                     onCheckedChange = {
                         budgetsEnabled = it
@@ -316,8 +318,8 @@ fun SettingsScreen(
                     title = "Who is read",
                     value = senderSummary(bankOnly, senderFilter, allowlist.size),
                     detail = "Two filters over the sender name, on top of the gate keywords. " +
-                        "Banks that don't brand themselves as banks — NBO, Sohar Intl, " +
-                        "Meethaq — are approved by name in the list instead.",
+                        "Banks that don't brand themselves as banks (NBO, Sohar Intl, " +
+                        "Meethaq) are approved by name in the list instead.",
                 ) {
                     SwitchLine(
                         title = "Bank senders only",
@@ -471,16 +473,63 @@ fun SettingsScreen(
                     title = "Where it lives",
                     value = "this phone only",
                     detail = "Everything lives in one JSON file inside this app's private " +
-                        "storage. Backups are disabled. The manifest declares no INTERNET " +
-                        "permission, verifiable with any APK inspector.",
+                        "storage, and backups are disabled. The app does reach the network, " +
+                        "for one thing: it asks GitHub whether a newer release exists, and " +
+                        "downloads that APK if you ask it to. Nothing goes the other way. No " +
+                        "record, message, account or figure is ever put in a request, and " +
+                        "there is no analytics and no backend.",
                 )
             }
 
             SettingsCard("About") {
-                ValueLine(
+                SwitchLine(
+                    title = "Explain screens",
+                    checked = helpOnPage,
+                    onCheckedChange = {
+                        helpOnPage = it
+                        vm.helpOnPage = it
+                        note("on-page help ${if (it) "enabled" else "disabled"}")
+                    },
+                    detail = "Screens keep their explanation behind the (i) beside the " +
+                        "title, so the page opens on the work rather than on a paragraph. " +
+                        "Turn this on to have it written out on the page as well.",
+                )
+                // One row, both states. Normally it is the version you are on; when
+                // GitHub is offering a later one it becomes the way to get it, with the
+                // release notes behind the (i) like every other explanation here.
+                val update by vm.update.collectAsState()
+                val version = appVersion(context)
+                ActionLine(
                     title = "Riyal",
-                    value = appVersion(context),
-                    detail = "Made for Oman 🇴🇲 — OMR-first, with Arabic SMS support.",
+                    value = update?.let { "${it.tag} available" } ?: version,
+                    valueIsWarning = update != null,
+                    detail = update?.let { release ->
+                        val notes = plainNotes(release.notes)
+                            .ifBlank { "No notes were published with it." }
+                        // The warning comes before the notes, not after. A release body
+                        // is as long as its author felt like, and the thing that has to
+                        // be read before tapping Download must not be underneath it.
+                        "You have $version. ${release.tag} is out.\n\n" +
+                            "Downloading puts the APK in your Downloads folder and opens it " +
+                            "there. Riyal cannot install it for you - you tap the file " +
+                            "yourself. If Android refuses the install, that build is signed " +
+                            "with a different key than this one: uninstall Riyal first, " +
+                            "which clears its stored records. They rebuild from your inbox " +
+                            "on the next scan, but hand-filed categories do not.\n\n$notes"
+                    } ?: "Made for Oman 🇴🇲 · OMR-first, with Arabic SMS support. " +
+                        "Checks GitHub once a day for a newer release.",
+                    actionLabel = if (update != null) "Download" else "Check now",
+                    onAction = {
+                        val release = update
+                        if (release == null) {
+                            note("checking GitHub for a newer release")
+                            vm.checkForUpdate(version, force = true)
+                        } else if (!release.hasApk) {
+                            note("${release.tag} has no APK attached to it")
+                        } else if (vm.downloadUpdate()) {
+                            note("downloading ${release.tag} to your Downloads folder")
+                        }
+                    },
                 )
             }
 
@@ -532,7 +581,7 @@ fun SettingsScreen(
     if (confirmExport) {
         AlertDialog(
             onDismissRequest = { confirmExport = false },
-            title = { Text("Export ${txns.size} record(s)?") },
+            title = { Text("Export " + countOf(txns.size, "record") + "?") },
             text = {
                 Text(
                     if (txns.isEmpty()) {
@@ -582,9 +631,9 @@ private fun StatusCard(
             )
             Text(
                 listOfNotNull(
-                    "$records record(s)",
-                    "$accounts account(s)",
-                    messagesRead?.let { "$it message(s) read" },
+                    countOf(records, "record"),
+                    countOf(accounts, "account"),
+                    messagesRead?.let { countOf(it, "message") + " read" },
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -598,9 +647,9 @@ private fun relativeTime(millis: Long): String {
     val minutes = (System.currentTimeMillis() - millis) / 60_000
     return when {
         minutes < 1 -> "just now"
-        minutes < 60 -> "$minutes minute(s) ago"
-        minutes < 60 * 24 -> "${minutes / 60} hour(s) ago"
-        minutes < 60 * 24 * 7 -> "${minutes / (60 * 24)} day(s) ago"
+        minutes < 60 -> countOf(minutes.toInt(), "minute") + " ago"
+        minutes < 60 * 24 -> countOf((minutes / 60).toInt(), "hour") + " ago"
+        minutes < 60 * 24 * 7 -> countOf((minutes / (60 * 24)).toInt(), "day") + " ago"
         else -> "on " + settingsDayFmt.format(
             Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())
         )
@@ -683,7 +732,14 @@ private fun SettingLine(
         AlertDialog(
             onDismissRequest = { showDetail = false },
             title = { Text(title) },
-            text = { Text(detail) },
+            // Scrollable, because one of these is now a release body written by whoever
+            // wrote it. Without this the dialog clips at the bottom of the screen with
+            // no way to reach the rest - and the part it was cutting off was the
+            // warning about the signing key, which is the one paragraph that has to be
+            // read before tapping Download.
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) { Text(detail) }
+            },
             confirmButton = { TextButton(onClick = { showDetail = false }) { Text("Got it") } },
         )
     }
@@ -942,6 +998,25 @@ private fun AddKeywordRow(
         FilledTonalButton(onClick = onAdd, enabled = value.isNotBlank()) { Text("Add") }
     }
 }
+
+/**
+ * A GitHub release body as something to read in a dialog.
+ *
+ * The body is markdown, and this dialog is a Text: "**Upgrading clears your data.**"
+ * arrives with its asterisks showing and "### Accounts" with its hashes. Nothing here
+ * renders markdown, so the markers are taken off rather than displayed. Emphasis is
+ * lost, which is a smaller cost than a screen of punctuation.
+ */
+private fun plainNotes(body: String): String = body.trim().lines().joinToString("\n") { line ->
+    line.trimEnd()
+        .replace(headingMark, "")
+        .replace(boldMark, "")
+        .replace(bulletMark, "• ")
+}
+
+private val headingMark = Regex("^#{1,6}\\s*")
+private val bulletMark = Regex("^\\s*[-*]\\s+")
+private val boldMark = Regex("\\*\\*|__")
 
 private fun appVersion(context: android.content.Context): String = try {
     context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"

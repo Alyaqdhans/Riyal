@@ -12,7 +12,7 @@ import org.junit.Test
 
 /**
  * The parser is pure Kotlin, so the whole read-classify pipeline is verified here
- * against realistic Omani bank message shapes — including Arabic digits and the
+ * against realistic Omani bank message shapes, including Arabic digits and the
  * strict "withdraw/deposit only" gate.
  */
 class SmsParserTest {
@@ -379,4 +379,30 @@ class SmsParserTest {
         val r = parser.parse(body) as SmsParser.Result.Parsed
         assertEquals(null, r.selfTransferTo)
     }
+
+    @Test
+    fun `one shop written in two languages is one name`() {
+        // Verbatim shapes from a real inbox. The Arabic message names the shop and
+        // then stops; the English one runs on into the account it was paid from, and
+        // the cut that removes that clause used to leave its "in" behind - so the same
+        // person arrived as "alis salim" and "alis salim in" and was asked about twice.
+        val arabic = parser.parse(
+            "تم خصم OMR 25.000 من حسابك 0630XXXXXXXX0001 إلى ALIS SALIM. رصيدك OMR 120.500"
+        )
+        val english = parser.parse(
+            "OMR 25.000 debited to ALIS SALIM in a/c 0630XXXXXXXX0022. Avl Bal OMR 120.500"
+        )
+        assertTrue(arabic is SmsParser.Result.Parsed)
+        assertTrue(english is SmsParser.Result.Parsed)
+        assertEquals("ALIS SALIM", (arabic as SmsParser.Result.Parsed).merchant)
+        assertEquals("ALIS SALIM", (english as SmsParser.Result.Parsed).merchant)
+    }
+
+    @Test
+    fun `a connector inside the name is part of the name`() {
+        val r = parser.parse("Purchase of RO 4.500 at MADE IN OMAN STORE on 02/07/26")
+        assertTrue(r is SmsParser.Result.Parsed)
+        assertEquals("MADE IN OMAN STORE", (r as SmsParser.Result.Parsed).merchant)
+    }
+
 }

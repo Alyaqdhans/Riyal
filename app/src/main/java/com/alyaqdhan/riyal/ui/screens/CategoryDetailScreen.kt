@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
@@ -142,7 +143,7 @@ fun CategoryDetailScreen(
                                 color = if (category.income) successColor() else MaterialTheme.colorScheme.onSurface,
                             )
                             Text(
-                                "${inCategory.size} record(s) in ${slice.label}",
+                                countOf(inCategory.size, "record") + " in ${slice.label}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -186,7 +187,7 @@ fun CategoryDetailScreen(
                         archived = txn.id in archivedIds,
                         onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
                         onDelete = { removeForGood(vm, snackbar, scope, txn) },
-                        deletePrompt = deletePromptFor(txn),
+                        deleteLabel = deleteLabelFor(txn),
                     ) {
                         TxnRow(txn, onClick = { editing = txn }, accounts = accounts)
                     }

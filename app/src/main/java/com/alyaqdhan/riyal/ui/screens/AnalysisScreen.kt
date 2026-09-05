@@ -62,6 +62,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.RoundedPolygon
+import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
@@ -399,9 +400,9 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     append("\" gone, ")
                                     append((progress.fraction * 100).roundToInt())
                                     append("% of the budget spent")
-                                    if (progress.over) append(" — over")
-                                    else if (progress.aheadOfPace) append(" — running ahead")
-                                    else append(" — on track")
+                                    if (progress.over) append(" · over")
+                                    else if (progress.aheadOfPace) append(" · running ahead")
+                                    else append(" · on track")
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = when {
@@ -429,7 +430,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text("Biggest movers", style = MaterialTheme.typography.titleMedium)
                             Text(
-                                "Against the ${slice.lengthDays} day(s) before this period.",
+                                "Against the " + countOf(slice.lengthDays.toInt(), "day") + " before this period.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -472,7 +473,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text("Looks recurring", style = MaterialTheme.typography.titleMedium)
                             Text(
-                                "Same merchant, steady amount, steady rhythm — so it will very " +
+                                "Same merchant, steady amount, steady rhythm, so it will very " +
                                     "likely land again.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -561,7 +562,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         }
                         if (totals.otherCurrencyCount > 0) {
                             Text(
-                                "Charts show $currency only, ${totals.otherCurrencyCount} transaction(s) in other currencies are listed in Activity.",
+                                "Charts show $currency only, " + countOf(totals.otherCurrencyCount, "transaction") + " in other currencies are listed in Activity.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

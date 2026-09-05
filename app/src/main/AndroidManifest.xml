@@ -2,9 +2,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- The ONLY permission this app requests. No INTERNET, no RECEIVE_SMS:
-         messages are read on demand when the user taps Scan, and can never leave the device. -->
+    <!-- Messages are read on demand when the user taps Scan, never in the background:
+         there is no RECEIVE_SMS and no listener. What is read stays on the device. -->
     <uses-permission android:name="android.permission.READ_SMS" />
+
+    <!-- One destination, one direction. INTERNET exists so the app can ask GitHub's
+         public API whether a newer release has been published and download that APK if
+         the user asks for it. Nothing is ever uploaded: no record, message, account,
+         balance or figure is put in a request, and there is no analytics, no crash
+         reporting and no backend of any kind. Both calls are in data/Updates.kt, which
+         is the whole of the app's network code. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:name=".RiyalApp"

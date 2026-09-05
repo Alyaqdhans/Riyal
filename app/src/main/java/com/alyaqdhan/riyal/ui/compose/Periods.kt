@@ -62,7 +62,7 @@ data class TimeSlice(
         fun ofDays(startDay: LocalDate, endDay: LocalDate) = TimeSlice(
             start = dayStart(startDay),
             endExclusive = dayStart(endDay.plusDays(1)),
-            label = "${dayFmt.format(startDay)} – ${dayFmt.format(endDay)}",
+            label = "${dayFmt.format(startDay)} to ${dayFmt.format(endDay)}",
         )
 
         fun thisWeek(): TimeSlice {

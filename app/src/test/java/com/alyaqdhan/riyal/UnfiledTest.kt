@@ -3,6 +3,7 @@ package com.alyaqdhan.riyal
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
+import com.alyaqdhan.riyal.data.UserRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -130,4 +131,65 @@ class UnfiledTest {
         assertEquals(1, groups.single().count)
         assertTrue(groups.single().amountMinor == 1_000L)
     }
+    @Test
+    fun `two spellings of one shop are one decision`() {
+        // The Arabic message named the shop and stopped; the English one ran on into
+        // the account, and the leftover "in" made it a second shop with its own row.
+        val groups = Stats.unfiledByMerchant(
+            listOf(
+                txn("1", 25_000, "ALIS SALIM"),
+                txn("2", 25_000, "ALIS SALIM in"),
+                txn("3", 10_000, "alis salim"),
+            ),
+            "OMR",
+        )
+        assertEquals(1, groups.size)
+        assertEquals(3, groups.single().count)
+        assertEquals(60_000L, groups.single().amountMinor)
+        // The bank's own capitalisation, and the spelling it used most.
+        assertEquals("ALIS SALIM", groups.single().merchant)
+        assertEquals(listOf("1", "2", "3"), groups.single().txnIds)
+    }
+
+    @Test
+    fun `a connector inside the name does not merge two shops`() {
+        val groups = Stats.unfiledByMerchant(
+            listOf(txn("1", 1_000, "Made in Oman"), txn("2", 1_000, "Made")),
+            "OMR",
+        )
+        assertEquals(2, groups.size)
+    }
+
+    @Test
+    fun `a name that is nothing but connectors still keys to something`() {
+        // A blank pattern is a rule that matches every message ever sent.
+        assertTrue(UserRule.patternOf("in").isNotBlank())
+        assertTrue(UserRule.patternOf("  to  ").isNotBlank())
+    }
+
+    @Test
+    fun `a record left under Other is out of the backlog, not answered`() {
+        val all = listOf(txn("1", 10_000, "Al Fatah"), txn("2", 9_000, "Turkish Days"))
+        val groups = Stats.unfiledByMerchant(all, "OMR", deferred = setOf("1"))
+        assertEquals(listOf("Turkish Days"), groups.map { it.merchant })
+        assertEquals(listOf("2"), Stats.unfiled(all, deferred = setOf("1")).map { it.id })
+        // Nothing about the record itself changed - drop the deferral and it is back,
+        // which is what "you'll be asked again next time" has to mean.
+        assertEquals(2, Stats.unfiled(all).size)
+    }
+
+    @Test
+    fun `a group carries its records, newest first`() {
+        val groups = Stats.unfiledByMerchant(
+            listOf(
+                txn("old", 1_000, "Al Fatah").copy(atMillis = 1_000L),
+                txn("new", 2_000, "Al Fatah").copy(atMillis = 3_000L),
+                txn("mid", 3_000, "Al Fatah").copy(atMillis = 2_000L),
+            ),
+            "OMR",
+        )
+        assertEquals(listOf("new", "mid", "old"), groups.single().txnIds)
+        assertEquals(3, groups.single().count)
+    }
+
 }

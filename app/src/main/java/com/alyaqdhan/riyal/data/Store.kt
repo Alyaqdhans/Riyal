@@ -134,6 +134,17 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private val _archivedIds = MutableStateFlow<Set<String>>(emptySet())
     val archivedIds: StateFlow<Set<String>> = _archivedIds
 
+    /**
+     * Txn ids the user left under Other for now rather than answering. Not an answer -
+     * the record keeps the category it fell back to and its "auto" source - so the only
+     * thing this changes is that the backlog stops offering it. Cleared by the next
+     * scan, which is the promise the screen makes when it asks.
+     */
+    private val deferred = HashSet<String>()
+
+    private val _deferredIds = MutableStateFlow<Set<String>>(emptySet())
+    val deferredIds: StateFlow<Set<String>> = _deferredIds
+
     init {
         scope.launch { mutex.withLock { loadLocked() } }
     }
@@ -172,6 +183,15 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
 
         _senders.value = _senders.value + seenSenders
         _lastSummary.value = summary
+        // "You'll be asked about these again next time" was the deal. This is next time.
+        if (deferred.isNotEmpty()) {
+            Verbose.info(
+                "${deferred.size} record(s) you left under Other are back in the backlog, " +
+                    "as promised when you left them"
+            )
+            deferred.clear()
+            _deferredIds.value = emptySet()
+        }
         persistLocked()
     }
 
@@ -445,6 +465,20 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         changed
     }
 
+    /**
+     * Leaves records where they already are - under the category they fell back to -
+     * and takes them out of the backlog until the next scan. Deliberately not
+     * [setCategories] with Other: that would mark them answered by the user, and an
+     * answer is never asked about again. Returns how many were newly set aside.
+     */
+    suspend fun deferCategory(txnIds: Collection<String>): Int = mutex.withLock {
+        val added = txnIds.filter { deferred.add(it) }.size
+        if (added == 0) return@withLock 0
+        _deferredIds.value = deferred.toSet()
+        persistLocked()
+        added
+    }
+
     suspend fun setCategory(txnId: String, categoryId: String) = mutex.withLock {
         overrides[txnId] = categoryId
         rawTxns = rawTxns.map {
@@ -691,6 +725,8 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         transferDecisions.clear()
         archived.clear()
         _archivedIds.value = emptySet()
+        deferred.clear()
+        _deferredIds.value = emptySet()
         manualTransfers.clear()
         ignored.clear()
         file.delete()
@@ -755,6 +791,10 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
                 for (i in 0 until a.length()) archived.add(a.getString(i))
             }
             _archivedIds.value = archived.toSet()
+            root.optJSONArray("deferred")?.let { a ->
+                for (i in 0 until a.length()) deferred.add(a.getString(i))
+            }
+            _deferredIds.value = deferred.toSet()
             root.optJSONArray("ignored")?.let { a ->
                 for (i in 0 until a.length()) ignored.add(a.getString(i))
             }
@@ -810,6 +850,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             })
             root.put("ignored", JSONArray().apply { ignored.forEach { put(it) } })
             root.put("archivedTxns", JSONArray().apply { archived.forEach { put(it) } })
+            root.put("deferred", JSONArray().apply { deferred.forEach { put(it) } })
             _lastSummary.value?.let { s ->
                 root.put("summary", JSONObject().apply {
                     put("at", s.at); put("took", s.tookMs); put("scanned", s.scanned)

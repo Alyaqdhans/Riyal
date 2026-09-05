@@ -55,6 +55,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.Stats
@@ -314,8 +315,8 @@ fun HomeScreen(
             // ── needs review: unreadable messages and transfer pairs both wait here
             if (pending.isNotEmpty() || pendingTransfers.isNotEmpty()) {
                 val parts = buildList {
-                    if (pendingTransfers.isNotEmpty()) add("${pendingTransfers.size} possible transfer(s)")
-                    if (pending.isNotEmpty()) add("${pending.size} unreadable message(s)")
+                    if (pendingTransfers.isNotEmpty()) add(countOf(pendingTransfers.size, "possible transfer"))
+                    if (pending.isNotEmpty()) add(countOf(pending.size, "unreadable message"))
                 }
                 ActionCard(
                     face = FaceStyle.CONFUSED,
@@ -336,7 +337,7 @@ fun HomeScreen(
                 ActionCard(
                     face = FaceStyle.CONFUSED,
                     mood = 0f,
-                    title = "$needsCategory record(s) need a category",
+                    title = countOf(needsCategory, "record") + " need a category",
                     // How they are ordered is something the page itself shows on arrival.
                     subtitle = "One tap files a whole shop",
                     container = MaterialTheme.colorScheme.secondaryContainer,
