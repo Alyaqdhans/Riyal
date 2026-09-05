@@ -19,14 +19,23 @@ You need two things that are deliberately not in this repository:
 In `app/build.gradle.kts`:
 
 ```kotlin
-versionCode = 3        // must be higher than the last released build
-versionName = "1.6"
+versionCode = 4        // must be higher than the last released build
+versionName = "1.6.0"
 ```
 
 `versionCode` is the only thing Android compares. It is not decoration: a build
 that keeps the old number will not install over the old one. Releases 1.0 and
 1.1 both shipped as `versionCode = 1`, which is exactly the mistake this line
 is here to stop.
+
+`versionName` is what the in-app update check compares, and it reads a tag as
+the numbers it is made of - `1.51` is minor 51, not "5.1". So `1.6` is *older*
+than `1.51` to the app, however it looks to a person. Give every version three
+places from here on (`1.6.0`, `1.6.1`, `1.7.0`) and the two readings agree.
+`VersionTest` asserts this, including the case that forced the rule.
+
+The tag on GitHub and this `versionName` must be the same version, or the app
+will keep offering an update to the release it is already running.
 
 ### 2. Merge what is going out
 
@@ -76,7 +85,7 @@ under the wrong key. Sign it by hand:
 
 ```bash
 $SDK/apksigner sign --ks /path/to/riyal.jks \
-  --out Riyal-v1.6.apk \
+  --out Riyal-v1.6.0.apk \
   app/build/outputs/apk/release/app-release-unsigned.apk
 ```
 
@@ -88,15 +97,15 @@ Releases are tagged on `master`, and nothing goes to `master` directly:
 
 ```bash
 git push origin development
-gh pr create --base master --head development --title "Release 1.6"
+gh pr create --base master --head development --title "Release 1.6.0"
 gh pr merge --merge
 ```
 
 Then tag and push the tag:
 
 ```bash
-git tag -a v1.6 -m "Riyal v1.6"
-git push origin v1.6
+git tag -a v1.6.0 -m "Riyal v1.6.0"
+git push origin v1.6.0
 ```
 
 ### 7. Write the notes
@@ -107,9 +116,9 @@ something - a wipe, a required uninstall, a permission - before the features.
 ### 8. Publish
 
 ```bash
-gh release create v1.6 --title "Riyal v1.6" \
+gh release create v1.6.0 --title "Riyal v1.6.0" \
   --notes-file <notes>.md \
-  Riyal-v1.6.apk
+  Riyal-v1.6.0.apk
 ```
 
 Add `--draft` to read it over on the site first, then publish from the browser.
@@ -119,7 +128,7 @@ Add `--draft` to read it over on the site first, then publish from the browser.
 The only check that actually proves the signing is right:
 
 ```bash
-adb install -r Riyal-v1.6.apk
+adb install -r Riyal-v1.6.0.apk
 ```
 
 `install -r` keeps the app's data. If Android says `INSTALL_FAILED_UPDATE_INCOMPATIBLE`,
@@ -135,13 +144,15 @@ before it:
 |---|---|---|
 | 1.0, 1.1 | `CN=riyal, O=riyal, OU=riyal` | `13:83:5D:4C:...:88:9C` |
 | 1.5 | `C=riyal, ST=riyal, L=riyal, CN=riyal` | `d1:98:f7:b7:...:bb:c2` |
-| 1.51 onward | `CN=riyal, OU=riyal, O=riyal, L=Muscat, ST=Muscat, C=OM` | `E5:C4:F9:55:...:50:6B` |
+| 1.6.0 onward | `CN=riyal, OU=riyal, O=riyal, L=Muscat, ST=Muscat, C=OM` | `E5:C4:F9:55:...:50:6B` |
 
 The current key lives at `/home/linuxbrew/riyal-release.jks`, alias `riyal`,
 RSA 4096, valid to January 2054. **It is the only one whose password is known.**
-The 1.0/1.1 keystore was never on this machine and the 1.5 one cannot be opened,
-which is why 1.51 starts a third lineage: users of 1.5 must uninstall before
-they can install 1.51, and they lose their hand-filed categories doing it.
+The 1.0/1.1 keystore was never on this machine, and `/home/linuxbrew/riyal.jks`
+- the 1.5 one - still rejects every password that has been tried. So 1.6.0
+starts a third lineage: users of 1.5 must uninstall before they can install it,
+and they lose their hand-filed categories doing it. (1.51 was built against
+this key but never published, so nobody is on it.)
 
 That is the whole cost of a lost keystore, paid twice. Do not let it happen to
 this one.
