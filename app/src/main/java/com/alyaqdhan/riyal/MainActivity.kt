@@ -76,6 +76,16 @@ class MainActivity : AppCompatActivity() {
             bottomBar.isVisible = destination.id !in CHROMELESS_DESTINATIONS
         }
         vm.autoScanOnLaunch()
+        // Once a day at most, and silent unless it finds something. An empty version
+        // string parses to nothing, which is never newer than anything, so a phone that
+        // cannot report its own version is simply never offered an update.
+        vm.checkForUpdate(
+            try {
+                packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+            } catch (e: Exception) {
+                ""
+            }
+        )
 
         bottomBar.setContent {
             RiyalTheme {

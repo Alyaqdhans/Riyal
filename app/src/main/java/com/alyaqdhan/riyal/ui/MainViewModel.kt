@@ -2,6 +2,10 @@ package com.alyaqdhan.riyal.ui
 
 import android.Manifest
 import android.app.Application
+import android.app.DownloadManager
+import android.content.Intent
+import android.os.Environment
+import androidx.core.net.toUri
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.content.ContextCompat
@@ -22,6 +26,8 @@ import com.alyaqdhan.riyal.data.ScanSummary
 import com.alyaqdhan.riyal.data.TransferProposal
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
+import com.alyaqdhan.riyal.data.UpdateApi
+import com.alyaqdhan.riyal.data.Updates
 import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import java.time.Instant
@@ -313,6 +319,120 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _budgetsOn = MutableStateFlow(prefs.budgetsEnabled)
     val budgetsOn: StateFlow<Boolean> = _budgetsOn
+
+    // ─────────────────────────── updates ───────────────────────────
+
+    /**
+     * The release GitHub is offering, once it has been found to be newer than what is
+     * installed. Null the rest of the time, which is nearly always, and the Settings row
+     * shows the current version and says nothing.
+     */
+    private val _update = MutableStateFlow<Updates.Release?>(null)
+    val update: StateFlow<Updates.Release?> = _update
+
+    /**
+     * Asks GitHub whether there is a newer release, at most once a day.
+     *
+     * Everything about this is quiet. A check that fails - offline, no releases yet, a
+     * rate limit - writes a line in the verbose log and leaves the Settings row exactly
+     * as it was, because an update check nobody asked for is not something to interrupt
+     * anyone about. [force] is the user tapping "Check now", which skips the throttle
+     * and is the only path that a person is waiting on.
+     */
+    fun checkForUpdate(currentVersion: String, force: Boolean = false) =
+        viewModelScope.launch(Dispatchers.IO) {
+            val since = System.currentTimeMillis() - prefs.lastUpdateCheckAt
+            if (!force && since < DAY_MS) return@launch
+            prefs.lastUpdateCheckAt = System.currentTimeMillis()
+
+            val release = UpdateApi.latestRelease()
+            if (release == null) {
+                Verbose.flush()
+                return@launch
+            }
+            if (Updates.isNewer(release.tag, currentVersion)) {
+                _update.value = release
+                Verbose.ok(
+                    "${release.tag} is newer than the ${currentVersion} you have · " +
+                        if (release.hasApk) {
+                            "Settings offers to download it"
+                        } else {
+                            "but the release carries no APK, so there is nothing to download"
+                        }
+                )
+            } else {
+                _update.value = null
+                Verbose.info("you are on ${currentVersion}, which is the latest (GitHub has ${release.tag})")
+            }
+            Verbose.flush()
+        }
+
+    /**
+     * Puts the release's APK in the phone's public Downloads folder and opens the
+     * Downloads screen so the user can tap it themselves.
+     *
+     * DownloadManager does the work: progress, retries, its own notification, and no
+     * storage permission at all for this destination. What it deliberately does not do
+     * is install anything. The app asks for neither REQUEST_INSTALL_PACKAGES nor a
+     * FileProvider, so the last step is a person choosing to install a file they can
+     * see - which is also the step where they will be told, by Android, if the APK is
+     * signed with a different key than the copy they already have.
+     *
+     * Returns false when there is nothing to download, so the caller can say so rather
+     * than opening an empty Downloads screen.
+     */
+    fun downloadUpdate(): Boolean {
+        val release = _update.value ?: return false
+        val url = release.apkUrl ?: run {
+            Verbose.fail(
+                "${release.tag} has no APK attached to it, so there is nothing to " +
+                    "download here - the release page on GitHub will have it"
+            )
+            Verbose.flush()
+            return false
+        }
+        val context = getApplication<Application>()
+        return try {
+            val name = release.apkName ?: "Riyal-${release.tag}.apk"
+            val request = DownloadManager.Request(url.toUri())
+                .setTitle(name)
+                .setDescription("Riyal ${release.tag}")
+                .setMimeType("application/vnd.android.package-archive")
+                .setNotificationVisibility(
+                    DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                )
+                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
+            val manager = context.getSystemService(DownloadManager::class.java)
+            manager.enqueue(request)
+            Verbose.ok(
+                "downloading $name to your Downloads folder · nothing installs on its " +
+                    "own, tap the file there when it has finished"
+            )
+            Verbose.flush()
+            openDownloads(context)
+            true
+        } catch (e: Exception) {
+            Verbose.fail("could not start the download (${e.javaClass.simpleName})")
+            Verbose.flush()
+            false
+        }
+    }
+
+    /** The system Downloads screen, where the file will appear. */
+    private fun openDownloads(context: Application) {
+        try {
+            context.startActivity(
+                Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            )
+        } catch (e: Exception) {
+            // A phone with no Downloads UI. The file still arrives; the notification
+            // DownloadManager posts is another way to reach it.
+            Verbose.info("no Downloads screen on this phone, use the download notification")
+            Verbose.flush()
+        }
+    }
 
     /** Whether a screen also writes its explanation onto the page. See [Prefs.showHelpText]. */
     var helpOnPage: Boolean
@@ -711,4 +831,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun csv(s: String) = "\"" + s.replace("\"", "\"\"") + "\""
+
+    private companion object {
+        /** How often GitHub is asked. A release lands a few times a year. */
+        const val DAY_MS = 24L * 60 * 60 * 1000
+    }
+
 }

@@ -473,8 +473,11 @@ fun SettingsScreen(
                     title = "Where it lives",
                     value = "this phone only",
                     detail = "Everything lives in one JSON file inside this app's private " +
-                        "storage. Backups are disabled. The manifest declares no INTERNET " +
-                        "permission, verifiable with any APK inspector.",
+                        "storage, and backups are disabled. The app does reach the network, " +
+                        "for one thing: it asks GitHub whether a newer release exists, and " +
+                        "downloads that APK if you ask it to. Nothing goes the other way. No " +
+                        "record, message, account or figure is ever put in a request, and " +
+                        "there is no analytics and no backend.",
                 )
             }
 
@@ -491,10 +494,38 @@ fun SettingsScreen(
                         "title, so the page opens on the work rather than on a paragraph. " +
                         "Turn this on to have it written out on the page as well.",
                 )
-                ValueLine(
+                // One row, both states. Normally it is the version you are on; when
+                // GitHub is offering a later one it becomes the way to get it, with the
+                // release notes behind the (i) like every other explanation here.
+                val update by vm.update.collectAsState()
+                val version = appVersion(context)
+                ActionLine(
                     title = "Riyal",
-                    value = appVersion(context),
-                    detail = "Made for Oman 🇴🇲 · OMR-first, with Arabic SMS support.",
+                    value = update?.let { "${it.tag} available" } ?: version,
+                    valueIsWarning = update != null,
+                    detail = update?.let { release ->
+                        val notes = release.notes.ifBlank { "No notes were published with it." }
+                        "You have $version. ${release.tag} is out.\n\n$notes\n\n" +
+                            "Downloading puts the APK in your Downloads folder and opens it " +
+                            "there. Riyal cannot install it for you - you tap the file " +
+                            "yourself. If Android refuses the install, it is because that " +
+                            "build is signed with a different key than this one: uninstall " +
+                            "Riyal first, which clears its stored records. They rebuild from " +
+                            "your inbox on the next scan, but hand-filed categories do not."
+                    } ?: "Made for Oman 🇴🇲 · OMR-first, with Arabic SMS support. " +
+                        "Checks GitHub once a day for a newer release.",
+                    actionLabel = if (update != null) "Download" else "Check now",
+                    onAction = {
+                        val release = update
+                        if (release == null) {
+                            note("checking GitHub for a newer release")
+                            vm.checkForUpdate(version, force = true)
+                        } else if (!release.hasApk) {
+                            note("${release.tag} has no APK attached to it")
+                        } else if (vm.downloadUpdate()) {
+                            note("downloading ${release.tag} to your Downloads folder")
+                        }
+                    },
                 )
             }
 
