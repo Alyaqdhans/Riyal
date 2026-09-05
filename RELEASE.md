@@ -136,26 +136,27 @@ the key is wrong - find that out here, not from someone whose records are gone.
 
 ## The signing key
 
-Three different keys have signed a published Riyal, where one should have
-signed all of them. Each change broke updates for everyone on the release
-before it:
+Two keys have signed a published Riyal, where one should have signed both. The
+change between 1.1 and 1.5 broke updates for everyone on 1.1:
 
-| Releases | Certificate | SHA-256 |
-|---|---|---|
-| 1.0, 1.1 | `CN=riyal, O=riyal, OU=riyal` | `13:83:5D:4C:...:88:9C` |
-| 1.5 | `C=riyal, ST=riyal, L=riyal, CN=riyal` | `d1:98:f7:b7:...:bb:c2` |
-| 1.6.0 onward | `CN=riyal, OU=riyal, O=riyal, L=Muscat, ST=Muscat, C=OM` | `E5:C4:F9:55:...:50:6B` |
+| Releases | Keystore | Certificate | SHA-256 |
+|---|---|---|---|
+| 1.0, 1.1 | lost | `CN=riyal, O=riyal, OU=riyal` | `13:83:5D:4C:...:88:9C` |
+| 1.5, 1.6.0 onward | `/home/linuxbrew/riyal.jks` | `C=riyal, ST=riyal, L=riyal, O=riyal, OU=riyal, CN=riyal` | `D1:98:F7:B7:...:BB:C2` |
 
-The current key lives at `/home/linuxbrew/riyal-release.jks`, alias `riyal`,
-RSA 4096, valid to January 2054. **It is the only one whose password is known.**
-The 1.0/1.1 keystore was never on this machine, and `/home/linuxbrew/riyal.jks`
-- the 1.5 one - still rejects every password that has been tried. So 1.6.0
-starts a third lineage: users of 1.5 must uninstall before they can install it,
-and they lose their hand-filed categories doing it. (1.51 was built against
-this key but never published, so nobody is on it.)
+**The release key is `/home/linuxbrew/riyal.jks`**, PKCS#12, alias `key0`,
+valid to January 3026. It signed 1.5 and it signs everything after, so 1.6.0
+installs over 1.5 as an ordinary update with the user's records intact.
 
-That is the whole cost of a lost keystore, paid twice. Do not let it happen to
-this one.
+There is a third keystore, `/home/linuxbrew/riyal-release.jks`, alias `riyal`,
+`E5:C4:F9:55:...:50:6B`. It signed 1.51, which was never published, so nobody
+is on it. It is not the release key. Building 1.6.0 with it would have forced
+every 1.5 user to uninstall, and that was nearly shipped: check the fingerprint
+in step 5 against the table above before publishing, every time.
+
+The 1.0/1.1 keystore was never on this machine and its users are stranded.
+That is the cost of a lost keystore, and it has been paid once. Back
+`riyal.jks` up somewhere that survives losing this machine.
 
 Check a keystore is the right one before trusting it:
 
