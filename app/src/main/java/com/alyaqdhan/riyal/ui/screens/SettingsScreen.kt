@@ -504,14 +504,18 @@ fun SettingsScreen(
                     value = update?.let { "${it.tag} available" } ?: version,
                     valueIsWarning = update != null,
                     detail = update?.let { release ->
-                        val notes = release.notes.ifBlank { "No notes were published with it." }
-                        "You have $version. ${release.tag} is out.\n\n$notes\n\n" +
+                        val notes = plainNotes(release.notes)
+                            .ifBlank { "No notes were published with it." }
+                        // The warning comes before the notes, not after. A release body
+                        // is as long as its author felt like, and the thing that has to
+                        // be read before tapping Download must not be underneath it.
+                        "You have $version. ${release.tag} is out.\n\n" +
                             "Downloading puts the APK in your Downloads folder and opens it " +
                             "there. Riyal cannot install it for you - you tap the file " +
-                            "yourself. If Android refuses the install, it is because that " +
-                            "build is signed with a different key than this one: uninstall " +
-                            "Riyal first, which clears its stored records. They rebuild from " +
-                            "your inbox on the next scan, but hand-filed categories do not."
+                            "yourself. If Android refuses the install, that build is signed " +
+                            "with a different key than this one: uninstall Riyal first, " +
+                            "which clears its stored records. They rebuild from your inbox " +
+                            "on the next scan, but hand-filed categories do not.\n\n$notes"
                     } ?: "Made for Oman 🇴🇲 · OMR-first, with Arabic SMS support. " +
                         "Checks GitHub once a day for a newer release.",
                     actionLabel = if (update != null) "Download" else "Check now",
@@ -728,7 +732,14 @@ private fun SettingLine(
         AlertDialog(
             onDismissRequest = { showDetail = false },
             title = { Text(title) },
-            text = { Text(detail) },
+            // Scrollable, because one of these is now a release body written by whoever
+            // wrote it. Without this the dialog clips at the bottom of the screen with
+            // no way to reach the rest - and the part it was cutting off was the
+            // warning about the signing key, which is the one paragraph that has to be
+            // read before tapping Download.
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) { Text(detail) }
+            },
             confirmButton = { TextButton(onClick = { showDetail = false }) { Text("Got it") } },
         )
     }
@@ -987,6 +998,25 @@ private fun AddKeywordRow(
         FilledTonalButton(onClick = onAdd, enabled = value.isNotBlank()) { Text("Add") }
     }
 }
+
+/**
+ * A GitHub release body as something to read in a dialog.
+ *
+ * The body is markdown, and this dialog is a Text: "**Upgrading clears your data.**"
+ * arrives with its asterisks showing and "### Accounts" with its hashes. Nothing here
+ * renders markdown, so the markers are taken off rather than displayed. Emphasis is
+ * lost, which is a smaller cost than a screen of punctuation.
+ */
+private fun plainNotes(body: String): String = body.trim().lines().joinToString("\n") { line ->
+    line.trimEnd()
+        .replace(headingMark, "")
+        .replace(boldMark, "")
+        .replace(bulletMark, "• ")
+}
+
+private val headingMark = Regex("^#{1,6}\\s*")
+private val bulletMark = Regex("^\\s*[-*]\\s+")
+private val boldMark = Regex("\\*\\*|__")
 
 private fun appVersion(context: android.content.Context): String = try {
     context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
