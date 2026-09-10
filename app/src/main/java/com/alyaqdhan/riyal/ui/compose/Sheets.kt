@@ -132,9 +132,9 @@ fun ScanSheetHost(vm: MainViewModel) {
                         // Material 3 Expressive shape-morphing loading indicator
                         LoadingIndicator(Modifier.size(52.dp))
                         Column {
-                            Text("Scanning your inbox…", style = MaterialTheme.typography.titleLarge)
+                            Text(s.phase + "…", style = MaterialTheme.typography.titleLarge)
                             Text(
-                                if (s.total > 0) "${s.processed} / ${s.total} messages" else "querying the inbox…",
+                                if (s.total > 0) "${s.processed} / ${s.total} ${s.noun}" else "querying the inbox…",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
