@@ -479,17 +479,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Whether a screen also writes its explanation onto the page. See [Prefs.showHelpText]. */
-    var helpOnPage: Boolean
-        get() = prefs.showHelpText
-        set(v) {
-            prefs.showHelpText = v
-            _helpOnPage.value = v
-        }
-
-    private val _helpOnPage = MutableStateFlow(prefs.showHelpText)
-    val helpShown: StateFlow<Boolean> = _helpOnPage
-
     fun addBudget(label: String, startMillis: Long, endExclusiveMillis: Long) =
         viewModelScope.launch(Dispatchers.IO) {
             store.addBudget(

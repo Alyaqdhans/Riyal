@@ -61,7 +61,6 @@ import com.alyaqdhan.riyal.ui.compose.CategoryOrder
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.ui.compose.HelpAction
-import com.alyaqdhan.riyal.ui.compose.HelpNote
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.localDateOf
@@ -112,7 +111,6 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
     val deferred by vm.deferredIds.collectAsState()
     val custom by vm.categories.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
-    val helpOnPage by vm.helpShown.collectAsState()
     // Frozen for the whole screen, not per card: working a backlog files record after
     // record, and every one of those changes the counts. The chips have to sit still
     // while the list they belong to is being emptied.
@@ -184,18 +182,14 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
 
             if (groups.isNotEmpty()) {
                 item(key = "intro") {
-                    Column {
-                        // What is left to do, and nothing else. The paragraph that used
-                        // to be here is behind the (i), or on the page for someone who
-                        // asked for that in Settings.
-                        Text(
-                            countOf(records, "record") + " · " + countOf(groups.size, "place"),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 4.dp),
-                        )
-                        HelpNote(HELP, visible = helpOnPage)
-                    }
+                    // What is left to do, and nothing else. The explanation is behind
+                    // the (i) and only there.
+                    Text(
+                        countOf(records, "record") + " · " + countOf(groups.size, "place"),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    )
                 }
             }
 

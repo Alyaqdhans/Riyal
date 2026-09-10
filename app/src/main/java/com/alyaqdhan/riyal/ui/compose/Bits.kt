@@ -343,19 +343,3 @@ fun HelpAction(title: String, help: String) {
         )
     }
 }
-
-/**
- * The same text on the page, for someone who asked in Settings to be told rather than
- * to go looking. Off by default: a screen that explains itself at rest has to be read
- * before it can be used.
- */
-@Composable
-fun HelpNote(help: String, visible: Boolean, modifier: Modifier = Modifier) {
-    if (!visible) return
-    Text(
-        help,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.padding(vertical = 4.dp),
-    )
-}

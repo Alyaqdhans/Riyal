@@ -1,6 +1,7 @@
 package com.alyaqdhan.riyal.data
 
 import android.content.Context
+import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
 import java.io.File
 import java.util.UUID
@@ -158,11 +159,36 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         seenSenders: Set<String>,
         summary: ScanSummary,
     ) = mutex.withLock {
+        // A message answered by hand can become readable later: adopting a gate keyword
+        // is exactly that, and so is a parser fix. The scan then produces a record for a
+        // message that already has one, and one purchase is counted twice - which is the
+        // one thing every total on every screen depends on not happening.
+        //
+        // The parsed record wins, because it knows the merchant and the account the hand
+        // entry never did. It inherits the category the user chose, so being read
+        // properly at last does not quietly undo their answer.
+        val superseded = HashMap<String, Txn>()
+        rawTxns.filter { it.manual }.forEach { m ->
+            // Records made from a review carry "man-" in front of the message id; ones
+            // typed from scratch have no message and match nothing here.
+            val parsed = scanned.firstOrNull { it.id == m.id || "man-" + it.id == m.id }
+            if (parsed != null) superseded[parsed.id] = m
+        }
+        superseded.forEach { (parsedId, manual) ->
+            if (parsedId !in overrides) overrides[parsedId] = manual.categoryId
+            Verbose.info(
+                "a message you answered by hand reads on its own now · keeping one record " +
+                    "of ${Money.format(manual.amountMinor, manual.currency)}, " +
+                    "still under ${Categories.byId(manual.categoryId).name}"
+            )
+        }
         val withOverrides = scanned.asSequence()
             .filter { it.id !in ignored }
             .map { applyUserEdits(it) }
             .toList()
-        val manuals = rawTxns.filter { m -> m.manual && scanned.none { it.id == m.id } }
+        val manuals = rawTxns.filter { m ->
+            m.manual && superseded.none { (_, s) -> s.id == m.id }
+        }
         rawTxns = (withOverrides + manuals).sortedByDescending { it.atMillis }
 
         // A proposal the user already answered keeps that answer; only genuinely new

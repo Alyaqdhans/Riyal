@@ -132,7 +132,6 @@ fun SettingsScreen(
     var scanOnLaunch by remember { mutableStateOf(prefs.scanOnLaunch) }
     var smartRules by remember { mutableStateOf(prefs.smartRules) }
     var budgetsEnabled by remember { mutableStateOf(prefs.budgetsEnabled) }
-    var helpOnPage by remember { mutableStateOf(prefs.showHelpText) }
     var autoConfirmTransfers by remember { mutableStateOf(prefs.autoConfirmTransfers) }
     var confirmWipe by remember { mutableStateOf(false) }
     var confirmExport by remember { mutableStateOf(false) }
@@ -501,18 +500,6 @@ fun SettingsScreen(
             }
 
             SettingsCard("About") {
-                SwitchLine(
-                    title = "Explain screens",
-                    checked = helpOnPage,
-                    onCheckedChange = {
-                        helpOnPage = it
-                        vm.helpOnPage = it
-                        note("on-page help ${if (it) "enabled" else "disabled"}")
-                    },
-                    detail = "Screens keep their explanation behind the (i) beside the " +
-                        "title, so the page opens on the work rather than on a paragraph. " +
-                        "Turn this on to have it written out on the page as well.",
-                )
                 // One row, every state. Normally it is the version you are on; when
                 // GitHub is offering a later one it becomes the way to get it. The
                 // release notes sit behind the (i) whichever way the check came out,
