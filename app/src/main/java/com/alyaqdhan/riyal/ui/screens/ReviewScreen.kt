@@ -23,6 +23,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,9 +48,11 @@ import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Account
+import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.MsgTemplate
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.TransferProposal
+import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.Face
@@ -75,12 +78,23 @@ private val reviewDateFmt = DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a")
  */
 /** What the page is for, behind the (i) rather than above the work. */
 private const val HELP =
-    "These messages matched your keywords but could not be read automatically, so " +
-        "nothing was recorded for them. Resolve one to record it, or dismiss it to " +
-        "say it was never a transaction.\n\n" +
+    "Messages Riyal could not read on its own. Nothing was recorded for any of them. " +
+        "Resolve one to record it, or dismiss it to say it was never a transaction.\n\n" +
+        "Some show an amount and ask only which way the money went. Those are messages " +
+        "whose wording your keywords do not cover yet - \"your card was used for...\" " +
+        "and the like. Answering records the amount as it stands, and you can adopt the " +
+        "word that confused it so the next one is read automatically.\n\n" +
         "Transfers appear here too: two messages that look like one movement between " +
         "your own accounts. Confirming a pair stops it counting as both spending and " +
         "income."
+
+/** The item the manual dialog is open for, and what is already decided about it. */
+private data class Resolving(
+    val item: ReviewItem,
+    val learnSimilar: Boolean,
+    /** Set when the user already answered "money out" or "money in" on the card. */
+    val type: TxnType? = null,
+)
 
 @Composable
 fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
@@ -104,7 +118,10 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
     }
     val pending = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_PENDING } }
     val dismissed = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_DISMISSED } }
-    var resolving by remember { mutableStateOf<Pair<ReviewItem, Boolean>?>(null) }
+    // What the manual dialog is finishing. A direction-only item arrives with its
+    // amount and the answer already given, so the dialog opens on the category rather
+    // than on an empty amount field.
+    var resolving by remember { mutableStateOf<Resolving?>(null) }
     var showDismissed by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -195,7 +212,16 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                         ReviewCard(
                             item = item,
                             rememberDefault = vm.prefs.smartRules,
-                            onResolve = { learn -> resolving = item to learn },
+                            onResolve = { learn -> resolving = Resolving(item, learn) },
+                            onDecide = { direction, word ->
+                                if (word != null) vm.learnKeyword(word, direction)
+                                resolving = Resolving(
+                                    item = item,
+                                    learnSimilar = false,
+                                    type = if (direction == Direction.EXPENSE) TxnType.EXPENSE
+                                    else TxnType.INCOME,
+                                )
+                            },
                             onDismiss = { alsoSimilar ->
                                 val similar = if (alsoSimilar) {
                                     val t = MsgTemplate.of(item.sender, item.body)
@@ -259,17 +285,21 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
         }
     }
 
-    resolving?.let { (item, learn) ->
+    resolving?.let { open ->
+        val item = open.item
         ManualTxnDialog(
-            title = "What was this?",
+            title = if (open.type != null) "Which category?" else "What was this?",
             atMillis = item.atMillis,
             defaultCurrency = vm.prefs.defaultCurrency,
             accounts = accounts,
             categoryUse = categoryUse,
+            initialAmountMinor = item.amountMinor,
+            initialCurrency = item.currency,
+            initialType = open.type,
             onSave = { amountMinor, currency, type, merchant, categoryId, from, to ->
                 vm.resolveReview(
                     item, amountMinor, currency, type, merchant, categoryId,
-                    fromAccountId = from, toAccountId = to, learnSimilar = learn,
+                    fromAccountId = from, toAccountId = to, learnSimilar = open.learnSimilar,
                 )
                 resolving = null
             },
@@ -354,6 +384,7 @@ private fun ReviewCard(
     item: ReviewItem,
     rememberDefault: Boolean,
     onResolve: (learnSimilar: Boolean) -> Unit,
+    onDecide: (direction: Direction, learnWord: String?) -> Unit,
     onDismiss: (alsoSimilar: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -363,20 +394,40 @@ private fun ReviewCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Face(mood = -0.2f, style = FaceStyle.CONFUSED, modifier = Modifier.size(44.dp))
+                Face(
+                    mood = if (item.directionOnly) 0.2f else -0.2f,
+                    style = FaceStyle.CONFUSED,
+                    modifier = Modifier.size(44.dp),
+                )
                 Column(Modifier.weight(1f)) {
-                    Text(item.sender, style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        reviewDateFmt.format(Instant.ofEpochMilli(item.atMillis).atZone(ZoneId.systemDefault())),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    if (item.directionOnly) {
+                        Text(
+                            Money.format(item.amountMinor!!, item.currency ?: ""),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            item.sender + " · " + reviewDateFmt.format(
+                                Instant.ofEpochMilli(item.atMillis).atZone(ZoneId.systemDefault())
+                            ),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        Text(item.sender, style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            reviewDateFmt.format(Instant.ofEpochMilli(item.atMillis).atZone(ZoneId.systemDefault())),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
             SummaryPill(
                 item.reason,
-                MaterialTheme.colorScheme.errorContainer,
-                MaterialTheme.colorScheme.onErrorContainer,
+                if (item.directionOnly) MaterialTheme.colorScheme.secondaryContainer
+                else MaterialTheme.colorScheme.errorContainer,
+                if (item.directionOnly) MaterialTheme.colorScheme.onSecondaryContainer
+                else MaterialTheme.colorScheme.onErrorContainer,
             )
             var expanded by remember { mutableStateOf(false) }
             Text(
@@ -389,34 +440,77 @@ private fun ReviewCard(
                     indication = null,
                 ) { expanded = !expanded },
             )
-            var rememberChoice by remember { mutableStateOf(rememberDefault) }
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) { rememberChoice = !rememberChoice },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Checkbox(checked = rememberChoice, onCheckedChange = { rememberChoice = it })
+            // The word is offered, never taken. A gate keyword decides what the app
+            // reads at all, so adopting one on the evidence of a single message is the
+            // user's call and starts unticked.
+            var learnWord by remember { mutableStateOf<String?>(null) }
+            if (item.directionOnly && item.suggestedWords.isNotEmpty()) {
                 Text(
-                    "Remember for similar messages",
+                    "Read messages like this automatically from now on",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item.suggestedWords.take(2).forEach { word ->
+                        FilterChip(
+                            selected = learnWord == word,
+                            onClick = { learnWord = if (learnWord == word) null else word },
+                            label = { Text("\"$word\"") },
+                        )
+                    }
+                }
+            }
+            var rememberChoice by remember { mutableStateOf(rememberDefault) }
+            if (!item.directionOnly) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { rememberChoice = !rememberChoice },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(checked = rememberChoice, onCheckedChange = { rememberChoice = it })
+                    Text(
+                        "Remember for similar messages",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            // One question, two answers. Everything else about the record is already
+            // known, so this is the whole decision.
+            if (item.directionOnly) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilledTonalButton(
+                        onClick = { onDecide(Direction.EXPENSE, learnWord) },
+                        shapes = ButtonDefaults.shapes(),
+                        modifier = Modifier.weight(1f).pressBounce(),
+                    ) { Text("Money out") }
+                    FilledTonalButton(
+                        onClick = { onDecide(Direction.INCOME, learnWord) },
+                        shapes = ButtonDefaults.shapes(),
+                        modifier = Modifier.weight(1f).pressBounce(),
+                    ) { Text("Money in") }
+                }
             }
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
                 TextButton(onClick = { onDismiss(rememberChoice) }) { Text("Dismiss") }
-                FilledTonalButton(
-                    onClick = { onResolve(rememberChoice) },
-                    shapes = ButtonDefaults.shapes(),
-                    modifier = Modifier.pressBounce(),
-                ) {
-                    Text("Add manually")
+                if (!item.directionOnly) {
+                    FilledTonalButton(
+                        onClick = { onResolve(rememberChoice) },
+                        shapes = ButtonDefaults.shapes(),
+                        modifier = Modifier.pressBounce(),
+                    ) {
+                        Text("Add manually")
+                    }
                 }
             }
         }

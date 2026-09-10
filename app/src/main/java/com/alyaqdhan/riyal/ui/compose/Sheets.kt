@@ -455,12 +455,25 @@ fun ManualTxnDialog(
     ) -> Unit,
     onDismiss: () -> Unit,
     categoryUse: Map<String, Int> = emptyMap(),
+    /**
+     * What the message already said, when this dialog is finishing a decision rather
+     * than starting one. Retyping a figure printed in the message is the kind of work
+     * the app exists to avoid.
+     */
+    initialAmountMinor: Long? = null,
+    initialCurrency: String? = null,
+    initialType: TxnType? = null,
 ) {
     val live = remember(accounts) { accounts.filter { !it.archived } }
     val order = rememberCategoryOrder(categoryUse)
-    var amount by remember { mutableStateOf("") }
-    var currency by remember { mutableStateOf(defaultCurrency) }
-    var type by remember { mutableStateOf(TxnType.EXPENSE) }
+    val startCurrency = initialCurrency ?: defaultCurrency
+    var amount by remember {
+        mutableStateOf(
+            initialAmountMinor?.let { Money.formatAmount(it, startCurrency).replace(",", "") } ?: ""
+        )
+    }
+    var currency by remember { mutableStateOf(startCurrency) }
+    var type by remember { mutableStateOf(initialType ?: TxnType.EXPENSE) }
     var merchant by remember { mutableStateOf("") }
     var categoryId by remember { mutableStateOf(Categories.DEFAULT_EXPENSE) }
     var fromAccount by remember { mutableStateOf(live.firstOrNull()) }

@@ -193,6 +193,9 @@ class ScanEngine(
                         reviews += ReviewItem(
                             hashOf(msg), msg.atMillis, msg.sender, msg.body, result.reason,
                             state = ReviewItem.STATE_DISMISSED,
+                            amountMinor = result.amountMinor,
+                            currency = result.currency,
+                            suggestedWords = result.suggestedWords,
                         )
                         return@forEachIndexed
                     }
@@ -203,7 +206,12 @@ class ScanEngine(
                         Verbose.fail("    · sender isn't a known bank, kept because you recorded a message like this before")
                     }
                     Verbose.fail("    → added to Review so you decide what it was")
-                    reviews += ReviewItem(hashOf(msg), msg.atMillis, msg.sender, msg.body, result.reason)
+                    reviews += ReviewItem(
+                        hashOf(msg), msg.atMillis, msg.sender, msg.body, result.reason,
+                        amountMinor = result.amountMinor,
+                        currency = result.currency,
+                        suggestedWords = result.suggestedWords,
+                    )
                 }
 
                 is SmsParser.Result.Parsed -> {

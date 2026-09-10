@@ -19,6 +19,7 @@ import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.AccountDiscovery
 import com.alyaqdhan.riyal.data.BudgetPlan
 import com.alyaqdhan.riyal.data.Categories
+import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.ScanEngine
 import com.alyaqdhan.riyal.data.Stats
@@ -759,6 +760,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.info(
             "review item restored by you" +
                 if (extra > 0) " together with " + countOf(extra, "similar message") + ", that kind is no longer auto-dismissed" else ""
+        )
+        Verbose.flush()
+    }
+
+    /**
+     * Adopts a word from a message as a gate keyword, so that kind of message is read
+     * automatically from the next scan instead of being asked about again.
+     *
+     * Only ever called because the user tapped it. The gate decides what the app is
+     * allowed to look at at all, and a word added to it silently would change how the
+     * whole inbox is read on evidence of one message.
+     */
+    fun learnKeyword(word: String, direction: Direction) {
+        val w = word.trim().lowercase()
+        if (w.isEmpty()) return
+        if (direction == Direction.EXPENSE) {
+            if (w in prefs.expenseKeywords) return
+            prefs.expenseKeywords = prefs.expenseKeywords + w
+        } else {
+            if (w in prefs.incomeKeywords) return
+            prefs.incomeKeywords = prefs.incomeKeywords + w
+        }
+        Verbose.ok(
+            "added \"$w\" as a ${if (direction == Direction.EXPENSE) "money out" else "money in"} " +
+                "word · the next scan reads messages like that one on its own " +
+                "(Settings › Keywords to take it back)"
         )
         Verbose.flush()
     }
