@@ -1,6 +1,7 @@
 package com.alyaqdhan.riyal.data
 
 import android.content.Context
+import com.alyaqdhan.riyal.core.LogLine
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Prefs
 import com.alyaqdhan.riyal.core.Verbose
@@ -144,6 +145,28 @@ class ScanEngine(
         var autoDismissed = 0
         var duplicates = 0
         var skipLinesLogged = 0
+
+        // The same idea as logSkip, for the per-record narration. A record is described
+        // in about a dozen lines, so a large inbox wrote a quarter of a million of them
+        // into a buffer that keeps four thousand: seconds spent building strings that
+        // were then dropped. Past the cap the records are still made and still counted,
+        // they are just no longer each described.
+        var recordLinesLogged = 0
+        fun logRecord(text: String, kind: LogLine.Kind = LogLine.Kind.INFO) {
+            when {
+                recordLinesLogged < MAX_RECORD_LINES -> {
+                    Verbose.log(kind, text)
+                    recordLinesLogged++
+                }
+                recordLinesLogged == MAX_RECORD_LINES -> {
+                    Verbose.scan(
+                        "…more records than this log can hold; they are all still read and " +
+                            "counted, they are just no longer described one by one"
+                    )
+                    recordLinesLogged++
+                }
+            }
+        }
 
         fun logSkip(text: String) {
             when {
@@ -354,8 +377,8 @@ class ScanEngine(
             // money, whatever its text says. Oman TV offering "cash prizes up to 60,000
             // OMR" was the single biggest expense in the whole history.
             if (accounts.isNotEmpty() && !AccountDiscovery.isKnownSender(accounts, pm.msg.sender)) {
-                Verbose.info("✉ ${pm.msg.sender} · ${fmtDateTime(pm.msg.atMillis)}")
-                Verbose.info("    → not one of your banks, so it cannot have moved your money; not recorded")
+                logRecord("✉ ${pm.msg.sender} · ${fmtDateTime(pm.msg.atMillis)}")
+                logRecord("    → not one of your banks, so it cannot have moved your money; not recorded")
                 skippedNonBank++
                 continue
             }
@@ -372,24 +395,26 @@ class ScanEngine(
             }?.takeIf { it != accountId }
             val cat = Categorizer.categorize(result.direction, result.merchant, pm.msg.body, rules, pm.msg.sender)
             val type = if (selfTo != null) TxnType.TRANSFER else TxnType.of(result.direction)
-            Verbose.info("✉ ${pm.msg.sender} · ${fmtDateTime(pm.msg.atMillis)}")
-            result.trace.forEach { Verbose.info("    · $it") }
+            logRecord("✉ ${pm.msg.sender} · ${fmtDateTime(pm.msg.atMillis)}")
+            result.trace.forEach { logRecord("    · $it") }
             val catNote = cat.pattern?.let { "${cat.source} match \"$it\"" } ?: cat.source
-            Verbose.info("    · category: ${Categories.byId(cat.categoryId).name} ($catNote)")
-            Verbose.info(
+            logRecord("    · category: ${Categories.byId(cat.categoryId).name} ($catNote)")
+            logRecord(
                 "    · account: " + (accounts.firstOrNull { it.id == accountId }?.displayName
                     ?: "not matched, assign it from the transaction row")
             )
             if (type == TxnType.TRANSFER) {
-                Verbose.ok(
+                logRecord(
                     "    ✓ recorded as a transfer between your own accounts · " +
                         "${Money.format(result.amountMinor, result.currency)} · it counts as " +
-                        "neither spending nor income"
+                        "neither spending nor income",
+                    LogLine.Kind.OK,
                 )
             } else {
-                Verbose.ok(
+                logRecord(
                     "    ✓ recorded ${Money.formatSigned(result.amountMinor, result.currency, type == TxnType.EXPENSE)}" +
-                        " · confidence ${result.confidence}%"
+                        " · confidence ${result.confidence}%",
+                    LogLine.Kind.OK,
                 )
             }
             txns += Txn(
@@ -537,21 +562,54 @@ class ScanEngine(
     private fun isPhoneNumber(sender: String): Boolean =
         sender.isNotBlank() && sender.all { it.isDigit() || it in "+ -()" }
 
-    private fun hashOf(m: RawSms): String =
-        MessageDigest.getInstance("SHA-256")
-            .digest("${m.sender}|${m.atMillis}|${m.body}".toByteArray())
-            .joinToString("") { "%02x".format(it) }
-            .take(16)
+    /**
+     * The identity of a message: same sender, same instant, same text, same record.
+     *
+     * Called once for every message in the inbox, so what it allocates matters. It used
+     * to build a fresh SHA-256 instance per message and then run String.format sixteen
+     * times to render the hex. The bytes it digests are unchanged, so the ids it
+     * produces are unchanged, which they have to be: every stored record and every
+     * category the user has set is keyed by one.
+     */
+    private fun hashOf(m: RawSms): String {
+        val md = digest.get()!!
+        md.reset()
+        md.update(m.sender.toByteArray())
+        md.update(SEPARATOR)
+        md.update(m.atMillis.toString().toByteArray())
+        md.update(SEPARATOR)
+        md.update(m.body.toByteArray())
+        val bytes = md.digest()
+        val out = CharArray(16)
+        for (i in 0 until 8) {
+            val b = bytes[i].toInt() and 0xff
+            out[i * 2] = HEX[b ushr 4]
+            out[i * 2 + 1] = HEX[b and 0x0f]
+        }
+        return String(out)
+    }
 
+    // Parsing a date pattern is not free, and both of these re-parsed one on every
+    // call - which in stage 3 is once per record.
     private fun fmtDate(millis: Long): String =
-        DateTimeFormatter.ofPattern("dd MMM uuuu")
-            .format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
+        DATE_FMT.format(Instant.ofEpochMilli(millis).atZone(ZONE))
 
     private fun fmtDateTime(millis: Long): String =
-        DateTimeFormatter.ofPattern("dd MMM uuuu h:mm a")
-            .format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
+        DATE_TIME_FMT.format(Instant.ofEpochMilli(millis).atZone(ZONE))
 
     private companion object {
         const val MAX_SKIP_LINES = 400
+
+        /** How many lines of per-record narration a single pass may write. */
+        const val MAX_RECORD_LINES = 1200
+
+        val DATE_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM uuuu")
+        val DATE_TIME_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM uuuu h:mm a")
+        val ZONE: ZoneId = ZoneId.systemDefault()
+
+        val HEX = "0123456789abcdef".toCharArray()
+        val SEPARATOR = "|".toByteArray()
+        val digest: ThreadLocal<MessageDigest> =
+            ThreadLocal.withInitial { MessageDigest.getInstance("SHA-256") }
     }
 }
