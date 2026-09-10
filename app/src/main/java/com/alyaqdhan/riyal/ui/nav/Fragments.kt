@@ -83,7 +83,9 @@ class HomeFragment : ScreenFragment() {
         )
         Verbose.flush()
         vm.refreshPermission()
-        if (granted) vm.startScan()
+        // Quiet: this lands the user on Home, which shows the result itself. Asking for
+        // the sheet here left it queued for whenever Settings was next opened.
+        if (granted) vm.startScan(showSheet = false)
     }
 
     @Composable
@@ -318,6 +320,6 @@ class OnboardingFragment : ScreenFragment() {
             null,
             navOptions { popUpTo(R.id.onboardingFragment) { inclusive = true } },
         )
-        if (startScan) vm.startScan()
+        if (startScan) vm.startScan(showSheet = false)
     }
 }

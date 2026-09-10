@@ -180,7 +180,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         _scanState.value = ScanState.Running(0, 0)
-        if (showSheet) scanSheetVisible.value = true
+        // Set both ways. Leaving it alone let a request from a screen that no longer
+        // renders the sheet sit there until some later screen did, which is a sheet
+        // about a scan the user finished with minutes ago.
+        scanSheetVisible.value = showSheet
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val summary = ScanEngine(getApplication(), prefs, store).run { p ->
