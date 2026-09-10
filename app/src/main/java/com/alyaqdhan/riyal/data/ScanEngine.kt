@@ -1,6 +1,7 @@
 package com.alyaqdhan.riyal.data
 
 import android.content.Context
+import com.alyaqdhan.riyal.core.LogLine
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Prefs
 import com.alyaqdhan.riyal.core.Verbose
@@ -26,7 +27,17 @@ class ScanEngine(
     private val store: Store,
 ) {
 
-    data class Progress(val processed: Int, val total: Int)
+    /**
+     * @param phase what is happening. Reading the messages is only part of a pass: on a
+     *   large inbox the stages after it take seconds of their own, and while they ran
+     *   the bar sat at 100% looking like a hang.
+     */
+    data class Progress(
+        val processed: Int,
+        val total: Int,
+        val phase: String = "Reading your messages",
+        val noun: String = "messages",
+    )
 
     /** A message that parsed cleanly, held until accounts are known. */
     private data class ParsedMsg(
@@ -35,7 +46,19 @@ class ScanEngine(
         val result: SmsParser.Result.Parsed,
     )
 
-    suspend fun run(onProgress: (Progress) -> Unit): ScanSummary {
+    /**
+     * @param full read the whole range again rather than only what is new. This is the
+     *   reconciliation pass: it is the only thing that notices a bank message deleted
+     *   from the inbox, and the only thing that re-parses old records. Forced by the
+     *   app when the settings that produced the stored records change, and available to
+     *   the user as "Rescan everything".
+     */
+    suspend fun run(full: Boolean = false, onProgress: (Progress) -> Unit): ScanSummary {
+        // Everything below reads what is already stored - the accounts, the rules, the
+        // dismissed message kinds - and none of those reads takes the store's lock. On
+        // app launch they used to happen while the file was still being read, so the
+        // scan decided it was a first run and rediscovered every account, every time.
+        store.awaitLoaded()
         val startedAt = System.currentTimeMillis()
         val months = prefs.scanRangeMonths
         val window = if (months <= 0) 0L
@@ -44,6 +67,20 @@ class ScanEngine(
         // back as time passes, which would quietly undo a fresh start.
         val freshStart = prefs.scanSinceMillis
         val since = maxOf(window, freshStart)
+
+        // What the stored records were produced with. They are reused rather than
+        // re-derived, so if any of it has changed they are stale by definition.
+        val fingerprint = fingerprintOf()
+        val plan = ScanWindow.plan(
+            full = full,
+            sinceMillis = since,
+            highWaterMillis = prefs.scanHighWaterMillis,
+            storedFingerprint = prefs.scanFingerprint,
+            fingerprint = fingerprint,
+            overlapMillis = Prefs.SCAN_OVERLAP_MILLIS,
+        )
+        val readEverything = plan.readEverything
+        val from = plan.fromMillis
 
         Verbose.scan("──────── scan started ────────")
         Verbose.scan("mode: manual one-shot, this app has no background receiver")
@@ -76,9 +113,26 @@ class ScanEngine(
             Verbose.scan("sender filters OFF: every sender is considered (bodies are still keyword-gated)")
         }
 
-        val messages = SmsReader.readInbox(context, since)
+        Verbose.scan(
+            when (plan.reason) {
+                ScanWindow.Reason.ASKED -> "reading everything again because you asked for it"
+                ScanWindow.Reason.RULES_CHANGED ->
+                    "reading everything again: the keywords, sender rules or the parser " +
+                        "changed, so the records already stored were made under different rules"
+                ScanWindow.Reason.NOTHING_READ_YET ->
+                    "reading everything: nothing has been read before"
+                ScanWindow.Reason.ONLY_WHAT_IS_NEW ->
+                    "reading only what is new, from ${fmtDateTime(from)} " +
+                        "(${Prefs.SCAN_OVERLAP_MILLIS / 3_600_000} hours before the newest " +
+                        "message last time, so nothing dated oddly is missed)"
+            }
+        )
+
+        val tQuery0 = System.currentTimeMillis()
+        val messages = SmsReader.readInbox(context, from)
+        val queryMs = System.currentTimeMillis() - tQuery0
         val seenSenders = messages.mapTo(HashSet()) { it.sender }
-        Verbose.scan("inbox query returned ${messages.size} message(s) from ${seenSenders.size} sender(s)")
+        Verbose.scan("inbox query returned ${messages.size} message(s) from ${seenSenders.size} sender(s) in ${queryMs}ms")
 
         val parser = SmsParser(prefs.expenseKeywords, prefs.incomeKeywords, prefs.defaultCurrency)
         val rules = store.rules.value
@@ -98,6 +152,28 @@ class ScanEngine(
         var autoDismissed = 0
         var duplicates = 0
         var skipLinesLogged = 0
+
+        // The same idea as logSkip, for the per-record narration. A record is described
+        // in about a dozen lines, so a large inbox wrote a quarter of a million of them
+        // into a buffer that keeps four thousand: the app spent seconds building strings
+        // it then dropped. Past the cap the records are still made and still counted,
+        // they are just no longer each described.
+        var recordLinesLogged = 0
+        fun logRecord(text: String, kind: LogLine.Kind = LogLine.Kind.INFO) {
+            when {
+                recordLinesLogged < MAX_RECORD_LINES -> {
+                    Verbose.log(kind, text)
+                    recordLinesLogged++
+                }
+                recordLinesLogged == MAX_RECORD_LINES -> {
+                    Verbose.scan(
+                        "…more records than this log can hold; they are all still read and " +
+                            "counted, they are just no longer described one by one"
+                    )
+                    recordLinesLogged++
+                }
+            }
+        }
 
         fun logSkip(text: String) {
             when {
@@ -135,8 +211,21 @@ class ScanEngine(
         }
 
         // ── stage 1: read every message ───────────────────────────────────
+        //
+        // Every message this pass looked at, whatever came of it. An incremental scan
+        // is only the truth about the messages it actually read, so the store needs to
+        // know which those were: a message inside the window that produces nothing this
+        // time must lose the record it had, while everything outside the window must
+        // keep its own. Left null for a full pass, which is the truth about everything.
+        val examined = if (readEverything) null else HashSet<String>()
+        val tParse0 = System.currentTimeMillis()
         messages.forEachIndexed { index, msg ->
             if (index % 25 == 0) onProgress(Progress(index, messages.size))
+            // Hashed once, here, rather than at each of the three places that used to
+            // need it. It also has to happen before any filter below, or a message that
+            // a changed sender rule now excludes would keep a record nothing re-read.
+            val msgId = hashOf(msg)
+            examined?.add(msgId)
 
             // Banks send from named sender IDs ("BankMuscat"), people send from phone
             // numbers. Numeric senders are never read unless explicitly approved in
@@ -191,7 +280,7 @@ class ScanEngine(
                                 "before → auto-dismissed (restore it in Review)"
                         )
                         reviews += ReviewItem(
-                            hashOf(msg), msg.atMillis, msg.sender, msg.body, result.reason,
+                            msgId, msg.atMillis, msg.sender, msg.body, result.reason,
                             state = ReviewItem.STATE_DISMISSED,
                             amountMinor = result.amountMinor,
                             currency = result.currency,
@@ -207,7 +296,7 @@ class ScanEngine(
                     }
                     Verbose.fail("    → added to Review so you decide what it was")
                     reviews += ReviewItem(
-                        hashOf(msg), msg.atMillis, msg.sender, msg.body, result.reason,
+                        msgId, msg.atMillis, msg.sender, msg.body, result.reason,
                         amountMinor = result.amountMinor,
                         currency = result.currency,
                         suggestedWords = result.suggestedWords,
@@ -216,7 +305,7 @@ class ScanEngine(
 
                 is SmsParser.Result.Parsed -> {
                     matched++
-                    val id = hashOf(msg)
+                    val id = msgId
                     if (parsedMsgs.containsKey(id)) {
                         duplicates++
                         logSkip("${msg.sender} · exact duplicate message, ignored")
@@ -227,8 +316,10 @@ class ScanEngine(
             }
         }
 
-        onProgress(Progress(messages.size, messages.size))
+        val parseMs = System.currentTimeMillis() - tParse0
+        onProgress(Progress(messages.size, messages.size, "Working out your accounts"))
 
+        val tAcc0 = System.currentTimeMillis()
         // ── stage 2: accounts ─────────────────────────────────────────────
         // Discovery runs on every scan, not just the first: a bank that has never
         // texted before owns no account yet, and after a fresh start that is every
@@ -280,6 +371,9 @@ class ScanEngine(
             }
         }
 
+        val accMs = System.currentTimeMillis() - tAcc0
+        val tRec0 = System.currentTimeMillis()
+        onProgress(Progress(0, parsedMsgs.size, "Building your records", "records"))
         // ── stage 3: build records, routed to an account ──────────────────
         val txns = ArrayList<Txn>(parsedMsgs.size)
         val hinted = HashSet<String>()
@@ -288,14 +382,19 @@ class ScanEngine(
         val bankStamps = HashMap<String, String>()
         var unrouted = 0
         var skippedNonBank = 0
+        var built = 0
         for (pm in parsedMsgs.values) {
+            if (built % 200 == 0) {
+                onProgress(Progress(built, parsedMsgs.size, "Building your records", "records"))
+            }
+            built++
             val result = pm.result
             // A sender that owns none of the user's accounts cannot have moved their
             // money, whatever its text says. Oman TV offering "cash prizes up to 60,000
             // OMR" was the single biggest expense in the whole history.
             if (accounts.isNotEmpty() && !AccountDiscovery.isKnownSender(accounts, pm.msg.sender)) {
-                Verbose.info("✉ ${pm.msg.sender} · ${fmtDateTime(pm.msg.atMillis)}")
-                Verbose.info("    → not one of your banks, so it cannot have moved your money; not recorded")
+                logRecord("✉ ${pm.msg.sender} · ${fmtDateTime(pm.msg.atMillis)}")
+                logRecord("    → not one of your banks, so it cannot have moved your money; not recorded")
                 skippedNonBank++
                 continue
             }
@@ -312,24 +411,26 @@ class ScanEngine(
             }?.takeIf { it != accountId }
             val cat = Categorizer.categorize(result.direction, result.merchant, pm.msg.body, rules, pm.msg.sender)
             val type = if (selfTo != null) TxnType.TRANSFER else TxnType.of(result.direction)
-            Verbose.info("✉ ${pm.msg.sender} · ${fmtDateTime(pm.msg.atMillis)}")
-            result.trace.forEach { Verbose.info("    · $it") }
+            logRecord("✉ ${pm.msg.sender} · ${fmtDateTime(pm.msg.atMillis)}")
+            result.trace.forEach { logRecord("    · $it") }
             val catNote = cat.pattern?.let { "${cat.source} match \"$it\"" } ?: cat.source
-            Verbose.info("    · category: ${Categories.byId(cat.categoryId).name} ($catNote)")
-            Verbose.info(
+            logRecord("    · category: ${Categories.byId(cat.categoryId).name} ($catNote)")
+            logRecord(
                 "    · account: " + (accounts.firstOrNull { it.id == accountId }?.displayName
                     ?: "not matched, assign it from the transaction row")
             )
             if (type == TxnType.TRANSFER) {
-                Verbose.ok(
+                logRecord(
                     "    ✓ recorded as a transfer between your own accounts · " +
                         "${Money.format(result.amountMinor, result.currency)} · it counts as " +
-                        "neither spending nor income"
+                        "neither spending nor income",
+                    LogLine.Kind.OK,
                 )
             } else {
-                Verbose.ok(
+                logRecord(
                     "    ✓ recorded ${Money.formatSigned(result.amountMinor, result.currency, type == TxnType.EXPENSE)}" +
-                        " · confidence ${result.confidence}%"
+                        " · confidence ${result.confidence}%",
+                    LogLine.Kind.OK,
                 )
             }
             txns += Txn(
@@ -356,6 +457,9 @@ class ScanEngine(
             )
         }
 
+        val recMs = System.currentTimeMillis() - tRec0
+        val tTr0 = System.currentTimeMillis()
+        onProgress(Progress(txns.size, txns.size, "Looking for transfers between your accounts", "records"))
         // ── stage 4: nominate transfers ───────────────────────────────────
         // Accounts go in so the matcher can tell a same-bank move (instant, 15 min)
         // from a bank-to-bank one, where the receiving bank texts once it settles.
@@ -385,9 +489,12 @@ class ScanEngine(
             )
         }
 
+        val trMs = System.currentTimeMillis() - tTr0
         val summary = ScanSummary(
             at = System.currentTimeMillis(),
-            tookMs = System.currentTimeMillis() - startedAt,
+            // Filled in below, once the saving is done: it used to stop the clock before
+            // the store was written, which on a quiet scan was most of the time spent.
+            tookMs = 0L,
             scanned = messages.size,
             matched = matched,
             parsed = txns.size,
@@ -395,9 +502,27 @@ class ScanEngine(
             skipped = skipped,
             transfers = proposals.size,
         )
-        store.replaceScanned(txns, proposals, reviews, seenSenders, summary)
+        onProgress(Progress(txns.size, txns.size, "Saving", "records"))
+        val tStore0 = System.currentTimeMillis()
+        store.applyScan(
+            txns, proposals, reviews, seenSenders,
+            summary.copy(tookMs = System.currentTimeMillis() - startedAt),
+            examinedIds = examined,
+        )
+        val storeMs = System.currentTimeMillis() - tStore0
+        val took = System.currentTimeMillis() - startedAt
 
-        Verbose.scan("──────── scan finished in ${"%.1f".format(summary.tookMs / 1000f)}s ────────")
+        // The high-water mark moves only after the store has taken the work. A scan that
+        // threw on the way here leaves it where it was, so the next one reads the same
+        // messages again rather than stepping over them.
+        prefs.scanHighWaterMillis =
+            maxOf(prefs.scanHighWaterMillis, messages.maxOfOrNull { it.atMillis } ?: 0L)
+        prefs.scanFingerprint = fingerprint
+
+        Verbose.scan("──────── scan finished in ${"%.1f".format(took / 1000f)}s ────────")
+        // Where the time went, because "the scan is slow" is not something anyone can
+        // act on and these three numbers are.
+        Verbose.scan("time: inbox query ${queryMs}ms · reading ${parseMs}ms · saving ${storeMs}ms")
         Verbose.scan(
             "scanned ${summary.scanned} · keyword matches ${summary.matched} · recorded ${summary.parsed}" +
                 (if (duplicates > 0) " ($duplicates duplicate(s) ignored)" else "") +
@@ -426,8 +551,29 @@ class ScanEngine(
         }
         Verbose.scan("skipped messages were never stored; only their count was kept")
         Verbose.flush()
-        return summary
+        return summary.copy(tookMs = took)
     }
+
+    /**
+     * Everything that decides what a stored record would say if it were parsed again.
+     *
+     * Records survive between scans now, so they carry the settings that made them. Any
+     * change here means every stored record could now read differently, and the only
+     * honest response is to read the inbox again. Deliberately not a hash: it is written
+     * to preferences and read back, and when something goes wrong with scanning this is
+     * the string worth being able to look at.
+     */
+    private fun fingerprintOf(): String = listOf(
+        "v${SmsParser.VERSION}",
+        prefs.expenseKeywords.sorted().joinToString(","),
+        prefs.incomeKeywords.sorted().joinToString(","),
+        prefs.defaultCurrency,
+        "range=${prefs.scanRangeMonths}",
+        "fresh=${prefs.scanSinceMillis}",
+        "bankOnly=${prefs.bankSendersOnly}",
+        "allowOnly=${prefs.senderFilterEnabled}",
+        prefs.senderAllowlist.map { it.lowercase() }.sorted().joinToString(","),
+    ).joinToString("|")
 
     private fun accountName(accounts: List<Account>, id: String?): String =
         accounts.firstOrNull { it.id == id }?.displayName ?: "an unassigned account"
@@ -436,21 +582,53 @@ class ScanEngine(
     private fun isPhoneNumber(sender: String): Boolean =
         sender.isNotBlank() && sender.all { it.isDigit() || it in "+ -()" }
 
-    private fun hashOf(m: RawSms): String =
-        MessageDigest.getInstance("SHA-256")
-            .digest("${m.sender}|${m.atMillis}|${m.body}".toByteArray())
-            .joinToString("") { "%02x".format(it) }
-            .take(16)
+    /**
+     * The identity of a message: same sender, same instant, same text, same record.
+     *
+     * Called once for every message in the inbox, so what it allocates matters. It used
+     * to build a fresh SHA-256 instance per message and then run String.format sixteen
+     * times to render the hex; both are gone. The digest is thread-local because
+     * MessageDigest is not thread-safe and this is called from the scan's own thread.
+     */
+    private fun hashOf(m: RawSms): String {
+        val md = digest.get()!!
+        md.reset()
+        md.update(m.sender.toByteArray())
+        md.update(SEPARATOR)
+        md.update(m.atMillis.toString().toByteArray())
+        md.update(SEPARATOR)
+        md.update(m.body.toByteArray())
+        val bytes = md.digest()
+        val out = CharArray(16)
+        for (i in 0 until 8) {
+            val b = bytes[i].toInt() and 0xff
+            out[i * 2] = HEX[b ushr 4]
+            out[i * 2 + 1] = HEX[b and 0x0f]
+        }
+        return String(out)
+    }
 
+    // Parsing a date pattern is not free, and these were re-parsed on every call - which
+    // in stage 3 is once per record.
     private fun fmtDate(millis: Long): String =
-        DateTimeFormatter.ofPattern("dd MMM uuuu")
-            .format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
+        DATE_FMT.format(Instant.ofEpochMilli(millis).atZone(ZONE))
 
     private fun fmtDateTime(millis: Long): String =
-        DateTimeFormatter.ofPattern("dd MMM uuuu h:mm a")
-            .format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
+        DATE_TIME_FMT.format(Instant.ofEpochMilli(millis).atZone(ZONE))
 
     private companion object {
         const val MAX_SKIP_LINES = 400
+
+        /** How many lines of per-record narration a single pass may write. */
+        const val MAX_RECORD_LINES = 1200
+
+        val DATE_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM uuuu")
+        val DATE_TIME_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM uuuu h:mm a")
+        val ZONE: ZoneId = ZoneId.systemDefault()
+
+        val HEX = "0123456789abcdef".toCharArray()
+        val SEPARATOR = "|".toByteArray()
+        val digest: ThreadLocal<MessageDigest> =
+            ThreadLocal.withInitial { MessageDigest.getInstance("SHA-256") }
     }
 }

@@ -5,6 +5,7 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
 import java.io.File
 import java.util.UUID
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -146,18 +147,48 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private val _deferredIds = MutableStateFlow<Set<String>>(emptySet())
     val deferredIds: StateFlow<Set<String>> = _deferredIds
 
+    /**
+     * Completes once the saved file has been read.
+     *
+     * Loading is asynchronous, and a scan starts the moment the app opens, so the two
+     * used to race: the scanner read [accounts], [rules] and [muted] while they were
+     * still empty and behaved as if this were a first run. It re-proposed every account
+     * on every launch and wrote the whole store back each time - 2.3 seconds of a 2.6
+     * second scan on a large inbox, spent rediscovering what it already knew.
+     *
+     * Writes were never at risk: they take the same mutex as the load, so they queue
+     * behind it. It was only these reads, which take no lock at all.
+     */
+    private val loaded = CompletableDeferred<Unit>()
+
+    suspend fun awaitLoaded() = loaded.await()
+
     init {
-        scope.launch { mutex.withLock { loadLocked() } }
+        scope.launch {
+            mutex.withLock { loadLocked() }
+            loaded.complete(Unit)
+        }
     }
 
     // ─────────────────────────── scanning ───────────────────────────
 
-    suspend fun replaceScanned(
+    /**
+     * Takes the result of one pass over the inbox.
+     *
+     * [examinedIds] is what makes an incremental pass safe: it names the messages this
+     * pass actually read. Anything it read is replaced by what it found this time -
+     * including being dropped, if it found nothing - and anything it never looked at is
+     * left exactly as it was. Null means the pass read the whole range and so is the
+     * truth about everything, which is also the only way a record belonging to a message
+     * since deleted from the inbox goes away.
+     */
+    suspend fun applyScan(
         scanned: List<Txn>,
         proposals: List<TransferProposal>,
         newReviews: List<ReviewItem>,
         seenSenders: Set<String>,
         summary: ScanSummary,
+        examinedIds: Set<String>? = null,
     ) = mutex.withLock {
         // A message answered by hand can become readable later: adopting a gate keyword
         // is exactly that, and so is a parser fix. The scan then produces a record for a
@@ -186,23 +217,40 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             .filter { it.id !in ignored }
             .map { applyUserEdits(it) }
             .toList()
+        val before = rawTxns
+        val beforeReviews = _reviews.value
+        val beforeTransfers = _transfers.value
+        val beforeSenders = _senders.value
         val manuals = rawTxns.filter { m ->
             m.manual && superseded.none { (_, s) -> s.id == m.id }
         }
-        rawTxns = (withOverrides + manuals).sortedByDescending { it.atMillis }
+        rawTxns = ScanMerge.records(rawTxns, withOverrides, examinedIds, manuals)
+            .sortedByDescending { it.atMillis }
 
         // A proposal the user already answered keeps that answer; only genuinely new
         // pairs arrive as pending, so a rescan never re-asks a settled question.
-        _transfers.value = proposals.distinctBy { it.id }.map { p ->
+        //
+        // An incremental pass only nominated pairs among the messages it read, so pairs
+        // it never looked at have to be carried over. A pair with even one leg in this
+        // pass was re-decided by it, and the overlap window is wider than the matcher's
+        // own, so both legs of anything matchable are always read together.
+        val keptProposals = ScanMerge.keepUnexamined(_transfers.value, examinedIds) {
+            // Either leg being in this pass means the pair was re-decided by it, and the
+            // overlap window is wider than the matcher's own, so both legs of anything
+            // matchable are always read together.
+            if (examinedIds != null && it.outTxnId in examinedIds) it.outTxnId else it.inTxnId
+        }
+        _transfers.value = (proposals + keptProposals).distinctBy { it.id }.map { p ->
             transferDecisions[p.id]?.let { p.copy(state = it) } ?: p
         }.sortedByDescending { it.atMillis }
         applyAutoConfirmLocked()
         recomputeTxnsLocked()
 
         val previous = _reviews.value.associateBy { it.id }
+        val keptReviews = ScanMerge.keepUnexamined(_reviews.value, examinedIds) { it.id }
         // Two byte-identical messages hash to one id, and a list rendered by id must
         // not contain it twice - that crashes the Review page rather than degrading.
-        _reviews.value = newReviews.distinctBy { it.id }.map { r ->
+        _reviews.value = (newReviews + keptReviews).distinctBy { it.id }.map { r ->
             val old = previous[r.id]
             if (old != null && old.state != ReviewItem.STATE_PENDING) r.copy(state = old.state) else r
         }.sortedByDescending { it.atMillis }
@@ -218,7 +266,20 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             deferred.clear()
             _deferredIds.value = emptySet()
         }
-        persistLocked()
+        // The common case for an incremental scan is that nothing arrived, and writing
+        // the whole file to say so cost more than everything else in the scan put
+        // together. The summary is the one thing that always changes, and it is kept in
+        // memory until something real is written with it; the time of the last scan
+        // lives in preferences either way, so the card above Settings stays right.
+        val changed = rawTxns != before ||
+            _reviews.value != beforeReviews ||
+            _transfers.value != beforeTransfers ||
+            _senders.value != beforeSenders
+        if (changed) {
+            persistLocked()
+        } else {
+            Verbose.info("nothing changed, so nothing was written")
+        }
     }
 
     private fun applyUserEdits(t: Txn): Txn {
