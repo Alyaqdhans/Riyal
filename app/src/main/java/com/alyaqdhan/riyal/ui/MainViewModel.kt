@@ -323,12 +323,46 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // ─────────────────────────── updates ───────────────────────────
 
     /**
-     * The release GitHub is offering, once it has been found to be newer than what is
-     * installed. Null the rest of the time, which is nearly always, and the Settings row
-     * shows the current version and says nothing.
+     * What the last look at GitHub found.
+     *
+     * The first version of this kept only a release that was newer and threw away every
+     * other answer, which made the row look broken in the two cases that are not rare at
+     * all: tapping Check now while already on the latest did nothing visible, and the
+     * release notes were unreachable unless an update happened to be waiting. The answer
+     * is worth keeping whichever way it came out.
      */
-    private val _update = MutableStateFlow<Updates.Release?>(null)
-    val update: StateFlow<Updates.Release?> = _update
+    sealed interface UpdateState {
+        /** Nothing has been asked yet in this session, and nothing was remembered. */
+        data object Unknown : UpdateState
+        /** A request is in flight. Only ever true because someone tapped. */
+        data object Checking : UpdateState
+        /** GitHub has a newer one. [release] is what Download acts on. */
+        data class Available(val release: Updates.Release) : UpdateState
+        /** GitHub answered, and what it has is not newer. Kept for its notes. */
+        data class UpToDate(val release: Updates.Release) : UpdateState
+        /** Offline, rate-limited, no releases published, a body that would not parse. */
+        data object Unreachable : UpdateState
+    }
+
+    private val _updateState = MutableStateFlow<UpdateState>(
+        // A remembered answer means the notes are on the (i) the moment Settings opens,
+        // rather than only after a check the user has no reason to know they must run.
+        prefs.lastReleaseTag?.let { tag ->
+            UpdateState.UpToDate(
+                Updates.Release(
+                    tag = tag,
+                    notes = prefs.lastReleaseNotes,
+                    apkUrl = null, apkName = null, apkBytes = 0L,
+                )
+            )
+        } ?: UpdateState.Unknown
+    )
+    val updateState: StateFlow<UpdateState> = _updateState
+
+    /** The release to download, which is only ever one that is actually newer. */
+    val update: StateFlow<Updates.Release?> =
+        _updateState.map { (it as? UpdateState.Available)?.release }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /**
      * Asks GitHub whether there is a newer release, at most once a day.
@@ -344,14 +378,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val since = System.currentTimeMillis() - prefs.lastUpdateCheckAt
             if (!force && since < DAY_MS) return@launch
             prefs.lastUpdateCheckAt = System.currentTimeMillis()
+            if (force) _updateState.value = UpdateState.Checking
 
             val release = UpdateApi.latestRelease()
             if (release == null) {
+                // A background check that failed stays invisible, as before. One the
+                // user asked for has someone waiting on it, and silence reads as a
+                // broken button, so that one says it could not ask.
+                if (force) _updateState.value = UpdateState.Unreachable
                 Verbose.flush()
                 return@launch
             }
+            prefs.lastReleaseTag = release.tag
+            prefs.lastReleaseNotes = release.notes
             if (Updates.isNewer(release.tag, currentVersion)) {
-                _update.value = release
+                _updateState.value = UpdateState.Available(release)
                 Verbose.ok(
                     "${release.tag} is newer than the ${currentVersion} you have · " +
                         if (release.hasApk) {
@@ -361,7 +402,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         }
                 )
             } else {
-                _update.value = null
+                _updateState.value = UpdateState.UpToDate(release)
                 Verbose.info("you are on ${currentVersion}, which is the latest (GitHub has ${release.tag})")
             }
             Verbose.flush()
@@ -382,7 +423,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * than opening an empty Downloads screen.
      */
     fun downloadUpdate(): Boolean {
-        val release = _update.value ?: return false
+        val release = update.value ?: return false
         val url = release.apkUrl ?: run {
             Verbose.fail(
                 "${release.tag} has no APK attached to it, so there is nothing to " +
