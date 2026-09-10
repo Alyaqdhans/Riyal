@@ -166,7 +166,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun startScan(showSheet: Boolean = true) {
+    /**
+     * @param full read the whole range again instead of only what is new. Reserved for
+     *   the user asking for it in Settings: it is the pass that reconciles records with
+     *   an inbox that has had messages deleted from it, and on a large inbox it is the
+     *   slow one. Launch and pull-to-refresh are always incremental.
+     */
+    fun startScan(showSheet: Boolean = true, full: Boolean = false) {
         if (_scanState.value is ScanState.Running) {
             if (showSheet) scanSheetVisible.value = true
             return
@@ -186,7 +192,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         scanSheetVisible.value = showSheet
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val summary = ScanEngine(getApplication(), prefs, store).run { p ->
+                val summary = ScanEngine(getApplication(), prefs, store).run(full = full) { p ->
                     _scanState.value = ScanState.Running(p.processed, p.total)
                 }
                 prefs.lastScanAt = summary.at

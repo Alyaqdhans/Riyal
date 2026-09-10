@@ -410,13 +410,32 @@ fun SettingsScreen(
                 ActionLine(
                     title = "Scan now",
                     value = running?.let { p ->
-                        if (p.total > 0) "reading ${p.processed} of ${p.total}" else "starting…"
+                        if (p.total > 0) "${p.processed} of ${p.total}" else "starting…"
                     },
-                    detail = "Reads the inbox once. Riyal has no background receiver: it reads " +
-                        "only when you ask it to, or when it opens if that is switched on above.",
+                    detail = "Reads the messages that arrived since the last scan, so it costs " +
+                        "what is new rather than what your inbox holds. Riyal has no " +
+                        "background receiver: it reads only when you ask it to, or when it " +
+                        "opens if that is switched on above.\n\nTo rebuild everything from " +
+                        "scratch, use Rescan everything below.",
                     actionLabel = if (running != null) "Scanning" else "Scan",
                     enabled = running == null,
                     onAction = { vm.startScan() },
+                )
+                ActionLine(
+                    title = "Rescan everything",
+                    value = null,
+                    detail = "Scanning normally reads only the messages that arrived since " +
+                        "last time, which is why it is quick. This reads the whole range " +
+                        "again and rebuilds every record from the messages still in your " +
+                        "inbox.\n\nTwo things only this can do: notice a bank message you " +
+                        "have since deleted, whose record would otherwise stay, and re-read " +
+                        "old messages under rules you have changed. Riyal does the second " +
+                        "for you whenever you change a keyword; the first is yours to ask " +
+                        "for.\n\nOn a large inbox this takes a while. Nothing you have filed " +
+                        "or entered by hand is lost by it.",
+                    actionLabel = "Rescan",
+                    enabled = running == null,
+                    onAction = { vm.startScan(full = true) },
                 )
                 if (running != null) {
                     LinearProgressIndicator(
