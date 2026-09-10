@@ -5,6 +5,7 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
 import java.io.File
 import java.util.UUID
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -146,8 +147,26 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private val _deferredIds = MutableStateFlow<Set<String>>(emptySet())
     val deferredIds: StateFlow<Set<String>> = _deferredIds
 
+    /**
+     * Completes once the saved file has been read.
+     *
+     * Loading is asynchronous, and a scan starts the moment the app opens, so the two
+     * used to race: the scanner read [accounts], [rules] and [muted] while they were
+     * still empty and behaved as if this were a first run. It re-proposed every account
+     * it already had, on every launch, and wrote the whole store back each time.
+     *
+     * Writes were never at risk - they take the same mutex as the load, so they queue
+     * behind it. It was only these reads, which take no lock at all.
+     */
+    private val loaded = CompletableDeferred<Unit>()
+
+    suspend fun awaitLoaded() = loaded.await()
+
     init {
-        scope.launch { mutex.withLock { loadLocked() } }
+        scope.launch {
+            mutex.withLock { loadLocked() }
+            loaded.complete(Unit)
+        }
     }
 
     // ─────────────────────────── scanning ───────────────────────────

@@ -36,6 +36,11 @@ class ScanEngine(
     )
 
     suspend fun run(onProgress: (Progress) -> Unit): ScanSummary {
+        // Everything below reads what is already stored - the accounts, the rules, the
+        // dismissed message kinds - and none of those reads takes the store's lock. On
+        // app launch they happened while the file was still being read, so the scan
+        // decided it was a first run and rediscovered every account, every time.
+        store.awaitLoaded()
         val startedAt = System.currentTimeMillis()
         val months = prefs.scanRangeMonths
         val window = if (months <= 0) 0L
