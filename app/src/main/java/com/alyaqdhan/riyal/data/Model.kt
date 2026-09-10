@@ -362,7 +362,18 @@ data class ReviewItem(
     val body: String,
     val reason: String,
     val state: String = STATE_PENDING,
+    /**
+     * The amount the parser read out of a message whose direction it could not tell.
+     * Null for everything else in this queue, where nothing was readable at all.
+     */
+    val amountMinor: Long? = null,
+    val currency: String? = null,
+    /** Words from the message that would make its kind readable next time, best first. */
+    val suggestedWords: List<String> = emptyList(),
 ) {
+    /** Answerable in one tap: the figure is known, only the direction is missing. */
+    val directionOnly: Boolean get() = amountMinor != null
+
     companion object {
         const val STATE_PENDING = "pending"
         const val STATE_DISMISSED = "dismissed"

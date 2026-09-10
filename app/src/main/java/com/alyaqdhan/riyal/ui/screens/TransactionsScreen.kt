@@ -52,7 +52,6 @@ import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.FilterSheet
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
-import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.SwipeableTxnRow
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.toolbarSpace
@@ -304,7 +303,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
         )
     }
 
-    ScanSheetHost(vm)
     picker?.let { txn ->
         TxnEditSheet(
             txn = txn,

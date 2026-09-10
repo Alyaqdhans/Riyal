@@ -154,6 +154,19 @@ class Prefs(context: Context) {
         get() = sp.getLong("last_update_check_at", 0L)
         set(v) = sp.edit().putLong("last_update_check_at", v).apply()
 
+    /**
+     * The last release GitHub reported, remembered so its notes are on the (i) as soon
+     * as Settings opens. Notes only, never an APK link: what is worth downloading is
+     * decided by a live answer, not by one from a week ago.
+     */
+    var lastReleaseTag: String?
+        get() = sp.getString("last_release_tag", null)
+        set(v) = sp.edit().putString("last_release_tag", v).apply()
+
+    var lastReleaseNotes: String
+        get() = sp.getString("last_release_notes", "") ?: ""
+        set(v) = sp.edit().putString("last_release_notes", v).apply()
+
     var lastScanAt: Long
         get() = sp.getLong("last_scan_at", 0L)
         set(v) = sp.edit().putLong("last_scan_at", v).apply()

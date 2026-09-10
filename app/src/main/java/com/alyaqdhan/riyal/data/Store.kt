@@ -883,6 +883,11 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         return out
     }
 
+    private fun JSONArray?.toStringList(): List<String> = buildList {
+        val a = this@toStringList ?: return@buildList
+        for (i in 0 until a.length()) a.optString(i).takeIf { it.isNotBlank() }?.let { add(it) }
+    }
+
     private fun JSONArray?.toStringSet(): Set<String> = buildSet {
         if (this@toStringSet != null) {
             for (i in 0 until this@toStringSet.length()) add(this@toStringSet.getString(i))
@@ -987,6 +992,13 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private fun reviewToJson(r: ReviewItem) = JSONObject().apply {
         put("id", r.id); put("at", r.atMillis); put("sen", r.sender)
         put("body", r.body); put("reason", r.reason); put("state", r.state)
+        // Written only when there is something to write, so a file from before these
+        // existed and a file with nothing readable in it look the same.
+        r.amountMinor?.let { put("amt", it) }
+        r.currency?.let { put("cur", it) }
+        if (r.suggestedWords.isNotEmpty()) {
+            put("words", JSONArray().apply { r.suggestedWords.forEach { put(it) } })
+        }
     }
 
     private fun reviewFromJson(o: JSONObject) = ReviewItem(
@@ -996,6 +1008,9 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         body = o.getString("body"),
         reason = o.getString("reason"),
         state = o.optString("state", ReviewItem.STATE_PENDING),
+        amountMinor = if (o.has("amt")) o.getLong("amt") else null,
+        currency = o.optString("cur").takeIf { it.isNotBlank() },
+        suggestedWords = o.optJSONArray("words").toStringList(),
     )
 
     private fun ruleToJson(r: UserRule) = JSONObject().apply {

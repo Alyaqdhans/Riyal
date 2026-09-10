@@ -45,6 +45,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -59,6 +60,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -69,6 +71,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
@@ -400,14 +403,30 @@ fun SettingsScreen(
                     }
                 }
 
+                // Progress belongs on the screen that has the button. This row used to
+                // start a scan whose sheet only Home and Activity rendered, so the work
+                // you asked for here appeared over a screen you were not looking at.
+                val scan by vm.scanState.collectAsState()
+                val running = scan as? MainViewModel.ScanState.Running
                 ActionLine(
                     title = "Scan now",
-                    value = null,
-                    detail = "Reads the inbox once, exactly as pulling down to refresh does. " +
-                        "Riyal has no background receiver: it reads only when you ask it to.",
-                    actionLabel = "Scan",
+                    value = running?.let { p ->
+                        if (p.total > 0) "reading ${p.processed} of ${p.total}" else "starting…"
+                    },
+                    detail = "Reads the inbox once. Riyal has no background receiver: it reads " +
+                        "only when you ask it to, or when it opens if that is switched on above.",
+                    actionLabel = if (running != null) "Scanning" else "Scan",
+                    enabled = running == null,
                     onAction = { vm.startScan() },
                 )
+                if (running != null) {
+                    LinearProgressIndicator(
+                        progress = {
+                            if (running.total > 0) running.processed.toFloat() / running.total else 0f
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    )
+                }
             }
 
             SettingsCard("Automation") {
@@ -494,43 +513,103 @@ fun SettingsScreen(
                         "title, so the page opens on the work rather than on a paragraph. " +
                         "Turn this on to have it written out on the page as well.",
                 )
-                // One row, both states. Normally it is the version you are on; when
-                // GitHub is offering a later one it becomes the way to get it, with the
-                // release notes behind the (i) like every other explanation here.
-                val update by vm.update.collectAsState()
+                // One row, every state. Normally it is the version you are on; when
+                // GitHub is offering a later one it becomes the way to get it. The
+                // release notes sit behind the (i) whichever way the check came out,
+                // because "what changed" is worth reading on the version you already
+                // have and not only on one you are about to install.
+                val updateState by vm.updateState.collectAsState()
                 val version = appVersion(context)
+                val known = when (val u = updateState) {
+                    is MainViewModel.UpdateState.Available -> u.release
+                    is MainViewModel.UpdateState.UpToDate -> u.release
+                    else -> null
+                }
+                val offered = (updateState as? MainViewModel.UpdateState.Available)?.release
+                val checking = updateState is MainViewModel.UpdateState.Checking
+                val notes = known?.let { plainNotes(it.notes) }?.takeIf { it.isNotBlank() }
+                // Only a check the user tapped gets an answer said out loud. The daily
+                // one in the background must stay silent.
+                var asked by remember { mutableStateOf(false) }
                 ActionLine(
                     title = "Riyal",
-                    value = update?.let { "${it.tag} available" } ?: version,
-                    valueIsWarning = update != null,
-                    detail = update?.let { release ->
-                        val notes = plainNotes(release.notes)
-                            .ifBlank { "No notes were published with it." }
-                        // The warning comes before the notes, not after. A release body
-                        // is as long as its author felt like, and the thing that has to
-                        // be read before tapping Download must not be underneath it.
-                        "You have $version. ${release.tag} is out.\n\n" +
-                            "Downloading puts the APK in your Downloads folder and opens it " +
-                            "there. Riyal cannot install it for you - you tap the file " +
-                            "yourself. If Android refuses the install, that build is signed " +
-                            "with a different key than this one: uninstall Riyal first, " +
-                            "which clears its stored records. They rebuild from your inbox " +
-                            "on the next scan, but hand-filed categories do not.\n\n$notes"
-                    } ?: "Made for Oman 🇴🇲 · OMR-first, with Arabic SMS support. " +
-                        "Checks GitHub once a day for a newer release.",
-                    actionLabel = if (update != null) "Download" else "Check now",
+                    value = when {
+                        checking -> "checking…"
+                        offered != null -> "${offered.tag} available"
+                        updateState is MainViewModel.UpdateState.UpToDate -> "$version · latest"
+                        updateState is MainViewModel.UpdateState.Unreachable ->
+                            "$version · could not check"
+                        else -> version
+                    },
+                    valueIsWarning = offered != null,
+                    detail = buildString {
+                        when {
+                            offered != null -> {
+                                // The warning comes before the notes, not after. A
+                                // release body is as long as its author felt like, and
+                                // the thing that has to be read before tapping Download
+                                // must not be underneath it.
+                                append("You have $version. ${offered.tag} is out.\n\n")
+                                append(
+                                    "Downloading puts the APK in your Downloads folder and opens " +
+                                        "it there. Riyal cannot install it for you - you tap the " +
+                                        "file yourself. If Android refuses the install, that build " +
+                                        "is signed with a different key than this one: uninstall " +
+                                        "Riyal first, which clears its stored records. They rebuild " +
+                                        "from your inbox on the next scan, but hand-filed " +
+                                        "categories do not."
+                                )
+                            }
+                            updateState is MainViewModel.UpdateState.UpToDate ->
+                                append("You have $version, which is the latest published release.")
+                            updateState is MainViewModel.UpdateState.Unreachable ->
+                                append(
+                                    "The last check could not reach GitHub. Being offline, a " +
+                                        "rate limit and a release that was never published all " +
+                                        "look the same from here. Nothing is wrong with the copy " +
+                                        "you have; tap Check now to try again."
+                                )
+                            else -> append(
+                                "Made for Oman 🇴🇲 · OMR-first, with Arabic SMS support. " +
+                                    "Checks GitHub once a day for a newer release."
+                            )
+                        }
+                        if (notes != null) {
+                            append("\n\nWhat is in ${known!!.tag}\n\n")
+                            append(notes)
+                        }
+                    },
+                    actionLabel = when {
+                        checking -> "Checking"
+                        offered != null -> "Download"
+                        else -> "Check now"
+                    },
+                    enabled = !checking,
                     onAction = {
-                        val release = update
-                        if (release == null) {
+                        if (offered == null) {
+                            asked = true
                             note("checking GitHub for a newer release")
                             vm.checkForUpdate(version, force = true)
-                        } else if (!release.hasApk) {
-                            note("${release.tag} has no APK attached to it")
+                        } else if (!offered.hasApk) {
+                            note("${offered.tag} has no APK attached to it")
                         } else if (vm.downloadUpdate()) {
-                            note("downloading ${release.tag} to your Downloads folder")
+                            note("downloading ${offered.tag} to your Downloads folder")
                         }
                     },
                 )
+                // A check the user asked for has someone waiting on it, so it says how
+                // it came out instead of leaving the row to be re-read.
+                LaunchedEffect(updateState) {
+                    when (val u = updateState) {
+                        is MainViewModel.UpdateState.UpToDate ->
+                            if (asked) { asked = false; note("$version is the latest, nothing to install") }
+                        is MainViewModel.UpdateState.Available ->
+                            if (asked) { asked = false; note("${u.release.tag} is available") }
+                        is MainViewModel.UpdateState.Unreachable ->
+                            if (asked) { asked = false; note("could not reach GitHub, try again later") }
+                        else -> Unit
+                    }
+                }
             }
 
             // Kept away from the switches on purpose: this is the one control on the
@@ -540,6 +619,9 @@ fun SettingsScreen(
             ToolbarSpacer()
         }
     }
+
+    // The scan sheet is hosted here, on the screen whose button starts a scan.
+    ScanSheetHost(vm)
 
     if (pickCurrency) {
         PickerDialog(
@@ -805,9 +887,14 @@ private fun ActionLine(
     actionLabel: String,
     onAction: () -> Unit,
     valueIsWarning: Boolean = false,
+    enabled: Boolean = true,
 ) {
     SettingLine(title = title, value = value, detail = detail, valueIsWarning = valueIsWarning) {
-        TextButton(onClick = onAction, modifier = Modifier.pressBounce()) { Text(actionLabel) }
+        TextButton(
+            onClick = onAction,
+            enabled = enabled,
+            modifier = Modifier.pressBounce(),
+        ) { Text(actionLabel) }
     }
 }
 
