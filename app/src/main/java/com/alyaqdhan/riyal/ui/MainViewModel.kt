@@ -651,6 +651,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _analysisSlice.value = slice
     }
 
+    /**
+     * The period Home is showing. Held here for the same reason the Analysis one is: a
+     * rotation, or walking to another tab and back, should not silently return the
+     * dashboard to this month while the user was reading an earlier one.
+     *
+     * Separate from [analysisSlice] on purpose. They are two different questions being
+     * asked at once, and having one move because the other did was never wanted.
+     */
+    private val _homeSlice = MutableStateFlow(TimeSlice.thisMonth())
+    val homeSlice: StateFlow<TimeSlice> = _homeSlice
+
+    fun setHomeSlice(slice: TimeSlice) {
+        _homeSlice.value = slice
+    }
+
     val archivedIds = store.archivedIds
 
     fun archiveTxn(txn: Txn, archive: Boolean) = viewModelScope.launch(Dispatchers.IO) {

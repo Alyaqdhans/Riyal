@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
@@ -38,7 +37,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,9 +47,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.ReviewItem
@@ -63,18 +61,14 @@ import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
-import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
 import com.alyaqdhan.riyal.ui.theme.successColor
-import java.time.YearMonth
-import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
-private val monthFmt = DateTimeFormatter.ofPattern("MMMM uuuu")
 
 @Composable
 fun HomeScreen(
@@ -97,14 +91,17 @@ fun HomeScreen(
     val askEachTime by vm.askEachTime.collectAsState()
 
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
-    // The dashboard is per-month: chevrons walk back through any month the inbox covers.
-    var monthOffset by remember { mutableIntStateOf(0) }
-    val month = remember(monthOffset) { YearMonth.now().plusMonths(monthOffset.toLong()) }
-    val totals = remember(txns, currency, month) { Stats.totalsFor(txns, month, currency) }
+    // The same period control as everywhere else, and the same kind of period. Home used
+    // to have its own pair of chevrons over a month it never let you leave: no presets,
+    // no calendar, and no way to ask about a week or a year the way Analysis can.
+    val slice by vm.homeSlice.collectAsState()
+    val totals = remember(txns, currency, slice) {
+        Stats.totalsIn(txns, slice.start, slice.endExclusive, currency)
+    }
     val pending = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_PENDING } }
     var picker by remember { mutableStateOf<Txn?>(null) }
-    // The budget follows the month selector above it: one period control per screen.
-    val budgetSlice = remember(month) { TimeSlice.ofMonth(month) }
+    // The budget follows the selector above it: one period control per screen.
+    val budgetSlice = slice
 
     val scope = rememberCoroutineScope()
     val faceRotation = remember { Animatable(0f) }
@@ -122,21 +119,8 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // ── month selector: every stat below follows it
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { monthOffset-- }) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
-                }
-                Text(
-                    month.format(monthFmt),
-                    style = MaterialTheme.typography.titleMedium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = { monthOffset++ }, enabled = monthOffset < 0) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
-                }
-            }
+            // ── period selector: every stat below follows it
+            PeriodBar(slice = slice, onChange = { vm.setHomeSlice(it) }, txns = txns)
 
             // ── the one hero: the face reacts to the month, Net is the number, and
             // spent/received sit under it as a single line rather than two more cards.
