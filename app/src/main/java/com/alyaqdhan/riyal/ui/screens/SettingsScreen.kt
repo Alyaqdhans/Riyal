@@ -45,6 +45,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -70,6 +71,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
@@ -401,14 +403,30 @@ fun SettingsScreen(
                     }
                 }
 
+                // Progress belongs on the screen that has the button. This row used to
+                // start a scan whose sheet only Home and Activity rendered, so the work
+                // you asked for here appeared over a screen you were not looking at.
+                val scan by vm.scanState.collectAsState()
+                val running = scan as? MainViewModel.ScanState.Running
                 ActionLine(
                     title = "Scan now",
-                    value = null,
-                    detail = "Reads the inbox once, exactly as pulling down to refresh does. " +
-                        "Riyal has no background receiver: it reads only when you ask it to.",
-                    actionLabel = "Scan",
+                    value = running?.let { p ->
+                        if (p.total > 0) "reading ${p.processed} of ${p.total}" else "starting…"
+                    },
+                    detail = "Reads the inbox once. Riyal has no background receiver: it reads " +
+                        "only when you ask it to, or when it opens if that is switched on above.",
+                    actionLabel = if (running != null) "Scanning" else "Scan",
+                    enabled = running == null,
                     onAction = { vm.startScan() },
                 )
+                if (running != null) {
+                    LinearProgressIndicator(
+                        progress = {
+                            if (running.total > 0) running.processed.toFloat() / running.total else 0f
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    )
+                }
             }
 
             SettingsCard("Automation") {
@@ -601,6 +619,9 @@ fun SettingsScreen(
             ToolbarSpacer()
         }
     }
+
+    // The scan sheet is hosted here, on the screen whose button starts a scan.
+    ScanSheetHost(vm)
 
     if (pickCurrency) {
         PickerDialog(

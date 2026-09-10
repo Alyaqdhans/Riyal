@@ -35,9 +35,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -65,7 +62,6 @@ import com.alyaqdhan.riyal.ui.compose.BudgetSection
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
-import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
@@ -90,7 +86,6 @@ fun HomeScreen(
 ) {
     val txns by vm.txns.collectAsState()
     val hasPerm by vm.hasSmsPermission.collectAsState()
-    val scan by vm.scanState.collectAsState()
     val reviews by vm.reviews.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val categoryUse by vm.categoryUse.collectAsState()
@@ -115,24 +110,13 @@ fun HomeScreen(
     val faceRotation = remember { Animatable(0f) }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Riyal") }) }) { padding ->
-        // Pull to refresh = scan (scanning also runs on launch; there is no button).
-        val ptrState = rememberPullToRefreshState()
-        val refreshing = scan is MainViewModel.ScanState.Running
-        PullToRefreshBox(
-            isRefreshing = refreshing,
-            onRefresh = { vm.startScan(showSheet = false) },
-            state = ptrState,
-            modifier = Modifier.padding(padding),
-            indicator = {
-                PullToRefreshDefaults.LoadingIndicator(
-                    state = ptrState,
-                    isRefreshing = refreshing,
-                    modifier = Modifier.align(Alignment.TopCenter),
-                )
-            },
-        ) {
+        // Scanning is Settings' business and shows its progress there. Home used to pull
+        // to refresh, which put a spinner over the dashboard for work started somewhere
+        // else - and the sheet it belonged to was hosted here rather than on the screen
+        // holding the button that started it.
         Column(
             Modifier
+                .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
@@ -354,7 +338,7 @@ fun HomeScreen(
                 EmptyState(
                     style = FaceStyle.SLEEPY,
                     title = "Nothing recorded yet",
-                    subtitle = if (hasPerm) "Pull down to scan, Riyal will narrate everything it does."
+                    subtitle = if (hasPerm) "Settings › Scan now reads your inbox, narrating everything it does."
                     else "Allow SMS reading, then scan whenever you choose.",
                 )
             } else {
@@ -371,10 +355,8 @@ fun HomeScreen(
             }
             ToolbarSpacer()
         }
-        }
     }
 
-    ScanSheetHost(vm)
     picker?.let { txn ->
         TxnEditSheet(
             txn = txn,
