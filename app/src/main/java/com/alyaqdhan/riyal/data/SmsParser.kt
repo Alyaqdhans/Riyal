@@ -444,7 +444,17 @@ class SmsParser(
         return sb.toString().replace(runOfSpace, " ").trim()
     }
 
-    private companion object {
+    companion object {
+        /**
+         * Bumped whenever anything in this file changes what a message parses to.
+         *
+         * Records are stored and reused between scans now, so an old record was produced
+         * by an old parser. This number is what tells the scanner that everything it has
+         * is out of date and the inbox must be read again. Forgetting to bump it after a
+         * parser fix means the fix only reaches messages that arrive afterwards.
+         */
+        const val VERSION = 1
+
         const val NUM = """\d{1,3}(?:,\d{3})+(?:\.\d{1,3})?|\d+(?:\.\d{1,3})?"""
 
         val CUR = listOf(
