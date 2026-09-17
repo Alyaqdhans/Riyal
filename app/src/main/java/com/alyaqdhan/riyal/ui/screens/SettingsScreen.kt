@@ -77,6 +77,7 @@ import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CURRENCIES
 import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
+import com.alyaqdhan.riyal.ui.compose.appVersion
 import com.alyaqdhan.riyal.ui.compose.plainText
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
@@ -1110,9 +1111,3 @@ private fun plainNotes(body: String): String = body.trim().lines().joinToString(
 private val headingMark = Regex("^#{1,6}\\s*")
 private val bulletMark = Regex("^\\s*[-*]\\s+")
 private val boldMark = Regex("\\*\\*|__")
-
-private fun appVersion(context: android.content.Context): String = try {
-    context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
-} catch (e: Exception) {
-    "1.0"
-}

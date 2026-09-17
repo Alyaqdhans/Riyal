@@ -47,9 +47,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
+import com.alyaqdhan.riyal.ui.compose.appVersion
 import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.ReviewItem
@@ -77,8 +79,11 @@ fun HomeScreen(
     onOpenReview: () -> Unit,
     onOpenAccounts: () -> Unit,
     onOpenNeedsCategory: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     val txns by vm.txns.collectAsState()
+    val updateState by vm.updateState.collectAsState()
+    val appVersion = appVersion(LocalContext.current)
     val hasPerm by vm.hasSmsPermission.collectAsState()
     val reviews by vm.reviews.collectAsState()
     val accounts by vm.accounts.collectAsState()
@@ -312,6 +317,25 @@ fun HomeScreen(
                     content = MaterialTheme.colorScheme.onSecondaryContainer,
                     onClick = onOpenNeedsCategory,
                     modifier = Modifier.popIn(240),
+                )
+            }
+
+            // ── a newer release exists. Last of the cards on purpose: the ones above are
+            // things waiting on the user, and this is news. The check itself has run on
+            // launch since it was written, but its answer only ever appeared in Settings,
+            // so the way to learn a release was out was to go and look for one.
+            (updateState as? MainViewModel.UpdateState.Available)?.let { available ->
+                ActionCard(
+                    face = FaceStyle.NORMAL,
+                    mood = 0.8f,
+                    title = "Riyal ${available.release.tag} is out",
+                    // Settings is where Download lives and where the notes are; saying
+                    // so means the tap is not a surprise.
+                    subtitle = "You have $appVersion · tap for what changed",
+                    container = MaterialTheme.colorScheme.primaryContainer,
+                    content = MaterialTheme.colorScheme.onPrimaryContainer,
+                    onClick = onOpenSettings,
+                    modifier = Modifier.popIn(280),
                 )
             }
 
