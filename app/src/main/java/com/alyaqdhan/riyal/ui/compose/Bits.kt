@@ -343,3 +343,18 @@ fun HelpAction(title: String, help: String) {
         )
     }
 }
+
+/**
+ * The version name this build carries, as a person reads it.
+ *
+ * Shared because two screens say it now: Settings, where the About row lives, and Home,
+ * where the card about a newer release has to name the one you are on. A phone that
+ * cannot report its own version is a case that never happens in practice and must not be
+ * a crash, so it reads as "1.0" and the comparison in Updates.isNewer treats it as the
+ * oldest thing there is.
+ */
+fun appVersion(context: android.content.Context): String = try {
+    context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
+} catch (e: Exception) {
+    "1.0"
+}
