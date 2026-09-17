@@ -382,21 +382,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * Asks GitHub whether there is a newer release, at most once a day.
      *
-     * Everything about this is quiet. A check that fails - offline, no releases yet, a
-     * rate limit - writes a line in the verbose log and leaves the Settings row exactly
-     * as it was, because an update check nobody asked for is not something to interrupt
-     * anyone about. [force] is the user tapping "Check now", which skips the throttle
-     * and is the only path that a person is waiting on.
+     * A check that fails - offline, no releases yet, a rate limit - writes a line in the
+     * verbose log and changes nothing on screen, because an update check nobody asked
+     * for is not something to interrupt anyone about. [force] is the user tapping "Check
+     * now", which skips the throttle and is the only path that a person is waiting on.
+     *
+     * A check that finds a newer release does say so: Home shows a card once
+     * [updateState] becomes [UpdateState.Available]. Until that existed the answer lived
+     * only in Settings, so the way to find out a release was out was to go looking for
+     * one. It is still only ever a card - nothing is downloaded, and nothing installs.
      */
     fun checkForUpdate(currentVersion: String, force: Boolean = false) =
         viewModelScope.launch(Dispatchers.IO) {
-            val since = System.currentTimeMillis() - prefs.lastUpdateCheckAt
-            if (!force && since < DAY_MS) return@launch
-            prefs.lastUpdateCheckAt = System.currentTimeMillis()
+            if (!Updates.shouldCheck(System.currentTimeMillis(), prefs.lastUpdateCheckAt, force)) {
+                return@launch
+            }
             if (force) _updateState.value = UpdateState.Checking
 
             val release = UpdateApi.latestRelease()
             if (release == null) {
+                // Nothing is stamped here on purpose, so the next launch tries again.
                 // A background check that failed stays invisible, as before. One the
                 // user asked for has someone waiting on it, and silence reads as a
                 // broken button, so that one says it could not ask.
@@ -404,6 +409,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 Verbose.flush()
                 return@launch
             }
+            // The day starts from an answer, not from an attempt. Stamping it above
+            // meant a launch with no signal - on a plane, on the way in to work - spent
+            // the day's one check on nothing, and a release published that morning went
+            // unnoticed until the next day.
+            prefs.lastUpdateCheckAt = System.currentTimeMillis()
             prefs.lastReleaseTag = release.tag
             prefs.lastReleaseNotes = release.notes
             if (Updates.isNewer(release.tag, currentVersion)) {
@@ -917,10 +927,5 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun csv(s: String) = "\"" + s.replace("\"", "\"\"") + "\""
-
-    private companion object {
-        /** How often GitHub is asked. A release lands a few times a year. */
-        const val DAY_MS = 24L * 60 * 60 * 1000
-    }
 
 }

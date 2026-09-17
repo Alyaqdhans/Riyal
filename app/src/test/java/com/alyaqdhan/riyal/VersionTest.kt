@@ -90,4 +90,44 @@ class VersionTest {
         assertTrue(Updates.isNewer("v1.52", "1.51"))
         assertTrue(Updates.isNewer("v1.6.0", "1.5.1"))
     }
+
+    // ───────────────────────── when to ask at all ─────────────────────────
+
+    private val day = Updates.CHECK_INTERVAL_MS
+
+    @Test
+    fun `a launch the same day does not ask again`() {
+        val answeredAt = 1_000_000_000_000L
+        assertFalse(Updates.shouldCheck(answeredAt + day / 2, answeredAt, force = false))
+    }
+
+    @Test
+    fun `a launch the next day asks`() {
+        val answeredAt = 1_000_000_000_000L
+        assertTrue(Updates.shouldCheck(answeredAt + day, answeredAt, force = false))
+    }
+
+    @Test
+    fun `a check that never came back does not cost the day`() {
+        // The mark is stamped on an answer, not on an attempt. A launch with no signal
+        // leaves it alone, so the next launch - minutes later, on wifi - asks properly.
+        // Stamping the attempt instead meant a release published that morning was not
+        // mentioned until the following day, which is the whole failure this guards.
+        val answeredAt = 1_000_000_000_000L
+        val offlineLaunch = answeredAt + day + 1
+        assertTrue(Updates.shouldCheck(offlineLaunch, answeredAt, force = false))
+        // Nothing was stored, so the mark is still the last real answer.
+        assertTrue(Updates.shouldCheck(offlineLaunch + 60_000, answeredAt, force = false))
+    }
+
+    @Test
+    fun `Check now is never throttled`() {
+        val answeredAt = 1_000_000_000_000L
+        assertTrue(Updates.shouldCheck(answeredAt, answeredAt, force = true))
+    }
+
+    @Test
+    fun `a phone that has never asked asks on its first launch`() {
+        assertTrue(Updates.shouldCheck(1_000_000_000_000L, 0L, force = false))
+    }
 }

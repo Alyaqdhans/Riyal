@@ -54,6 +54,24 @@ object Updates {
         return parts.map { it.toIntOrNull() ?: 0 }
     }
 
+    /** At most one background check a day. A new release appears a few times a year. */
+    const val CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000
+
+    /**
+     * Should this launch ask GitHub?
+     *
+     * [lastAnsweredAt] is when a check last *came back with something*, not when one was
+     * last attempted. That distinction is the whole point: stamping the attempt meant a
+     * launch with no signal spent the day's one check on nothing, and a release published
+     * that morning went unnoticed until the next day. A failed check leaves the mark
+     * alone, so the next launch tries again.
+     *
+     * [force] is the user tapping Check now, which is never throttled - there is a person
+     * waiting on that one.
+     */
+    fun shouldCheck(nowMillis: Long, lastAnsweredAt: Long, force: Boolean): Boolean =
+        force || nowMillis - lastAnsweredAt >= CHECK_INTERVAL_MS
+
     /**
      * Is [latest] a version after [current]?
      *
