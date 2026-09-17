@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
@@ -35,13 +34,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -52,9 +47,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.alyaqdhan.riyal.ui.compose.PeriodBar
+import com.alyaqdhan.riyal.ui.compose.appVersion
 import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.ReviewItem
@@ -65,20 +62,15 @@ import com.alyaqdhan.riyal.ui.compose.BudgetSection
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
-import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
-import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
 import com.alyaqdhan.riyal.ui.theme.successColor
-import java.time.YearMonth
-import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
-private val monthFmt = DateTimeFormatter.ofPattern("MMMM uuuu")
 
 @Composable
 fun HomeScreen(
@@ -87,10 +79,12 @@ fun HomeScreen(
     onOpenReview: () -> Unit,
     onOpenAccounts: () -> Unit,
     onOpenNeedsCategory: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     val txns by vm.txns.collectAsState()
+    val updateState by vm.updateState.collectAsState()
+    val appVersion = appVersion(LocalContext.current)
     val hasPerm by vm.hasSmsPermission.collectAsState()
-    val scan by vm.scanState.collectAsState()
     val reviews by vm.reviews.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val categoryUse by vm.categoryUse.collectAsState()
@@ -102,57 +96,36 @@ fun HomeScreen(
     val askEachTime by vm.askEachTime.collectAsState()
 
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
-    // The dashboard is per-month: chevrons walk back through any month the inbox covers.
-    var monthOffset by remember { mutableIntStateOf(0) }
-    val month = remember(monthOffset) { YearMonth.now().plusMonths(monthOffset.toLong()) }
-    val totals = remember(txns, currency, month) { Stats.totalsFor(txns, month, currency) }
+    // The same period control as everywhere else, and the same kind of period. Home used
+    // to have its own pair of chevrons over a month it never let you leave: no presets,
+    // no calendar, and no way to ask about a week or a year the way Analysis can.
+    val slice by vm.homeSlice.collectAsState()
+    val totals = remember(txns, currency, slice) {
+        Stats.totalsIn(txns, slice.start, slice.endExclusive, currency)
+    }
     val pending = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_PENDING } }
     var picker by remember { mutableStateOf<Txn?>(null) }
-    // The budget follows the month selector above it: one period control per screen.
-    val budgetSlice = remember(month) { TimeSlice.ofMonth(month) }
+    // The budget follows the selector above it: one period control per screen.
+    val budgetSlice = slice
 
     val scope = rememberCoroutineScope()
     val faceRotation = remember { Animatable(0f) }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Riyal") }) }) { padding ->
-        // Pull to refresh = scan (scanning also runs on launch; there is no button).
-        val ptrState = rememberPullToRefreshState()
-        val refreshing = scan is MainViewModel.ScanState.Running
-        PullToRefreshBox(
-            isRefreshing = refreshing,
-            onRefresh = { vm.startScan(showSheet = false) },
-            state = ptrState,
-            modifier = Modifier.padding(padding),
-            indicator = {
-                PullToRefreshDefaults.LoadingIndicator(
-                    state = ptrState,
-                    isRefreshing = refreshing,
-                    modifier = Modifier.align(Alignment.TopCenter),
-                )
-            },
-        ) {
+        // Scanning is Settings' business and shows its progress there. Home used to pull
+        // to refresh, which put a spinner over the dashboard for work started somewhere
+        // else - and the sheet it belonged to was hosted here rather than on the screen
+        // holding the button that started it.
         Column(
             Modifier
+                .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // ── month selector: every stat below follows it
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { monthOffset-- }) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month")
-                }
-                Text(
-                    month.format(monthFmt),
-                    style = MaterialTheme.typography.titleMedium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = { monthOffset++ }, enabled = monthOffset < 0) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month")
-                }
-            }
+            // ── period selector: every stat below follows it
+            PeriodBar(slice = slice, onChange = { vm.setHomeSlice(it) }, txns = txns)
 
             // ── the one hero: the face reacts to the month, Net is the number, and
             // spent/received sit under it as a single line rather than two more cards.
@@ -347,6 +320,25 @@ fun HomeScreen(
                 )
             }
 
+            // ── a newer release exists. Last of the cards on purpose: the ones above are
+            // things waiting on the user, and this is news. The check itself has run on
+            // launch since it was written, but its answer only ever appeared in Settings,
+            // so the way to learn a release was out was to go and look for one.
+            (updateState as? MainViewModel.UpdateState.Available)?.let { available ->
+                ActionCard(
+                    face = FaceStyle.NORMAL,
+                    mood = 0.8f,
+                    title = "Riyal ${available.release.tag} is out",
+                    // Settings is where Download lives and where the notes are; saying
+                    // so means the tap is not a surprise.
+                    subtitle = "You have $appVersion · tap for what changed",
+                    container = MaterialTheme.colorScheme.primaryContainer,
+                    content = MaterialTheme.colorScheme.onPrimaryContainer,
+                    onClick = onOpenSettings,
+                    modifier = Modifier.popIn(280),
+                )
+            }
+
             // ── recent transactions
             SectionTitle("Recent activity")
             val recent = txns.take(6)
@@ -354,7 +346,7 @@ fun HomeScreen(
                 EmptyState(
                     style = FaceStyle.SLEEPY,
                     title = "Nothing recorded yet",
-                    subtitle = if (hasPerm) "Pull down to scan, Riyal will narrate everything it does."
+                    subtitle = if (hasPerm) "Settings › Scan now reads your inbox, narrating everything it does."
                     else "Allow SMS reading, then scan whenever you choose.",
                 )
             } else {
@@ -371,10 +363,8 @@ fun HomeScreen(
             }
             ToolbarSpacer()
         }
-        }
     }
 
-    ScanSheetHost(vm)
     picker?.let { txn ->
         TxnEditSheet(
             txn = txn,

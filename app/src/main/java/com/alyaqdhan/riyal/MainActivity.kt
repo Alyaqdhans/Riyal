@@ -121,6 +121,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Switches to the Settings tab from somewhere that is not the toolbar.
+     *
+     * Home's "a newer release is out" card is the one caller: the release notes and the
+     * Download button live in Settings, and going there has to be the same move the
+     * toolbar makes, not a push that would leave Settings stacked on top of Home.
+     */
+    fun openSettingsTab() {
+        val navHost = supportFragmentManager.findFragmentById(R.id.nav_host) as NavHostFragment
+        switchTab(navHost.navController, R.id.settingsFragment)
+    }
+
     private fun switchTab(navController: NavController, destId: Int) {
         if (navController.currentDestination?.id == destId) return
         navController.navigate(

@@ -14,6 +14,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.navOptions
 import com.alyaqdhan.riyal.ui.compose.countOf
+import com.alyaqdhan.riyal.MainActivity
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.ScanHistory
 import com.alyaqdhan.riyal.core.Verbose
@@ -83,7 +84,9 @@ class HomeFragment : ScreenFragment() {
         )
         Verbose.flush()
         vm.refreshPermission()
-        if (granted) vm.startScan()
+        // Quiet: this lands the user on Home, which shows the result itself. Asking for
+        // the sheet here left it queued for whenever Settings was next opened.
+        if (granted) vm.startScan(showSheet = false)
     }
 
     @Composable
@@ -94,6 +97,10 @@ class HomeFragment : ScreenFragment() {
             onOpenReview = { findNavController().navigate(R.id.reviewFragment) },
             onOpenAccounts = { findNavController().navigate(R.id.accountsFragment) },
             onOpenNeedsCategory = { findNavController().navigate(R.id.needsCategoryFragment) },
+            // Settings is a tab rather than a pushed page, so this goes through the same
+            // switch the toolbar uses: navigating to it directly would stack a second
+            // copy on top of Home and leave Back going nowhere sensible.
+            onOpenSettings = { (activity as? MainActivity)?.openSettingsTab() },
         )
     }
 }
@@ -318,6 +325,6 @@ class OnboardingFragment : ScreenFragment() {
             null,
             navOptions { popUpTo(R.id.onboardingFragment) { inclusive = true } },
         )
-        if (startScan) vm.startScan()
+        if (startScan) vm.startScan(showSheet = false)
     }
 }

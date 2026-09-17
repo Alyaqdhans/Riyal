@@ -405,4 +405,70 @@ class SmsParserTest {
         assertEquals("MADE IN OMAN STORE", (r as SmsParser.Result.Parsed).merchant)
     }
 
+
+    // ── a message with an amount but no word saying which way it went ──
+    //
+    // These were invisible: the keyword gate dropped them before anything else ran, so
+    // a real purchase never reached a screen, not even Review. Nothing about them is
+    // guessed now either - they are handed to the user as a one-tap question.
+
+    @Test
+    fun `a card used for an amount reaches review instead of vanishing`() {
+        val r = parser.parse(
+            "Your card ending XXXX7777 was used for OMR 5.500 at LULU HYPERMARKET on 02/09/26",
+        )
+        assertTrue("expected NeedsReview, got $r", r is SmsParser.Result.NeedsReview)
+        r as SmsParser.Result.NeedsReview
+        assertEquals(5500L, r.amountMinor)
+        assertEquals("OMR", r.currency)
+        // The user should not have to retype a figure the message states plainly.
+        assertTrue(r.reason.contains("direction"))
+    }
+
+    @Test
+    fun `the words offered are the ones a bank put before the amount`() {
+        val r = parser.parse(
+            "Your card ending XXXX7777 was used for OMR 5.500 at LULU HYPERMARKET on 02/09/26",
+        ) as SmsParser.Result.NeedsReview
+        // "used for" is specific. "for" on its own would gate in most of the inbox, so
+        // it is only ever offered inside the phrase.
+        assertTrue("offered ${r.suggestedWords}", r.suggestedWords.contains("used for"))
+        assertTrue("offered ${r.suggestedWords}", r.suggestedWords.none { it == "for" })
+        assertTrue("offered ${r.suggestedWords}", r.suggestedWords.none { it.contains("xxxx") })
+    }
+
+    @Test
+    fun `a word already in the gate is not offered again`() {
+        val r = parser.parse("An amount of OMR 3.000 applied to your card XXXX1234")
+        r as SmsParser.Result.NeedsReview
+        assertTrue(r.suggestedWords.none { it in expense || it in income })
+    }
+
+    @Test
+    fun `an advert with an amount is still dropped, not queued`() {
+        // The gates that catch these now run before the keyword decision, precisely so
+        // that opening the door to keyword-less messages does not open it to adverts.
+        val r = parser.parse("Win a prize worth OMR 2,250 in our summer draw!")
+        assertTrue("expected Skipped, got $r", r is SmsParser.Result.Skipped)
+    }
+
+    @Test
+    fun `a declined card is still dropped, not queued`() {
+        val r = parser.parse("Your transaction of OMR 12.000 was declined at LULU")
+        assertTrue("expected Skipped, got $r", r is SmsParser.Result.Skipped)
+    }
+
+    @Test
+    fun `a message with several amounts and no keyword is not worth asking about`() {
+        // A statement summary names many figures and is not one transaction. Asking
+        // "which way did this go?" about it has no answer.
+        val r = parser.parse("Statement: OMR 12.000, OMR 4.500 and OMR 8.250 this month")
+        assertTrue("expected Skipped, got $r", r is SmsParser.Result.Skipped)
+    }
+
+    @Test
+    fun `chat with no amount at all stays skipped`() {
+        val r = parser.parse("Hi, are we still meeting tomorrow?")
+        assertTrue(r is SmsParser.Result.Skipped)
+    }
 }

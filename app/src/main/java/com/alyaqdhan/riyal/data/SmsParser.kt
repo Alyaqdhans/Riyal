@@ -61,7 +61,27 @@ class SmsParser(
             val bankStamp: String? = null,
         ) : Result()
 
-        data class NeedsReview(val reason: String, val trace: List<String>) : Result()
+        data class NeedsReview(
+            val reason: String,
+            val trace: List<String>,
+            /**
+             * What was readable even though the message as a whole was not.
+             *
+             * A message can carry a perfectly clear amount and still say nothing this
+             * parser recognises about which way the money went - "your card ···1234 was
+             * used for OMR 5.500 at LULU" names no keyword at all. Throwing the amount
+             * away meant the user had to retype a figure that was sitting right there.
+             */
+            val amountMinor: Long? = null,
+            val currency: String? = null,
+            val merchant: String? = null,
+            /**
+             * Words from the message that would make it readable next time, best first.
+             * Offered to the user to adopt; never adopted automatically, because a word
+             * added to the gate changes how every future message is read.
+             */
+            val suggestedWords: List<String> = emptyList(),
+        ) : Result()
 
         data class Skipped(val reason: String) : Result()
     }
@@ -85,12 +105,15 @@ class SmsParser(
             val p = lower.indexOf(kw)
             if (p >= 0) hits += KeywordHit(kw, p, Direction.INCOME)
         }
-        if (hits.isEmpty()) return Result.Skipped("no withdraw/deposit keyword")
-
         // 1b ── advertising gate. A bank markets to you from the same sender it uses for
         // real alerts, and "win a prize worth OMR 2,250" or "minimum salary transfer of
         // OMR 500" contains both a money word and an amount. Nothing was debited or
         // credited, so recording it invents spending and income that never happened.
+        //
+        // These two gates run before the keyword decision, not after it. They are what
+        // keeps a message with an amount and no keyword from reaching the user as a
+        // question: an advert has both, and being asked about every one of them would
+        // make the queue useless.
         val advert = ADVERT_WORDS.filter { it in lower }
         if (advert.isNotEmpty()) {
             return Result.Skipped("advertising, not a transaction (\"${advert.first()}\")")
@@ -103,6 +126,16 @@ class SmsParser(
         if (notMoved != null) {
             return Result.Skipped("no money moved (\"$notMoved\")")
         }
+
+        // 1d ── no keyword, but possibly still a transaction.
+        //
+        // The gate exists so the app never guesses, and it stays: nothing here is
+        // recorded. What changed is that a message carrying a real amount is now handed
+        // to the user instead of dropped in silence. Every bank has wording the list
+        // does not cover yet ("your card was used for", "an amount of ... has been
+        // applied to"), and the old behaviour was that those purchases simply never
+        // existed, with nothing on any screen to say so.
+        if (hits.isEmpty()) return unknownDirection(body, lower, trace)
         hits.sortBy { it.pos }
         val hit = hits.first()
         var confidence = 100
@@ -197,6 +230,75 @@ class SmsParser(
     }
 
     // ───────────────────────────── internals ─────────────────────────────
+
+    /**
+     * A message with no direction word: readable enough to ask about, or not worth it.
+     *
+     * The bar is deliberately high. One clean, non-balance amount means the bank is
+     * telling you about one movement of money and only the direction is missing, which
+     * is a question a person can answer in one tap. Several amounts, or only
+     * balance-like ones, means the message is something else - a statement summary, a
+     * promotion - and asking would be noise.
+     */
+    private fun unknownDirection(body: String, lower: String, trace: MutableList<String>): Result {
+        val candidates = findAmounts(body, lower)
+        val usable = candidates.filter { !it.nearBalance }
+        if (usable.size != 1) {
+            return Result.Skipped(
+                if (usable.isEmpty()) "no withdraw/deposit keyword, and no amount either"
+                else "no withdraw/deposit keyword, and ${usable.size} amounts to choose from"
+            )
+        }
+        val chosen = usable.first()
+        val currency = chosen.currencyToken?.let { tokenToIso(it) } ?: defaultCurrency
+        val value = try {
+            BigDecimal(chosen.raw.replace(",", ""))
+        } catch (e: NumberFormatException) {
+            return Result.Skipped("no withdraw/deposit keyword, and the amount would not parse")
+        }
+        if (value.signum() <= 0) return Result.Skipped("no withdraw/deposit keyword, and the amount is zero")
+
+        trace += "no withdraw/deposit keyword in this message"
+        trace += "but it names one amount: $currency ${value.toPlainString()}"
+        val words = suggestKeywords(lower, chosen.pos)
+        if (words.isNotEmpty()) {
+            trace += "words that would make it readable next time: " + words.joinToString(", ")
+        }
+        trace += "→ asking you which way it went, rather than guessing or dropping it"
+        return Result.NeedsReview(
+            reason = "the amount is clear, the direction is not",
+            trace = trace,
+            amountMinor = Money.toMinor(value, currency),
+            currency = currency,
+            // Direction decides which "at/to/from" pattern applies, so with no direction
+            // there is no merchant to read. The user names it if they want one.
+            merchant = null,
+            suggestedWords = words,
+        )
+    }
+
+    /**
+     * The words a bank put immediately before the amount, which is where the verb lives:
+     * "...was used for OMR 5.500...". Offered as the keyword to adopt.
+     *
+     * Both the two-word phrase and the single word are offered, best first, because
+     * "used for" is specific where "for" alone would gate in half the inbox.
+     */
+    private fun suggestKeywords(lower: String, amountPos: Int): List<String> {
+        val words = lower.take(amountPos)
+            .split(Regex("[^\\p{L}]+"))
+            .filter { it.length >= 2 && it !in NOISE_WORDS && !maskRun.matches(it) }
+        if (words.isEmpty()) return emptyList()
+        val last = words.last()
+        val pair = if (words.size >= 2) words[words.size - 2] + " " + last else null
+        // A word like "for" or "was" would gate in most of the inbox on its own, so it
+        // is only ever offered inside a phrase. The single-word option skips back to
+        // one that actually carries meaning.
+        val single = words.lastOrNull { it !in WEAK_ALONE }
+        return listOfNotNull(pair, single)
+            .filter { it !in expense && it !in income }
+            .distinct()
+    }
 
     private data class KeywordHit(val keyword: String, val pos: Int, val direction: Direction)
 
@@ -342,7 +444,17 @@ class SmsParser(
         return sb.toString().replace(runOfSpace, " ").trim()
     }
 
-    private companion object {
+    companion object {
+        /**
+         * Bumped whenever anything in this file changes what a message parses to.
+         *
+         * Records are stored and reused between scans now, so an old record was produced
+         * by an old parser. This number is what tells the scanner that everything it has
+         * is out of date and the inbox must be read again. Forgetting to bump it after a
+         * parser fix means the fix only reaches messages that arrive afterwards.
+         */
+        const val VERSION = 1
+
         const val NUM = """\d{1,3}(?:,\d{3})+(?:\.\d{1,3})?|\d+(?:\.\d{1,3})?"""
 
         val CUR = listOf(
@@ -420,6 +532,30 @@ class SmsParser(
          * uses to sell something, never to report money that moved - the test is whether
          * a real debit alert could contain it, and none of these can.
          */
+        /** Runs of the mask a bank writes a card number with: "xxxx7777". */
+        val maskRun = Regex("x{2,}\\d*", RegexOption.IGNORE_CASE)
+
+        /**
+         * Words that are in every bank message and mean nothing on their own, dropped
+         * before deciding what to offer as a keyword.
+         */
+        val NOISE_WORDS = setOf(
+            "your", "you", "the", "this", "that", "and", "has", "have", "been",
+            "omr", "rial", "rials", "riyal", "usd", "aed", "sar",
+            "dear", "customer", "bank", "muscat", "meethaq", "info", "alert",
+            "ريال", "عميلنا", "عميل", "بنك", "مسقط", "ميثاق",
+        )
+
+        /**
+         * Real words, but far too broad to be a gate by themselves: "for" would match
+         * nearly every message ever sent. Offered inside a phrase, never alone.
+         */
+        val WEAK_ALONE = setOf(
+            "for", "was", "were", "is", "are", "of", "on", "at", "to", "from",
+            "with", "by", "in", "an", "as", "card", "account", "amount", "transaction",
+            "من", "إلى", "الى", "على", "في", "فى", "مع", "بطاقة", "حساب", "مبلغ",
+        )
+
         val ADVERT_WORDS = listOf(
             "t&c", "t & c", "terms and conditions", "apply now", "click here",
             "be among the winners", "win ", "prize", "cash bonus", "lucky draw",

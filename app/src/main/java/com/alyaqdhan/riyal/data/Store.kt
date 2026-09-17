@@ -1,9 +1,11 @@
 package com.alyaqdhan.riyal.data
 
 import android.content.Context
+import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
 import java.io.File
 import java.util.UUID
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -145,38 +147,110 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private val _deferredIds = MutableStateFlow<Set<String>>(emptySet())
     val deferredIds: StateFlow<Set<String>> = _deferredIds
 
+    /**
+     * Completes once the saved file has been read.
+     *
+     * Loading is asynchronous, and a scan starts the moment the app opens, so the two
+     * used to race: the scanner read [accounts], [rules] and [muted] while they were
+     * still empty and behaved as if this were a first run. It re-proposed every account
+     * on every launch and wrote the whole store back each time - 2.3 seconds of a 2.6
+     * second scan on a large inbox, spent rediscovering what it already knew.
+     *
+     * Writes were never at risk: they take the same mutex as the load, so they queue
+     * behind it. It was only these reads, which take no lock at all.
+     */
+    private val loaded = CompletableDeferred<Unit>()
+
+    suspend fun awaitLoaded() = loaded.await()
+
     init {
-        scope.launch { mutex.withLock { loadLocked() } }
+        scope.launch {
+            mutex.withLock { loadLocked() }
+            loaded.complete(Unit)
+        }
     }
 
     // ─────────────────────────── scanning ───────────────────────────
 
-    suspend fun replaceScanned(
+    /**
+     * Takes the result of one pass over the inbox.
+     *
+     * [examinedIds] is what makes an incremental pass safe: it names the messages this
+     * pass actually read. Anything it read is replaced by what it found this time -
+     * including being dropped, if it found nothing - and anything it never looked at is
+     * left exactly as it was. Null means the pass read the whole range and so is the
+     * truth about everything, which is also the only way a record belonging to a message
+     * since deleted from the inbox goes away.
+     */
+    suspend fun applyScan(
         scanned: List<Txn>,
         proposals: List<TransferProposal>,
         newReviews: List<ReviewItem>,
         seenSenders: Set<String>,
         summary: ScanSummary,
+        examinedIds: Set<String>? = null,
     ) = mutex.withLock {
+        // A message answered by hand can become readable later: adopting a gate keyword
+        // is exactly that, and so is a parser fix. The scan then produces a record for a
+        // message that already has one, and one purchase is counted twice - which is the
+        // one thing every total on every screen depends on not happening.
+        //
+        // The parsed record wins, because it knows the merchant and the account the hand
+        // entry never did. It inherits the category the user chose, so being read
+        // properly at last does not quietly undo their answer.
+        val superseded = HashMap<String, Txn>()
+        rawTxns.filter { it.manual }.forEach { m ->
+            // Records made from a review carry "man-" in front of the message id; ones
+            // typed from scratch have no message and match nothing here.
+            val parsed = scanned.firstOrNull { it.id == m.id || "man-" + it.id == m.id }
+            if (parsed != null) superseded[parsed.id] = m
+        }
+        superseded.forEach { (parsedId, manual) ->
+            if (parsedId !in overrides) overrides[parsedId] = manual.categoryId
+            Verbose.info(
+                "a message you answered by hand reads on its own now · keeping one record " +
+                    "of ${Money.format(manual.amountMinor, manual.currency)}, " +
+                    "still under ${Categories.byId(manual.categoryId).name}"
+            )
+        }
         val withOverrides = scanned.asSequence()
             .filter { it.id !in ignored }
             .map { applyUserEdits(it) }
             .toList()
-        val manuals = rawTxns.filter { m -> m.manual && scanned.none { it.id == m.id } }
-        rawTxns = (withOverrides + manuals).sortedByDescending { it.atMillis }
+        val before = rawTxns
+        val beforeReviews = _reviews.value
+        val beforeTransfers = _transfers.value
+        val beforeSenders = _senders.value
+        val manuals = rawTxns.filter { m ->
+            m.manual && superseded.none { (_, s) -> s.id == m.id }
+        }
+        rawTxns = ScanMerge.records(rawTxns, withOverrides, examinedIds, manuals)
+            .sortedByDescending { it.atMillis }
 
         // A proposal the user already answered keeps that answer; only genuinely new
         // pairs arrive as pending, so a rescan never re-asks a settled question.
-        _transfers.value = proposals.distinctBy { it.id }.map { p ->
+        //
+        // An incremental pass only nominated pairs among the messages it read, so pairs
+        // it never looked at have to be carried over. A pair with even one leg in this
+        // pass was re-decided by it, and the overlap window is wider than the matcher's
+        // own, so both legs of anything matchable are always read together.
+        val keptProposals = ScanMerge.keepUnexamined(_transfers.value, examinedIds) {
+            // Either leg being in this pass means the pair was re-decided by it, and the
+            // overlap window is wider than the matcher's own, so both legs of anything
+            // matchable are always read together.
+            if (examinedIds != null && it.outTxnId in examinedIds) it.outTxnId else it.inTxnId
+        }
+        _transfers.value = (proposals + keptProposals).distinctBy { it.id }.map { p ->
             transferDecisions[p.id]?.let { p.copy(state = it) } ?: p
         }.sortedByDescending { it.atMillis }
         applyAutoConfirmLocked()
         recomputeTxnsLocked()
 
         val previous = _reviews.value.associateBy { it.id }
+        val keptReviews = ScanMerge.keepUnexamined(_reviews.value, examinedIds) { it.id }
         // Two byte-identical messages hash to one id, and a list rendered by id must
         // not contain it twice - that crashes the Review page rather than degrading.
-        _reviews.value = newReviews.distinctBy { it.id }.map { r ->
+        _reviews.value = (newReviews + keptReviews).distinctBy { it.id }.map { r ->
             val old = previous[r.id]
             if (old != null && old.state != ReviewItem.STATE_PENDING) r.copy(state = old.state) else r
         }.sortedByDescending { it.atMillis }
@@ -192,7 +266,20 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             deferred.clear()
             _deferredIds.value = emptySet()
         }
-        persistLocked()
+        // The common case for an incremental scan is that nothing arrived, and writing
+        // the whole file to say so cost more than everything else in the scan put
+        // together. The summary is the one thing that always changes, and it is kept in
+        // memory until something real is written with it; the time of the last scan
+        // lives in preferences either way, so the card above Settings stays right.
+        val changed = rawTxns != before ||
+            _reviews.value != beforeReviews ||
+            _transfers.value != beforeTransfers ||
+            _senders.value != beforeSenders
+        if (changed) {
+            persistLocked()
+        } else {
+            Verbose.info("nothing changed, so nothing was written")
+        }
     }
 
     private fun applyUserEdits(t: Txn): Txn {
@@ -883,6 +970,11 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         return out
     }
 
+    private fun JSONArray?.toStringList(): List<String> = buildList {
+        val a = this@toStringList ?: return@buildList
+        for (i in 0 until a.length()) a.optString(i).takeIf { it.isNotBlank() }?.let { add(it) }
+    }
+
     private fun JSONArray?.toStringSet(): Set<String> = buildSet {
         if (this@toStringSet != null) {
             for (i in 0 until this@toStringSet.length()) add(this@toStringSet.getString(i))
@@ -987,6 +1079,13 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private fun reviewToJson(r: ReviewItem) = JSONObject().apply {
         put("id", r.id); put("at", r.atMillis); put("sen", r.sender)
         put("body", r.body); put("reason", r.reason); put("state", r.state)
+        // Written only when there is something to write, so a file from before these
+        // existed and a file with nothing readable in it look the same.
+        r.amountMinor?.let { put("amt", it) }
+        r.currency?.let { put("cur", it) }
+        if (r.suggestedWords.isNotEmpty()) {
+            put("words", JSONArray().apply { r.suggestedWords.forEach { put(it) } })
+        }
     }
 
     private fun reviewFromJson(o: JSONObject) = ReviewItem(
@@ -996,6 +1095,9 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         body = o.getString("body"),
         reason = o.getString("reason"),
         state = o.optString("state", ReviewItem.STATE_PENDING),
+        amountMinor = if (o.has("amt")) o.getLong("amt") else null,
+        currency = o.optString("cur").takeIf { it.isNotBlank() },
+        suggestedWords = o.optJSONArray("words").toStringList(),
     )
 
     private fun ruleToJson(r: UserRule) = JSONObject().apply {

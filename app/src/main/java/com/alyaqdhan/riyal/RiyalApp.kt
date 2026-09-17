@@ -25,7 +25,16 @@ class RiyalApp : Application() {
         store = Store(this, prefs.autoConfirmTransfers)
         DynamicColors.applyToActivitiesIfAvailable(this)
         Verbose.info("Riyal started · verbose processing log is live")
-        Verbose.info("permissions declared: READ_SMS only, no INTERNET, no RECEIVE_SMS, no background work")
+        // Says what the manifest actually declares. It claimed "no INTERNET" for a
+        // whole release after INTERNET was added for the update check, which is the
+        // one kind of wrong a privacy claim must never be.
+        Verbose.info(
+            "permissions declared: READ_SMS and INTERNET, no RECEIVE_SMS, no background work"
+        )
+        Verbose.info(
+            "INTERNET is used for one thing: asking GitHub whether a newer release exists, " +
+                "and downloading it if you ask. Nothing about your money is ever sent"
+        )
         Verbose.flush()
     }
 }

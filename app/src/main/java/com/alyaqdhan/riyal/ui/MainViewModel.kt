@@ -19,6 +19,7 @@ import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.AccountDiscovery
 import com.alyaqdhan.riyal.data.BudgetPlan
 import com.alyaqdhan.riyal.data.Categories
+import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.ScanEngine
 import com.alyaqdhan.riyal.data.Stats
@@ -110,7 +111,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     sealed interface ScanState {
         data object Idle : ScanState
-        data class Running(val processed: Int, val total: Int) : ScanState
+        data class Running(
+            val processed: Int,
+            val total: Int,
+            val phase: String = "Reading your messages",
+            val noun: String = "messages",
+        ) : ScanState
         data class Done(val summary: ScanSummary) : ScanState
         data class Failed(val message: String) : ScanState
     }
@@ -165,7 +171,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun startScan(showSheet: Boolean = true) {
+    /**
+     * @param full read the whole range again instead of only what is new. Reserved for
+     *   the user asking for it in Settings: it is the pass that reconciles records with
+     *   an inbox that has had messages deleted from it, and on a large inbox it is the
+     *   slow one. Launch and pull-to-refresh are always incremental.
+     */
+    fun startScan(showSheet: Boolean = true, full: Boolean = false) {
         if (_scanState.value is ScanState.Running) {
             if (showSheet) scanSheetVisible.value = true
             return
@@ -179,11 +191,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         _scanState.value = ScanState.Running(0, 0)
-        if (showSheet) scanSheetVisible.value = true
+        // Set both ways. Leaving it alone let a request from a screen that no longer
+        // renders the sheet sit there until some later screen did, which is a sheet
+        // about a scan the user finished with minutes ago.
+        scanSheetVisible.value = showSheet
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val summary = ScanEngine(getApplication(), prefs, store).run { p ->
-                    _scanState.value = ScanState.Running(p.processed, p.total)
+                val summary = ScanEngine(getApplication(), prefs, store).run(full = full) { p ->
+                    _scanState.value = ScanState.Running(p.processed, p.total, p.phase, p.noun)
                 }
                 prefs.lastScanAt = summary.at
                 _scanState.value = ScanState.Done(summary)
@@ -323,35 +338,86 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // ─────────────────────────── updates ───────────────────────────
 
     /**
-     * The release GitHub is offering, once it has been found to be newer than what is
-     * installed. Null the rest of the time, which is nearly always, and the Settings row
-     * shows the current version and says nothing.
+     * What the last look at GitHub found.
+     *
+     * The first version of this kept only a release that was newer and threw away every
+     * other answer, which made the row look broken in the two cases that are not rare at
+     * all: tapping Check now while already on the latest did nothing visible, and the
+     * release notes were unreachable unless an update happened to be waiting. The answer
+     * is worth keeping whichever way it came out.
      */
-    private val _update = MutableStateFlow<Updates.Release?>(null)
-    val update: StateFlow<Updates.Release?> = _update
+    sealed interface UpdateState {
+        /** Nothing has been asked yet in this session, and nothing was remembered. */
+        data object Unknown : UpdateState
+        /** A request is in flight. Only ever true because someone tapped. */
+        data object Checking : UpdateState
+        /** GitHub has a newer one. [release] is what Download acts on. */
+        data class Available(val release: Updates.Release) : UpdateState
+        /** GitHub answered, and what it has is not newer. Kept for its notes. */
+        data class UpToDate(val release: Updates.Release) : UpdateState
+        /** Offline, rate-limited, no releases published, a body that would not parse. */
+        data object Unreachable : UpdateState
+    }
+
+    private val _updateState = MutableStateFlow<UpdateState>(
+        // A remembered answer means the notes are on the (i) the moment Settings opens,
+        // rather than only after a check the user has no reason to know they must run.
+        prefs.lastReleaseTag?.let { tag ->
+            UpdateState.UpToDate(
+                Updates.Release(
+                    tag = tag,
+                    notes = prefs.lastReleaseNotes,
+                    apkUrl = null, apkName = null, apkBytes = 0L,
+                )
+            )
+        } ?: UpdateState.Unknown
+    )
+    val updateState: StateFlow<UpdateState> = _updateState
+
+    /** The release to download, which is only ever one that is actually newer. */
+    val update: StateFlow<Updates.Release?> =
+        _updateState.map { (it as? UpdateState.Available)?.release }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /**
      * Asks GitHub whether there is a newer release, at most once a day.
      *
-     * Everything about this is quiet. A check that fails - offline, no releases yet, a
-     * rate limit - writes a line in the verbose log and leaves the Settings row exactly
-     * as it was, because an update check nobody asked for is not something to interrupt
-     * anyone about. [force] is the user tapping "Check now", which skips the throttle
-     * and is the only path that a person is waiting on.
+     * A check that fails - offline, no releases yet, a rate limit - writes a line in the
+     * verbose log and changes nothing on screen, because an update check nobody asked
+     * for is not something to interrupt anyone about. [force] is the user tapping "Check
+     * now", which skips the throttle and is the only path that a person is waiting on.
+     *
+     * A check that finds a newer release does say so: Home shows a card once
+     * [updateState] becomes [UpdateState.Available]. Until that existed the answer lived
+     * only in Settings, so the way to find out a release was out was to go looking for
+     * one. It is still only ever a card - nothing is downloaded, and nothing installs.
      */
     fun checkForUpdate(currentVersion: String, force: Boolean = false) =
         viewModelScope.launch(Dispatchers.IO) {
-            val since = System.currentTimeMillis() - prefs.lastUpdateCheckAt
-            if (!force && since < DAY_MS) return@launch
-            prefs.lastUpdateCheckAt = System.currentTimeMillis()
+            if (!Updates.shouldCheck(System.currentTimeMillis(), prefs.lastUpdateCheckAt, force)) {
+                return@launch
+            }
+            if (force) _updateState.value = UpdateState.Checking
 
             val release = UpdateApi.latestRelease()
             if (release == null) {
+                // Nothing is stamped here on purpose, so the next launch tries again.
+                // A background check that failed stays invisible, as before. One the
+                // user asked for has someone waiting on it, and silence reads as a
+                // broken button, so that one says it could not ask.
+                if (force) _updateState.value = UpdateState.Unreachable
                 Verbose.flush()
                 return@launch
             }
+            // The day starts from an answer, not from an attempt. Stamping it above
+            // meant a launch with no signal - on a plane, on the way in to work - spent
+            // the day's one check on nothing, and a release published that morning went
+            // unnoticed until the next day.
+            prefs.lastUpdateCheckAt = System.currentTimeMillis()
+            prefs.lastReleaseTag = release.tag
+            prefs.lastReleaseNotes = release.notes
             if (Updates.isNewer(release.tag, currentVersion)) {
-                _update.value = release
+                _updateState.value = UpdateState.Available(release)
                 Verbose.ok(
                     "${release.tag} is newer than the ${currentVersion} you have · " +
                         if (release.hasApk) {
@@ -361,7 +427,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         }
                 )
             } else {
-                _update.value = null
+                _updateState.value = UpdateState.UpToDate(release)
                 Verbose.info("you are on ${currentVersion}, which is the latest (GitHub has ${release.tag})")
             }
             Verbose.flush()
@@ -382,7 +448,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * than opening an empty Downloads screen.
      */
     fun downloadUpdate(): Boolean {
-        val release = _update.value ?: return false
+        val release = update.value ?: return false
         val url = release.apkUrl ?: run {
             Verbose.fail(
                 "${release.tag} has no APK attached to it, so there is nothing to " +
@@ -433,17 +499,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             Verbose.flush()
         }
     }
-
-    /** Whether a screen also writes its explanation onto the page. See [Prefs.showHelpText]. */
-    var helpOnPage: Boolean
-        get() = prefs.showHelpText
-        set(v) {
-            prefs.showHelpText = v
-            _helpOnPage.value = v
-        }
-
-    private val _helpOnPage = MutableStateFlow(prefs.showHelpText)
-    val helpShown: StateFlow<Boolean> = _helpOnPage
 
     fun addBudget(label: String, startMillis: Long, endExclusiveMillis: Long) =
         viewModelScope.launch(Dispatchers.IO) {
@@ -606,6 +661,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _analysisSlice.value = slice
     }
 
+    /**
+     * The period Home is showing. Held here for the same reason the Analysis one is: a
+     * rotation, or walking to another tab and back, should not silently return the
+     * dashboard to this month while the user was reading an earlier one.
+     *
+     * Separate from [analysisSlice] on purpose. They are two different questions being
+     * asked at once, and having one move because the other did was never wanted.
+     */
+    private val _homeSlice = MutableStateFlow(TimeSlice.thisMonth())
+    val homeSlice: StateFlow<TimeSlice> = _homeSlice
+
+    fun setHomeSlice(slice: TimeSlice) {
+        _homeSlice.value = slice
+    }
+
     val archivedIds = store.archivedIds
 
     fun archiveTxn(txn: Txn, archive: Boolean) = viewModelScope.launch(Dispatchers.IO) {
@@ -722,6 +792,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
     }
 
+    /**
+     * Adopts a word from a message as a gate keyword, so that kind of message is read
+     * automatically from the next scan instead of being asked about again.
+     *
+     * Only ever called because the user tapped it. The gate decides what the app is
+     * allowed to look at at all, and a word added to it silently would change how the
+     * whole inbox is read on evidence of one message.
+     */
+    fun learnKeyword(word: String, direction: Direction) {
+        val w = word.trim().lowercase()
+        if (w.isEmpty()) return
+        if (direction == Direction.EXPENSE) {
+            if (w in prefs.expenseKeywords) return
+            prefs.expenseKeywords = prefs.expenseKeywords + w
+        } else {
+            if (w in prefs.incomeKeywords) return
+            prefs.incomeKeywords = prefs.incomeKeywords + w
+        }
+        Verbose.ok(
+            "added \"$w\" as a ${if (direction == Direction.EXPENSE) "money out" else "money in"} " +
+                "word · the next scan reads messages like that one on its own " +
+                "(Settings › Keywords to take it back)"
+        )
+        Verbose.flush()
+    }
+
     fun resolveReview(
         item: ReviewItem,
         amountMinor: Long,
@@ -831,10 +927,5 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun csv(s: String) = "\"" + s.replace("\"", "\"\"") + "\""
-
-    private companion object {
-        /** How often GitHub is asked. A release lands a few times a year. */
-        const val DAY_MS = 24L * 60 * 60 * 1000
-    }
 
 }

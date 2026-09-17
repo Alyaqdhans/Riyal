@@ -345,17 +345,16 @@ fun HelpAction(title: String, help: String) {
 }
 
 /**
- * The same text on the page, for someone who asked in Settings to be told rather than
- * to go looking. Off by default: a screen that explains itself at rest has to be read
- * before it can be used.
+ * The version name this build carries, as a person reads it.
+ *
+ * Shared because two screens say it now: Settings, where the About row lives, and Home,
+ * where the card about a newer release has to name the one you are on. A phone that
+ * cannot report its own version is a case that never happens in practice and must not be
+ * a crash, so it reads as "1.0" and the comparison in Updates.isNewer treats it as the
+ * oldest thing there is.
  */
-@Composable
-fun HelpNote(help: String, visible: Boolean, modifier: Modifier = Modifier) {
-    if (!visible) return
-    Text(
-        help,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.padding(vertical = 4.dp),
-    )
+fun appVersion(context: android.content.Context): String = try {
+    context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
+} catch (e: Exception) {
+    "1.0"
 }

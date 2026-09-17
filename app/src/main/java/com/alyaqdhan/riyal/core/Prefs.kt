@@ -90,16 +90,6 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putBoolean("budgets_enabled", v).apply()
 
     /**
-     * Whether screens write their explanation onto the page as well as keeping it
-     * behind the (i) in the title bar. Off by default: a screen that explains itself
-     * at rest has to be read before it can be used, and the explanation is the same
-     * every time while the list under it is the reason for opening the screen.
-     */
-    var showHelpText: Boolean
-        get() = sp.getBoolean("help_on_page", false)
-        set(v) = sp.edit().putBoolean("help_on_page", v).apply()
-
-    /**
      * Set once the user has checked the accounts the first scan proposed. Until then
      * Home shows the confirmation prompt, because balances read out of SMS are a good
      * first guess and nothing more.
@@ -154,6 +144,39 @@ class Prefs(context: Context) {
         get() = sp.getLong("last_update_check_at", 0L)
         set(v) = sp.edit().putLong("last_update_check_at", v).apply()
 
+    /**
+     * The last release GitHub reported, remembered so its notes are on the (i) as soon
+     * as Settings opens. Notes only, never an APK link: what is worth downloading is
+     * decided by a live answer, not by one from a week ago.
+     */
+    var lastReleaseTag: String?
+        get() = sp.getString("last_release_tag", null)
+        set(v) = sp.edit().putString("last_release_tag", v).apply()
+
+    var lastReleaseNotes: String
+        get() = sp.getString("last_release_notes", "") ?: ""
+        set(v) = sp.edit().putString("last_release_notes", v).apply()
+
+    /**
+     * The date of the newest message the last successful scan read.
+     *
+     * A scan starts a little before this rather than at it: see [SCAN_OVERLAP_MILLIS].
+     * Zero means nothing has been read yet, so the next scan reads the whole range.
+     */
+    var scanHighWaterMillis: Long
+        get() = sp.getLong("scan_high_water", 0L)
+        set(v) = sp.edit().putLong("scan_high_water", v).apply()
+
+    /**
+     * What the last scan was reading *with*: the keywords, the sender rules, the range,
+     * and the parser's own version. Records are kept and reused between scans, so they
+     * are only as good as the settings that produced them. When any of this changes the
+     * stored records are stale by definition and everything is read again.
+     */
+    var scanFingerprint: String
+        get() = sp.getString("scan_fingerprint", "") ?: ""
+        set(v) = sp.edit().putString("scan_fingerprint", v).apply()
+
     var lastScanAt: Long
         get() = sp.getLong("last_scan_at", 0L)
         set(v) = sp.edit().putLong("last_scan_at", v).apply()
@@ -175,6 +198,24 @@ class Prefs(context: Context) {
          * "purchase"…), so the defaults now cover the phrasings Omani banks actually
          * send, still fully editable in Settings.
          */
+        /**
+         * How far before the high-water mark a scan starts reading.
+         *
+         * Message dates are not a reliable high-water mark on their own. A message can
+         * arrive dated earlier than one already read - delayed delivery, a clock change,
+         * a restored backup - and a strict "newer than" query would skip it forever
+         * without anything looking wrong. Re-reading two days costs a few dozen
+         * messages.
+         *
+         * It is also what keeps transfer pairing intact. The widest window the matcher
+         * looks across is 24 hours ([TransferMatcher.HINTED_WINDOW_MILLIS]), so an
+         * overlap of twice that guarantees both legs of a pair are re-read together
+         * whenever the later one is new. Shrinking this below 24 hours would start
+         * losing transfers, and a missed transfer is counted as both spending and
+         * income.
+         */
+        const val SCAN_OVERLAP_MILLIS = 48L * 60L * 60_000L
+
         val DEFAULT_EXPENSE_KEYWORDS = setOf(
             "withdraw", "withdrawal", "withdrawn",
             "debited", "purchase", "paid", "payment",
