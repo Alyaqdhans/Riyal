@@ -4,16 +4,6 @@ import android.content.Context
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.data.Categories
 
-/**
- * The built-in categories' names, in the reader's language.
- *
- * [Categories] is plain Kotlin with no Android in it, which is what lets the parser and
- * the tests use it - so it cannot read a string resource. This is the one place that
- * knows both halves: the permanent id on one side, the translated word on the other.
- *
- * Applied at startup and again whenever an activity is built, because that is when a
- * language chosen inside the app takes effect.
- */
 object CategoryNames {
 
     private val RES: Map<String, Int> = mapOf(

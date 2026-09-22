@@ -650,14 +650,6 @@ object Stats {
         return (1f - (ratio / 1.25f) * 2f).coerceIn(-1f, 1f)
     }
 
-    /**
-     * How the period went, as one of a fixed set rather than as a sentence.
-     *
-     * The words live in strings.xml because this one is read aloud by a screen reader -
-     * it is the only description the mascot has - and it has to be read aloud in the
-     * reader's own language. Stats has no Context and is unit-tested off-device, so it
-     * decides which of these it is and the screen looks up what it says.
-     */
     enum class Mood { QUIET, NO_INCOME_YET, WELL_UNDER, FINE, CLOSE, OVER }
 
     fun moodLabel(totals: MonthTotals): Mood {

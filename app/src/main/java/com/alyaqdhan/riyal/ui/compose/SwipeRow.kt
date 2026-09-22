@@ -138,9 +138,6 @@ fun SwipeableTxnRow(
                         if (remove) MaterialTheme.colorScheme.errorContainer
                         else MaterialTheme.colorScheme.secondaryContainer
                     ),
-                // Absolute, not start/end: which side is uncovered is decided by which
-                // way the thumb went, and that does not turn around in Arabic. Aligning
-                // by reading order put the action under the row it was meant to reveal.
                 contentAlignment =
                     if (remove) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft,
             ) {
@@ -164,9 +161,6 @@ fun SwipeableTxnRow(
 
         Box(
             Modifier
-                // Absolute, because a drag is measured in screen pixels: Modifier.offset
-                // mirrors its x in a right-to-left layout, which sent the row the
-                // opposite way to the finger for every Arabic reader.
                 .absoluteOffset { IntOffset(x.roundToInt(), 0) }
                 .fillMaxWidth()
                 .draggable(

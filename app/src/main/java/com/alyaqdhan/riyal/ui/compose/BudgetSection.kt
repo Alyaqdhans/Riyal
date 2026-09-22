@@ -119,8 +119,6 @@ fun BudgetSection(
         }
 
         if (plan == null || progress == null) {
-            // The plan's label is stored with the plan, so the period is named here in
-            // the language it is being created in.
             val sliceTitle = slice.title()
             Text(
                 stringResource(R.string.budget_no_plan, sliceTitle),
@@ -512,8 +510,6 @@ private fun BudgetEditorDialog(
 
     if (showRange) {
         val rangeState = rememberDateRangePickerState()
-        // Resolved outside the click, which is not a composable: the plan stores this
-        // name, so it is written in the language the plan was set in.
         val rangeTitle = rangeState.selectedStartDateMillis?.let { start ->
             rangeState.selectedEndDateMillis?.let { end ->
                 TimeSlice.ofDays(TimeSlice.utcDay(start), TimeSlice.utcDay(end)).title()

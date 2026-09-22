@@ -21,10 +21,6 @@ android {
         versionCode = 6
         versionName = "1.7.0"
 
-        // The languages the app actually has, which is what Android 13's per-app
-        // language picker lists. Without this it offers every locale the libraries
-        // carry - dozens of them, none of which Riyal is translated into - and picking
-        // one would silently fall back to English.
         androidResources {
             localeFilters += listOf("en", "ar")
         }

@@ -129,10 +129,6 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
     var showDismissed by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    // A snackbar is shown from a coroutine, where stringResource cannot be called, so
-    // the words it might need are read here while this is still a composable. The one
-    // that counts something is taken as its template and filled in later, because the
-    // number is not known until the tap.
     val merged = stringResource(R.string.review_merged)
     val keptSeparate = stringResource(R.string.review_kept_separate)
     val restored = stringResource(R.string.review_restored)

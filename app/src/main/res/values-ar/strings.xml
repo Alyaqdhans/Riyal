@@ -1,40 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    كل ما يقوله التطبيق، بالعربية.
-
-    Modern Standard Arabic, which is what Omani banking messages themselves use.
-    A key missing from this file falls back to the English in values/strings.xml,
-    so a partial translation degrades to English rather than to a crash.
-
-    Settled by the app's owner, and not to be second-guessed by a later translator:
-      transaction  معاملة     (not حركة)
-      category     تصنيف      (not فئة)
-      Activity     المعاملات  the tab is the transactions list, so it says so
-
-    Still to check before release - banking vocabulary is where a wrong word in a
-    money app does real damage:
-      expense      مصروف       (vs مصاريف / نفقة)
-      income       دخل         (vs إيراد / وارد)
-      transfer     تحويل       matches the word the banks' own SMS use
-      merchant     المتجر      (vs التاجر - المتجر reads as the shop, التاجر as the person)
-      account      حساب
-      statement    كشف الحساب
-      money out    صادر        on chips and totals, "مبلغ صادر" where there is room
-      money in     وارد
-      record       سجل         a parsed transaction, as against the message it came from
-      scan         فحص
-      rule         قاعدة       a remembered name that files itself
-      balance      رصيد
-      cap          حد          a budget line
-
-    The 34 built-in category names are in here too (cat_*), and they are the words
-    that appear on every screen and in the CSV export.
--->
 <resources>
-    <!-- The app's own name stays as it is: it is the brand, and it is already Arabic. -->
     <string name="app_name">ريال</string>
 
-    <!-- ─────────────────────────── المفردات المشتركة ─────────────────────────── -->
     <string name="action_save">حفظ</string>
     <string name="action_cancel">إلغاء</string>
     <string name="action_delete">حذف</string>
@@ -76,11 +43,6 @@
     <string name="tab_analysis">التحليل</string>
     <string name="tab_settings">الإعدادات</string>
 
-    <!-- ─────────────────────────── الأعداد ─────────────────────────── -->
-    <!--
-        العربية تعدّ بستّ صيغ: صفر، واحد، اثنان، قلّة (٣-١٠)، كثرة (١١-٩٩)، ثم غير ذلك.
-        Android يختار الصيغة من العدد نفسه.
-    -->
     <plurals name="count_records">
         <item quantity="zero">لا سجلات</item>
         <item quantity="one">سجل واحد</item>
@@ -122,7 +84,6 @@
         <item quantity="other">%d تصنيف</item>
     </plurals>
 
-    <!-- ─────────────────────────── اللغة ─────────────────────────── -->
     <string name="settings_card_app">التطبيق</string>
     <string name="settings_language">اللغة</string>
     <string name="settings_language_system">حسب لغة الهاتف</string>
@@ -130,7 +91,6 @@
     <string name="settings_language_arabic">العربية</string>
     <string name="settings_language_help">يقرأ ريال رسائل البنوك العربية مهما كانت هذه اللغة. هذا الإعداد يغيّر كلمات التطبيق نفسه، لا ما يستطيع فهمه.</string>
 
-    <!-- ─────────────────────────── الرئيسية ─────────────────────────── -->
     <string name="home_net">الصافي</string>
     <string name="home_recent_transactions">آخر المعاملات</string>
 
@@ -176,7 +136,6 @@
     <string name="home_empty_with_permission">الإعدادات › فحص الآن يقرأ رسائلك، ويشرح كل خطوة يقوم بها.</string>
     <string name="home_empty_without_permission">اسمح بقراءة الرسائل، ثم افحص متى شئت.</string>
 
-    <!-- ما يعنيه وجه الشخصية، يقرأه قارئ الشاشة. -->
     <string name="mood_quiet">شهر هادئ حتى الآن</string>
     <string name="mood_no_income_yet">تتبُّع المصروفات، لم يظهر دخل بعد</string>
     <string name="mood_well_under">الوضع مريح، أقل بكثير من دخلك</string>
@@ -187,7 +146,6 @@
     <string name="home_out">%s صادر</string>
     <string name="home_in">%s وارد</string>
 
-    <!-- ─────────────────────────── قائمة المعاملات ─────────────────────────── -->
     <string name="txn_filters">تصفية</string>
     <string name="txn_filters_count">تصفية (%d)</string>
     <string name="txn_export_csv">تصدير CSV</string>
@@ -207,7 +165,6 @@
     <string name="sort_biggest_out">الأكبر صادراً</string>
     <string name="sort_biggest_in">الأكبر وارداً</string>
 
-    <!-- ─────────────────────── الصف، وما يفعله السحب به ─────────────────────── -->
     <string name="row_archive">أرشفة</string>
     <string name="row_unarchive">إخراج من الأرشيف</string>
     <string name="row_remove">إزالة</string>
@@ -217,7 +174,6 @@
     <string name="row_deleted">تم الحذف</string>
     <string name="row_removed">أُزيلت، ولن تعود في الفحوصات القادمة</string>
     <string name="row_unassigned">غير محدَّد</string>
-    <!-- السهم يشير إلى جهة القراءة: من اليمين إلى اليسار. -->
     <string name="row_transfer_route">%1$s ← %2$s · %3$s</string>
     <string name="row_account_time">%1$s · %2$s</string>
     <string name="row_low_confidence">المحلِّل واثق بنسبة %d%%، اضغط للتصحيح</string>
@@ -227,7 +183,6 @@
 
     <string name="help_about">عن %s</string>
 
-    <!-- ─────────────────────────── اختيار الفترة ─────────────────────────── -->
     <string name="period_earlier">الفترة السابقة</string>
     <string name="period_later">الفترة التالية</string>
     <string name="period_pick">اختر فترة</string>
@@ -240,20 +195,17 @@
     <string name="period_custom">مدة مخصصة…</string>
     <string name="period_range">من %1$s إلى %2$s</string>
 
-    <!-- ─────────────────────────── صفحة تصنيف واحد ─────────────────────────── -->
     <string name="cat_detail_in_period">%1$s في %2$s</string>
     <string name="cat_detail_where">أين ذهبت</string>
     <string name="cat_detail_records">السجلات</string>
     <string name="cat_detail_empty_title">لا شيء هنا في %s</string>
     <string name="cat_detail_empty_subtitle">ارجع فترة إلى الوراء، أو اختر فترة أوسع من العنوان أعلاه.</string>
 
-    <!-- المقارنة مع الفترة التي قبلها. -->
     <string name="compare_nothing_before">لا شيء في الفترة السابقة</string>
     <string name="compare_level">مثل الفترة السابقة تماماً</string>
     <string name="compare_up">أعلى بـ %1$d%% من %2$s سابقاً</string>
     <string name="compare_down">أقل بـ %1$d%% من %2$s سابقاً</string>
 
-    <!-- ─────────────────────────── التشغيل الأول ─────────────────────────── -->
     <string name="onboarding_pitch">مصروفاتك مرتَّبة من رسائل بنكك،\nبهدوء، وعلى هذا الهاتف وحده.</string>
     <string name="onboarding_promise_ask_title">لا يقرأ إلا حين تطلب</string>
     <string name="onboarding_promise_ask_detail">لا يعمل في الخلفية أبداً.</string>
@@ -276,7 +228,6 @@
     <string name="history_quarter_explained">آخر 3 أشهر فقط. وما قبلها يبقى غير مقروء.</string>
     <string name="history_from_now_explained">لا يُقرأ شيء وصل من قبل. يبدأ ريال فارغاً، وتظهر حساباتك وسجلك مع رسائل بنكك من اليوم فصاعداً.</string>
 
-    <!-- ─────────────────────────── بحاجة إلى مراجعة ─────────────────────────── -->
     <string name="review_title">بحاجة إلى مراجعة</string>
     <string name="review_all_clear_title">كل شيء واضح</string>
     <string name="review_all_clear_subtitle">حين تطابق رسالةٌ كلماتك المفتاحية ولا يمكن قراءتها، تنتظر هنا قرارك، ولا تُخمَّن أبداً داخل أرقامك.</string>
@@ -315,7 +266,6 @@
     <string name="action_show">إظهار</string>
     <string name="action_hide">إخفاء</string>
 
-    <!-- ─────────────────────────── بحاجة إلى تصنيف ─────────────────────────── -->
     <string name="needs_title">بحاجة إلى تصنيف</string>
     <string name="needs_left_title">تُركت للمرة القادمة</string>
     <string name="needs_all_filed_title">كل شيء مُصنَّف</string>
@@ -350,7 +300,6 @@
     <string name="needs_hide_message">إخفاء الرسالة</string>
     <string name="needs_read_message">قراءة الرسالة</string>
 
-    <!-- ─────────────────────────── الحسابات البنكية ─────────────────────────── -->
     <string name="acct_title">الحسابات البنكية</string>
     <string name="acct_empty_title">لا حسابات بعد</string>
     <string name="acct_empty_subtitle">افحص رسائلك لينشئ ريال حساباتك مما قاله بنكك أصلاً، أو أضف حساباً هنا بنفسك.</string>
@@ -377,7 +326,6 @@
     <string name="acct_archived">حساب مُغلق (أخفِه من القوائم)</string>
     <string name="label_currency">العملة</string>
 
-    <!-- ─────────────────────── التصنيفات الجاهزة ─────────────────────── -->
     <string name="cat_food">مطاعم ومأكولات</string>
     <string name="cat_groceries">بقالة</string>
     <string name="cat_transport">نقل ووقود</string>
@@ -413,7 +361,6 @@
     <string name="cat_borrowed">قرض مُستلَم</string>
     <string name="cat_income">دخل آخر</string>
 
-    <!-- ─────────────────────────── صفحة التصنيفات ─────────────────────────── -->
     <string name="cats_title">التصنيفات</string>
     <string name="cats_spending">المصروفات</string>
     <string name="cats_income">الدخل</string>
@@ -444,7 +391,6 @@
     <string name="cats_selected">مُختار</string>
     <string name="delete_title">حذف %s؟</string>
 
-    <!-- ─────────────────────────── ورقة الفحص ─────────────────────────── -->
     <string name="scan_phase_reading">جاري قراءة رسائلك</string>
     <string name="scan_phase_accounts">جاري تحديد حساباتك</string>
     <string name="scan_phase_building">جاري بناء سجلاتك</string>
@@ -465,7 +411,6 @@
     <string name="scan_log_title">سجل المعالجة التفصيلي</string>
     <string name="scan_hide">إخفاء، والفحص مستمر</string>
 
-    <!-- ─────────────────── ورقة السجل، والإضافة اليدوية ─────────────────── -->
     <string name="sheet_pick_category">اختر تصنيفاً</string>
     <string name="sheet_transfer_note">هذه مُسجَّلة كمال انتقل بين حساباتك أنت، فلا تُحتسب مصروفاً ولا دخلاً.</string>
     <string name="sheet_split_back">لم يكن تحويلاً، أعِد فصله</string>
@@ -491,7 +436,6 @@
     <string name="sheet_less">أقل</string>
     <string name="sheet_no_category_matches">لا تصنيف يطابق ذلك.</string>
 
-    <!-- ─────────────────────────── قسم الميزانية ─────────────────────────── -->
     <string name="budget_title">الميزانية</string>
     <string name="budget_plan_runs">الخطة تغطي %1$s</string>
     <string name="budget_no_plan">لا خطة لـ %1$s بعد.</string>
@@ -514,7 +458,6 @@
     <string name="budget_cap_label">الحد لهذه الفترة</string>
     <string name="budget_line">%1$s: %2$s</string>
 
-    <!-- ─────────────────────────── شاشة التحليل ─────────────────────────── -->
     <string name="an_title">التحليل</string>
     <string name="an_empty_title">لا شيء لتحليله بعد</string>
     <string name="an_empty_subtitle">ما إن تفحص رسائلك حتى تُضيء الرسوم هنا.</string>
@@ -581,7 +524,6 @@
         <item quantity="other">%d يوم</item>
     </plurals>
 
-    <!-- ─────────────────────────── الإعدادات ─────────────────────────── -->
     <string name="set_card_money">أموالك</string>
     <string name="set_default_currency">العملة الافتراضية</string>
 

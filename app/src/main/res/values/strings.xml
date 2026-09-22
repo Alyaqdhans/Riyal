@@ -1,22 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    Every word the app says, in English.
-
-    This file is the source: values-ar/strings.xml answers it key for key, and a key
-    missing there falls back to the English here rather than crashing. Names are
-    <area>_<what>, so the file sorts into the screens it belongs to.
-
-    Two rules worth keeping. Put the whole sentence in one string rather than building
-    it from pieces in Kotlin: word order is not the same in Arabic, and a sentence
-    assembled from three concatenated fragments cannot be reordered by a translator.
-    And anything counted goes through <plurals>, because "s" on the end is an English
-    rule and Arabic has six forms.
--->
 <resources>
     <string name="app_name">Riyal</string>
 
-    <!-- ─────────────────────────── shared vocabulary ─────────────────────────── -->
-    <!-- Used on many screens. A change here is felt everywhere, which is the point. -->
     <string name="action_save">Save</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_delete">Delete</string>
@@ -52,20 +37,12 @@
     <string name="label_money_in">Money in</string>
     <string name="label_money_out">Money out</string>
 
-    <!-- The four tabs. tab_home_a11y is the screen reader's name for the button;
-         the tab itself carries only an icon. -->
     <string name="tab_home">Riyal</string>
     <string name="tab_home_a11y">Home</string>
     <string name="tab_transactions">Transactions</string>
     <string name="tab_analysis">Analysis</string>
     <string name="tab_settings">Settings</string>
 
-    <!-- ─────────────────────────── counted things ─────────────────────────── -->
-    <!--
-        Arabic counts in six forms where English has two, and the form depends on the
-        number itself. Android picks the right one from the quantity; Kotlin must never
-        decide it by appending a letter.
-    -->
     <plurals name="count_records">
         <item quantity="one">%d record</item>
         <item quantity="other">%d records</item>
@@ -87,7 +64,6 @@
         <item quantity="other">%d categories</item>
     </plurals>
 
-    <!-- ─────────────────────────── language ─────────────────────────── -->
     <string name="settings_card_app">App</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_system">Follow the phone</string>
@@ -95,7 +71,6 @@
     <string name="settings_language_arabic">العربية</string>
     <string name="settings_language_help">Riyal reads Arabic bank messages whichever language this is set to. This changes the app\'s own words, not what it can understand.</string>
 
-    <!-- ─────────────────────────── home ─────────────────────────── -->
     <string name="home_net">Net</string>
     <string name="home_recent_transactions">Recent transactions</string>
 
@@ -104,10 +79,8 @@
     <string name="home_sms_allow">Allow SMS reading</string>
 
     <string name="home_check_accounts_title">Check your accounts</string>
-    <!-- %s is a count of accounts, already in words: "3 accounts read from your messages". -->
     <string name="home_check_accounts_subtitle">%s read from your messages</string>
 
-    <!-- %s is the list of what is waiting, joined with " · " by the screen. -->
     <string name="home_needs_review_subtitle">%s, tap to decide</string>
     <plurals name="home_possible_transfers">
         <item quantity="one">%d possible transfer</item>
@@ -124,7 +97,6 @@
     </plurals>
     <string name="home_needs_category_subtitle">One tap files a whole shop</string>
 
-    <!-- %1$s is the new version\'s tag, %2$s the one installed. -->
     <string name="home_update_title">Riyal %1$s is out</string>
     <string name="home_update_subtitle">You have %1$s · tap for what changed</string>
 
@@ -132,7 +104,6 @@
     <string name="home_empty_with_permission">Settings › Scan now reads your inbox, narrating everything it does.</string>
     <string name="home_empty_without_permission">Allow SMS reading, then scan whenever you choose.</string>
 
-    <!-- What the mascot's face means, read aloud by a screen reader. -->
     <string name="mood_quiet">Quiet month so far</string>
     <string name="mood_no_income_yet">Tracking spending, no income seen yet</string>
     <string name="mood_well_under">Smooth sailing, well under your income</string>
@@ -140,12 +111,9 @@
     <string name="mood_close">Cutting it close this month</string>
     <string name="mood_over">Spending is above income this month</string>
 
-    <!-- The spent/received line under Net. %s is an amount with no currency code,
-         which the figure above has already named. -->
     <string name="home_out">%s out</string>
     <string name="home_in">%s in</string>
 
-    <!-- ─────────────────────────── the transactions list ─────────────────────────── -->
     <string name="txn_filters">Filters</string>
     <string name="txn_filters_count">Filters (%d)</string>
     <string name="txn_export_csv">Export CSV</string>
@@ -160,13 +128,11 @@
     <string name="txn_empty_filtered">Nothing matches these filters.</string>
     <string name="txn_empty_none">Pull down to scan, or add one manually with +.</string>
 
-    <!-- How a list is ordered. -->
     <string name="sort_newest">Newest</string>
     <string name="sort_oldest">Oldest</string>
     <string name="sort_biggest_out">Biggest out</string>
     <string name="sort_biggest_in">Biggest in</string>
 
-    <!-- ─────────────────────── a row, and what a swipe does to it ─────────────────────── -->
     <string name="row_archive">Archive</string>
     <string name="row_unarchive">Unarchive</string>
     <string name="row_remove">Remove</string>
@@ -176,20 +142,15 @@
     <string name="row_deleted">Deleted</string>
     <string name="row_removed">Removed, and kept out of future scans</string>
     <string name="row_unassigned">unassigned</string>
-    <!-- Both ends of a transfer and the time: "Bank A → Bank B · 2:15 pm". The arrow
-         points the way the language reads, which is why it is here and not in Kotlin. -->
     <string name="row_transfer_route">%1$s → %2$s · %3$s</string>
-    <!-- The account a record belongs to, and the time: "Bank Muscat · 2:15 pm". -->
     <string name="row_account_time">%1$s · %2$s</string>
     <string name="row_low_confidence">parser was %d%% sure, tap to fix</string>
     <string name="row_not_counted">not counted</string>
     <string name="day_today">Today</string>
     <string name="day_yesterday">Yesterday</string>
 
-    <!-- The (i) in a title bar. %s is the screen's own name. -->
     <string name="help_about">About %s</string>
 
-    <!-- ─────────────────────────── the period control ─────────────────────────── -->
     <string name="period_earlier">Earlier period</string>
     <string name="period_later">Later period</string>
     <string name="period_pick">Pick a period</string>
@@ -200,24 +161,19 @@
     <string name="period_this_year">This year</string>
     <string name="period_all_time">All time</string>
     <string name="period_custom">Custom range…</string>
-    <!-- A hand-picked range: "1 Sep 25 to 30 Sep 25". -->
     <string name="period_range">%1$s to %2$s</string>
 
-    <!-- ─────────────────────────── one category's page ─────────────────────────── -->
-    <!-- %1$s is a count of records, already in words; %2$s the period it counts. -->
     <string name="cat_detail_in_period">%1$s in %2$s</string>
     <string name="cat_detail_where">Where it went</string>
     <string name="cat_detail_records">Records</string>
     <string name="cat_detail_empty_title">Nothing here in %s</string>
     <string name="cat_detail_empty_subtitle">Step back a period, or pick a wider one from the title above.</string>
 
-    <!-- How this period compares with the one before it. -->
     <string name="compare_nothing_before">nothing in the period before</string>
     <string name="compare_level">level with the period before</string>
     <string name="compare_up">up %1$d%% on %2$s before</string>
     <string name="compare_down">down %1$d%% from %2$s before</string>
 
-    <!-- ─────────────────────────── the first run ─────────────────────────── -->
     <string name="onboarding_pitch">Your spending, sorted from your bank SMS,\nquietly, and only on this phone.</string>
     <string name="onboarding_promise_ask_title">Reads only when you ask</string>
     <string name="onboarding_promise_ask_detail">No background listener, ever.</string>
@@ -231,7 +187,6 @@
     <string name="onboarding_allow">Allow SMS &amp; scan</string>
     <string name="onboarding_explore">Explore first</string>
 
-    <!-- How much of the inbox the first scan covers. Asked once, on the first run. -->
     <string name="history_all">All</string>
     <string name="history_year">1 year</string>
     <string name="history_quarter">3 months</string>
@@ -241,13 +196,11 @@
     <string name="history_quarter_explained">Only the last 3 months. Anything older stays unread.</string>
     <string name="history_from_now_explained">Nothing that already arrived is read. Riyal starts empty, and your accounts and history appear as your banks text you from today on.</string>
 
-    <!-- ─────────────────────────── needs review ─────────────────────────── -->
     <string name="review_title">Needs review</string>
     <string name="review_all_clear_title">All clear</string>
     <string name="review_all_clear_subtitle">When a message matches your keywords but can\'t be read, it waits here for your decision, it is never guessed into your numbers.</string>
     <string name="review_transfers_header">Transfers to confirm (%d)</string>
     <string name="review_transfers_intro">Two messages that look like one movement of your own money. Confirm and it stops counting as both spending and income; reject and both stay exactly as they are.</string>
-    <!-- %1$s is a count of matched pairs, already in words. -->
     <string name="review_auto_note">%1$s were confirmed as transfers for you, so they count as neither spending nor income. Open one in Transactions to split it back apart, or turn off \"Confirm transfers for me\" in Settings to be asked each time.</string>
     <plurals name="count_matching_pairs">
         <item quantity="one">%d matching pair</item>
@@ -267,7 +220,6 @@
     <string name="review_which_category">Which category?</string>
     <string name="review_what_was_this">What was this?</string>
     <string name="review_unassigned_account">an unassigned account</string>
-    <!-- %1$s is the amount with its sign; %2$s the account it moved from or to. -->
     <string name="review_left_account">%1$s left %2$s</string>
     <string name="review_arrived_account">%1$s arrived in %2$s</string>
     <string name="review_keep_both">No, keep both</string>
@@ -278,14 +230,11 @@
     <string name="action_show">Show</string>
     <string name="action_hide">Hide</string>
 
-    <!-- ─────────────────────────── needs a category ─────────────────────────── -->
     <string name="needs_title">Needs a category</string>
     <string name="needs_left_title">Left for next time</string>
     <string name="needs_all_filed_title">Everything is filed</string>
-    <!-- %1$s is a count of records, already in words. -->
     <string name="needs_left_subtitle">%1$s are under Other. The next scan asks again.</string>
     <string name="needs_nothing_waiting">Nothing is waiting for a category.</string>
-    <!-- "12 records · 4 places" -->
     <string name="needs_intro">%1$s · %2$s</string>
     <plurals name="count_places">
         <item quantity="one">%d place</item>
@@ -297,7 +246,6 @@
     <string name="needs_leave_title">Leave the rest under Other?</string>
     <string name="needs_leave_body">All %1$s stay under Other. Nothing is answered, no rule is saved, and the next scan asks about them again.</string>
     <string name="needs_leave_confirm">Leave under Other</string>
-    <!-- "6 records · Money out" -->
     <string name="needs_group_line">%1$s · %2$s</string>
     <string name="needs_hide_records">Hide the records</string>
     <string name="needs_show_records">Show the records</string>
@@ -312,14 +260,12 @@
     <string name="needs_hide_message">Hide the message</string>
     <string name="needs_read_message">Read the message</string>
 
-    <!-- ─────────────────────────── bank accounts ─────────────────────────── -->
     <string name="acct_title">Bank accounts</string>
     <string name="acct_empty_title">No accounts yet</string>
     <string name="acct_empty_subtitle">Scan your messages and Riyal will set accounts up from what your bank already told you, or add one here by hand.</string>
     <string name="acct_add">Add an account</string>
     <string name="acct_delete_body">Its transactions are kept, because the money still moved, but they\'ll no longer belong to any account, so they stop counting towards a balance.</string>
     <string name="acct_confirm_title">Are these right?</string>
-    <!-- %1$s is a count of accounts, already in words. -->
     <string name="acct_confirm_missing">%1$s read from your bank\'s texts. One quoted no balance and starts at zero. Tap it to set the real figure.</string>
     <string name="acct_confirm_ok">%1$s read from the balances your bank\'s texts quote. Tap any that look wrong.</string>
     <string name="acct_confirm_button">These are correct</string>
@@ -335,15 +281,11 @@
     <string name="acct_balance_asof">The balance as of %1$s. Records after that moment move it.</string>
     <string name="acct_last4">Account ends with (optional)</string>
     <string name="acct_senders">SMS senders</string>
-    <!-- Two real Omani bank sender names, as an example of the shape of the answer. -->
     <string name="acct_senders_placeholder">BankMuscat, NBO</string>
     <string name="acct_senders_help">Messages from these senders are filed under this account.</string>
     <string name="acct_archived">Closed account (hide it from pickers)</string>
     <string name="label_currency">Currency</string>
 
-    <!-- ─────────────────────── the built-in categories ─────────────────────── -->
-    <!-- Keyed by the id in Categories.BUILTIN, which never changes. A record filed
-         under "groceries" stays there whatever this line says. -->
     <string name="cat_food">Food &amp; Dining</string>
     <string name="cat_groceries">Groceries</string>
     <string name="cat_transport">Transport &amp; Fuel</string>
@@ -379,7 +321,6 @@
     <string name="cat_borrowed">Loan Received</string>
     <string name="cat_income">Other Income</string>
 
-    <!-- ─────────────────────────── the categories page ─────────────────────────── -->
     <string name="cats_title">Categories</string>
     <string name="cats_spending">Spending</string>
     <string name="cats_income">Income</string>
@@ -397,7 +338,6 @@
     <string name="cats_never_rule">never saved as a rule</string>
     <string name="cats_delete_body">Records filed under it move to %1$s. Nothing is lost.</string>
     <string name="cats_nothing_in_period">nothing in this period</string>
-    <!-- %1$s is a count of records, already in words; %2$d a percentage. -->
     <string name="cats_share_of_spending">%1$s · %2$d%% of spending</string>
     <string name="cats_share_of_income">%1$s · %2$d%% of income</string>
     <string name="cats_open">Open %s</string>
@@ -409,10 +349,8 @@
     <string name="cats_new_title">New category</string>
     <string name="cats_edit_title">Edit category</string>
     <string name="cats_selected">Selected</string>
-    <!-- Shared by every "are you sure" that names the thing it would remove. -->
     <string name="delete_title">Delete %s?</string>
 
-    <!-- ─────────────────────────── the scan sheet ─────────────────────────── -->
     <string name="scan_phase_reading">Reading your messages</string>
     <string name="scan_phase_accounts">Working out your accounts</string>
     <string name="scan_phase_building">Building your records</string>
@@ -420,13 +358,10 @@
     <string name="scan_phase_saving">Saving</string>
     <string name="scan_noun_messages">messages</string>
     <string name="scan_noun_records">records</string>
-    <!-- "1200 / 1480 messages" -->
     <string name="scan_progress">%1$d / %2$d %3$s</string>
     <string name="scan_querying">querying the inbox…</string>
-    <!-- "Reading your messages…" -->
     <string name="scan_phase_ellipsis">%1$s…</string>
     <string name="scan_done">Scan complete</string>
-    <!-- %1$s is seconds to one decimal; %2$s a count of messages, already in words. -->
     <string name="scan_took">took %1$ss · %2$s checked</string>
     <string name="scan_pill_recorded">✓ %d recorded</string>
     <string name="scan_pill_transfers">⇄ %1$s</string>
@@ -436,7 +371,6 @@
     <string name="scan_log_title">Verbose processing log</string>
     <string name="scan_hide">Hide, scanning continues</string>
 
-    <!-- ─────────────────── the sheet a record opens, and manual entry ─────────────────── -->
     <string name="sheet_pick_category">Pick a category</string>
     <string name="sheet_transfer_note">This is recorded as money moved between your own accounts, so it counts as neither spending nor income.</string>
     <string name="sheet_split_back">It wasn\'t a transfer, split it back</string>
@@ -462,7 +396,6 @@
     <string name="sheet_less">Less</string>
     <string name="sheet_no_category_matches">No category matches that.</string>
 
-    <!-- ─────────────────────────── the budget section ─────────────────────────── -->
     <string name="budget_title">Budget</string>
     <string name="budget_plan_runs">Plan runs %1$s</string>
     <string name="budget_no_plan">No plan for %1$s yet.</string>
@@ -475,20 +408,16 @@
     <string name="budget_uncapped">%1$s uncapped</string>
     <string name="budget_delete_title">Delete this plan?</string>
     <string name="budget_delete_body">\"%1$s\" and its caps will be removed. Your transactions are untouched.</string>
-    <!-- "OMR 40.000 of OMR 60.000" -->
     <string name="budget_spent_of_cap">%1$s of %2$s</string>
     <string name="budget_percent">%d%%</string>
     <string name="budget_over_by">Over by %1$s</string>
     <string name="budget_ahead">%1$d%% of the period gone, %2$d%% of the budget spent · running ahead</string>
     <string name="budget_left">%1$d%% of the period gone, %2$s still to spend</string>
-    <!-- "OMR 12.000 / OMR 40.000" on one category\'s bar -->
     <string name="budget_bar_amounts">%1$s / %2$s</string>
     <string name="budget_add_or_change">Add or change a cap</string>
     <string name="budget_cap_label">Cap for this period</string>
-    <!-- "Groceries: OMR 40.000" -->
     <string name="budget_line">%1$s: %2$s</string>
 
-    <!-- ─────────────────────────── the analysis screen ─────────────────────────── -->
     <string name="an_title">Analysis</string>
     <string name="an_empty_title">Nothing to analyze yet</string>
     <string name="an_empty_subtitle">Once you scan your messages, the charts light up here.</string>
@@ -498,33 +427,28 @@
     <string name="an_moved_note">%1$s moved between your own accounts and is counted in neither figure.</string>
     <string name="an_donut_spent">spent</string>
     <string name="an_donut_received">received</string>
-    <!-- Under the donut\'s figure: "OMR · 6 categories" or "OMR · nothing recorded". -->
     <string name="an_donut_nothing">%1$s · nothing recorded</string>
     <string name="an_donut_categories">%1$s · %2$s</string>
     <string name="an_percent">%d%%</string>
     <string name="an_no_spending">No spending recorded for this period.</string>
     <string name="an_no_income">No income recorded for this period.</string>
     <string name="an_pacing">Budget pacing</string>
-    <!-- "42% of \"August\" gone, 61% of the budget spent · running ahead" -->
     <string name="an_pacing_line">%1$d%% of \"%2$s\" gone, %3$d%% of the budget spent</string>
     <string name="an_pacing_over"> · over</string>
     <string name="an_pacing_ahead"> · running ahead</string>
     <string name="an_pacing_on_track"> · on track</string>
     <string name="an_movers">Biggest movers</string>
-    <!-- %1$s is a count of days, already in words. -->
     <string name="an_movers_against">Against the %1$s before this period.</string>
     <string name="an_up_amount">▲ %1$s</string>
     <string name="an_down_amount">▼ %1$s</string>
     <string name="an_recurring">Looks recurring</string>
     <string name="an_recurring_note">Same merchant, steady amount, steady rhythm, so it will very likely land again.</string>
-    <!-- "every month · 7 so far · next around 3 Oct" -->
     <string name="an_recurring_line">every %1$s · %2$d so far · next around %3$s</string>
     <string name="an_stats">Statistics</string>
     <string name="an_biggest_expense">Biggest expense</string>
     <string name="an_heaviest_day">Heaviest day</string>
     <string name="an_normal_payment">A normal payment</string>
     <string name="an_none_yet">none yet</string>
-    <!-- "Al Meera · OMR 24.500" and "3 Sep · OMR 80.000" -->
     <string name="an_named_amount">%1$s · %2$s</string>
     <string name="an_median_average">%1$s · average %2$s</string>
     <string name="an_payments">Payments</string>
@@ -534,7 +458,6 @@
     <string name="an_average_per_day">Average per day</string>
     <string name="an_kept">Kept of what came in</string>
     <string name="an_overspent">Spent beyond what came in</string>
-    <!-- %1$s is the currency code, %2$s a count of transactions, already in words. -->
     <string name="an_other_currencies">Charts show %1$s only, %2$s in other currencies are listed in Transactions.</string>
     <string name="an_cashflow">Cashflow</string>
     <string name="an_running_total">Running total</string>
@@ -557,7 +480,6 @@
         <item quantity="other">%d days</item>
     </plurals>
 
-    <!-- ─────────────────────────── settings ─────────────────────────── -->
     <string name="set_card_money">Your money</string>
     <string name="set_default_currency">Default currency</string>
 
@@ -620,7 +542,6 @@
     <string name="set_check_now">Check now</string>
     <string name="set_wipe_title">Delete everything?</string>
     <string name="set_wipe_body">All recorded transactions, rules, review items and settings will be erased. Your SMS inbox itself is untouched, this app never modifies messages.</string>
-    <!-- %1$s is a count of records, already in words. -->
     <string name="set_export_title">Export %1$s?</string>
     <string name="set_export_empty">There is nothing recorded yet, so the file would be empty. Scan your messages first.</string>
     <string name="set_export_body">Every record Riyal holds goes into one CSV file, and you choose where it is written. Nothing leaves the phone on its own.</string>
@@ -649,11 +570,8 @@
         <item quantity="other">%d plans</item>
     </plurals>
 
-    <!-- A scan that could not run, said on the sheet that was watching it. -->
     <string name="scan_permission_refused">The system refused the SMS read, check the permission</string>
     <string name="scan_unknown_error">Unknown error</string>
-    <!-- A record you typed in yourself has no bank message behind it; this stands in
-         for one wherever the message would be shown. -->
     <string name="manual_entry_sender">manual entry</string>
     <string name="manual_entry_body">Added by you</string>
     <plurals name="count_approved">

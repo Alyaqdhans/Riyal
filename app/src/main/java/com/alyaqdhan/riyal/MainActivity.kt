@@ -61,8 +61,6 @@ class MainActivity : AppCompatActivity() {
         installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        // Again here, not only in RiyalApp: a language chosen inside the app reaches
-        // an activity's resources first, and choosing one rebuilds this activity.
         CategoryNames.apply(this)
         setContentView(R.layout.activity_main)
 

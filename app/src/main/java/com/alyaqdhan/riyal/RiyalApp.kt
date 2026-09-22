@@ -23,8 +23,6 @@ class RiyalApp : Application() {
         Verbose.mirrorToLogcat =
             (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         prefs = Prefs(this)
-        // Before the store loads anything: a category resolved during that load would
-        // otherwise carry its English name until something re-read it.
         CategoryNames.apply(this)
         store = Store(this, prefs.autoConfirmTransfers)
         DynamicColors.applyToActivitiesIfAvailable(this)

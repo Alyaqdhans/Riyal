@@ -141,8 +141,6 @@ fun SettingsScreen(
     var confirmExport by remember { mutableStateOf(false) }
     var pickCurrency by remember { mutableStateOf(false) }
     var pickLanguage by remember { mutableStateOf(false) }
-    // Read from the platform rather than kept here: the phone's own app settings can
-    // change it too, so there is one answer and this reads it on every composition.
     val language = Language.current()
 
     fun note(text: String) {
@@ -716,9 +714,6 @@ fun SettingsScreen(
                 pickLanguage = false
                 val choice = labels.entries.first { it.value == picked }.key
                 if (choice != language) {
-                    // Said in the log before the switch, because the activity is
-                    // recreated by setApplicationLocales and this composition goes with
-                    // it - a note written after would never be reached.
                     note("language -> $picked")
                     Language.set(choice)
                 }

@@ -25,14 +25,8 @@ private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM uu")
 data class TimeSlice(
     val start: Long,
     val endExclusive: Long,
-    /**
-     * What to call it, where a date formatter already wrote it in the reader's language.
-     * Where the name is words rather than dates, [labelRes] carries them instead and
-     * this holds the English of the same thing.
-     */
     val label: String,
     val month: YearMonth? = null,
-    /** Set where the name is words: "All time", "Last 6 months", "x to y". */
     @param:StringRes val labelRes: Int? = null,
     val labelArgs: List<Any> = emptyList(),
 ) {
@@ -45,7 +39,6 @@ data class TimeSlice(
         }
 
     fun contains(millis: Long): Boolean = millis in start until endExclusive
-
 
     fun shifted(back: Boolean): TimeSlice {
         if (month != null) return ofMonth(if (back) month.minusMonths(1) else month.plusMonths(1))
@@ -121,14 +114,6 @@ data class TimeSlice(
     }
 }
 
-/**
- * The slice's name, in the reader's language.
- *
- * A month or a date is localized by the formatter that wrote it, so it arrives ready.
- * The rest are words - "All time", "Last 6 months", and the "to" between two dates -
- * which no formatter can produce, so the slice carries the resource it was built from
- * and whoever draws it resolves that here.
- */
 @Composable
 fun TimeSlice.title(): String =
     labelRes?.let { stringResource(it, *labelArgs.toTypedArray()) } ?: label
