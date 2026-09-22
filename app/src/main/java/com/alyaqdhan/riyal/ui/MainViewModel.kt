@@ -9,9 +9,11 @@ import androidx.core.net.toUri
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.content.ContextCompat
+import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.alyaqdhan.riyal.ui.compose.countOf
+import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.RiyalApp
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
@@ -114,8 +116,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         data class Running(
             val processed: Int,
             val total: Int,
-            val phase: String = "Reading your messages",
-            val noun: String = "messages",
+            @param:StringRes val phase: Int = R.string.scan_phase_reading,
+            @param:StringRes val noun: Int = R.string.scan_noun_messages,
         ) : ScanState
         data class Done(val summary: ScanSummary) : ScanState
         data class Failed(val message: String) : ScanState

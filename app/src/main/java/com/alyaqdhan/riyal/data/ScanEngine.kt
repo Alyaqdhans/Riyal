@@ -1,5 +1,8 @@
 package com.alyaqdhan.riyal.data
 
+import androidx.annotation.StringRes
+import com.alyaqdhan.riyal.R
+
 import android.content.Context
 import com.alyaqdhan.riyal.core.LogLine
 import com.alyaqdhan.riyal.core.Money
@@ -35,8 +38,8 @@ class ScanEngine(
     data class Progress(
         val processed: Int,
         val total: Int,
-        val phase: String = "Reading your messages",
-        val noun: String = "messages",
+        @param:StringRes val phase: Int = R.string.scan_phase_reading,
+        @param:StringRes val noun: Int = R.string.scan_noun_messages,
     )
 
     /** A message that parsed cleanly, held until accounts are known. */
@@ -317,7 +320,7 @@ class ScanEngine(
         }
 
         val parseMs = System.currentTimeMillis() - tParse0
-        onProgress(Progress(messages.size, messages.size, "Working out your accounts"))
+        onProgress(Progress(messages.size, messages.size, R.string.scan_phase_accounts))
 
         val tAcc0 = System.currentTimeMillis()
         // ── stage 2: accounts ─────────────────────────────────────────────
@@ -373,7 +376,9 @@ class ScanEngine(
 
         val accMs = System.currentTimeMillis() - tAcc0
         val tRec0 = System.currentTimeMillis()
-        onProgress(Progress(0, parsedMsgs.size, "Building your records", "records"))
+        onProgress(
+            Progress(0, parsedMsgs.size, R.string.scan_phase_building, R.string.scan_noun_records)
+        )
         // ── stage 3: build records, routed to an account ──────────────────
         val txns = ArrayList<Txn>(parsedMsgs.size)
         val hinted = HashSet<String>()
@@ -385,7 +390,14 @@ class ScanEngine(
         var built = 0
         for (pm in parsedMsgs.values) {
             if (built % 200 == 0) {
-                onProgress(Progress(built, parsedMsgs.size, "Building your records", "records"))
+                onProgress(
+                    Progress(
+                        built,
+                        parsedMsgs.size,
+                        R.string.scan_phase_building,
+                        R.string.scan_noun_records,
+                    )
+                )
             }
             built++
             val result = pm.result
@@ -459,7 +471,14 @@ class ScanEngine(
 
         val recMs = System.currentTimeMillis() - tRec0
         val tTr0 = System.currentTimeMillis()
-        onProgress(Progress(txns.size, txns.size, "Looking for transfers between your accounts", "records"))
+        onProgress(
+            Progress(
+                txns.size,
+                txns.size,
+                R.string.scan_phase_transfers,
+                R.string.scan_noun_records,
+            )
+        )
         // ── stage 4: nominate transfers ───────────────────────────────────
         // Accounts go in so the matcher can tell a same-bank move (instant, 15 min)
         // from a bank-to-bank one, where the receiving bank texts once it settles.
@@ -502,7 +521,9 @@ class ScanEngine(
             skipped = skipped,
             transfers = proposals.size,
         )
-        onProgress(Progress(txns.size, txns.size, "Saving", "records"))
+        onProgress(
+            Progress(txns.size, txns.size, R.string.scan_phase_saving, R.string.scan_noun_records)
+        )
         val tStore0 = System.currentTimeMillis()
         store.applyScan(
             txns, proposals, reviews, seenSenders,

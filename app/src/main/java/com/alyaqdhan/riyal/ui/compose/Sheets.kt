@@ -6,6 +6,9 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.annotation.StringRes
+import com.alyaqdhan.riyal.R
+
 import android.content.ClipData
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -62,12 +65,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Account
@@ -89,10 +92,11 @@ val CURRENCIES = listOf("OMR", "SAR", "AED", "KWD", "BHD", "QAR", "USD", "EUR", 
 fun plainText(text: String): ClipEntry = ClipEntry(ClipData.newPlainText("riyal", text))
 
 /** How each operation type is labelled everywhere the user picks one. */
-fun typeLabel(type: TxnType): String = when (type) {
-    TxnType.EXPENSE -> "Money out"
-    TxnType.INCOME -> "Money in"
-    TxnType.TRANSFER -> "Transfer"
+@StringRes
+fun typeLabel(type: TxnType): Int = when (type) {
+    TxnType.EXPENSE -> R.string.label_money_out
+    TxnType.INCOME -> R.string.label_money_in
+    TxnType.TRANSFER -> R.string.label_transfer
 }
 
 /**
@@ -132,9 +136,24 @@ fun ScanSheetHost(vm: MainViewModel) {
                         // Material 3 Expressive shape-morphing loading indicator
                         LoadingIndicator(Modifier.size(52.dp))
                         Column {
-                            Text(s.phase + "…", style = MaterialTheme.typography.titleLarge)
                             Text(
-                                if (s.total > 0) "${s.processed} / ${s.total} ${s.noun}" else "querying the inbox…",
+                                stringResource(
+                                    R.string.scan_phase_ellipsis,
+                                    stringResource(s.phase),
+                                ),
+                                style = MaterialTheme.typography.titleLarge,
+                            )
+                            Text(
+                                if (s.total > 0) {
+                                    stringResource(
+                                        R.string.scan_progress,
+                                        s.processed,
+                                        s.total,
+                                        stringResource(s.noun),
+                                    )
+                                } else {
+                                    stringResource(R.string.scan_querying)
+                                },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -158,9 +177,16 @@ fun ScanSheetHost(vm: MainViewModel) {
                     ) {
                         Face(mood = 1f, modifier = Modifier.size(64.dp).popIn())
                         Column {
-                            Text("Scan complete", style = MaterialTheme.typography.titleLarge)
                             Text(
-                                "took ${"%.1f".format(s.summary.tookMs / 1000f)}s · ${s.summary.scanned} messages checked",
+                                stringResource(R.string.scan_done),
+                                style = MaterialTheme.typography.titleLarge,
+                            )
+                            Text(
+                                stringResource(
+                                    R.string.scan_took,
+                                    "%.1f".format(s.summary.tookMs / 1000f),
+                                    counted(R.plurals.count_messages, s.summary.scanned),
+                                ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -172,26 +198,29 @@ fun ScanSheetHost(vm: MainViewModel) {
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         SummaryPill(
-                            "✓ ${s.summary.parsed} recorded",
+                            stringResource(R.string.scan_pill_recorded, s.summary.parsed),
                             MaterialTheme.colorScheme.primaryContainer,
                             MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                         if (s.summary.transfers > 0) {
                             SummaryPill(
-                                "⇄ " + countOf(s.summary.transfers, "possible transfer"),
+                                stringResource(
+                                    R.string.scan_pill_transfers,
+                                    counted(R.plurals.home_possible_transfers, s.summary.transfers),
+                                ),
                                 MaterialTheme.colorScheme.tertiaryContainer,
                                 MaterialTheme.colorScheme.onTertiaryContainer,
                             )
                         }
                         SummaryPill(
-                            "? ${s.summary.review} need you",
+                            stringResource(R.string.scan_pill_need_you, s.summary.review),
                             if (s.summary.review > 0) MaterialTheme.colorScheme.errorContainer
                             else MaterialTheme.colorScheme.surfaceContainerHigh,
                             if (s.summary.review > 0) MaterialTheme.colorScheme.onErrorContainer
                             else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         SummaryPill(
-                            "${s.summary.skipped} skipped, never stored",
+                            stringResource(R.string.scan_pill_skipped, s.summary.skipped),
                             MaterialTheme.colorScheme.surfaceContainerHigh,
                             MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -204,7 +233,10 @@ fun ScanSheetHost(vm: MainViewModel) {
                 ) {
                     Face(mood = -1f, style = FaceStyle.DIZZY, modifier = Modifier.size(64.dp).popIn())
                     Column {
-                        Text("Scan didn't finish", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            stringResource(R.string.scan_failed),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
                         Text(
                             s.message,
                             style = MaterialTheme.typography.bodyMedium,
@@ -222,11 +254,14 @@ fun ScanSheetHost(vm: MainViewModel) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Verbose processing log", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    stringResource(R.string.scan_log_title),
+                    style = MaterialTheme.typography.labelLarge,
+                )
                 TextButton(onClick = {
                     scope.launch { clipboard.setClipEntry(plainText(Verbose.dump())) }
                 }) {
-                    Text("Copy")
+                    Text(stringResource(R.string.action_copy))
                 }
             }
             Surface(
@@ -250,7 +285,12 @@ fun ScanSheetHost(vm: MainViewModel) {
                     .padding(vertical = 16.dp)
                     .pressBounce(),
             ) {
-                Text(if (scan is MainViewModel.ScanState.Running) "Hide, scanning continues" else "Close")
+                Text(
+                    stringResource(
+                        if (scan is MainViewModel.ScanState.Running) R.string.scan_hide
+                        else R.string.action_close
+                    )
+                )
             }
         }
     }
@@ -294,7 +334,9 @@ fun TxnEditSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                if (txn.isTransfer) "Transfer" else "Pick a category",
+                stringResource(
+                    if (txn.isTransfer) R.string.label_transfer else R.string.sheet_pick_category
+                ),
                 style = MaterialTheme.typography.titleLarge,
             )
             Column {
@@ -313,8 +355,7 @@ fun TxnEditSheet(
 
             if (txn.isTransfer) {
                 Text(
-                    "This is recorded as money moved between your own accounts, so it counts " +
-                        "as neither spending nor income.",
+                    stringResource(R.string.sheet_transfer_note),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -326,8 +367,10 @@ fun TxnEditSheet(
                         modifier = Modifier.fillMaxWidth().pressBounce(),
                     ) {
                         Text(
-                            if (txn.legIds.size == 2) "It wasn't a transfer, split it back"
-                            else "It wasn't a transfer, undo this"
+                            stringResource(
+                                if (txn.legIds.size == 2) R.string.sheet_split_back
+                                else R.string.sheet_undo_transfer
+                            )
                         )
                     }
                 }
@@ -349,7 +392,7 @@ fun TxnEditSheet(
                             onCheckedChange = { makeRule = it },
                         )
                         Text(
-                            "Always: anything mentioning \"${txn.merchant}\" gets the category I pick",
+                            stringResource(R.string.sheet_always_rule, txn.merchant.orEmpty()),
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (marked) MaterialTheme.colorScheme.onSurfaceVariant
                             else MaterialTheme.colorScheme.onSurface,
@@ -357,7 +400,7 @@ fun TxnEditSheet(
                     }
                     if (marked) {
                         Text(
-                            "You asked to be asked each time for this name.",
+                            stringResource(R.string.sheet_asked_each_time),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -368,8 +411,10 @@ fun TxnEditSheet(
                     if (onAskEachTime != null) {
                         TextButton(onClick = { onAskEachTime(!marked) }) {
                             Text(
-                                if (marked) "Remember this name after all"
-                                else "Always ask for this name"
+                                stringResource(
+                                    if (marked) R.string.sheet_remember_after_all
+                                    else R.string.sheet_always_ask
+                                )
                             )
                         }
                     }
@@ -379,13 +424,15 @@ fun TxnEditSheet(
             if (live.isNotEmpty() && (onSetAccount != null || onMarkTransfer != null)) {
                 HorizontalDivider()
                 if (onSetAccount != null && !txn.isTransfer) {
-                    Text("Account", style = MaterialTheme.typography.labelLarge)
                     Text(
-                        if (txn.accountId == null) {
-                            "The bank didn't say which account this was, so it isn't in any balance yet."
-                        } else {
-                            "Move this record to a different account."
-                        },
+                        stringResource(R.string.label_account),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                    Text(
+                        stringResource(
+                            if (txn.accountId == null) R.string.sheet_account_unknown
+                            else R.string.sheet_account_move
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -406,12 +453,14 @@ fun TxnEditSheet(
                 if (onMarkTransfer != null && !txn.isTransfer && otherAccounts.isNotEmpty()) {
                     if (!transferTarget) {
                         TextButton(onClick = { transferTarget = true }) {
-                            Text("⇄  This was a transfer between my accounts")
+                            Text(stringResource(R.string.sheet_was_transfer))
                         }
                     } else {
                         Text(
-                            if (txn.isExpense) "Which account did it arrive in?"
-                            else "Which account did it leave?",
+                            stringResource(
+                                if (txn.isExpense) R.string.sheet_which_arrived
+                                else R.string.sheet_which_left
+                            ),
                             style = MaterialTheme.typography.labelLarge,
                         )
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -504,19 +553,25 @@ fun ManualTxnDialog(
                             shape = SegmentedButtonDefaults.itemShape(index = index, count = TxnType.entries.size),
                             modifier = Modifier.weight(1f),
                             icon = {},
-                        ) { Text(typeLabel(option), softWrap = false, maxLines = 1) }
+                        ) {
+                            Text(
+                                stringResource(typeLabel(option)),
+                                softWrap = false,
+                                maxLines = 1,
+                            )
+                        }
                     }
                 }
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
-                    label = { Text("Amount") },
+                    label = { Text(stringResource(R.string.label_amount)) },
                     suffix = { Text(currency) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )
                 DropdownField(
-                    label = "Currency",
+                    label = stringResource(R.string.label_currency),
                     value = currency,
                     options = CURRENCIES,
                     display = { it },
@@ -526,16 +581,16 @@ fun ManualTxnDialog(
                 if (live.isNotEmpty()) {
                     when (type) {
                         TxnType.EXPENSE -> DropdownField(
-                            label = "From account",
-                            value = fromAccount?.displayName ?: "None",
+                            label = stringResource(R.string.sheet_from_account),
+                            value = fromAccount?.displayName ?: stringResource(R.string.sheet_no_account),
                             options = live,
                             display = { it.displayName },
                             onSelect = { fromAccount = it },
                         )
 
                         TxnType.INCOME -> DropdownField(
-                            label = "To account",
-                            value = toAccount?.displayName ?: "None",
+                            label = stringResource(R.string.sheet_to_account),
+                            value = toAccount?.displayName ?: stringResource(R.string.sheet_no_account),
                             options = live,
                             display = { it.displayName },
                             onSelect = { toAccount = it },
@@ -543,22 +598,22 @@ fun ManualTxnDialog(
 
                         TxnType.TRANSFER -> {
                             DropdownField(
-                                label = "From account",
-                                value = fromAccount?.displayName ?: "None",
+                                label = stringResource(R.string.sheet_from_account),
+                                value = fromAccount?.displayName ?: stringResource(R.string.sheet_no_account),
                                 options = live,
                                 display = { it.displayName },
                                 onSelect = { fromAccount = it },
                             )
                             DropdownField(
-                                label = "To account",
-                                value = toAccount?.displayName ?: "None",
+                                label = stringResource(R.string.sheet_to_account),
+                                value = toAccount?.displayName ?: stringResource(R.string.sheet_no_account),
                                 options = live,
                                 display = { it.displayName },
                                 onSelect = { toAccount = it },
                             )
                             if (!transferValid) {
                                 Text(
-                                    "Pick two different accounts, money can't move to where it already is.",
+                                    stringResource(R.string.sheet_two_accounts),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.error,
                                 )
@@ -571,10 +626,13 @@ fun ManualTxnDialog(
                     OutlinedTextField(
                         value = merchant,
                         onValueChange = { merchant = it },
-                        label = { Text("Merchant / from (optional)") },
+                        label = { Text(stringResource(R.string.sheet_merchant_optional)) },
                         singleLine = true,
                     )
-                    Text("Category", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        stringResource(R.string.label_category),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
                     CategoryChips(
                         type = type,
                         selectedId = categoryId,
@@ -583,14 +641,18 @@ fun ManualTxnDialog(
                     )
                 } else {
                     Text(
-                        "A transfer has no category: it isn't spending or income, it's your own " +
-                            "money changing pocket.",
+                        stringResource(R.string.sheet_transfer_no_category),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Text(
-                    "Date: ${dateFmt.format(Instant.ofEpochMilli(atMillis).atZone(ZoneId.systemDefault()))}",
+                    stringResource(
+                        R.string.sheet_date,
+                        dateFmt.format(
+                            Instant.ofEpochMilli(atMillis).atZone(ZoneId.systemDefault())
+                        ),
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -610,9 +672,11 @@ fun ManualTxnDialog(
                         if (type == TxnType.EXPENSE) null else toAccount?.id,
                     )
                 },
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.action_save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }
 
@@ -691,7 +755,7 @@ fun CategoryChips(
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text("Find a category") },
+                label = { Text(stringResource(R.string.sheet_find_category)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -712,21 +776,21 @@ fun CategoryChips(
             if (!expanded && all.size > shown.size) {
                 AssistChip(
                     onClick = { expanded = true },
-                    label = { Text("More (${all.size - shown.size})") },
+                    label = { Text(stringResource(R.string.sheet_more, all.size - shown.size)) },
                     modifier = Modifier.pressBounce(0.92f),
                 )
             }
             if (expanded && !filtering) {
                 AssistChip(
                     onClick = { expanded = false; query = "" },
-                    label = { Text("Less") },
+                    label = { Text(stringResource(R.string.sheet_less)) },
                     modifier = Modifier.pressBounce(0.92f),
                 )
             }
         }
         if (filtering && shown.isEmpty()) {
             Text(
-                "No category matches that.",
+                stringResource(R.string.sheet_no_category_matches),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

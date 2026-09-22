@@ -441,4 +441,51 @@
     <string name="cats_edit_title">تعديل التصنيف</string>
     <string name="cats_selected">مُختار</string>
     <string name="delete_title">حذف %s؟</string>
+
+    <!-- ─────────────────────────── ورقة الفحص ─────────────────────────── -->
+    <string name="scan_phase_reading">جاري قراءة رسائلك</string>
+    <string name="scan_phase_accounts">جاري تحديد حساباتك</string>
+    <string name="scan_phase_building">جاري بناء سجلاتك</string>
+    <string name="scan_phase_transfers">جاري البحث عن تحويلات بين حساباتك</string>
+    <string name="scan_phase_saving">جاري الحفظ</string>
+    <string name="scan_noun_messages">رسالة</string>
+    <string name="scan_noun_records">سجل</string>
+    <string name="scan_progress">%1$d / %2$d %3$s</string>
+    <string name="scan_querying">جاري الاستعلام من صندوق الوارد…</string>
+    <string name="scan_phase_ellipsis">%1$s…</string>
+    <string name="scan_done">اكتمل الفحص</string>
+    <string name="scan_took">استغرق %1$s ثانية · فُحصت %2$s</string>
+    <string name="scan_pill_recorded">✓ %d سُجِّلت</string>
+    <string name="scan_pill_transfers">⇄ %1$s</string>
+    <string name="scan_pill_need_you">؟ %d بحاجة إليك</string>
+    <string name="scan_pill_skipped">%d تُخطِّيت، ولم تُخزَّن</string>
+    <string name="scan_failed">لم يكتمل الفحص</string>
+    <string name="scan_log_title">سجل المعالجة التفصيلي</string>
+    <string name="scan_hide">إخفاء، والفحص مستمر</string>
+
+    <!-- ─────────────────── ورقة السجل، والإضافة اليدوية ─────────────────── -->
+    <string name="sheet_pick_category">اختر تصنيفاً</string>
+    <string name="sheet_transfer_note">هذه مُسجَّلة كمال انتقل بين حساباتك أنت، فلا تُحتسب مصروفاً ولا دخلاً.</string>
+    <string name="sheet_split_back">لم يكن تحويلاً، أعِد فصله</string>
+    <string name="sheet_undo_transfer">لم يكن تحويلاً، تراجع عن هذا</string>
+    <string name="sheet_always_rule">دائماً: كل ما يذكر \"%1$s\" يأخذ التصنيف الذي أختاره</string>
+    <string name="sheet_asked_each_time">طلبت أن تُسأل في كل مرة عن هذا الاسم.</string>
+    <string name="sheet_remember_after_all">تذكَّر هذا الاسم بعد كل شيء</string>
+    <string name="sheet_always_ask">اسألني دائماً عن هذا الاسم</string>
+    <string name="sheet_account_unknown">لم يذكر البنك أي حساب يخص هذه المعاملة، فهي ليست ضمن أي رصيد بعد.</string>
+    <string name="sheet_account_move">انقل هذا السجل إلى حساب آخر.</string>
+    <string name="sheet_was_transfer">⇄  كان هذا تحويلاً بين حساباتي</string>
+    <string name="sheet_which_arrived">إلى أي حساب وصل؟</string>
+    <string name="sheet_which_left">من أي حساب غادر؟</string>
+    <string name="sheet_from_account">من حساب</string>
+    <string name="sheet_to_account">إلى حساب</string>
+    <string name="sheet_no_account">بلا حساب</string>
+    <string name="sheet_two_accounts">اختر حسابين مختلفين، فالمال لا ينتقل إلى حيث هو أصلاً.</string>
+    <string name="sheet_merchant_optional">المتجر / الجهة (اختياري)</string>
+    <string name="sheet_transfer_no_category">التحويل بلا تصنيف: فهو ليس مصروفاً ولا دخلاً، بل مالك ينتقل من جيب إلى جيب.</string>
+    <string name="sheet_date">التاريخ: %1$s</string>
+    <string name="sheet_find_category">ابحث عن تصنيف</string>
+    <string name="sheet_more">المزيد (%d)</string>
+    <string name="sheet_less">أقل</string>
+    <string name="sheet_no_category_matches">لا تصنيف يطابق ذلك.</string>
 </resources>

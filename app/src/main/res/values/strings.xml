@@ -416,4 +416,54 @@
     <string name="cats_selected">Selected</string>
     <!-- Shared by every "are you sure" that names the thing it would remove. -->
     <string name="delete_title">Delete %s?</string>
+
+    <!-- ─────────────────────────── the scan sheet ─────────────────────────── -->
+    <string name="scan_phase_reading">Reading your messages</string>
+    <string name="scan_phase_accounts">Working out your accounts</string>
+    <string name="scan_phase_building">Building your records</string>
+    <string name="scan_phase_transfers">Looking for transfers between your accounts</string>
+    <string name="scan_phase_saving">Saving</string>
+    <string name="scan_noun_messages">messages</string>
+    <string name="scan_noun_records">records</string>
+    <!-- "1200 / 1480 messages" -->
+    <string name="scan_progress">%1$d / %2$d %3$s</string>
+    <string name="scan_querying">querying the inbox…</string>
+    <!-- "Reading your messages…" -->
+    <string name="scan_phase_ellipsis">%1$s…</string>
+    <string name="scan_done">Scan complete</string>
+    <!-- %1$s is seconds to one decimal; %2$s a count of messages, already in words. -->
+    <string name="scan_took">took %1$ss · %2$s checked</string>
+    <string name="scan_pill_recorded">✓ %d recorded</string>
+    <string name="scan_pill_transfers">⇄ %1$s</string>
+    <string name="scan_pill_need_you">\? %d need you</string>
+    <string name="scan_pill_skipped">%d skipped, never stored</string>
+    <string name="scan_failed">Scan didn\'t finish</string>
+    <string name="scan_log_title">Verbose processing log</string>
+    <string name="scan_hide">Hide, scanning continues</string>
+
+    <!-- ─────────────────── the sheet a record opens, and manual entry ─────────────────── -->
+    <string name="sheet_pick_category">Pick a category</string>
+    <string name="sheet_transfer_note">This is recorded as money moved between your own accounts, so it counts as neither spending nor income.</string>
+    <string name="sheet_split_back">It wasn\'t a transfer, split it back</string>
+    <string name="sheet_undo_transfer">It wasn\'t a transfer, undo this</string>
+    <string name="sheet_always_rule">Always: anything mentioning \"%1$s\" gets the category I pick</string>
+    <string name="sheet_asked_each_time">You asked to be asked each time for this name.</string>
+    <string name="sheet_remember_after_all">Remember this name after all</string>
+    <string name="sheet_always_ask">Always ask for this name</string>
+    <string name="sheet_account_unknown">The bank didn\'t say which account this was, so it isn\'t in any balance yet.</string>
+    <string name="sheet_account_move">Move this record to a different account.</string>
+    <string name="sheet_was_transfer">⇄  This was a transfer between my accounts</string>
+    <string name="sheet_which_arrived">Which account did it arrive in?</string>
+    <string name="sheet_which_left">Which account did it leave?</string>
+    <string name="sheet_from_account">From account</string>
+    <string name="sheet_to_account">To account</string>
+    <string name="sheet_no_account">None</string>
+    <string name="sheet_two_accounts">Pick two different accounts, money can\'t move to where it already is.</string>
+    <string name="sheet_merchant_optional">Merchant / from (optional)</string>
+    <string name="sheet_transfer_no_category">A transfer has no category: it isn\'t spending or income, it\'s your own money changing pocket.</string>
+    <string name="sheet_date">Date: %1$s</string>
+    <string name="sheet_find_category">Find a category</string>
+    <string name="sheet_more">More (%d)</string>
+    <string name="sheet_less">Less</string>
+    <string name="sheet_no_category_matches">No category matches that.</string>
 </resources>
