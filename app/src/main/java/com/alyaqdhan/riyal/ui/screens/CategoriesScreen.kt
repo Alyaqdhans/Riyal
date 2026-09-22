@@ -91,14 +91,6 @@ import kotlin.math.roundToInt
  * This is also where custom categories are created and edited - it used to be a block
  * buried in Settings, which is a strange place to manage something you look at daily.
  */
-/** What the page is for, behind the (i) rather than above the work. */
-private const val HELP =
-    "Every category and what it came to in the period shown, spending and income " +
-        "kept apart. Open one to see its records; make your own with the button, and " +
-        "edit or delete the ones you made.\n\n" +
-        "Below them are the names Riyal has learned: the ones it files without asking, " +
-        "and the ones you asked to be asked about every time."
-
 @Composable
 fun CategoriesScreen(
     vm: MainViewModel,
@@ -140,7 +132,10 @@ fun CategoriesScreen(
                         )
                     }
                 },
-                actions = { HelpAction(stringResource(R.string.cats_title), HELP) },
+                actions = { HelpAction(
+                        stringResource(R.string.cats_title),
+                        stringResource(R.string.help_categories),
+                    ) },
             )
         },
     ) { padding ->

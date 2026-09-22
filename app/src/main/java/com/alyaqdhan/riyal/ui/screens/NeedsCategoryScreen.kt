@@ -73,20 +73,6 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/**
- * Everything the screen used to say on the page. It is one explanation, read once, and
- * it sat above a list that is the reason anyone opens this screen.
- */
-private const val HELP =
-    "One row is one place you paid, biggest first. Filing a row files every record " +
-        "under it and remembers the answer, so the same place is never asked about " +
-        "twice.\n\n" +
-        "Open a row to see its records and read the message each came from. Untick any " +
-        "and only the ticked ones are filed, with no rule saved: part of a name is not " +
-        "an answer about the name.\n\n" +
-        "\"Leave the rest under Other\" clears the list without answering it. Those " +
-        "records keep the category they fell back to, and the next scan asks again."
-
 private val recordFmt = DateTimeFormatter.ofPattern("d MMM uu")
 private val recordClockFmt = DateTimeFormatter.ofPattern("h:mm a")
 
@@ -158,7 +144,10 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                         )
                     }
                 },
-                actions = { HelpAction(stringResource(R.string.needs_title), HELP) },
+                actions = { HelpAction(
+                        stringResource(R.string.needs_title),
+                        stringResource(R.string.help_needs_category),
+                    ) },
             )
         },
     ) { padding ->

@@ -79,15 +79,6 @@ private val asOfFmt = DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a")
  * read out of SMS - a good first guess, not gospel. So the page opens by saying exactly
  * that and asking the user to vouch for the numbers before anything relies on them.
  */
-/** What the page is for, behind the (i) rather than above the work. */
-private const val HELP =
-    "The accounts Riyal found in your bank's own messages, and the balance each one " +
-        "last quoted. A balance read out of a text is a good first guess and nothing " +
-        "more, so open any account to set the real figure and the date it was true.\n\n" +
-        "An account also carries the sender names that belong to it, which is how a " +
-        "message gets routed to the right balance. Archiving one keeps its records, " +
-        "because the money still moved."
-
 @Composable
 fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
     val accounts by vm.accounts.collectAsState()
@@ -108,7 +99,10 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
                         )
                     }
                 },
-                actions = { HelpAction(stringResource(R.string.acct_title), HELP) },
+                actions = { HelpAction(
+                        stringResource(R.string.acct_title),
+                        stringResource(R.string.help_accounts),
+                    ) },
             )
         },
     ) { padding ->

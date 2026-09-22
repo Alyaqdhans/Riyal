@@ -169,25 +169,21 @@ fun SettingsScreen(
                 ValueLine(
                     title = stringResource(R.string.set_default_currency),
                     value = currency,
-                    detail = "Used when a message doesn't name a currency. OMR amounts keep " +
-                        "3 decimals (baisa).",
+                    detail = stringResource(R.string.set_help_currency),
                     onClick = { pickCurrency = true },
                 )
                 NavLine(
                     title = stringResource(R.string.acct_title),
                     value = if (accounts.isEmpty()) stringResource(R.string.an_none_yet)
                     else "${accounts.size}",
-                    detail = "The accounts read out of your bank's own messages, their balances " +
-                        "and which sender belongs to which.",
+                    detail = stringResource(R.string.set_help_accounts),
                     onClick = onOpenAccounts,
                 )
                 NavLine(
                     title = stringResource(R.string.cats_title),
                     value = if (rules.isEmpty()) null
                     else counted(R.plurals.count_learned, rules.size),
-                    detail = "Every category and what it cost, where your own are made - and " +
-                        "the names Riyal has learned: the ones it files without asking, and " +
-                        "the ones you asked to be asked about every time.",
+                    detail = stringResource(R.string.set_help_categories),
                     onClick = onOpenCategories,
                 )
                 SwitchLine(
@@ -203,9 +199,7 @@ fun SettingsScreen(
                         vm.budgetsEnabled = it
                         note("budget planning ${if (it) "enabled" else "disabled"}")
                     },
-                    detail = "Home gains a budget section for the month it is showing: a cap per " +
-                        "category, a bar for each, and a marker for whether the money is going " +
-                        "faster than the calendar. A plan can cover any period, set from its editor.",
+                    detail = stringResource(R.string.set_help_budget),
                 )
             }
 
@@ -214,8 +208,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.set_sms_permission),
                     value = stringResource(if (hasPerm) R.string.set_allowed else R.string.set_off),
                     valueIsWarning = !hasPerm,
-                    detail = "READ_SMS is the only permission this app declares. No internet, " +
-                        "no background receivers, no notifications.",
+                    detail = stringResource(R.string.set_help_permission),
                     actionLabel = stringResource(R.string.set_manage),
                     onAction = {
                         context.startActivity(
@@ -234,15 +227,13 @@ fun SettingsScreen(
                         prefs.scanOnLaunch = it
                         note("scan on app open ${if (it) "enabled" else "disabled"}")
                     },
-                    detail = "Riyal reads the inbox once when it starts. With this off, a scan " +
-                        "only happens when you pull down to refresh.",
+                    detail = stringResource(R.string.set_help_scan_on_open),
                 )
 
                 ExpandLine(
                     title = stringResource(R.string.set_how_far_back),
                     value = rangeLabel(rangeMonths),
-                    detail = "How far back a scan looks. Messages outside the range are not " +
-                        "even queried from the inbox.",
+                    detail = stringResource(R.string.set_help_how_far_back),
                 ) {
                     val ranges = listOf(
                         1 to stringResource(R.string.set_range_1mo),
@@ -294,8 +285,7 @@ fun SettingsScreen(
                         expenseKw.size,
                         incomeKw.size,
                     ),
-                    detail = "A message is processed only if it contains one of these words. " +
-                        "Everything else is skipped, unread and unstored.",
+                    detail = stringResource(R.string.set_help_keywords),
                 ) {
                     Text(
                         stringResource(R.string.label_money_out),
@@ -352,9 +342,7 @@ fun SettingsScreen(
                 ExpandLine(
                     title = stringResource(R.string.set_who_is_read),
                     value = senderSummary(bankOnly, senderFilter, allowlist.size),
-                    detail = "Two filters over the sender name, on top of the gate keywords. " +
-                        "Banks that don't brand themselves as banks (NBO, Sohar Intl, " +
-                        "Meethaq) are approved by name in the list instead.",
+                    detail = stringResource(R.string.set_help_who_is_read),
                 ) {
                     SwitchLine(
                         title = stringResource(R.string.set_bank_only),
@@ -364,8 +352,7 @@ fun SettingsScreen(
                             prefs.bankSendersOnly = it
                             note("bank-senders-only ${if (it) "enabled" else "disabled"}")
                         },
-                        detail = "Only senders whose name contains “bank”, “بنك” or “مصرف” are " +
-                            "read. Anything else has to be approved by name below.",
+                        detail = stringResource(R.string.set_help_bank_only),
                     )
                     SwitchLine(
                         title = stringResource(R.string.set_only_approved),
@@ -375,8 +362,7 @@ fun SettingsScreen(
                             prefs.senderFilterEnabled = it
                             note("sender allowlist ${if (it) "enabled" else "disabled"}")
                         },
-                        detail = "With this off, every sender is considered and the message body " +
-                            "still has to contain one of the gate keywords to be read at all.",
+                        detail = stringResource(R.string.set_help_only_approved),
                     )
                     if (senderFilter || bankOnly) {
                         if (allowlist.isEmpty()) {
@@ -451,11 +437,7 @@ fun SettingsScreen(
                             stringResource(R.string.set_scan_starting)
                         }
                     },
-                    detail = "Reads the messages that arrived since the last scan, so it costs " +
-                        "what is new rather than what your inbox holds. Riyal has no " +
-                        "background receiver: it reads only when you ask it to, or when it " +
-                        "opens if that is switched on above.\n\nTo rebuild everything from " +
-                        "scratch, use Rescan everything below.",
+                    detail = stringResource(R.string.set_help_scan_now),
                     actionLabel = stringResource(
                         if (running != null) R.string.set_scanning else R.string.set_scan
                     ),
@@ -465,15 +447,7 @@ fun SettingsScreen(
                 ActionLine(
                     title = stringResource(R.string.set_rescan_all),
                     value = null,
-                    detail = "Scanning normally reads only the messages that arrived since " +
-                        "last time, which is why it is quick. This reads the whole range " +
-                        "again and rebuilds every record from the messages still in your " +
-                        "inbox.\n\nTwo things only this can do: notice a bank message you " +
-                        "have since deleted, whose record would otherwise stay, and re-read " +
-                        "old messages under rules you have changed. Riyal does the second " +
-                        "for you whenever you change a keyword; the first is yours to ask " +
-                        "for.\n\nOn a large inbox this takes a while. Nothing you have filed " +
-                        "or entered by hand is lost by it.",
+                    detail = stringResource(R.string.set_help_rescan),
                     actionLabel = stringResource(R.string.set_rescan),
                     enabled = running == null,
                     onAction = { vm.startScan(full = true) },
@@ -497,10 +471,7 @@ fun SettingsScreen(
                         prefs.smartRules = it
                         note("smart category learning ${if (it) "enabled" else "disabled"}")
                     },
-                    detail = "When you fix a category on a transaction with a merchant, that " +
-                        "merchant is remembered and applied to past and future messages. The " +
-                        "category picker still lets you opt out for a single edit, and a name " +
-                        "marked “ask every time” is never remembered at all.",
+                    detail = stringResource(R.string.set_help_learn),
                 )
                 SwitchLine(
                     title = stringResource(R.string.set_confirm_transfers),
@@ -510,11 +481,7 @@ fun SettingsScreen(
                         vm.autoConfirmTransfers = it
                         note("auto-confirm transfers ${if (it) "enabled" else "disabled"}")
                     },
-                    detail = "A matching pair is the same amount and currency, moving between " +
-                        "two of your own accounts, minutes apart. With this on it becomes one " +
-                        "transfer straight away and stops counting as spending or income; any " +
-                        "of them can be split back apart from its row in Transactions. With it off, " +
-                        "every pair waits in Review for your yes or no.",
+                    detail = stringResource(R.string.set_help_confirm_transfers),
                 )
             }
 
@@ -524,16 +491,14 @@ fun SettingsScreen(
                     // The count belongs to the moment you ask for the file, not to a row
                     // you are only reading past. It is said in the confirmation instead.
                     value = null,
-                    detail = "Writes every record to a CSV file you choose: date, type, amount, " +
-                        "accounts, merchant, category and the message it was read from.",
+                    detail = stringResource(R.string.set_help_export),
                     actionLabel = stringResource(R.string.action_export),
                     onAction = { confirmExport = true },
                 )
                 ExpandLine(
                     title = stringResource(R.string.set_verbose_log),
                     value = stringResource(R.string.set_verbose_value),
-                    detail = "Everything the scanner did and why, written as it happens. It " +
-                        "never leaves the phone unless you copy it out yourself.",
+                    detail = stringResource(R.string.set_help_verbose),
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick = {
@@ -550,12 +515,7 @@ fun SettingsScreen(
                 ValueLine(
                     title = stringResource(R.string.set_where_it_lives),
                     value = stringResource(R.string.set_this_phone_only),
-                    detail = "Everything lives in one JSON file inside this app's private " +
-                        "storage, and backups are disabled. The app does reach the network, " +
-                        "for one thing: it asks GitHub whether a newer release exists, and " +
-                        "downloads that APK if you ask it to. Nothing goes the other way. No " +
-                        "record, message, account or figure is ever put in a request, and " +
-                        "there is no analytics and no backend.",
+                    detail = stringResource(R.string.set_help_where_it_lives),
                 )
             }
 
@@ -604,42 +564,19 @@ fun SettingsScreen(
                         else -> version
                     },
                     valueIsWarning = offered != null,
-                    detail = buildString {
-                        when {
-                            offered != null -> {
-                                // The warning comes before the notes, not after. A
-                                // release body is as long as its author felt like, and
-                                // the thing that has to be read before tapping Download
-                                // must not be underneath it.
-                                append("You have $version. ${offered.tag} is out.\n\n")
-                                append(
-                                    "Downloading puts the APK in your Downloads folder and opens " +
-                                        "it there. Riyal cannot install it for you - you tap the " +
-                                        "file yourself. If Android refuses the install, that build " +
-                                        "is signed with a different key than this one: uninstall " +
-                                        "Riyal first, which clears its stored records. They rebuild " +
-                                        "from your inbox on the next scan, but hand-filed " +
-                                        "categories do not."
-                                )
-                            }
-                            updateState is MainViewModel.UpdateState.UpToDate ->
-                                append("You have $version, which is the latest published release.")
-                            updateState is MainViewModel.UpdateState.Unreachable ->
-                                append(
-                                    "The last check could not reach GitHub. Being offline, a " +
-                                        "rate limit and a release that was never published all " +
-                                        "look the same from here. Nothing is wrong with the copy " +
-                                        "you have; tap Check now to try again."
-                                )
-                            else -> append(
-                                "Made for Oman 🇴🇲 · OMR-first, with Arabic SMS support. " +
-                                    "Checks GitHub once a day for a newer release."
-                            )
-                        }
-                        if (notes != null) {
-                            append("\n\nWhat is in ${known!!.tag}\n\n")
-                            append(notes)
-                        }
+                    detail = when {
+                        offered != null -> stringResource(
+                            R.string.set_about_update_header, version, offered.tag
+                        ) + stringResource(R.string.set_about_download)
+                        updateState is MainViewModel.UpdateState.UpToDate ->
+                            stringResource(R.string.set_about_uptodate, version)
+                        updateState is MainViewModel.UpdateState.Unreachable ->
+                            stringResource(R.string.set_about_unreachable)
+                        else -> stringResource(R.string.set_about_default)
+                    } + if (notes != null) {
+                        stringResource(R.string.set_about_whats_in, known!!.tag) + notes
+                    } else {
+                        ""
                     },
                     actionLabel = when {
                         checking -> stringResource(R.string.set_checking_action)

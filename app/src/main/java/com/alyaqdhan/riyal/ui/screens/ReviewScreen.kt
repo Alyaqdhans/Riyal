@@ -79,18 +79,6 @@ private val reviewDateFmt = DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a")
  * teaches the app: dismissing hides similar messages too (restorable below), recording
  * marks that kind of message as wanted.
  */
-/** What the page is for, behind the (i) rather than above the work. */
-private const val HELP =
-    "Messages Riyal could not read on its own. Nothing was recorded for any of them. " +
-        "Resolve one to record it, or dismiss it to say it was never a transaction.\n\n" +
-        "Some show an amount and ask only which way the money went. Those are messages " +
-        "whose wording your keywords do not cover yet - \"your card was used for...\" " +
-        "and the like. Answering records the amount as it stands, and you can adopt the " +
-        "word that confused it so the next one is read automatically.\n\n" +
-        "Transfers appear here too: two messages that look like one movement between " +
-        "your own accounts. Confirming a pair stops it counting as both spending and " +
-        "income."
-
 /** The item the manual dialog is open for, and what is already decided about it. */
 private data class Resolving(
     val item: ReviewItem,
@@ -149,7 +137,10 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                         )
                     }
                 },
-                actions = { HelpAction(stringResource(R.string.review_title), HELP) },
+                actions = { HelpAction(
+                        stringResource(R.string.review_title),
+                        stringResource(R.string.help_review),
+                    ) },
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
