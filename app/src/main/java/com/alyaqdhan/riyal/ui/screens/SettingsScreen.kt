@@ -73,12 +73,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
-import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Language
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CURRENCIES
+import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
 import com.alyaqdhan.riyal.ui.compose.appVersion
 import com.alyaqdhan.riyal.ui.compose.plainText
@@ -150,7 +150,9 @@ fun SettingsScreen(
         Verbose.flush()
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Settings") }) }) { padding ->
+    Scaffold(
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_settings)) }) },
+    ) { padding ->
         Column(
             Modifier
                 .padding(padding)
@@ -165,32 +167,38 @@ fun SettingsScreen(
                 messagesRead = lastSummary?.scanned,
             )
 
-            SettingsCard("Your money") {
+            SettingsCard(stringResource(R.string.set_card_money)) {
                 ValueLine(
-                    title = "Default currency",
+                    title = stringResource(R.string.set_default_currency),
                     value = currency,
                     detail = "Used when a message doesn't name a currency. OMR amounts keep " +
                         "3 decimals (baisa).",
                     onClick = { pickCurrency = true },
                 )
                 NavLine(
-                    title = "Bank accounts",
-                    value = if (accounts.isEmpty()) "none yet" else "${accounts.size}",
+                    title = stringResource(R.string.acct_title),
+                    value = if (accounts.isEmpty()) stringResource(R.string.an_none_yet)
+                    else "${accounts.size}",
                     detail = "The accounts read out of your bank's own messages, their balances " +
                         "and which sender belongs to which.",
                     onClick = onOpenAccounts,
                 )
                 NavLine(
-                    title = "Categories",
-                    value = if (rules.isEmpty()) null else "${rules.size} learned",
+                    title = stringResource(R.string.cats_title),
+                    value = if (rules.isEmpty()) null
+                    else stringResource(R.string.set_learned, rules.size),
                     detail = "Every category and what it cost, where your own are made - and " +
                         "the names Riyal has learned: the ones it files without asking, and " +
                         "the ones you asked to be asked about every time.",
                     onClick = onOpenCategories,
                 )
                 SwitchLine(
-                    title = "Budget",
-                    value = if (budgetsEnabled && budgets.isNotEmpty()) countOf(budgets.size, "plan") else null,
+                    title = stringResource(R.string.budget_title),
+                    value = if (budgetsEnabled && budgets.isNotEmpty()) {
+                        counted(R.plurals.count_plans, budgets.size)
+                    } else {
+                        null
+                    },
                     checked = budgetsEnabled,
                     onCheckedChange = {
                         budgetsEnabled = it
@@ -203,14 +211,14 @@ fun SettingsScreen(
                 )
             }
 
-            SettingsCard("Scanning") {
+            SettingsCard(stringResource(R.string.set_card_scanning)) {
                 ActionLine(
-                    title = "SMS permission",
-                    value = if (hasPerm) "allowed" else "off",
+                    title = stringResource(R.string.set_sms_permission),
+                    value = stringResource(if (hasPerm) R.string.set_allowed else R.string.set_off),
                     valueIsWarning = !hasPerm,
                     detail = "READ_SMS is the only permission this app declares. No internet, " +
                         "no background receivers, no notifications.",
-                    actionLabel = "Manage",
+                    actionLabel = stringResource(R.string.set_manage),
                     onAction = {
                         context.startActivity(
                             Intent(
@@ -221,7 +229,7 @@ fun SettingsScreen(
                     },
                 )
                 SwitchLine(
-                    title = "Scan when the app opens",
+                    title = stringResource(R.string.set_scan_on_open),
                     checked = scanOnLaunch,
                     onCheckedChange = {
                         scanOnLaunch = it
@@ -233,12 +241,18 @@ fun SettingsScreen(
                 )
 
                 ExpandLine(
-                    title = "How far back",
+                    title = stringResource(R.string.set_how_far_back),
                     value = rangeLabel(rangeMonths),
                     detail = "How far back a scan looks. Messages outside the range are not " +
                         "even queried from the inbox.",
                 ) {
-                    val ranges = listOf(1 to "1 mo", 3 to "3 mo", 6 to "6 mo", 12 to "1 yr", 0 to "All")
+                    val ranges = listOf(
+                        1 to stringResource(R.string.set_range_1mo),
+                        3 to stringResource(R.string.set_range_3mo),
+                        6 to stringResource(R.string.set_range_6mo),
+                        12 to stringResource(R.string.set_range_1yr),
+                        0 to stringResource(R.string.set_range_all),
+                    )
                     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                         ranges.forEachIndexed { index, (months, label) ->
                             SegmentedButton(
@@ -260,10 +274,13 @@ fun SettingsScreen(
                 // nothing older than the day it was chosen.
                 if (freshStart > 0L) {
                     StateNote(
-                        "Nothing before ${settingsDayFmt.format(
-                            Instant.ofEpochMilli(freshStart).atZone(ZoneId.systemDefault())
-                        )} is read, whichever range is picked.",
-                        action = "Read older messages too",
+                        stringResource(
+                            R.string.set_fresh_start,
+                            settingsDayFmt.format(
+                                Instant.ofEpochMilli(freshStart).atZone(ZoneId.systemDefault())
+                            ),
+                        ),
+                        action = stringResource(R.string.set_read_older),
                         onAction = {
                             prefs.scanSinceMillis = 0L
                             freshStart = 0L
@@ -273,12 +290,19 @@ fun SettingsScreen(
                 }
 
                 ExpandLine(
-                    title = "Gate keywords",
-                    value = "${expenseKw.size} out · ${incomeKw.size} in",
+                    title = stringResource(R.string.set_gate_keywords),
+                    value = stringResource(
+                        R.string.set_keyword_counts,
+                        expenseKw.size,
+                        incomeKw.size,
+                    ),
                     detail = "A message is processed only if it contains one of these words. " +
                         "Everything else is skipped, unread and unstored.",
                 ) {
-                    Text("Money out", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        stringResource(R.string.label_money_out),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
                     KeywordChips(expenseKw) { kw ->
                         expenseKw = expenseKw - kw
                         prefs.expenseKeywords = expenseKw
@@ -297,7 +321,10 @@ fun SettingsScreen(
                             newExpenseKw = ""
                         },
                     )
-                    Text("Money in", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        stringResource(R.string.label_money_in),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
                     KeywordChips(incomeKw) { kw ->
                         incomeKw = incomeKw - kw
                         prefs.incomeKeywords = incomeKw
@@ -321,18 +348,18 @@ fun SettingsScreen(
                         expenseKw = prefs.expenseKeywords
                         incomeKw = prefs.incomeKeywords
                         note("keywords reset to defaults (withdraw/debited/purchase… + deposit/credited/salary… incl. Arabic)")
-                    }) { Text("Reset to defaults") }
+                    }) { Text(stringResource(R.string.set_reset_defaults)) }
                 }
 
                 ExpandLine(
-                    title = "Who is read",
+                    title = stringResource(R.string.set_who_is_read),
                     value = senderSummary(bankOnly, senderFilter, allowlist.size),
                     detail = "Two filters over the sender name, on top of the gate keywords. " +
                         "Banks that don't brand themselves as banks (NBO, Sohar Intl, " +
                         "Meethaq) are approved by name in the list instead.",
                 ) {
                     SwitchLine(
-                        title = "Bank senders only",
+                        title = stringResource(R.string.set_bank_only),
                         checked = bankOnly,
                         onCheckedChange = {
                             bankOnly = it
@@ -343,7 +370,7 @@ fun SettingsScreen(
                             "read. Anything else has to be approved by name below.",
                     )
                     SwitchLine(
-                        title = "Only senders I approve",
+                        title = stringResource(R.string.set_only_approved),
                         checked = senderFilter,
                         onCheckedChange = {
                             senderFilter = it
@@ -356,8 +383,10 @@ fun SettingsScreen(
                     if (senderFilter || bankOnly) {
                         if (allowlist.isEmpty()) {
                             Text(
-                                if (senderFilter) "No approved senders yet, a scan will match nothing."
-                                else "No extra approved senders, only bank-named senders are read.",
+                                stringResource(
+                                    if (senderFilter) R.string.set_no_approved
+                                    else R.string.set_no_extra_approved
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (senderFilter) MaterialTheme.colorScheme.error
                                 else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -374,7 +403,7 @@ fun SettingsScreen(
                         AddKeywordRow(
                             value = newSender,
                             onValueChange = { newSender = it },
-                            label = "Sender name",
+                            label = stringResource(R.string.set_sender_name),
                             onAdd = {
                                 val s = newSender.trim()
                                 if (s.isNotEmpty() && s !in allowlist) {
@@ -390,7 +419,7 @@ fun SettingsScreen(
                         }
                         if (suggestions.isNotEmpty()) {
                             Text(
-                                "Seen in your inbox, tap to approve:",
+                                stringResource(R.string.set_seen_in_inbox),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -416,21 +445,27 @@ fun SettingsScreen(
                 val scan by vm.scanState.collectAsState()
                 val running = scan as? MainViewModel.ScanState.Running
                 ActionLine(
-                    title = "Scan now",
+                    title = stringResource(R.string.set_scan_now),
                     value = running?.let { p ->
-                        if (p.total > 0) "${p.processed} of ${p.total}" else "starting…"
+                        if (p.total > 0) {
+                            stringResource(R.string.set_scan_progress, p.processed, p.total)
+                        } else {
+                            stringResource(R.string.set_scan_starting)
+                        }
                     },
                     detail = "Reads the messages that arrived since the last scan, so it costs " +
                         "what is new rather than what your inbox holds. Riyal has no " +
                         "background receiver: it reads only when you ask it to, or when it " +
                         "opens if that is switched on above.\n\nTo rebuild everything from " +
                         "scratch, use Rescan everything below.",
-                    actionLabel = if (running != null) "Scanning" else "Scan",
+                    actionLabel = stringResource(
+                        if (running != null) R.string.set_scanning else R.string.set_scan
+                    ),
                     enabled = running == null,
                     onAction = { vm.startScan() },
                 )
                 ActionLine(
-                    title = "Rescan everything",
+                    title = stringResource(R.string.set_rescan_all),
                     value = null,
                     detail = "Scanning normally reads only the messages that arrived since " +
                         "last time, which is why it is quick. This reads the whole range " +
@@ -441,7 +476,7 @@ fun SettingsScreen(
                         "for you whenever you change a keyword; the first is yours to ask " +
                         "for.\n\nOn a large inbox this takes a while. Nothing you have filed " +
                         "or entered by hand is lost by it.",
-                    actionLabel = "Rescan",
+                    actionLabel = stringResource(R.string.set_rescan),
                     enabled = running == null,
                     onAction = { vm.startScan(full = true) },
                 )
@@ -455,9 +490,9 @@ fun SettingsScreen(
                 }
             }
 
-            SettingsCard("Automation") {
+            SettingsCard(stringResource(R.string.set_card_automation)) {
                 SwitchLine(
-                    title = "Learn from my corrections",
+                    title = stringResource(R.string.set_learn_corrections),
                     checked = smartRules,
                     onCheckedChange = {
                         smartRules = it
@@ -470,7 +505,7 @@ fun SettingsScreen(
                         "marked “ask every time” is never remembered at all.",
                 )
                 SwitchLine(
-                    title = "Confirm transfers for me",
+                    title = stringResource(R.string.set_confirm_transfers),
                     checked = autoConfirmTransfers,
                     onCheckedChange = {
                         autoConfirmTransfers = it
@@ -485,20 +520,20 @@ fun SettingsScreen(
                 )
             }
 
-            SettingsCard("Your data") {
+            SettingsCard(stringResource(R.string.set_card_data)) {
                 ActionLine(
-                    title = "Export transactions",
+                    title = stringResource(R.string.set_export_txns),
                     // The count belongs to the moment you ask for the file, not to a row
                     // you are only reading past. It is said in the confirmation instead.
                     value = null,
                     detail = "Writes every record to a CSV file you choose: date, type, amount, " +
                         "accounts, merchant, category and the message it was read from.",
-                    actionLabel = "Export",
+                    actionLabel = stringResource(R.string.action_export),
                     onAction = { confirmExport = true },
                 )
                 ExpandLine(
-                    title = "Verbose log",
-                    value = "every step, in plain words",
+                    title = stringResource(R.string.set_verbose_log),
+                    value = stringResource(R.string.set_verbose_value),
                     detail = "Everything the scanner did and why, written as it happens. It " +
                         "never leaves the phone unless you copy it out yourself.",
                 ) {
@@ -506,17 +541,17 @@ fun SettingsScreen(
                         TextButton(onClick = {
                             scope.launch { clipboard.setClipEntry(plainText(Verbose.dump())) }
                             note("verbose log copied to clipboard")
-                        }) { Text("Copy") }
+                        }) { Text(stringResource(R.string.action_copy)) }
                         TextButton(onClick = {
                             Verbose.clear()
                             Verbose.info("log cleared by you")
                             Verbose.flush()
-                        }) { Text("Clear") }
+                        }) { Text(stringResource(R.string.action_clear)) }
                     }
                 }
                 ValueLine(
-                    title = "Where it lives",
-                    value = "this phone only",
+                    title = stringResource(R.string.set_where_it_lives),
+                    value = stringResource(R.string.set_this_phone_only),
                     detail = "Everything lives in one JSON file inside this app's private " +
                         "storage, and backups are disabled. The app does reach the network, " +
                         "for one thing: it asks GitHub whether a newer release exists, and " +
@@ -539,7 +574,7 @@ fun SettingsScreen(
                 )
             }
 
-            SettingsCard("About") {
+            SettingsCard(stringResource(R.string.set_card_about)) {
                 // One row, every state. Normally it is the version you are on; when
                 // GitHub is offering a later one it becomes the way to get it. The
                 // release notes sit behind the (i) whichever way the check came out,
@@ -559,13 +594,15 @@ fun SettingsScreen(
                 // one in the background must stay silent.
                 var asked by remember { mutableStateOf(false) }
                 ActionLine(
-                    title = "Riyal",
+                    title = stringResource(R.string.app_name),
                     value = when {
-                        checking -> "checking…"
-                        offered != null -> "${offered.tag} available"
-                        updateState is MainViewModel.UpdateState.UpToDate -> "$version · latest"
+                        checking -> stringResource(R.string.set_checking)
+                        offered != null ->
+                            stringResource(R.string.set_update_available, offered.tag)
+                        updateState is MainViewModel.UpdateState.UpToDate ->
+                            stringResource(R.string.set_latest, version)
                         updateState is MainViewModel.UpdateState.Unreachable ->
-                            "$version · could not check"
+                            stringResource(R.string.set_could_not_check, version)
                         else -> version
                     },
                     valueIsWarning = offered != null,
@@ -607,9 +644,9 @@ fun SettingsScreen(
                         }
                     },
                     actionLabel = when {
-                        checking -> "Checking"
-                        offered != null -> "Download"
-                        else -> "Check now"
+                        checking -> stringResource(R.string.set_checking_action)
+                        offered != null -> stringResource(R.string.set_download)
+                        else -> stringResource(R.string.set_check_now)
                     },
                     enabled = !checking,
                     onAction = {
@@ -652,7 +689,7 @@ fun SettingsScreen(
 
     if (pickCurrency) {
         PickerDialog(
-            title = "Default currency",
+            title = stringResource(R.string.set_default_currency),
             options = CURRENCIES,
             selected = currency,
             onPick = {
@@ -693,21 +730,18 @@ fun SettingsScreen(
     if (confirmWipe) {
         AlertDialog(
             onDismissRequest = { confirmWipe = false },
-            title = { Text("Delete everything?") },
-            text = {
-                Text(
-                    "All recorded transactions, rules, review items and settings will be erased. " +
-                        "Your SMS inbox itself is untouched, this app never modifies messages.",
-                )
-            },
+            title = { Text(stringResource(R.string.set_wipe_title)) },
+            text = { Text(stringResource(R.string.set_wipe_body)) },
             confirmButton = {
                 TextButton(onClick = {
                     vm.wipeAll()
                     confirmWipe = false
-                }) { Text("Delete") }
+                }) { Text(stringResource(R.string.action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmWipe = false }) { Text("Cancel") }
+                TextButton(onClick = { confirmWipe = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             },
         )
     }
@@ -715,16 +749,20 @@ fun SettingsScreen(
     if (confirmExport) {
         AlertDialog(
             onDismissRequest = { confirmExport = false },
-            title = { Text("Export " + countOf(txns.size, "record") + "?") },
+            title = {
+                Text(
+                    stringResource(
+                        R.string.set_export_title,
+                        counted(R.plurals.count_records, txns.size),
+                    )
+                )
+            },
             text = {
                 Text(
-                    if (txns.isEmpty()) {
-                        "There is nothing recorded yet, so the file would be empty. Scan your " +
-                            "messages first."
-                    } else {
-                        "Every record Riyal holds goes into one CSV file, and you choose where " +
-                            "it is written. Nothing leaves the phone on its own."
-                    },
+                    stringResource(
+                        if (txns.isEmpty()) R.string.set_export_empty
+                        else R.string.set_export_body
+                    ),
                 )
             },
             confirmButton = {
@@ -734,10 +772,12 @@ fun SettingsScreen(
                         confirmExport = false
                         onExport()
                     },
-                ) { Text("Export") }
+                ) { Text(stringResource(R.string.action_export)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmExport = false }) { Text("Cancel") }
+                TextButton(onClick = { confirmExport = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             },
         )
     }
@@ -760,14 +800,23 @@ private fun StatusCard(
     Card(Modifier.fillMaxWidth().popIn()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                if (lastScanAt <= 0L) "No scan yet" else "Last scan ${relativeTime(lastScanAt)}",
+                if (lastScanAt <= 0L) {
+                    stringResource(R.string.set_no_scan_yet)
+                } else {
+                    stringResource(R.string.set_last_scan, relativeTime(lastScanAt))
+                },
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
                 listOfNotNull(
-                    countOf(records, "record"),
-                    countOf(accounts, "account"),
-                    messagesRead?.let { countOf(it, "message") + " read" },
+                    counted(R.plurals.count_records, records),
+                    counted(R.plurals.count_accounts, accounts),
+                    messagesRead?.let {
+                        stringResource(
+                            R.string.set_messages_read,
+                            counted(R.plurals.count_messages, it),
+                        )
+                    },
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -777,32 +826,45 @@ private fun StatusCard(
 }
 
 /** "2 hours ago", or the date once that stops being a useful way to say it. */
+@Composable
 private fun relativeTime(millis: Long): String {
     val minutes = (System.currentTimeMillis() - millis) / 60_000
     return when {
-        minutes < 1 -> "just now"
-        minutes < 60 -> countOf(minutes.toInt(), "minute") + " ago"
-        minutes < 60 * 24 -> countOf((minutes / 60).toInt(), "hour") + " ago"
-        minutes < 60 * 24 * 7 -> countOf((minutes / (60 * 24)).toInt(), "day") + " ago"
-        else -> "on " + settingsDayFmt.format(
-            Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())
+        minutes < 1 -> stringResource(R.string.set_just_now)
+        minutes < 60 -> stringResource(
+            R.string.set_ago,
+            counted(R.plurals.count_minutes, minutes.toInt()),
+        )
+        minutes < 60 * 24 -> stringResource(
+            R.string.set_ago,
+            counted(R.plurals.count_hours, (minutes / 60).toInt()),
+        )
+        minutes < 60 * 24 * 7 -> stringResource(
+            R.string.set_ago,
+            counted(R.plurals.count_days, (minutes / (60 * 24)).toInt()),
+        )
+        else -> stringResource(
+            R.string.set_on_date,
+            settingsDayFmt.format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())),
         )
     }
 }
 
+@Composable
 private fun rangeLabel(months: Int): String = when (months) {
-    0 -> "everything"
-    1 -> "1 month"
-    12 -> "1 year"
-    else -> "$months months"
+    0 -> stringResource(R.string.set_range_everything)
+    1 -> stringResource(R.string.set_range_one_month)
+    12 -> stringResource(R.string.set_range_one_year)
+    else -> stringResource(R.string.set_range_months, months)
 }
 
+@Composable
 private fun senderSummary(bankOnly: Boolean, allowlistOn: Boolean, approved: Int): String = when {
-    allowlistOn && approved == 0 -> "nobody"
-    allowlistOn -> "$approved approved"
-    bankOnly && approved > 0 -> "banks + $approved"
-    bankOnly -> "banks only"
-    else -> "any sender"
+    allowlistOn && approved == 0 -> stringResource(R.string.set_senders_nobody)
+    allowlistOn -> stringResource(R.string.set_senders_approved, approved)
+    bankOnly && approved > 0 -> stringResource(R.string.set_senders_banks_plus, approved)
+    bankOnly -> stringResource(R.string.set_senders_banks_only)
+    else -> stringResource(R.string.set_senders_any)
 }
 
 // ─────────────────────────── one line per row ───────────────────────────
@@ -842,7 +904,7 @@ private fun SettingLine(
         if (detail != null) {
             Icon(
                 Icons.Filled.Info,
-                contentDescription = "About $title",
+                contentDescription = stringResource(R.string.help_about, title),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .size(16.dp)
@@ -874,7 +936,11 @@ private fun SettingLine(
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) { Text(detail) }
             },
-            confirmButton = { TextButton(onClick = { showDetail = false }) { Text("Got it") } },
+            confirmButton = {
+                TextButton(onClick = { showDetail = false }) {
+                    Text(stringResource(R.string.action_got_it))
+                }
+            },
         )
     }
 }
@@ -972,7 +1038,11 @@ private fun ExpandLine(
         ) {
             Icon(
                 if (open) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                contentDescription = if (open) "Collapse $title" else "Expand $title",
+                contentDescription = if (open) {
+                    stringResource(R.string.set_collapse, title)
+                } else {
+                    stringResource(R.string.set_expand, title)
+                },
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp),
             )
@@ -1029,9 +1099,12 @@ private fun DangerCard(onClick: () -> Unit) {
         ) {
             Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(20.dp))
             Column(Modifier.weight(1f)) {
-                Text("Delete all app data", style = MaterialTheme.typography.titleSmall)
                 Text(
-                    "Records, rules and settings. Your inbox is untouched.",
+                    stringResource(R.string.set_danger_title),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    stringResource(R.string.set_danger_body),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -1072,7 +1145,9 @@ private fun PickerDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }
 
@@ -1105,7 +1180,7 @@ private fun KeywordChips(items: Set<String>, onRemove: (String) -> Unit) {
                 trailingIcon = {
                     Icon(
                         Icons.Filled.Close,
-                        contentDescription = "Remove $item",
+                        contentDescription = stringResource(R.string.set_remove_item, item),
                         modifier = Modifier
                             .size(16.dp)
                             .clickable { onRemove(item) },
@@ -1121,7 +1196,7 @@ private fun AddKeywordRow(
     value: String,
     onValueChange: (String) -> Unit,
     onAdd: () -> Unit,
-    label: String = "Add keyword",
+    label: String? = null,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1130,11 +1205,13 @@ private fun AddKeywordRow(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            label = { Text(label) },
+            label = { Text(label ?: stringResource(R.string.set_add_keyword)) },
             singleLine = true,
             modifier = Modifier.weight(1f),
         )
-        FilledTonalButton(onClick = onAdd, enabled = value.isNotBlank()) { Text("Add") }
+        FilledTonalButton(onClick = onAdd, enabled = value.isNotBlank()) {
+            Text(stringResource(R.string.action_add))
+        }
     }
 }
 

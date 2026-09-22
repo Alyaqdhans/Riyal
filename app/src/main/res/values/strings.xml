@@ -561,4 +561,96 @@
         <item quantity="one">%d day</item>
         <item quantity="other">%d days</item>
     </plurals>
+
+    <!-- ─────────────────────────── settings ─────────────────────────── -->
+    <string name="set_card_money">Your money</string>
+    <string name="set_default_currency">Default currency</string>
+    <string name="set_learned">%d learned</string>
+    <string name="set_card_scanning">Scanning</string>
+    <string name="set_sms_permission">SMS permission</string>
+    <string name="set_allowed">allowed</string>
+    <string name="set_off">off</string>
+    <string name="set_manage">Manage</string>
+    <string name="set_scan_on_open">Scan when the app opens</string>
+    <string name="set_how_far_back">How far back</string>
+    <string name="set_range_1mo">1 mo</string>
+    <string name="set_range_3mo">3 mo</string>
+    <string name="set_range_6mo">6 mo</string>
+    <string name="set_range_1yr">1 yr</string>
+    <string name="set_range_all">All</string>
+    <string name="set_range_everything">everything</string>
+    <string name="set_range_one_month">1 month</string>
+    <string name="set_range_one_year">1 year</string>
+    <string name="set_range_months">%d months</string>
+    <string name="set_fresh_start">Nothing before %1$s is read, whichever range is picked.</string>
+    <string name="set_read_older">Read older messages too</string>
+    <string name="set_gate_keywords">Gate keywords</string>
+    <string name="set_keyword_counts">%1$d out · %2$d in</string>
+    <string name="set_reset_defaults">Reset to defaults</string>
+    <string name="set_who_is_read">Who is read</string>
+    <string name="set_senders_nobody">nobody</string>
+    <string name="set_senders_approved">%d approved</string>
+    <string name="set_senders_banks_plus">banks + %d</string>
+    <string name="set_senders_banks_only">banks only</string>
+    <string name="set_senders_any">any sender</string>
+    <string name="set_bank_only">Bank senders only</string>
+    <string name="set_only_approved">Only senders I approve</string>
+    <string name="set_no_approved">No approved senders yet, a scan will match nothing.</string>
+    <string name="set_no_extra_approved">No extra approved senders, only bank-named senders are read.</string>
+    <string name="set_sender_name">Sender name</string>
+    <string name="set_seen_in_inbox">Seen in your inbox, tap to approve:</string>
+    <string name="set_scan_now">Scan now</string>
+    <string name="set_scan_progress">%1$d of %2$d</string>
+    <string name="set_scan_starting">starting…</string>
+    <string name="set_scanning">Scanning</string>
+    <string name="set_scan">Scan</string>
+    <string name="set_rescan_all">Rescan everything</string>
+    <string name="set_rescan">Rescan</string>
+    <string name="set_card_automation">Automation</string>
+    <string name="set_learn_corrections">Learn from my corrections</string>
+    <string name="set_confirm_transfers">Confirm transfers for me</string>
+    <string name="set_card_data">Your data</string>
+    <string name="set_export_txns">Export transactions</string>
+    <string name="set_verbose_log">Verbose log</string>
+    <string name="set_verbose_value">every step, in plain words</string>
+    <string name="set_where_it_lives">Where it lives</string>
+    <string name="set_this_phone_only">this phone only</string>
+    <string name="set_card_about">About</string>
+    <string name="set_checking">checking…</string>
+    <string name="set_update_available">%1$s available</string>
+    <string name="set_latest">%1$s · latest</string>
+    <string name="set_could_not_check">%1$s · could not check</string>
+    <string name="set_checking_action">Checking</string>
+    <string name="set_download">Download</string>
+    <string name="set_check_now">Check now</string>
+    <string name="set_wipe_title">Delete everything?</string>
+    <string name="set_wipe_body">All recorded transactions, rules, review items and settings will be erased. Your SMS inbox itself is untouched, this app never modifies messages.</string>
+    <!-- %1$s is a count of records, already in words. -->
+    <string name="set_export_title">Export %1$s?</string>
+    <string name="set_export_empty">There is nothing recorded yet, so the file would be empty. Scan your messages first.</string>
+    <string name="set_export_body">Every record Riyal holds goes into one CSV file, and you choose where it is written. Nothing leaves the phone on its own.</string>
+    <string name="set_no_scan_yet">No scan yet</string>
+    <string name="set_last_scan">Last scan %1$s</string>
+    <string name="set_messages_read">%1$s read</string>
+    <string name="set_just_now">just now</string>
+    <string name="set_ago">%1$s ago</string>
+    <string name="set_on_date">on %1$s</string>
+    <string name="set_collapse">Collapse %s</string>
+    <string name="set_expand">Expand %s</string>
+    <string name="set_remove_item">Remove %s</string>
+    <string name="set_add_keyword">Add keyword</string>
+    <string name="set_danger_title">Delete all app data</string>
+    <string name="set_danger_body">Records, rules and settings. Your inbox is untouched.</string>
+    <plurals name="count_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <plurals name="count_hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
+    <plurals name="count_plans">
+        <item quantity="one">%d plan</item>
+        <item quantity="other">%d plans</item>
+    </plurals>
 </resources>
