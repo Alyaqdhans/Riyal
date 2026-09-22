@@ -47,9 +47,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
@@ -59,7 +61,8 @@ import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryChips
 import com.alyaqdhan.riyal.ui.compose.CategoryOrder
 import com.alyaqdhan.riyal.ui.compose.EmptyState
-import com.alyaqdhan.riyal.ui.compose.countOf
+import com.alyaqdhan.riyal.ui.compose.bidi
+import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.HelpAction
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
@@ -146,13 +149,16 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Needs a category") },
+                title = { Text(stringResource(R.string.needs_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back),
+                        )
                     }
                 },
-                actions = { HelpAction("Needs a category", HELP) },
+                actions = { HelpAction(stringResource(R.string.needs_title), HELP) },
             )
         },
     ) { padding ->
@@ -168,11 +174,17 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                     // title has to know the difference too.
                     EmptyState(
                         style = if (waiting > 0) FaceStyle.SLEEPY else FaceStyle.NORMAL,
-                        title = if (waiting > 0) "Left for next time" else "Everything is filed",
+                        title = stringResource(
+                            if (waiting > 0) R.string.needs_left_title
+                            else R.string.needs_all_filed_title
+                        ),
                         subtitle = if (waiting > 0) {
-                            countOf(waiting, "record") + " are under Other. The next scan asks again."
+                            stringResource(
+                                R.string.needs_left_subtitle,
+                                counted(R.plurals.count_records, waiting),
+                            )
                         } else {
-                            "Nothing is waiting for a category."
+                            stringResource(R.string.needs_nothing_waiting)
                         },
                         mood = if (waiting > 0) 0f else 0.2f,
                     )
@@ -185,7 +197,11 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                     // What is left to do, and nothing else. The explanation is behind
                     // the (i) and only there.
                     Text(
-                        countOf(records, "record") + " · " + countOf(groups.size, "place"),
+                        stringResource(
+                            R.string.needs_intro,
+                            counted(R.plurals.count_records, records),
+                            counted(R.plurals.count_places, groups.size),
+                        ),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 4.dp),
@@ -206,9 +222,12 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
             if (unnamed.isNotEmpty()) {
                 item(key = "unnamed") {
                     Column {
-                        SectionTitle("Can't be grouped")
+                        SectionTitle(stringResource(R.string.needs_cant_group))
                         Text(
-                            countOf(unnamed.size, "record") + " name nobody. File them from Transactions.",
+                            stringResource(
+                                R.string.needs_unnamed,
+                                counted(R.plurals.count_records, unnamed.size),
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -223,7 +242,7 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                 Column(Modifier.padding(top = 8.dp)) {
                     HorizontalDivider()
                     TextButton(onClick = { confirmLeave = true }) {
-                        Text("Leave the rest under Other")
+                        Text(stringResource(R.string.needs_leave_button))
                     }
                 }
             }
@@ -246,15 +265,21 @@ private fun LeaveAsOtherDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Leave the rest under Other?") },
+        title = { Text(stringResource(R.string.needs_leave_title)) },
         text = {
             Text(
-                "All $records stay under Other. Nothing is answered, no rule is saved, " +
-                    "and the next scan asks about them again."
+                stringResource(
+                    R.string.needs_leave_body,
+                    counted(R.plurals.count_records, records),
+                )
             )
         },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Leave under Other") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.needs_leave_confirm)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }
 
@@ -311,15 +336,21 @@ private fun MerchantCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        countOf(group.count, "record") + " · " +
-                            if (group.type == TxnType.INCOME) "money in" else "money out",
+                        stringResource(
+                            R.string.needs_group_line,
+                            counted(R.plurals.count_records, group.count),
+                            stringResource(
+                                if (group.type == TxnType.INCOME) R.string.label_money_in
+                                else R.string.label_money_out
+                            ),
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        Money.formatAmount(group.amountMinor, group.currency),
+                        bidi(Money.formatAmount(group.amountMinor, group.currency)),
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
@@ -330,14 +361,16 @@ private fun MerchantCard(
                 }
                 Icon(
                     if (open) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                    contentDescription = if (open) "Hide the records" else "Show the records",
+                    contentDescription = stringResource(
+                        if (open) R.string.needs_hide_records else R.string.needs_show_records
+                    ),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
             if (marked) {
                 Text(
-                    "Always asked · no rule saved",
+                    stringResource(R.string.needs_always_asked),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -374,7 +407,7 @@ private fun MerchantCard(
                     // Only worth a control once there is a mixed state to get out of.
                     if (excluded.isNotEmpty()) {
                         TextButton(onClick = { excluded = emptyList() }) {
-                            Text("Select all ${group.count}")
+                            Text(stringResource(R.string.needs_select_all, group.count))
                         }
                     }
                     HorizontalDivider()
@@ -395,11 +428,16 @@ private fun MerchantCard(
                     // from the ticks above it. The reasoning moved into the help.
                     Text(
                         when {
-                            chosen.isEmpty() -> "Nothing ticked"
-                            chosen.size < group.count ->
-                                "Files ${chosen.size} of ${group.count} · no rule saved"
-                            marked -> "Files all ${group.count} · asked again next time"
-                            else -> "Files all ${group.count} · and future ones"
+                            chosen.isEmpty() -> stringResource(R.string.needs_nothing_ticked)
+                            chosen.size < group.count -> stringResource(
+                                R.string.needs_files_some, chosen.size, group.count
+                            )
+                            marked -> stringResource(
+                                R.string.needs_files_all_asked, group.count
+                            )
+                            else -> stringResource(
+                                R.string.needs_files_all_future, group.count
+                            )
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -412,7 +450,12 @@ private fun MerchantCard(
                         onClick = { onAskEachTime(!marked) },
                         contentPadding = PaddingValues(horizontal = 4.dp),
                     ) {
-                        Text(if (marked) "Remember this name" else "Always ask for this name")
+                        Text(
+                            stringResource(
+                                if (marked) R.string.needs_remember_name
+                                else R.string.needs_always_ask_name
+                            )
+                        )
                     }
                 }
             }
@@ -456,9 +499,13 @@ private fun RecordRow(
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
-                    recordClockFmt.format(
-                        Instant.ofEpochMilli(txn.atMillis).atZone(ZoneId.systemDefault())
-                    ) + " · " + txn.sender,
+                    stringResource(
+                        R.string.row_account_time,
+                        recordClockFmt.format(
+                            Instant.ofEpochMilli(txn.atMillis).atZone(ZoneId.systemDefault())
+                        ),
+                        txn.sender,
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -466,12 +513,14 @@ private fun RecordRow(
                 )
             }
             Text(
-                Money.formatAmount(txn.amountMinor, txn.currency),
+                bidi(Money.formatAmount(txn.amountMinor, txn.currency)),
                 style = MaterialTheme.typography.bodyMedium,
             )
             Icon(
                 Icons.Outlined.MailOutline,
-                contentDescription = if (showing) "Hide the message" else "Read the message",
+                contentDescription = stringResource(
+                    if (showing) R.string.needs_hide_message else R.string.needs_read_message
+                ),
                 tint = if (showing) {
                     MaterialTheme.colorScheme.primary
                 } else {

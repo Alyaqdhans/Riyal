@@ -312,7 +312,7 @@ fun HomeScreen(
                 ActionCard(
                     face = FaceStyle.CONFUSED,
                     mood = -0.2f,
-                    title = stringResource(R.string.home_needs_review_title),
+                    title = stringResource(R.string.review_title),
                     subtitle = stringResource(R.string.home_needs_review_subtitle, parts.joinToString(" · ")),
                     container = MaterialTheme.colorScheme.tertiaryContainer,
                     content = MaterialTheme.colorScheme.onTertiaryContainer,

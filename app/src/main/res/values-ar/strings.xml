@@ -139,7 +139,6 @@
     <string name="home_check_accounts_title">تحقّق من حساباتك</string>
     <string name="home_check_accounts_subtitle">%s قُرئت من رسائلك</string>
 
-    <string name="home_needs_review_title">بحاجة إلى مراجعة</string>
     <string name="home_needs_review_subtitle">%s، اضغط للبتّ فيها</string>
     <plurals name="home_possible_transfers">
         <item quantity="zero">لا تحويلات محتملة</item>
@@ -274,4 +273,106 @@
     <string name="history_year_explained">آخر 12 شهراً فقط. وما قبلها يبقى غير مقروء.</string>
     <string name="history_quarter_explained">آخر 3 أشهر فقط. وما قبلها يبقى غير مقروء.</string>
     <string name="history_from_now_explained">لا يُقرأ شيء وصل من قبل. يبدأ ريال فارغاً، وتظهر حساباتك وسجلك مع رسائل بنكك من اليوم فصاعداً.</string>
+
+    <!-- ─────────────────────────── بحاجة إلى مراجعة ─────────────────────────── -->
+    <string name="review_title">بحاجة إلى مراجعة</string>
+    <string name="review_all_clear_title">كل شيء واضح</string>
+    <string name="review_all_clear_subtitle">حين تطابق رسالةٌ كلماتك المفتاحية ولا يمكن قراءتها، تنتظر هنا قرارك، ولا تُخمَّن أبداً داخل أرقامك.</string>
+    <string name="review_transfers_header">تحويلات بانتظار التأكيد (%d)</string>
+    <string name="review_transfers_intro">رسالتان تبدوان حركةً واحدة بين حساباتك أنت. أكِّدهما فتتوقفان عن الاحتساب مصروفاً ودخلاً معاً؛ ارفضهما فتبقيان كما هما تماماً.</string>
+    <string name="review_auto_note">أُكِّد %1$s كتحويلات نيابةً عنك، فلا تُحتسب مصروفاً ولا دخلاً. افتح إحداها في المعاملات لفصلها من جديد، أو أوقف \"أكِّد التحويلات نيابةً عني\" في الإعدادات ليُسألك في كل مرة.</string>
+    <plurals name="count_matching_pairs">
+        <item quantity="zero">لا أزواج متطابقة</item>
+        <item quantity="one">زوج متطابق واحد</item>
+        <item quantity="two">زوجان متطابقان</item>
+        <item quantity="few">%d أزواج متطابقة</item>
+        <item quantity="many">%d زوجاً متطابقاً</item>
+        <item quantity="other">%d زوج متطابق</item>
+    </plurals>
+    <string name="review_merged">دُمجتا في تحويل واحد</string>
+    <string name="review_kept_separate">بقيتا سجلين منفصلين</string>
+    <string name="review_intro_clear">كل شيء واضح، لا شيء ينتظرك.</string>
+    <string name="review_intro_only_transfers">لا رسائل غير مقروءة، فقط التحويلات أعلاه.</string>
+    <string name="review_intro">لم يُسجَّل شيء عن هذه. القرار لك.</string>
+    <string name="review_dismissed_plus_similar">تم التجاهل، ومعها %d مشابهة</string>
+    <string name="review_dismissed_future">تم التجاهل، وسيُتجاهل ما يشبهها لاحقاً</string>
+    <string name="review_dismissed_one">تم تجاهل الرسالة</string>
+    <string name="review_dismissed_header">المتجاهَلة (%d)</string>
+    <string name="review_dismissed_hint">كل ما تجاهلته يبقى هنا، ولا يُحذف شيء. واستعادة رسالة تعيد معها المشابهات التي أُخفيت، وسيصل هذا النوع من الرسائل إلى المراجعة من جديد.</string>
+    <string name="review_restored">أُعيدت إلى المراجعة</string>
+    <string name="review_which_category">أي تصنيف؟</string>
+    <string name="review_what_was_this">ما هذه المعاملة؟</string>
+    <string name="review_unassigned_account">حساب غير محدَّد</string>
+    <string name="review_left_account">%1$s غادرت %2$s</string>
+    <string name="review_arrived_account">%1$s وصلت إلى %2$s</string>
+    <string name="review_keep_both">لا، أبقِ الاثنتين</string>
+    <string name="review_yes_transfer">نعم، إنه تحويل</string>
+    <string name="review_learn_word">اقرأ الرسائل المشابهة تلقائياً من الآن فصاعداً</string>
+    <string name="review_remember_similar">تذكَّر هذا للرسائل المشابهة</string>
+    <string name="review_add_manually">إضافة يدوية</string>
+    <string name="action_show">إظهار</string>
+    <string name="action_hide">إخفاء</string>
+
+    <!-- ─────────────────────────── بحاجة إلى تصنيف ─────────────────────────── -->
+    <string name="needs_title">بحاجة إلى تصنيف</string>
+    <string name="needs_left_title">تُركت للمرة القادمة</string>
+    <string name="needs_all_filed_title">كل شيء مُصنَّف</string>
+    <string name="needs_left_subtitle">%1$s تحت \"أخرى\". والفحص القادم يسأل عنها من جديد.</string>
+    <string name="needs_nothing_waiting">لا شيء ينتظر تصنيفاً.</string>
+    <string name="needs_intro">%1$s · %2$s</string>
+    <plurals name="count_places">
+        <item quantity="zero">لا أماكن</item>
+        <item quantity="one">مكان واحد</item>
+        <item quantity="two">مكانان</item>
+        <item quantity="few">%d أماكن</item>
+        <item quantity="many">%d مكاناً</item>
+        <item quantity="other">%d مكان</item>
+    </plurals>
+    <string name="needs_cant_group">لا يمكن تجميعها</string>
+    <string name="needs_unnamed">%1$s لا تذكر اسم أحد. صنِّفها من المعاملات.</string>
+    <string name="needs_leave_button">اترك البقية تحت \"أخرى\"</string>
+    <string name="needs_leave_title">تترك البقية تحت \"أخرى\"؟</string>
+    <string name="needs_leave_body">تبقى %1$s تحت \"أخرى\". لم يُجَب عن شيء، ولم تُحفظ أي قاعدة، وسيسأل عنها الفحص القادم من جديد.</string>
+    <string name="needs_leave_confirm">اتركها تحت \"أخرى\"</string>
+    <string name="needs_group_line">%1$s · %2$s</string>
+    <string name="needs_hide_records">إخفاء السجلات</string>
+    <string name="needs_show_records">عرض السجلات</string>
+    <string name="needs_always_asked">يُسأل عنه دائماً · بلا قاعدة محفوظة</string>
+    <string name="needs_select_all">اختيار الكل (%d)</string>
+    <string name="needs_nothing_ticked">لا شيء محدَّد</string>
+    <string name="needs_files_some">يُصنِّف %1$d من %2$d · بلا قاعدة محفوظة</string>
+    <string name="needs_files_all_asked">يُصنِّف الكل (%d) · ويُسأل عنه في المرة القادمة</string>
+    <string name="needs_files_all_future">يُصنِّف الكل (%d) · وما يأتي لاحقاً</string>
+    <string name="needs_remember_name">تذكَّر هذا الاسم</string>
+    <string name="needs_always_ask_name">اسألني دائماً عن هذا الاسم</string>
+    <string name="needs_hide_message">إخفاء الرسالة</string>
+    <string name="needs_read_message">قراءة الرسالة</string>
+
+    <!-- ─────────────────────────── الحسابات البنكية ─────────────────────────── -->
+    <string name="acct_title">الحسابات البنكية</string>
+    <string name="acct_empty_title">لا حسابات بعد</string>
+    <string name="acct_empty_subtitle">افحص رسائلك لينشئ ريال حساباتك مما قاله بنكك أصلاً، أو أضف حساباً هنا بنفسك.</string>
+    <string name="acct_add">إضافة حساب</string>
+    <string name="acct_delete_title">حذف %s؟</string>
+    <string name="acct_delete_body">تبقى معاملاته، لأن المال قد تحرّك فعلاً، لكنها لن تعود تابعة لأي حساب، فتتوقف عن الاحتساب في أي رصيد.</string>
+    <string name="acct_confirm_title">هل هذه صحيحة؟</string>
+    <string name="acct_confirm_missing">%1$s قُرئت من رسائل بنكك. أحدها لم يذكر رصيداً فبدأ من صفر. اضغط عليه لضبط الرقم الحقيقي.</string>
+    <string name="acct_confirm_ok">%1$s قُرئت من الأرصدة التي تذكرها رسائل بنكك. اضغط على أي واحد يبدو خاطئاً.</string>
+    <string name="acct_confirm_button">هذه صحيحة</string>
+    <string name="acct_total">الإجمالي</string>
+    <string name="acct_needs_balance">لا رصيد في أي رسالة، اضغط لضبطه</string>
+    <string name="acct_add_title">إضافة حساب</string>
+    <string name="acct_edit_title">تعديل الحساب</string>
+    <string name="acct_nickname">اسم مختصر (اختياري)</string>
+    <string name="acct_nickname_help">اتركه فارغاً فيُسمّى الحساب باسم بنكه وآخر أرقامه.</string>
+    <string name="acct_balance_now">الرصيد الآن</string>
+    <string name="acct_opening_balance">الرصيد الافتتاحي</string>
+    <string name="acct_balance_new_help">كل ما يسجّله ريال من الآن فصاعداً يحرّك هذا الرقم.</string>
+    <string name="acct_balance_asof">الرصيد كما هو في %1$s. والسجلات بعد تلك اللحظة تحرّكه.</string>
+    <string name="acct_last4">ينتهي رقم الحساب بـ (اختياري)</string>
+    <string name="acct_senders">مُرسِلو الرسائل</string>
+    <string name="acct_senders_placeholder">BankMuscat, NBO</string>
+    <string name="acct_senders_help">الرسائل الواردة من هؤلاء المرسلين تُسجَّل تحت هذا الحساب.</string>
+    <string name="acct_archived">حساب مُغلق (أخفِه من القوائم)</string>
+    <string name="label_currency">العملة</string>
 </resources>

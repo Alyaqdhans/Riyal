@@ -112,7 +112,6 @@
     <!-- %s is a count of accounts, already in words: "3 accounts read from your messages". -->
     <string name="home_check_accounts_subtitle">%s read from your messages</string>
 
-    <string name="home_needs_review_title">Needs review</string>
     <!-- %s is the list of what is waiting, joined with " · " by the screen. -->
     <string name="home_needs_review_subtitle">%s, tap to decide</string>
     <plurals name="home_possible_transfers">
@@ -246,4 +245,105 @@
     <string name="history_year_explained">Only the last 12 months. Anything older stays unread.</string>
     <string name="history_quarter_explained">Only the last 3 months. Anything older stays unread.</string>
     <string name="history_from_now_explained">Nothing that already arrived is read. Riyal starts empty, and your accounts and history appear as your banks text you from today on.</string>
+
+    <!-- ─────────────────────────── needs review ─────────────────────────── -->
+    <string name="review_title">Needs review</string>
+    <string name="review_all_clear_title">All clear</string>
+    <string name="review_all_clear_subtitle">When a message matches your keywords but can\'t be read, it waits here for your decision, it is never guessed into your numbers.</string>
+    <string name="review_transfers_header">Transfers to confirm (%d)</string>
+    <string name="review_transfers_intro">Two messages that look like one movement of your own money. Confirm and it stops counting as both spending and income; reject and both stay exactly as they are.</string>
+    <!-- %1$s is a count of matched pairs, already in words. -->
+    <string name="review_auto_note">%1$s were confirmed as transfers for you, so they count as neither spending nor income. Open one in Transactions to split it back apart, or turn off \"Confirm transfers for me\" in Settings to be asked each time.</string>
+    <plurals name="count_matching_pairs">
+        <item quantity="one">%d matching pair</item>
+        <item quantity="other">%d matching pairs</item>
+    </plurals>
+    <string name="review_merged">Merged into one transfer</string>
+    <string name="review_kept_separate">Kept as separate records</string>
+    <string name="review_intro_clear">All clear, nothing is waiting for you.</string>
+    <string name="review_intro_only_transfers">Nothing unreadable, just the transfers above.</string>
+    <string name="review_intro">Nothing was recorded for these. You decide.</string>
+    <string name="review_dismissed_plus_similar">Dismissed, along with %d similar</string>
+    <string name="review_dismissed_future">Dismissed, future ones will be too</string>
+    <string name="review_dismissed_one">Message dismissed</string>
+    <string name="review_dismissed_header">Dismissed (%d)</string>
+    <string name="review_dismissed_hint">Everything you dismissed stays here, nothing is deleted. Restoring one also brings back the similar ones hidden with it, and that kind of message will reach Review again.</string>
+    <string name="review_restored">Restored to review</string>
+    <string name="review_which_category">Which category?</string>
+    <string name="review_what_was_this">What was this?</string>
+    <string name="review_unassigned_account">an unassigned account</string>
+    <!-- %1$s is the amount with its sign; %2$s the account it moved from or to. -->
+    <string name="review_left_account">%1$s left %2$s</string>
+    <string name="review_arrived_account">%1$s arrived in %2$s</string>
+    <string name="review_keep_both">No, keep both</string>
+    <string name="review_yes_transfer">Yes, it\'s a transfer</string>
+    <string name="review_learn_word">Read messages like this automatically from now on</string>
+    <string name="review_remember_similar">Remember for similar messages</string>
+    <string name="review_add_manually">Add manually</string>
+    <string name="action_show">Show</string>
+    <string name="action_hide">Hide</string>
+
+    <!-- ─────────────────────────── needs a category ─────────────────────────── -->
+    <string name="needs_title">Needs a category</string>
+    <string name="needs_left_title">Left for next time</string>
+    <string name="needs_all_filed_title">Everything is filed</string>
+    <!-- %1$s is a count of records, already in words. -->
+    <string name="needs_left_subtitle">%1$s are under Other. The next scan asks again.</string>
+    <string name="needs_nothing_waiting">Nothing is waiting for a category.</string>
+    <!-- "12 records · 4 places" -->
+    <string name="needs_intro">%1$s · %2$s</string>
+    <plurals name="count_places">
+        <item quantity="one">%d place</item>
+        <item quantity="other">%d places</item>
+    </plurals>
+    <string name="needs_cant_group">Can\'t be grouped</string>
+    <string name="needs_unnamed">%1$s name nobody. File them from Transactions.</string>
+    <string name="needs_leave_button">Leave the rest under Other</string>
+    <string name="needs_leave_title">Leave the rest under Other?</string>
+    <string name="needs_leave_body">All %1$s stay under Other. Nothing is answered, no rule is saved, and the next scan asks about them again.</string>
+    <string name="needs_leave_confirm">Leave under Other</string>
+    <!-- "6 records · Money out" -->
+    <string name="needs_group_line">%1$s · %2$s</string>
+    <string name="needs_hide_records">Hide the records</string>
+    <string name="needs_show_records">Show the records</string>
+    <string name="needs_always_asked">Always asked · no rule saved</string>
+    <string name="needs_select_all">Select all %d</string>
+    <string name="needs_nothing_ticked">Nothing ticked</string>
+    <string name="needs_files_some">Files %1$d of %2$d · no rule saved</string>
+    <string name="needs_files_all_asked">Files all %d · asked again next time</string>
+    <string name="needs_files_all_future">Files all %d · and future ones</string>
+    <string name="needs_remember_name">Remember this name</string>
+    <string name="needs_always_ask_name">Always ask for this name</string>
+    <string name="needs_hide_message">Hide the message</string>
+    <string name="needs_read_message">Read the message</string>
+
+    <!-- ─────────────────────────── bank accounts ─────────────────────────── -->
+    <string name="acct_title">Bank accounts</string>
+    <string name="acct_empty_title">No accounts yet</string>
+    <string name="acct_empty_subtitle">Scan your messages and Riyal will set accounts up from what your bank already told you, or add one here by hand.</string>
+    <string name="acct_add">Add an account</string>
+    <string name="acct_delete_title">Delete %s?</string>
+    <string name="acct_delete_body">Its transactions are kept, because the money still moved, but they\'ll no longer belong to any account, so they stop counting towards a balance.</string>
+    <string name="acct_confirm_title">Are these right?</string>
+    <!-- %1$s is a count of accounts, already in words. -->
+    <string name="acct_confirm_missing">%1$s read from your bank\'s texts. One quoted no balance and starts at zero. Tap it to set the real figure.</string>
+    <string name="acct_confirm_ok">%1$s read from the balances your bank\'s texts quote. Tap any that look wrong.</string>
+    <string name="acct_confirm_button">These are correct</string>
+    <string name="acct_total">Total</string>
+    <string name="acct_needs_balance">No balance in any message, tap to set it</string>
+    <string name="acct_add_title">Add account</string>
+    <string name="acct_edit_title">Edit account</string>
+    <string name="acct_nickname">Nickname (optional)</string>
+    <string name="acct_nickname_help">Leave it empty and the account is named after its bank and last digits.</string>
+    <string name="acct_balance_now">Balance now</string>
+    <string name="acct_opening_balance">Opening balance</string>
+    <string name="acct_balance_new_help">Everything Riyal records from now on moves this figure.</string>
+    <string name="acct_balance_asof">The balance as of %1$s. Records after that moment move it.</string>
+    <string name="acct_last4">Account ends with (optional)</string>
+    <string name="acct_senders">SMS senders</string>
+    <!-- Two real Omani bank sender names, as an example of the shape of the answer. -->
+    <string name="acct_senders_placeholder">BankMuscat, NBO</string>
+    <string name="acct_senders_help">Messages from these senders are filed under this account.</string>
+    <string name="acct_archived">Closed account (hide it from pickers)</string>
+    <string name="label_currency">Currency</string>
 </resources>
