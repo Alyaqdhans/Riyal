@@ -186,7 +186,7 @@ fun SettingsScreen(
                 NavLine(
                     title = stringResource(R.string.cats_title),
                     value = if (rules.isEmpty()) null
-                    else stringResource(R.string.set_learned, rules.size),
+                    else counted(R.plurals.count_learned, rules.size),
                     detail = "Every category and what it cost, where your own are made - and " +
                         "the names Riyal has learned: the ones it files without asking, and " +
                         "the ones you asked to be asked about every time.",
@@ -861,7 +861,7 @@ private fun rangeLabel(months: Int): String = when (months) {
 @Composable
 private fun senderSummary(bankOnly: Boolean, allowlistOn: Boolean, approved: Int): String = when {
     allowlistOn && approved == 0 -> stringResource(R.string.set_senders_nobody)
-    allowlistOn -> stringResource(R.string.set_senders_approved, approved)
+    allowlistOn -> counted(R.plurals.count_approved, approved)
     bankOnly && approved > 0 -> stringResource(R.string.set_senders_banks_plus, approved)
     bankOnly -> stringResource(R.string.set_senders_banks_only)
     else -> stringResource(R.string.set_senders_any)

@@ -353,7 +353,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                         stringResource(
                                             R.string.an_donut_categories,
                                             currency,
-                                            slices.size,
+                                            counted(R.plurals.count_categories, slices.size),
                                         )
                                     },
                                     style = MaterialTheme.typography.labelSmall,

@@ -43,7 +43,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -131,11 +130,16 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     // A snackbar is shown from a coroutine, where stringResource cannot be called, so
-    // the words it might need are read here while this is still a composable.
-    val context = LocalContext.current
+    // the words it might need are read here while this is still a composable. The one
+    // that counts something is taken as its template and filled in later, because the
+    // number is not known until the tap.
     val merged = stringResource(R.string.review_merged)
     val keptSeparate = stringResource(R.string.review_kept_separate)
     val restored = stringResource(R.string.review_restored)
+    val dismissedSimilar = stringResource(R.string.review_dismissed_plus_similar)
+    val dismissedFuture = stringResource(R.string.review_dismissed_future)
+    val dismissedOne = stringResource(R.string.review_dismissed_one)
+    val undo = stringResource(R.string.action_undo)
 
     Scaffold(
         topBar = {
@@ -249,15 +253,11 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                                 scope.launch {
                                     val result = snackbar.showSnackbar(
                                         message = when {
-                                            similar > 0 -> context.getString(
-                                                R.string.review_dismissed_plus_similar, similar
-                                            )
-                                            alsoSimilar ->
-                                                context.getString(R.string.review_dismissed_future)
-                                            else ->
-                                                context.getString(R.string.review_dismissed_one)
+                                            similar > 0 -> dismissedSimilar.format(similar)
+                                            alsoSimilar -> dismissedFuture
+                                            else -> dismissedOne
                                         },
-                                        actionLabel = context.getString(R.string.action_undo),
+                                        actionLabel = undo,
                                     )
                                     if (result == SnackbarResult.ActionPerformed) {
                                         vm.restoreReview(item)

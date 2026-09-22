@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -354,8 +355,7 @@ fun bidi(amount: String): String = "\u2066" + amount + "\u2069"
  * the form, once to fill the %d inside it.
  */
 @Composable
-fun counted(@PluralsRes plural: Int, n: Int): String =
-    LocalContext.current.resources.getQuantityString(plural, n, n)
+fun counted(@PluralsRes plural: Int, n: Int): String = pluralStringResource(plural, n, n)
 
 // ─────────────────────────── a screen's own explanation ───────────────────────────
 

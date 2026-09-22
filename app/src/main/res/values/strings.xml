@@ -40,7 +40,6 @@
     <string name="label_amount">Amount</string>
     <string name="label_account">Account</string>
     <string name="label_category">Category</string>
-    <string name="label_merchant">Merchant</string>
     <string name="label_period">Period</string>
     <string name="label_name">Name</string>
     <string name="label_icon">Icon</string>
@@ -86,10 +85,6 @@
     <plurals name="count_categories">
         <item quantity="one">%d category</item>
         <item quantity="other">%d categories</item>
-    </plurals>
-    <plurals name="count_senders">
-        <item quantity="one">%d sender</item>
-        <item quantity="other">%d senders</item>
     </plurals>
 
     <!-- ─────────────────────────── language ─────────────────────────── -->
@@ -505,7 +500,7 @@
     <string name="an_donut_received">received</string>
     <!-- Under the donut\'s figure: "OMR · 6 categories" or "OMR · nothing recorded". -->
     <string name="an_donut_nothing">%1$s · nothing recorded</string>
-    <string name="an_donut_categories">%1$s · %2$d categories</string>
+    <string name="an_donut_categories">%1$s · %2$s</string>
     <string name="an_percent">%d%%</string>
     <string name="an_no_spending">No spending recorded for this period.</string>
     <string name="an_no_income">No income recorded for this period.</string>
@@ -565,7 +560,7 @@
     <!-- ─────────────────────────── settings ─────────────────────────── -->
     <string name="set_card_money">Your money</string>
     <string name="set_default_currency">Default currency</string>
-    <string name="set_learned">%d learned</string>
+
     <string name="set_card_scanning">Scanning</string>
     <string name="set_sms_permission">SMS permission</string>
     <string name="set_allowed">allowed</string>
@@ -589,7 +584,7 @@
     <string name="set_reset_defaults">Reset to defaults</string>
     <string name="set_who_is_read">Who is read</string>
     <string name="set_senders_nobody">nobody</string>
-    <string name="set_senders_approved">%d approved</string>
+
     <string name="set_senders_banks_plus">banks + %d</string>
     <string name="set_senders_banks_only">banks only</string>
     <string name="set_senders_any">any sender</string>
@@ -661,4 +656,12 @@
          for one wherever the message would be shown. -->
     <string name="manual_entry_sender">manual entry</string>
     <string name="manual_entry_body">Added by you</string>
+    <plurals name="count_approved">
+        <item quantity="one">%d approved</item>
+        <item quantity="other">%d approved</item>
+    </plurals>
+    <plurals name="count_learned">
+        <item quantity="one">%d learned</item>
+        <item quantity="other">%d learned</item>
+    </plurals>
 </resources>

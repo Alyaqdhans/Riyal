@@ -47,7 +47,6 @@
     <string name="label_amount">المبلغ</string>
     <string name="label_account">الحساب</string>
     <string name="label_category">التصنيف</string>
-    <string name="label_merchant">المتجر</string>
     <string name="label_period">الفترة</string>
     <string name="label_name">الاسم</string>
     <string name="label_icon">الأيقونة</string>
@@ -110,14 +109,6 @@
         <item quantity="few">%d تصنيفات</item>
         <item quantity="many">%d تصنيفاً</item>
         <item quantity="other">%d تصنيف</item>
-    </plurals>
-    <plurals name="count_senders">
-        <item quantity="zero">لا مُرسِلين</item>
-        <item quantity="one">مُرسِل واحد</item>
-        <item quantity="two">مُرسِلان</item>
-        <item quantity="few">%d مُرسِلين</item>
-        <item quantity="many">%d مُرسِلاً</item>
-        <item quantity="other">%d مُرسِل</item>
     </plurals>
 
     <!-- ─────────────────────────── اللغة ─────────────────────────── -->
@@ -294,7 +285,7 @@
     <string name="review_intro_clear">كل شيء واضح، لا شيء ينتظرك.</string>
     <string name="review_intro_only_transfers">لا رسائل غير مقروءة، فقط التحويلات أعلاه.</string>
     <string name="review_intro">لم يُسجَّل شيء عن هذه. القرار لك.</string>
-    <string name="review_dismissed_plus_similar">تم التجاهل، ومعها %d مشابهة</string>
+    <string name="review_dismissed_plus_similar">تم التجاهل، ومعها رسائل مشابهة (%d)</string>
     <string name="review_dismissed_future">تم التجاهل، وسيُتجاهل ما يشبهها لاحقاً</string>
     <string name="review_dismissed_one">تم تجاهل الرسالة</string>
     <string name="review_dismissed_header">المتجاهَلة (%d)</string>
@@ -523,7 +514,7 @@
     <string name="an_donut_spent">صُرف</string>
     <string name="an_donut_received">ورد</string>
     <string name="an_donut_nothing">%1$s · لا شيء مُسجَّل</string>
-    <string name="an_donut_categories">%1$s · %2$d تصنيفات</string>
+    <string name="an_donut_categories">%1$s · %2$s</string>
     <string name="an_percent">%d%%</string>
     <string name="an_no_spending">لا مصروفات مُسجَّلة في هذه الفترة.</string>
     <string name="an_no_income">لا دخل مُسجَّل في هذه الفترة.</string>
@@ -582,7 +573,7 @@
     <!-- ─────────────────────────── الإعدادات ─────────────────────────── -->
     <string name="set_card_money">أموالك</string>
     <string name="set_default_currency">العملة الافتراضية</string>
-    <string name="set_learned">%d مُتعلَّمة</string>
+
     <string name="set_card_scanning">الفحص</string>
     <string name="set_sms_permission">إذن قراءة الرسائل</string>
     <string name="set_allowed">مسموح</string>
@@ -606,7 +597,7 @@
     <string name="set_reset_defaults">إعادة الضبط الافتراضي</string>
     <string name="set_who_is_read">مَن تُقرأ رسائله</string>
     <string name="set_senders_nobody">لا أحد</string>
-    <string name="set_senders_approved">%d معتمَدين</string>
+
     <string name="set_senders_banks_plus">البنوك + %d</string>
     <string name="set_senders_banks_only">البنوك فقط</string>
     <string name="set_senders_any">أي مُرسِل</string>
@@ -686,4 +677,20 @@
     <string name="scan_unknown_error">خطأ غير معروف</string>
     <string name="manual_entry_sender">إدخال يدوي</string>
     <string name="manual_entry_body">أضفتها بنفسك</string>
+    <plurals name="count_approved">
+        <item quantity="zero">لا أحد معتمَد</item>
+        <item quantity="one">واحد معتمَد</item>
+        <item quantity="two">اثنان معتمَدان</item>
+        <item quantity="few">%d معتمَدين</item>
+        <item quantity="many">%d معتمَداً</item>
+        <item quantity="other">%d معتمَد</item>
+    </plurals>
+    <plurals name="count_learned">
+        <item quantity="zero">لا قواعد</item>
+        <item quantity="one">قاعدة واحدة</item>
+        <item quantity="two">قاعدتان</item>
+        <item quantity="few">%d قواعد</item>
+        <item quantity="many">%d قاعدة</item>
+        <item quantity="other">%d قاعدة</item>
+    </plurals>
 </resources>
