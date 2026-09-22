@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.isVisible
@@ -105,7 +106,7 @@ class MainActivity : AppCompatActivity() {
                 val categoryUse by vm.categoryUse.collectAsState()
                 if (showAdd) {
                     ManualTxnDialog(
-                        title = "Add transaction",
+                        title = getString(R.string.action_add_transaction),
                         atMillis = System.currentTimeMillis(),
                         defaultCurrency = vm.prefs.defaultCurrency,
                         accounts = accounts,
@@ -187,28 +188,28 @@ private fun RiyalNavBar(
                 // Review lives inside Home; a plain dot (no number) marks pending items,
                 // the count itself is on the Home "Needs review" card.
                 BadgedBox(badge = { if (reviewCount > 0) Badge() }) {
-                    Icon(Icons.Filled.Home, contentDescription = "Home")
+                    Icon(Icons.Filled.Home, contentDescription = stringResource(R.string.tab_home_a11y))
                 }
             }
             NavToggle(
                 checked = selected == R.id.transactionsFragment,
                 onCheck = { onSelect(R.id.transactionsFragment) },
-            ) { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Activity") }
+            ) { Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.tab_activity)) }
             NavToggle(
                 checked = selected == R.id.analysisFragment,
                 onCheck = { onSelect(R.id.analysisFragment) },
-            ) { Icon(painterResource(R.drawable.ic_pie), contentDescription = "Analysis") }
+            ) { Icon(painterResource(R.drawable.ic_pie), contentDescription = stringResource(R.string.tab_analysis)) }
             NavToggle(
                 checked = selected == R.id.settingsFragment,
                 onCheck = { onSelect(R.id.settingsFragment) },
-            ) { Icon(Icons.Filled.Settings, contentDescription = "Settings") }
+            ) { Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.tab_settings)) }
         }
         FloatingActionButton(
             onClick = onAdd,
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         ) {
-            Icon(Icons.Filled.Add, contentDescription = "Add transaction")
+            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.action_add_transaction))
         }
     }
 }

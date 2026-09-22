@@ -650,16 +650,26 @@ object Stats {
         return (1f - (ratio / 1.25f) * 2f).coerceIn(-1f, 1f)
     }
 
-    fun moodLabel(totals: MonthTotals): String {
+    /**
+     * How the period went, as one of a fixed set rather than as a sentence.
+     *
+     * The words live in strings.xml because this one is read aloud by a screen reader -
+     * it is the only description the mascot has - and it has to be read aloud in the
+     * reader's own language. Stats has no Context and is unit-tested off-device, so it
+     * decides which of these it is and the screen looks up what it says.
+     */
+    enum class Mood { QUIET, NO_INCOME_YET, WELL_UNDER, FINE, CLOSE, OVER }
+
+    fun moodLabel(totals: MonthTotals): Mood {
         if (totals.received <= 0L) {
-            return if (totals.spent == 0L) "Quiet month so far" else "Tracking spending, no income seen yet"
+            return if (totals.spent == 0L) Mood.QUIET else Mood.NO_INCOME_YET
         }
         val ratio = totals.spent.toFloat() / totals.received.toFloat()
         return when {
-            ratio < 0.5f -> "Smooth sailing, well under your income"
-            ratio < 0.8f -> "Doing fine, keep an eye on it"
-            ratio <= 1.0f -> "Cutting it close this month"
-            else -> "Spending is above income this month"
+            ratio < 0.5f -> Mood.WELL_UNDER
+            ratio < 0.8f -> Mood.FINE
+            ratio <= 1.0f -> Mood.CLOSE
+            else -> Mood.OVER
         }
     }
 

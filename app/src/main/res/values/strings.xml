@@ -34,6 +34,7 @@
     <string name="action_dismiss">Dismiss</string>
     <string name="action_got_it">Got it</string>
     <string name="action_undo">Undo</string>
+    <string name="action_add_transaction">Add transaction</string>
 
     <string name="label_amount">Amount</string>
     <string name="label_account">Account</string>
@@ -51,8 +52,10 @@
     <string name="label_money_in">Money in</string>
     <string name="label_money_out">Money out</string>
 
-    <!-- The four tabs. -->
+    <!-- The four tabs. tab_home_a11y is the screen reader's name for the button;
+         the tab itself carries only an icon. -->
     <string name="tab_home">Riyal</string>
+    <string name="tab_home_a11y">Home</string>
     <string name="tab_activity">Activity</string>
     <string name="tab_analysis">Analysis</string>
     <string name="tab_settings">Settings</string>
@@ -95,4 +98,50 @@
     <string name="settings_language_english">English</string>
     <string name="settings_language_arabic">العربية</string>
     <string name="settings_language_help">Riyal reads Arabic bank messages whichever language this is set to. This changes the app\'s own words, not what it can understand.</string>
+
+    <!-- ─────────────────────────── home ─────────────────────────── -->
+    <string name="home_net">Net</string>
+    <string name="home_recent_activity">Recent activity</string>
+
+    <string name="home_sms_off_title">SMS access is off</string>
+    <string name="home_sms_off_body">Reading happens only when you ask, and never leaves this phone.</string>
+    <string name="home_sms_allow">Allow SMS reading</string>
+
+    <string name="home_check_accounts_title">Check your accounts</string>
+    <!-- %s is a count of accounts, already in words: "3 accounts read from your messages". -->
+    <string name="home_check_accounts_subtitle">%s read from your messages</string>
+
+    <string name="home_needs_review_title">Needs review</string>
+    <!-- %s is the list of what is waiting, joined with " · " by the screen. -->
+    <string name="home_needs_review_subtitle">%s, tap to decide</string>
+    <plurals name="home_possible_transfers">
+        <item quantity="one">%d possible transfer</item>
+        <item quantity="other">%d possible transfers</item>
+    </plurals>
+    <plurals name="home_unreadable_messages">
+        <item quantity="one">%d unreadable message</item>
+        <item quantity="other">%d unreadable messages</item>
+    </plurals>
+
+    <plurals name="home_needs_category_title">
+        <item quantity="one">%d record needs a category</item>
+        <item quantity="other">%d records need a category</item>
+    </plurals>
+    <string name="home_needs_category_subtitle">One tap files a whole shop</string>
+
+    <!-- %1$s is the new version\'s tag, %2$s the one installed. -->
+    <string name="home_update_title">Riyal %1$s is out</string>
+    <string name="home_update_subtitle">You have %1$s · tap for what changed</string>
+
+    <string name="home_empty_title">Nothing recorded yet</string>
+    <string name="home_empty_with_permission">Settings › Scan now reads your inbox, narrating everything it does.</string>
+    <string name="home_empty_without_permission">Allow SMS reading, then scan whenever you choose.</string>
+
+    <!-- What the mascot's face means, read aloud by a screen reader. -->
+    <string name="mood_quiet">Quiet month so far</string>
+    <string name="mood_no_income_yet">Tracking spending, no income seen yet</string>
+    <string name="mood_well_under">Smooth sailing, well under your income</string>
+    <string name="mood_fine">Doing fine, keep an eye on it</string>
+    <string name="mood_close">Cutting it close this month</string>
+    <string name="mood_over">Spending is above income this month</string>
 </resources>

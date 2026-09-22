@@ -48,11 +48,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.appVersion
-import com.alyaqdhan.riyal.ui.compose.countOf
+import com.alyaqdhan.riyal.ui.compose.counted
+import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.Stats
@@ -111,7 +113,7 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
     val faceRotation = remember { Animatable(0f) }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Riyal") }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_home)) }) }) { padding ->
         // Scanning is Settings' business and shows its progress there. Home used to pull
         // to refresh, which put a spinner over the dashboard for work started somewhere
         // else - and the sheet it belonged to was hosted here rather than on the screen
@@ -140,7 +142,16 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    val moodLabel = Stats.moodLabel(totals)
+                    val moodLabel = stringResource(
+                        when (Stats.moodLabel(totals)) {
+                            Stats.Mood.QUIET -> R.string.mood_quiet
+                            Stats.Mood.NO_INCOME_YET -> R.string.mood_no_income_yet
+                            Stats.Mood.WELL_UNDER -> R.string.mood_well_under
+                            Stats.Mood.FINE -> R.string.mood_fine
+                            Stats.Mood.CLOSE -> R.string.mood_close
+                            Stats.Mood.OVER -> R.string.mood_over
+                        }
+                    )
                     Face(
                         mood = Stats.mood(totals),
                         modifier = Modifier
@@ -167,7 +178,7 @@ fun HomeScreen(
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            "Net",
+                            stringResource(R.string.home_net),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -219,11 +230,14 @@ fun HomeScreen(
                 ActionCard(
                     face = FaceStyle.CONFUSED,
                     mood = 0.3f,
-                    title = "Check your accounts",
+                    title = stringResource(R.string.home_check_accounts_title),
                     // The title already says what to do, so the line under it only has to
                     // say what there is - three lines of prompt on a screen you are
                     // trying to read past is the prompt shouting.
-                    subtitle = "${accounts.size} read from your messages",
+                    subtitle = stringResource(
+                        R.string.home_check_accounts_subtitle,
+                        counted(R.plurals.count_accounts, accounts.size),
+                    ),
                     container = MaterialTheme.colorScheme.primaryContainer,
                     content = MaterialTheme.colorScheme.onPrimaryContainer,
                     onClick = onOpenAccounts,
@@ -264,10 +278,10 @@ fun HomeScreen(
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                             )
-                            Text("SMS access is off", style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.home_sms_off_title), style = MaterialTheme.typography.titleMedium)
                         }
                         Text(
-                            "Reading happens only when you ask, and never leaves this phone.",
+                            stringResource(R.string.home_sms_off_body),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -279,7 +293,7 @@ fun HomeScreen(
                         ) {
                             Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Allow SMS reading")
+                            Text(stringResource(R.string.home_sms_allow))
                         }
                     }
                 }
@@ -288,14 +302,14 @@ fun HomeScreen(
             // ── needs review: unreadable messages and transfer pairs both wait here
             if (pending.isNotEmpty() || pendingTransfers.isNotEmpty()) {
                 val parts = buildList {
-                    if (pendingTransfers.isNotEmpty()) add(countOf(pendingTransfers.size, "possible transfer"))
-                    if (pending.isNotEmpty()) add(countOf(pending.size, "unreadable message"))
+                    if (pendingTransfers.isNotEmpty()) add(counted(R.plurals.home_possible_transfers, pendingTransfers.size))
+                    if (pending.isNotEmpty()) add(counted(R.plurals.home_unreadable_messages, pending.size))
                 }
                 ActionCard(
                     face = FaceStyle.CONFUSED,
                     mood = -0.2f,
-                    title = "Needs review",
-                    subtitle = parts.joinToString(" · ") + ", tap to decide",
+                    title = stringResource(R.string.home_needs_review_title),
+                    subtitle = stringResource(R.string.home_needs_review_subtitle, parts.joinToString(" · ")),
                     container = MaterialTheme.colorScheme.tertiaryContainer,
                     content = MaterialTheme.colorScheme.onTertiaryContainer,
                     onClick = onOpenReview,
@@ -310,9 +324,9 @@ fun HomeScreen(
                 ActionCard(
                     face = FaceStyle.CONFUSED,
                     mood = 0f,
-                    title = countOf(needsCategory, "record") + " need a category",
+                    title = counted(R.plurals.home_needs_category_title, needsCategory),
                     // How they are ordered is something the page itself shows on arrival.
-                    subtitle = "One tap files a whole shop",
+                    subtitle = stringResource(R.string.home_needs_category_subtitle),
                     container = MaterialTheme.colorScheme.secondaryContainer,
                     content = MaterialTheme.colorScheme.onSecondaryContainer,
                     onClick = onOpenNeedsCategory,
@@ -328,10 +342,10 @@ fun HomeScreen(
                 ActionCard(
                     face = FaceStyle.NORMAL,
                     mood = 0.8f,
-                    title = "Riyal ${available.release.tag} is out",
+                    title = stringResource(R.string.home_update_title, available.release.tag),
                     // Settings is where Download lives and where the notes are; saying
                     // so means the tap is not a surprise.
-                    subtitle = "You have $appVersion · tap for what changed",
+                    subtitle = stringResource(R.string.home_update_subtitle, appVersion),
                     container = MaterialTheme.colorScheme.primaryContainer,
                     content = MaterialTheme.colorScheme.onPrimaryContainer,
                     onClick = onOpenSettings,
@@ -340,14 +354,16 @@ fun HomeScreen(
             }
 
             // ── recent transactions
-            SectionTitle("Recent activity")
+            SectionTitle(stringResource(R.string.home_recent_activity))
             val recent = txns.take(6)
             if (recent.isEmpty()) {
                 EmptyState(
                     style = FaceStyle.SLEEPY,
-                    title = "Nothing recorded yet",
-                    subtitle = if (hasPerm) "Settings › Scan now reads your inbox, narrating everything it does."
-                    else "Allow SMS reading, then scan whenever you choose.",
+                    title = stringResource(R.string.home_empty_title),
+                    subtitle = stringResource(
+                        if (hasPerm) R.string.home_empty_with_permission
+                        else R.string.home_empty_without_permission
+                    ),
                 )
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

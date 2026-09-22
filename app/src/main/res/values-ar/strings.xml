@@ -37,6 +37,7 @@
     <string name="action_dismiss">تجاهل</string>
     <string name="action_got_it">فهمت</string>
     <string name="action_undo">تراجع</string>
+    <string name="action_add_transaction">إضافة حركة</string>
 
     <string name="label_amount">المبلغ</string>
     <string name="label_account">الحساب</string>
@@ -55,6 +56,7 @@
     <string name="label_money_out">مبلغ صادر</string>
 
     <string name="tab_home">ريال</string>
+    <string name="tab_home_a11y">الرئيسية</string>
     <string name="tab_activity">الحركات</string>
     <string name="tab_analysis">التحليل</string>
     <string name="tab_settings">الإعدادات</string>
@@ -120,4 +122,59 @@
     <string name="settings_language_english">English</string>
     <string name="settings_language_arabic">العربية</string>
     <string name="settings_language_help">يقرأ ريال رسائل البنوك العربية مهما كانت هذه اللغة. هذا الإعداد يغيّر كلمات التطبيق نفسه، لا ما يستطيع فهمه.</string>
+
+    <!-- ─────────────────────────── الرئيسية ─────────────────────────── -->
+    <string name="home_net">الصافي</string>
+    <string name="home_recent_activity">آخر الحركات</string>
+
+    <string name="home_sms_off_title">قراءة الرسائل متوقفة</string>
+    <string name="home_sms_off_body">لا تُقرأ الرسائل إلا حين تطلب ذلك، ولا تغادر هذا الهاتف أبداً.</string>
+    <string name="home_sms_allow">السماح بقراءة الرسائل</string>
+
+    <string name="home_check_accounts_title">تحقّق من حساباتك</string>
+    <string name="home_check_accounts_subtitle">%s قُرئت من رسائلك</string>
+
+    <string name="home_needs_review_title">بحاجة إلى مراجعة</string>
+    <string name="home_needs_review_subtitle">%s، اضغط للبتّ فيها</string>
+    <plurals name="home_possible_transfers">
+        <item quantity="zero">لا تحويلات محتملة</item>
+        <item quantity="one">تحويل محتمل واحد</item>
+        <item quantity="two">تحويلان محتملان</item>
+        <item quantity="few">%d تحويلات محتملة</item>
+        <item quantity="many">%d تحويلاً محتملاً</item>
+        <item quantity="other">%d تحويل محتمل</item>
+    </plurals>
+    <plurals name="home_unreadable_messages">
+        <item quantity="zero">لا رسائل غير مقروءة</item>
+        <item quantity="one">رسالة واحدة غير مقروءة</item>
+        <item quantity="two">رسالتان غير مقروءتين</item>
+        <item quantity="few">%d رسائل غير مقروءة</item>
+        <item quantity="many">%d رسالة غير مقروءة</item>
+        <item quantity="other">%d رسالة غير مقروءة</item>
+    </plurals>
+
+    <plurals name="home_needs_category_title">
+        <item quantity="zero">لا سجلات بحاجة إلى فئة</item>
+        <item quantity="one">سجل واحد بحاجة إلى فئة</item>
+        <item quantity="two">سجلان بحاجة إلى فئة</item>
+        <item quantity="few">%d سجلات بحاجة إلى فئة</item>
+        <item quantity="many">%d سجلاً بحاجة إلى فئة</item>
+        <item quantity="other">%d سجل بحاجة إلى فئة</item>
+    </plurals>
+    <string name="home_needs_category_subtitle">ضغطة واحدة تُصنّف متجراً بكامله</string>
+
+    <string name="home_update_title">صدر ريال %1$s</string>
+    <string name="home_update_subtitle">لديك %1$s · اضغط لمعرفة الجديد</string>
+
+    <string name="home_empty_title">لا شيء مُسجَّل بعد</string>
+    <string name="home_empty_with_permission">الإعدادات › فحص الآن يقرأ رسائلك، ويشرح كل خطوة يقوم بها.</string>
+    <string name="home_empty_without_permission">اسمح بقراءة الرسائل، ثم افحص متى شئت.</string>
+
+    <!-- ما يعنيه وجه الشخصية، يقرأه قارئ الشاشة. -->
+    <string name="mood_quiet">شهر هادئ حتى الآن</string>
+    <string name="mood_no_income_yet">تتبُّع المصروفات، لم يظهر دخل بعد</string>
+    <string name="mood_well_under">الوضع مريح، أقل بكثير من دخلك</string>
+    <string name="mood_fine">الوضع جيد، ابقَ منتبهاً</string>
+    <string name="mood_close">الوضع على الحافة هذا الشهر</string>
+    <string name="mood_over">المصروفات تجاوزت الدخل هذا الشهر</string>
 </resources>
