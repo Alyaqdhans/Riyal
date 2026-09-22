@@ -207,11 +207,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             } catch (e: SecurityException) {
                 Verbose.fail("scan aborted: the system refused the SMS read (permission revoked?)")
                 Verbose.flush()
-                _scanState.value = ScanState.Failed("The system refused the SMS read, check the permission")
+                _scanState.value = ScanState.Failed(
+                    getApplication<Application>().getString(R.string.scan_permission_refused)
+                )
             } catch (e: Exception) {
                 Verbose.fail("scan failed: ${e.javaClass.simpleName}: ${e.message}")
                 Verbose.flush()
-                _scanState.value = ScanState.Failed(e.message ?: "Unknown error")
+                val unknown = getApplication<Application>().getString(R.string.scan_unknown_error)
+                _scanState.value = ScanState.Failed(e.message ?: unknown)
             }
         }
     }
@@ -874,8 +877,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             fromAccountId = fromAccountId,
             toAccountId = toAccountId,
             merchant = merchant,
-            sender = "manual entry",
-            body = "Added by you",
+            sender = getApplication<Application>().getString(R.string.manual_entry_sender),
+            body = getApplication<Application>().getString(R.string.manual_entry_body),
             categoryId = categoryId,
             categorySource = "user",
             confidence = 100,

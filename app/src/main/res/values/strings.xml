@@ -653,4 +653,12 @@
         <item quantity="one">%d plan</item>
         <item quantity="other">%d plans</item>
     </plurals>
+
+    <!-- A scan that could not run, said on the sheet that was watching it. -->
+    <string name="scan_permission_refused">The system refused the SMS read, check the permission</string>
+    <string name="scan_unknown_error">Unknown error</string>
+    <!-- A record you typed in yourself has no bank message behind it; this stands in
+         for one wherever the message would be shown. -->
+    <string name="manual_entry_sender">manual entry</string>
+    <string name="manual_entry_body">Added by you</string>
 </resources>

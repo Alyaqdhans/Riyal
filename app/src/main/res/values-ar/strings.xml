@@ -681,4 +681,9 @@
         <item quantity="many">%d خطة</item>
         <item quantity="other">%d خطة</item>
     </plurals>
+
+    <string name="scan_permission_refused">رفض النظام قراءة الرسائل، تحقّق من الإذن</string>
+    <string name="scan_unknown_error">خطأ غير معروف</string>
+    <string name="manual_entry_sender">إدخال يدوي</string>
+    <string name="manual_entry_body">أضفتها بنفسك</string>
 </resources>
