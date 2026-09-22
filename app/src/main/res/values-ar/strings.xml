@@ -6,7 +6,11 @@
     A key missing from this file falls back to the English in values/strings.xml,
     so a partial translation degrades to English rather than to a crash.
 
-    Terms to check before release - banking vocabulary is where a wrong word in a
+    Settled by the app's owner, and not to be second-guessed by a later translator:
+      transaction  معاملة     (not حركة)
+      category     تصنيف      (not فئة)
+
+    Still to check before release - banking vocabulary is where a wrong word in a
     money app does real damage:
       expense    مصروف      (vs مصاريف / نفقة)
       income     دخل        (vs إيراد / وارد)
@@ -37,11 +41,11 @@
     <string name="action_dismiss">تجاهل</string>
     <string name="action_got_it">فهمت</string>
     <string name="action_undo">تراجع</string>
-    <string name="action_add_transaction">إضافة حركة</string>
+    <string name="action_add_transaction">إضافة معاملة</string>
 
     <string name="label_amount">المبلغ</string>
     <string name="label_account">الحساب</string>
-    <string name="label_category">الفئة</string>
+    <string name="label_category">التصنيف</string>
     <string name="label_merchant">المتجر</string>
     <string name="label_period">الفترة</string>
     <string name="label_name">الاسم</string>
@@ -91,20 +95,20 @@
         <item quantity="other">%d حساب</item>
     </plurals>
     <plurals name="count_transactions">
-        <item quantity="zero">لا حركات</item>
-        <item quantity="one">حركة واحدة</item>
-        <item quantity="two">حركتان</item>
-        <item quantity="few">%d حركات</item>
-        <item quantity="many">%d حركة</item>
-        <item quantity="other">%d حركة</item>
+        <item quantity="zero">لا معاملات</item>
+        <item quantity="one">معاملة واحدة</item>
+        <item quantity="two">معاملتان</item>
+        <item quantity="few">%d معاملات</item>
+        <item quantity="many">%d معاملة</item>
+        <item quantity="other">%d معاملة</item>
     </plurals>
     <plurals name="count_categories">
-        <item quantity="zero">لا فئات</item>
-        <item quantity="one">فئة واحدة</item>
-        <item quantity="two">فئتان</item>
-        <item quantity="few">%d فئات</item>
-        <item quantity="many">%d فئة</item>
-        <item quantity="other">%d فئة</item>
+        <item quantity="zero">لا تصنيفات</item>
+        <item quantity="one">تصنيف واحد</item>
+        <item quantity="two">تصنيفان</item>
+        <item quantity="few">%d تصنيفات</item>
+        <item quantity="many">%d تصنيفاً</item>
+        <item quantity="other">%d تصنيف</item>
     </plurals>
     <plurals name="count_senders">
         <item quantity="zero">لا مُرسِلين</item>
@@ -154,12 +158,12 @@
     </plurals>
 
     <plurals name="home_needs_category_title">
-        <item quantity="zero">لا سجلات بحاجة إلى فئة</item>
-        <item quantity="one">سجل واحد بحاجة إلى فئة</item>
-        <item quantity="two">سجلان بحاجة إلى فئة</item>
-        <item quantity="few">%d سجلات بحاجة إلى فئة</item>
-        <item quantity="many">%d سجلاً بحاجة إلى فئة</item>
-        <item quantity="other">%d سجل بحاجة إلى فئة</item>
+        <item quantity="zero">لا سجلات بحاجة إلى تصنيف</item>
+        <item quantity="one">سجل واحد بحاجة إلى تصنيف</item>
+        <item quantity="two">سجلان بحاجة إلى تصنيف</item>
+        <item quantity="few">%d سجلات بحاجة إلى تصنيف</item>
+        <item quantity="many">%d سجلاً بحاجة إلى تصنيف</item>
+        <item quantity="other">%d سجل بحاجة إلى تصنيف</item>
     </plurals>
     <string name="home_needs_category_subtitle">ضغطة واحدة تُصنّف متجراً بكامله</string>
 
