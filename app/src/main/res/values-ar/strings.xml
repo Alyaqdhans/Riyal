@@ -9,15 +9,26 @@
     Settled by the app's owner, and not to be second-guessed by a later translator:
       transaction  معاملة     (not حركة)
       category     تصنيف      (not فئة)
+      Activity     المعاملات  the tab is the transactions list, so it says so
 
     Still to check before release - banking vocabulary is where a wrong word in a
     money app does real damage:
-      expense    مصروف      (vs مصاريف / نفقة)
-      income     دخل        (vs إيراد / وارد)
-      transfer   تحويل      matches the word the banks' own SMS use
-      merchant   المتجر     (vs التاجر - المتجر reads as the shop, التاجر as the person)
-      account    حساب
-      statement  كشف الحساب
+      expense      مصروف       (vs مصاريف / نفقة)
+      income       دخل         (vs إيراد / وارد)
+      transfer     تحويل       matches the word the banks' own SMS use
+      merchant     المتجر      (vs التاجر - المتجر reads as the shop, التاجر as the person)
+      account      حساب
+      statement    كشف الحساب
+      money out    صادر        on chips and totals, "مبلغ صادر" where there is room
+      money in     وارد
+      record       سجل         a parsed transaction, as against the message it came from
+      scan         فحص
+      rule         قاعدة       a remembered name that files itself
+      balance      رصيد
+      cap          حد          a budget line
+
+    The 34 built-in category names are in here too (cat_*), and they are the words
+    that appear on every screen and in the CSV export.
 -->
 <resources>
     <!-- The app's own name stays as it is: it is the brand, and it is already Arabic. -->
