@@ -18,8 +18,8 @@ android {
         applicationId = "com.alyaqdhan.riyal"
         minSdk = 29
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.6.1"
+        versionCode = 6
+        versionName = "1.7.0"
 
         // The languages the app actually has, which is what Android 13's per-app
         // language picker lists. Without this it offers every locale the libraries
