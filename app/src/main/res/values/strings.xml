@@ -1,3 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Every word the app says, in English.
+
+    This file is the source: values-ar/strings.xml answers it key for key, and a key
+    missing there falls back to the English here rather than crashing. Names are
+    <area>_<what>, so the file sorts into the screens it belongs to.
+
+    Two rules worth keeping. Put the whole sentence in one string rather than building
+    it from pieces in Kotlin: word order is not the same in Arabic, and a sentence
+    assembled from three concatenated fragments cannot be reordered by a translator.
+    And anything counted goes through <plurals>, because "s" on the end is an English
+    rule and Arabic has six forms.
+-->
 <resources>
     <string name="app_name">Riyal</string>
+
+    <!-- ─────────────────────────── shared vocabulary ─────────────────────────── -->
+    <!-- Used on many screens. A change here is felt everywhere, which is the point. -->
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_remove">Remove</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_add">Add</string>
+    <string name="action_close">Close</string>
+    <string name="action_done">Done</string>
+    <string name="action_apply">Apply</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_change">Change</string>
+    <string name="action_copy">Copy</string>
+    <string name="action_export">Export</string>
+    <string name="action_restore">Restore</string>
+    <string name="action_dismiss">Dismiss</string>
+    <string name="action_got_it">Got it</string>
+    <string name="action_undo">Undo</string>
+
+    <string name="label_amount">Amount</string>
+    <string name="label_account">Account</string>
+    <string name="label_category">Category</string>
+    <string name="label_merchant">Merchant</string>
+    <string name="label_period">Period</string>
+    <string name="label_name">Name</string>
+    <string name="label_icon">Icon</string>
+    <string name="label_colour">Colour</string>
+    <string name="label_bank">Bank</string>
+    <string name="label_all">All</string>
+    <string name="label_expense">Expense</string>
+    <string name="label_income">Income</string>
+    <string name="label_transfer">Transfer</string>
+    <string name="label_money_in">Money in</string>
+    <string name="label_money_out">Money out</string>
+
+    <!-- The four tabs. -->
+    <string name="tab_home">Riyal</string>
+    <string name="tab_activity">Activity</string>
+    <string name="tab_analysis">Analysis</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- ─────────────────────────── counted things ─────────────────────────── -->
+    <!--
+        Arabic counts in six forms where English has two, and the form depends on the
+        number itself. Android picks the right one from the quantity; Kotlin must never
+        decide it by appending a letter.
+    -->
+    <plurals name="count_records">
+        <item quantity="one">%d record</item>
+        <item quantity="other">%d records</item>
+    </plurals>
+    <plurals name="count_messages">
+        <item quantity="one">%d message</item>
+        <item quantity="other">%d messages</item>
+    </plurals>
+    <plurals name="count_accounts">
+        <item quantity="one">%d account</item>
+        <item quantity="other">%d accounts</item>
+    </plurals>
+    <plurals name="count_transactions">
+        <item quantity="one">%d transaction</item>
+        <item quantity="other">%d transactions</item>
+    </plurals>
+    <plurals name="count_categories">
+        <item quantity="one">%d category</item>
+        <item quantity="other">%d categories</item>
+    </plurals>
+    <plurals name="count_senders">
+        <item quantity="one">%d sender</item>
+        <item quantity="other">%d senders</item>
+    </plurals>
+
+    <!-- ─────────────────────────── language ─────────────────────────── -->
+    <string name="settings_card_app">App</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">Follow the phone</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_arabic">العربية</string>
+    <string name="settings_language_help">Riyal reads Arabic bank messages whichever language this is set to. This changes the app\'s own words, not what it can understand.</string>
 </resources>

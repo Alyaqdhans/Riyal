@@ -19,9 +19,11 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.annotation.PluralsRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -308,8 +310,26 @@ fun SummaryPill(text: String, container: Color, content: Color) {
 /**
  * "1 record(s)" is not English, and it appears wherever a count does. One place to
  * decide it, so a screen counting things never has to think about the s.
+ *
+ * English only, and on its way out. Appending "s" is an English rule: Arabic counts in
+ * six forms chosen by the number itself, so a count that has to appear in both
+ * languages goes through [counted] and a <plurals> resource instead. What is left here
+ * is the verbose scan log, which is still English throughout - see the staging note in
+ * values/strings.xml.
  */
 fun countOf(n: Int, noun: String): String = "$n $noun" + if (n == 1) "" else "s"
+
+/**
+ * A counted noun in the reader's language: `counted(R.plurals.count_records, n)`.
+ *
+ * Takes the whole phrase from resources rather than gluing a number to a word, because
+ * the two do not always sit in that order and in Arabic the noun itself changes shape
+ * with the count. The quantity is passed twice on purpose - once for Android to pick
+ * the form, once to fill the %d inside it.
+ */
+@Composable
+fun counted(@PluralsRes plural: Int, n: Int): String =
+    LocalContext.current.resources.getQuantityString(plural, n, n)
 
 // ─────────────────────────── a screen's own explanation ───────────────────────────
 

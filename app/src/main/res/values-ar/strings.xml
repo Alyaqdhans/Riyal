@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    كل ما يقوله التطبيق، بالعربية.
+
+    Modern Standard Arabic, which is what Omani banking messages themselves use.
+    A key missing from this file falls back to the English in values/strings.xml,
+    so a partial translation degrades to English rather than to a crash.
+
+    Terms to check before release - banking vocabulary is where a wrong word in a
+    money app does real damage:
+      expense    مصروف      (vs مصاريف / نفقة)
+      income     دخل        (vs إيراد / وارد)
+      transfer   تحويل      matches the word the banks' own SMS use
+      merchant   المتجر     (vs التاجر - المتجر reads as the shop, التاجر as the person)
+      account    حساب
+      statement  كشف الحساب
+-->
+<resources>
+    <!-- The app's own name stays as it is: it is the brand, and it is already Arabic. -->
+    <string name="app_name">ريال</string>
+
+    <!-- ─────────────────────────── المفردات المشتركة ─────────────────────────── -->
+    <string name="action_save">حفظ</string>
+    <string name="action_cancel">إلغاء</string>
+    <string name="action_delete">حذف</string>
+    <string name="action_remove">إزالة</string>
+    <string name="action_edit">تعديل</string>
+    <string name="action_add">إضافة</string>
+    <string name="action_close">إغلاق</string>
+    <string name="action_done">تم</string>
+    <string name="action_apply">تطبيق</string>
+    <string name="action_clear">مسح</string>
+    <string name="action_change">تغيير</string>
+    <string name="action_copy">نسخ</string>
+    <string name="action_export">تصدير</string>
+    <string name="action_restore">استعادة</string>
+    <string name="action_dismiss">تجاهل</string>
+    <string name="action_got_it">فهمت</string>
+    <string name="action_undo">تراجع</string>
+
+    <string name="label_amount">المبلغ</string>
+    <string name="label_account">الحساب</string>
+    <string name="label_category">الفئة</string>
+    <string name="label_merchant">المتجر</string>
+    <string name="label_period">الفترة</string>
+    <string name="label_name">الاسم</string>
+    <string name="label_icon">الأيقونة</string>
+    <string name="label_colour">اللون</string>
+    <string name="label_bank">البنك</string>
+    <string name="label_all">الكل</string>
+    <string name="label_expense">مصروف</string>
+    <string name="label_income">دخل</string>
+    <string name="label_transfer">تحويل</string>
+    <string name="label_money_in">مبلغ وارد</string>
+    <string name="label_money_out">مبلغ صادر</string>
+
+    <string name="tab_home">ريال</string>
+    <string name="tab_activity">الحركات</string>
+    <string name="tab_analysis">التحليل</string>
+    <string name="tab_settings">الإعدادات</string>
+
+    <!-- ─────────────────────────── الأعداد ─────────────────────────── -->
+    <!--
+        العربية تعدّ بستّ صيغ: صفر، واحد، اثنان، قلّة (٣-١٠)، كثرة (١١-٩٩)، ثم غير ذلك.
+        Android يختار الصيغة من العدد نفسه.
+    -->
+    <plurals name="count_records">
+        <item quantity="zero">لا سجلات</item>
+        <item quantity="one">سجل واحد</item>
+        <item quantity="two">سجلان</item>
+        <item quantity="few">%d سجلات</item>
+        <item quantity="many">%d سجلاً</item>
+        <item quantity="other">%d سجل</item>
+    </plurals>
+    <plurals name="count_messages">
+        <item quantity="zero">لا رسائل</item>
+        <item quantity="one">رسالة واحدة</item>
+        <item quantity="two">رسالتان</item>
+        <item quantity="few">%d رسائل</item>
+        <item quantity="many">%d رسالة</item>
+        <item quantity="other">%d رسالة</item>
+    </plurals>
+    <plurals name="count_accounts">
+        <item quantity="zero">لا حسابات</item>
+        <item quantity="one">حساب واحد</item>
+        <item quantity="two">حسابان</item>
+        <item quantity="few">%d حسابات</item>
+        <item quantity="many">%d حساباً</item>
+        <item quantity="other">%d حساب</item>
+    </plurals>
+    <plurals name="count_transactions">
+        <item quantity="zero">لا حركات</item>
+        <item quantity="one">حركة واحدة</item>
+        <item quantity="two">حركتان</item>
+        <item quantity="few">%d حركات</item>
+        <item quantity="many">%d حركة</item>
+        <item quantity="other">%d حركة</item>
+    </plurals>
+    <plurals name="count_categories">
+        <item quantity="zero">لا فئات</item>
+        <item quantity="one">فئة واحدة</item>
+        <item quantity="two">فئتان</item>
+        <item quantity="few">%d فئات</item>
+        <item quantity="many">%d فئة</item>
+        <item quantity="other">%d فئة</item>
+    </plurals>
+    <plurals name="count_senders">
+        <item quantity="zero">لا مُرسِلين</item>
+        <item quantity="one">مُرسِل واحد</item>
+        <item quantity="two">مُرسِلان</item>
+        <item quantity="few">%d مُرسِلين</item>
+        <item quantity="many">%d مُرسِلاً</item>
+        <item quantity="other">%d مُرسِل</item>
+    </plurals>
+
+    <!-- ─────────────────────────── اللغة ─────────────────────────── -->
+    <string name="settings_card_app">التطبيق</string>
+    <string name="settings_language">اللغة</string>
+    <string name="settings_language_system">حسب لغة الهاتف</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_arabic">العربية</string>
+    <string name="settings_language_help">يقرأ ريال رسائل البنوك العربية مهما كانت هذه اللغة. هذا الإعداد يغيّر كلمات التطبيق نفسه، لا ما يستطيع فهمه.</string>
+</resources>

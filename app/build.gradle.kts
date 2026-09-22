@@ -20,6 +20,14 @@ android {
         targetSdk = 36
         versionCode = 5
         versionName = "1.6.1"
+
+        // The languages the app actually has, which is what Android 13's per-app
+        // language picker lists. Without this it offers every locale the libraries
+        // carry - dozens of them, none of which Riyal is translated into - and picking
+        // one would silently fall back to English.
+        androidResources {
+            localeFilters += listOf("en", "ar")
+        }
     }
 
     // The key that signs a published build. Its location and passwords come from

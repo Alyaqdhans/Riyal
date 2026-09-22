@@ -70,9 +70,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.countOf
+import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.core.Language
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CURRENCIES
@@ -137,6 +140,10 @@ fun SettingsScreen(
     var confirmWipe by remember { mutableStateOf(false) }
     var confirmExport by remember { mutableStateOf(false) }
     var pickCurrency by remember { mutableStateOf(false) }
+    var pickLanguage by remember { mutableStateOf(false) }
+    // Read from the platform rather than kept here: the phone's own app settings can
+    // change it too, so there is one answer and this reads it on every composition.
+    val language = Language.current()
 
     fun note(text: String) {
         Verbose.info("setting changed by you: $text")
@@ -519,6 +526,19 @@ fun SettingsScreen(
                 )
             }
 
+            SettingsCard(stringResource(R.string.settings_card_app)) {
+                ValueLine(
+                    title = stringResource(R.string.settings_language),
+                    value = when (language) {
+                        Language.Choice.ARABIC -> stringResource(R.string.settings_language_arabic)
+                        Language.Choice.ENGLISH -> stringResource(R.string.settings_language_english)
+                        Language.Choice.SYSTEM -> stringResource(R.string.settings_language_system)
+                    },
+                    detail = stringResource(R.string.settings_language_help),
+                    onClick = { pickLanguage = true },
+                )
+            }
+
             SettingsCard("About") {
                 // One row, every state. Normally it is the version you are on; when
                 // GitHub is offering a later one it becomes the way to get it. The
@@ -642,6 +662,31 @@ fun SettingsScreen(
                 pickCurrency = false
             },
             onDismiss = { pickCurrency = false },
+        )
+    }
+
+    if (pickLanguage) {
+        val labels = mapOf(
+            Language.Choice.SYSTEM to stringResource(R.string.settings_language_system),
+            Language.Choice.ENGLISH to stringResource(R.string.settings_language_english),
+            Language.Choice.ARABIC to stringResource(R.string.settings_language_arabic),
+        )
+        PickerDialog(
+            title = stringResource(R.string.settings_language),
+            options = labels.values.toList(),
+            selected = labels.getValue(language),
+            onPick = { picked ->
+                pickLanguage = false
+                val choice = labels.entries.first { it.value == picked }.key
+                if (choice != language) {
+                    // Said in the log before the switch, because the activity is
+                    // recreated by setApplicationLocales and this composition goes with
+                    // it - a note written after would never be reached.
+                    note("language -> $picked")
+                    Language.set(choice)
+                }
+            },
+            onDismiss = { pickLanguage = false },
         )
     }
 
