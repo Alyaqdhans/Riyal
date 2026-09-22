@@ -2,6 +2,7 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -44,6 +45,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Txn
@@ -123,17 +126,26 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
         },
         topBar = {
             TopAppBar(
-                title = { Text("Activity") },
+                title = { Text(stringResource(R.string.tab_transactions)) },
                 actions = {
                     // Sort and Filters live here, not in the chip row: six controls in
                     // one row pushed the Transfers chip off the right edge of something
                     // that gives no sign it scrolls.
                     SortChip(current = order, onSelect = { sort = it.name })
                     TextButton(onClick = { showFilters = true }) {
-                        Text(if (hiddenFilterCount > 0) "Filters ($hiddenFilterCount)" else "Filters")
+                        Text(
+                            if (hiddenFilterCount > 0) {
+                                stringResource(R.string.txn_filters_count, hiddenFilterCount)
+                            } else {
+                                stringResource(R.string.txn_filters)
+                            }
+                        )
                     }
                     IconButton(onClick = onExport, enabled = txns.isNotEmpty()) {
-                        Icon(Icons.Filled.Share, contentDescription = "Export CSV")
+                        Icon(
+                            Icons.Filled.Share,
+                            contentDescription = stringResource(R.string.txn_export_csv),
+                        )
                     }
                 },
             )
@@ -168,13 +180,13 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                 FilterChip(
                     selected = typeFilter == null,
                     onClick = { typeFilter = null },
-                    label = { Text("All") },
+                    label = { Text(stringResource(R.string.label_all)) },
                 )
                 TxnType.entries.forEach { type ->
                     FilterChip(
                         selected = typeFilter == type.name,
                         onClick = { typeFilter = if (typeFilter == type.name) null else type.name },
-                        label = { Text(shortTypeLabel(type)) },
+                        label = { Text(stringResource(shortTypeLabel(type))) },
                     )
                 }
             }
@@ -184,8 +196,11 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     modifier = Modifier.padding(start = 8.dp),
                 ) {
                     Text(
-                        if (showArchived) "Back to your transactions"
-                        else "Archived (${archivedIds.size})",
+                        if (showArchived) {
+                            stringResource(R.string.txn_back_to_yours)
+                        } else {
+                            stringResource(R.string.txn_archived_count, archivedIds.size)
+                        },
                         style = MaterialTheme.typography.labelLarge,
                     )
                 }
@@ -206,7 +221,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            "Swipe a row, then tap Archive or Remove.",
+                            stringResource(R.string.txn_swipe_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             modifier = Modifier.weight(1f),
@@ -214,7 +229,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                         TextButton(onClick = {
                             vm.prefs.swipeHintSeen = true
                             swipeHintSeen = true
-                        }) { Text("Got it") }
+                        }) { Text(stringResource(R.string.action_got_it)) }
                     }
                 }
             }
@@ -227,12 +242,15 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                 ) {
                     EmptyState(
                         style = FaceStyle.SLEEPY,
-                        title = "No transactions here",
-                        subtitle = when {
-                            showArchived -> "Nothing archived. Swipe a row right to put it here."
-                            typeFilter != null || hiddenFilterCount > 0 -> "Nothing matches these filters."
-                            else -> "Pull down to scan, or add one manually with +."
-                        },
+                        title = stringResource(R.string.txn_empty_title),
+                        subtitle = stringResource(
+                            when {
+                                showArchived -> R.string.txn_empty_archived
+                                typeFilter != null || hiddenFilterCount > 0 ->
+                                    R.string.txn_empty_filtered
+                                else -> R.string.txn_empty_none
+                            }
+                        ),
                     )
                 }
             } else {
@@ -332,10 +350,11 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     }
 }
 
-private fun shortTypeLabel(type: TxnType): String = when (type) {
-    TxnType.EXPENSE -> "Out"
-    TxnType.INCOME -> "In"
-    TxnType.TRANSFER -> "Transfers"
+@StringRes
+private fun shortTypeLabel(type: TxnType): Int = when (type) {
+    TxnType.EXPENSE -> R.string.txn_type_out
+    TxnType.INCOME -> R.string.txn_type_in
+    TxnType.TRANSFER -> R.string.txn_type_transfers
 }
 
 @Composable

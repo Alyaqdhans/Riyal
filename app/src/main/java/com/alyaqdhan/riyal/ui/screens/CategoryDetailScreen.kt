@@ -34,14 +34,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.alyaqdhan.riyal.ui.compose.countOf
+import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
+import com.alyaqdhan.riyal.ui.compose.bidi
+import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.SortChip
 import com.alyaqdhan.riyal.ui.compose.SwipeableTxnRow
 import com.alyaqdhan.riyal.ui.compose.EmptyState
@@ -49,6 +52,7 @@ import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
+import com.alyaqdhan.riyal.ui.compose.title
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.TxnSort
@@ -112,7 +116,10 @@ fun CategoryDetailScreen(
                 title = { Text(category.name) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back),
+                        )
                     }
                 },
                 actions = { SortChip(current = order, onSelect = { sort = it.name }) },
@@ -138,12 +145,16 @@ fun CategoryDetailScreen(
                         CategoryBadge(categoryId, size = 56.dp)
                         Column(Modifier.weight(1f)) {
                             Text(
-                                Money.format(total, currency),
+                                bidi(Money.format(total, currency)),
                                 style = MaterialTheme.typography.headlineSmall,
                                 color = if (category.income) successColor() else MaterialTheme.colorScheme.onSurface,
                             )
                             Text(
-                                countOf(inCategory.size, "record") + " in ${slice.label}",
+                                stringResource(
+                                    R.string.cat_detail_in_period,
+                                    counted(R.plurals.count_records, inCategory.size),
+                                    slice.title(),
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -154,7 +165,9 @@ fun CategoryDetailScreen(
             }
 
             if (merchants.isNotEmpty()) {
-                item(key = "merchants-title") { SectionTitle("Where it went") }
+                item(key = "merchants-title") {
+                    SectionTitle(stringResource(R.string.cat_detail_where))
+                }
                 items(merchants, key = { "m-" + it.first }) { (merchant, amount) ->
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
@@ -165,18 +178,23 @@ fun CategoryDetailScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f),
                         )
-                        Text(Money.format(amount, currency), style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            bidi(Money.format(amount, currency)),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
                     }
                 }
             }
 
-            item(key = "records-title") { SectionTitle("Records") }
+            item(key = "records-title") {
+                SectionTitle(stringResource(R.string.cat_detail_records))
+            }
             if (inCategory.isEmpty()) {
                 item(key = "empty") {
                     EmptyState(
                         style = FaceStyle.SLEEPY,
-                        title = "Nothing here in ${slice.label}",
-                        subtitle = "Step back a period, or pick a wider one from the title above.",
+                        title = stringResource(R.string.cat_detail_empty_title, slice.title()),
+                        subtitle = stringResource(R.string.cat_detail_empty_subtitle),
                     )
                 }
             } else {
@@ -232,10 +250,18 @@ private fun ComparisonLine(now: Long, before: Long, currency: String) {
     if (before <= 0L && now <= 0L) return
     val pct = Stats.deltaPct(now, before)
     val text = when {
-        pct == null -> "nothing in the period before"
-        abs(pct) < 0.005f -> "level with the period before"
-        pct > 0 -> "up ${(pct * 100).roundToInt()}% on ${Money.format(before, currency)} before"
-        else -> "down ${(-pct * 100).roundToInt()}% from ${Money.format(before, currency)} before"
+        pct == null -> stringResource(R.string.compare_nothing_before)
+        abs(pct) < 0.005f -> stringResource(R.string.compare_level)
+        pct > 0 -> stringResource(
+            R.string.compare_up,
+            (pct * 100).roundToInt(),
+            bidi(Money.format(before, currency)),
+        )
+        else -> stringResource(
+            R.string.compare_down,
+            (-pct * 100).roundToInt(),
+            bidi(Money.format(before, currency)),
+        )
     }
     Text(
         text,

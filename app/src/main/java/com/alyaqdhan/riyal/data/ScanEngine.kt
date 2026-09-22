@@ -481,7 +481,7 @@ class ScanEngine(
             Verbose.scan(
                 if (prefs.autoConfirmTransfers) {
                     "→ each pair is merged into one transfer straight away and stops counting " +
-                        "as spending and income; open a row in Activity to split it back apart"
+                        "as spending and income; open a row in Transactions to split it back apart"
                 } else {
                     "→ nothing was merged: confirm each one in Review, and only then does it " +
                         "stop counting as spending and income"
@@ -540,7 +540,7 @@ class ScanEngine(
         if (unrouted > 0) {
             Verbose.scan(
                 "→ $unrouted record(s) couldn't be matched to an account (the bank didn't quote " +
-                    "one); assign them by tapping the row in Activity"
+                    "one); assign them by tapping the row in Transactions"
             )
         }
         if (autoDismissed > 0) {

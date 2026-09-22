@@ -208,7 +208,7 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                     Column {
                         SectionTitle("Can't be grouped")
                         Text(
-                            countOf(unnamed.size, "record") + " name nobody. File them from Activity.",
+                            countOf(unnamed.size, "record") + " name nobody. File them from Transactions.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

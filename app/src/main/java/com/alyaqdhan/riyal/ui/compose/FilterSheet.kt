@@ -22,7 +22,9 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Category
 
@@ -58,14 +60,17 @@ fun FilterSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Filters", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(R.string.txn_filters),
+                    style = MaterialTheme.typography.titleMedium,
+                )
                 if (selectedCategoryId != null || selectedAccountId != null) {
-                    TextButton(onClick = onClearAll) { Text("Clear") }
+                    TextButton(onClick = onClearAll) { Text(stringResource(R.string.action_clear)) }
                 }
             }
 
             if (accounts.isNotEmpty()) {
-                Text("Account", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.label_account), style = MaterialTheme.typography.labelLarge)
                 FilterFlow {
                     accounts.forEach { account ->
                         FilterChip(
@@ -80,7 +85,7 @@ fun FilterSheet(
             }
 
             if (categories.isNotEmpty()) {
-                Text("Category", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.label_category), style = MaterialTheme.typography.labelLarge)
                 FilterFlow {
                     categories.forEach { category ->
                         FilterChip(

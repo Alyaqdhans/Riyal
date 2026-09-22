@@ -480,7 +480,7 @@ fun SettingsScreen(
                     detail = "A matching pair is the same amount and currency, moving between " +
                         "two of your own accounts, minutes apart. With this on it becomes one " +
                         "transfer straight away and stops counting as spending or income; any " +
-                        "of them can be split back apart from its row in Activity. With it off, " +
+                        "of them can be split back apart from its row in Transactions. With it off, " +
                         "every pair waits in Review for your yes or no.",
                 )
             }

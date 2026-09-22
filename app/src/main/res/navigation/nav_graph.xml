@@ -17,7 +17,7 @@
     <fragment
         android:id="@+id/transactionsFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.TransactionsFragment"
-        android:label="Activity" />
+        android:label="Transactions" />
 
     <fragment
         android:id="@+id/analysisFragment"

@@ -358,7 +358,7 @@ fun HomeScreen(
             }
 
             // ── recent transactions
-            SectionTitle(stringResource(R.string.home_recent_activity))
+            SectionTitle(stringResource(R.string.home_recent_transactions))
             val recent = txns.take(6)
             if (recent.isEmpty()) {
                 EmptyState(

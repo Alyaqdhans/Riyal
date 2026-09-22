@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -31,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.LogLine
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Account
@@ -61,11 +63,12 @@ private val rowTimeFmt = DateTimeFormatter.ofPattern("dd MMM · h:mm a")
 private val rowClockFmt = DateTimeFormatter.ofPattern("h:mm a")
 private val dayFmt = DateTimeFormatter.ofPattern("EEEE, dd MMM uuuu")
 
+@Composable
 fun dayLabel(date: LocalDate): String {
     val today = LocalDate.now()
     return when (date) {
-        today -> "Today"
-        today.minusDays(1) -> "Yesterday"
+        today -> stringResource(R.string.day_today)
+        today.minusDays(1) -> stringResource(R.string.day_yesterday)
         else -> dayFmt.format(date)
     }
 }
@@ -180,7 +183,8 @@ fun TxnRow(
             CategoryBadge(category.id)
             Column(Modifier.weight(1f)) {
                 Text(
-                    if (transfer) "Transfer" else txn.merchant?.let(::unmasked) ?: category.name,
+                    if (transfer) stringResource(R.string.label_transfer)
+                    else txn.merchant?.let(::unmasked) ?: category.name,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -189,12 +193,17 @@ fun TxnRow(
                     .format(Instant.ofEpochMilli(txn.atMillis).atZone(ZoneId.systemDefault()))
                 Text(
                     if (transfer) {
-                        val from = accountName(txn.fromAccountId) ?: "unassigned"
-                        val to = accountName(txn.toAccountId) ?: "unassigned"
-                        "$from → $to · $time"
+                        val unassigned = stringResource(R.string.row_unassigned)
+                        stringResource(
+                            R.string.row_transfer_route,
+                            accountName(txn.fromAccountId) ?: unassigned,
+                            accountName(txn.toAccountId) ?: unassigned,
+                            time,
+                        )
                     } else {
                         val account = accountName(txn.accountId) ?: txn.sender
-                        if (showAccount) "$account · $time" else time
+                        if (showAccount) stringResource(R.string.row_account_time, account, time)
+                        else time
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -203,7 +212,7 @@ fun TxnRow(
                 )
                 if (!transfer && txn.categorySource == "auto" && txn.confidence < 70) {
                     Text(
-                        "parser was ${txn.confidence}% sure, tap to fix",
+                        stringResource(R.string.row_low_confidence, txn.confidence),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary,
                     )
@@ -232,7 +241,7 @@ fun TxnRow(
                 // transfer's amount is neither red nor green.
                 if (transfer) {
                     Text(
-                        "not counted",
+                        stringResource(R.string.row_not_counted),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -367,7 +376,7 @@ fun HelpAction(title: String, help: String) {
     IconButton(onClick = { open = true }) {
         Icon(
             Icons.Outlined.Info,
-            contentDescription = "About $title",
+            contentDescription = stringResource(R.string.help_about, title),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -376,7 +385,11 @@ fun HelpAction(title: String, help: String) {
             onDismissRequest = { open = false },
             title = { Text(title) },
             text = { Text(help) },
-            confirmButton = { TextButton(onClick = { open = false }) { Text("Got it") } },
+            confirmButton = {
+                TextButton(onClick = { open = false }) {
+                    Text(stringResource(R.string.action_got_it))
+                }
+            },
         )
     }
 }

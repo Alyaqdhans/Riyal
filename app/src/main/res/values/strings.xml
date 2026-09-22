@@ -35,6 +35,7 @@
     <string name="action_got_it">Got it</string>
     <string name="action_undo">Undo</string>
     <string name="action_add_transaction">Add transaction</string>
+    <string name="action_back">Back</string>
 
     <string name="label_amount">Amount</string>
     <string name="label_account">Account</string>
@@ -56,7 +57,7 @@
          the tab itself carries only an icon. -->
     <string name="tab_home">Riyal</string>
     <string name="tab_home_a11y">Home</string>
-    <string name="tab_activity">Activity</string>
+    <string name="tab_transactions">Transactions</string>
     <string name="tab_analysis">Analysis</string>
     <string name="tab_settings">Settings</string>
 
@@ -101,7 +102,7 @@
 
     <!-- ─────────────────────────── home ─────────────────────────── -->
     <string name="home_net">Net</string>
-    <string name="home_recent_activity">Recent activity</string>
+    <string name="home_recent_transactions">Recent transactions</string>
 
     <string name="home_sms_off_title">SMS access is off</string>
     <string name="home_sms_off_body">Reading happens only when you ask, and never leaves this phone.</string>
@@ -149,4 +150,100 @@
          which the figure above has already named. -->
     <string name="home_out">%s out</string>
     <string name="home_in">%s in</string>
+
+    <!-- ─────────────────────────── the transactions list ─────────────────────────── -->
+    <string name="txn_filters">Filters</string>
+    <string name="txn_filters_count">Filters (%d)</string>
+    <string name="txn_export_csv">Export CSV</string>
+    <string name="txn_type_out">Out</string>
+    <string name="txn_type_in">In</string>
+    <string name="txn_type_transfers">Transfers</string>
+    <string name="txn_back_to_yours">Back to your transactions</string>
+    <string name="txn_archived_count">Archived (%d)</string>
+    <string name="txn_swipe_hint">Swipe a row, then tap Archive or Remove.</string>
+    <string name="txn_empty_title">No transactions here</string>
+    <string name="txn_empty_archived">Nothing archived. Swipe a row right to put it here.</string>
+    <string name="txn_empty_filtered">Nothing matches these filters.</string>
+    <string name="txn_empty_none">Pull down to scan, or add one manually with +.</string>
+
+    <!-- How a list is ordered. -->
+    <string name="sort_newest">Newest</string>
+    <string name="sort_oldest">Oldest</string>
+    <string name="sort_biggest_out">Biggest out</string>
+    <string name="sort_biggest_in">Biggest in</string>
+
+    <!-- ─────────────────────── a row, and what a swipe does to it ─────────────────────── -->
+    <string name="row_archive">Archive</string>
+    <string name="row_unarchive">Unarchive</string>
+    <string name="row_remove">Remove</string>
+    <string name="row_remove_both">Remove both</string>
+    <string name="row_archived">Archived</string>
+    <string name="row_unarchived">Back in your transactions</string>
+    <string name="row_deleted">Deleted</string>
+    <string name="row_removed">Removed, and kept out of future scans</string>
+    <string name="row_unassigned">unassigned</string>
+    <!-- Both ends of a transfer and the time: "Bank A → Bank B · 2:15 pm". The arrow
+         points the way the language reads, which is why it is here and not in Kotlin. -->
+    <string name="row_transfer_route">%1$s → %2$s · %3$s</string>
+    <!-- The account a record belongs to, and the time: "Bank Muscat · 2:15 pm". -->
+    <string name="row_account_time">%1$s · %2$s</string>
+    <string name="row_low_confidence">parser was %d%% sure, tap to fix</string>
+    <string name="row_not_counted">not counted</string>
+    <string name="day_today">Today</string>
+    <string name="day_yesterday">Yesterday</string>
+
+    <!-- The (i) in a title bar. %s is the screen's own name. -->
+    <string name="help_about">About %s</string>
+
+    <!-- ─────────────────────────── the period control ─────────────────────────── -->
+    <string name="period_earlier">Earlier period</string>
+    <string name="period_later">Later period</string>
+    <string name="period_pick">Pick a period</string>
+    <string name="period_this_month">This month</string>
+    <string name="period_last_month">Last month</string>
+    <string name="period_this_week">This week</string>
+    <string name="period_last_n_months">Last %d months</string>
+    <string name="period_this_year">This year</string>
+    <string name="period_all_time">All time</string>
+    <string name="period_custom">Custom range…</string>
+    <!-- A hand-picked range: "1 Sep 25 to 30 Sep 25". -->
+    <string name="period_range">%1$s to %2$s</string>
+
+    <!-- ─────────────────────────── one category's page ─────────────────────────── -->
+    <!-- %1$s is a count of records, already in words; %2$s the period it counts. -->
+    <string name="cat_detail_in_period">%1$s in %2$s</string>
+    <string name="cat_detail_where">Where it went</string>
+    <string name="cat_detail_records">Records</string>
+    <string name="cat_detail_empty_title">Nothing here in %s</string>
+    <string name="cat_detail_empty_subtitle">Step back a period, or pick a wider one from the title above.</string>
+
+    <!-- How this period compares with the one before it. -->
+    <string name="compare_nothing_before">nothing in the period before</string>
+    <string name="compare_level">level with the period before</string>
+    <string name="compare_up">up %1$d%% on %2$s before</string>
+    <string name="compare_down">down %1$d%% from %2$s before</string>
+
+    <!-- ─────────────────────────── the first run ─────────────────────────── -->
+    <string name="onboarding_pitch">Your spending, sorted from your bank SMS,\nquietly, and only on this phone.</string>
+    <string name="onboarding_promise_ask_title">Reads only when you ask</string>
+    <string name="onboarding_promise_ask_detail">No background listener, ever.</string>
+    <string name="onboarding_promise_stays_title">Your money stays here</string>
+    <string name="onboarding_promise_stays_detail">Nothing about it is ever sent. Updates are all it asks for.</string>
+    <string name="onboarding_promise_matters_title">Only what matters</string>
+    <string name="onboarding_promise_matters_detail">Bank messages with money words. The rest is ignored.</string>
+    <string name="onboarding_promise_control_title">You\'re in control</string>
+    <string name="onboarding_promise_control_detail">Anything unclear is yours to decide, every step logged.</string>
+    <string name="onboarding_history_question">How far back should it read?</string>
+    <string name="onboarding_allow">Allow SMS &amp; scan</string>
+    <string name="onboarding_explore">Explore first</string>
+
+    <!-- How much of the inbox the first scan covers. Asked once, on the first run. -->
+    <string name="history_all">All</string>
+    <string name="history_year">1 year</string>
+    <string name="history_quarter">3 months</string>
+    <string name="history_from_now">From today</string>
+    <string name="history_all_explained">Every bank message still in your inbox, so your history is complete from the first scan.</string>
+    <string name="history_year_explained">Only the last 12 months. Anything older stays unread.</string>
+    <string name="history_quarter_explained">Only the last 3 months. Anything older stays unread.</string>
+    <string name="history_from_now_explained">Nothing that already arrived is read. Riyal starts empty, and your accounts and history appear as your banks text you from today on.</string>
 </resources>

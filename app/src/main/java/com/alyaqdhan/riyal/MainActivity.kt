@@ -194,7 +194,7 @@ private fun RiyalNavBar(
             NavToggle(
                 checked = selected == R.id.transactionsFragment,
                 onCheck = { onSelect(R.id.transactionsFragment) },
-            ) { Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.tab_activity)) }
+            ) { Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.tab_transactions)) }
             NavToggle(
                 checked = selected == R.id.analysisFragment,
                 onCheck = { onSelect(R.id.analysisFragment) },

@@ -1,5 +1,9 @@
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.data.Txn
 import java.time.Instant
 import java.time.LocalDate
@@ -21,8 +25,16 @@ private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM uu")
 data class TimeSlice(
     val start: Long,
     val endExclusive: Long,
+    /**
+     * What to call it, where a date formatter already wrote it in the reader's language.
+     * Where the name is words rather than dates, [labelRes] carries them instead and
+     * this holds the English of the same thing.
+     */
     val label: String,
     val month: YearMonth? = null,
+    /** Set where the name is words: "All time", "Last 6 months", "x to y". */
+    @param:StringRes val labelRes: Int? = null,
+    val labelArgs: List<Any> = emptyList(),
 ) {
     val lengthDays: Long
         get() {
@@ -63,6 +75,8 @@ data class TimeSlice(
             start = dayStart(startDay),
             endExclusive = dayStart(endDay.plusDays(1)),
             label = "${dayFmt.format(startDay)} to ${dayFmt.format(endDay)}",
+            labelRes = R.string.period_range,
+            labelArgs = listOf(dayFmt.format(startDay), dayFmt.format(endDay)),
         )
 
         fun thisWeek(): TimeSlice {
@@ -77,6 +91,8 @@ data class TimeSlice(
                 start = dayStart(end.minusMonths(n - 1L).atDay(1)),
                 endExclusive = dayStart(end.plusMonths(1).atDay(1)),
                 label = "Last $n months",
+                labelRes = R.string.period_last_n_months,
+                labelArgs = listOf(n),
             )
         }
 
@@ -95,6 +111,7 @@ data class TimeSlice(
                 start = dayStart(Instant.ofEpochMilli(oldest).atZone(zone).toLocalDate()),
                 endExclusive = dayStart(LocalDate.now().plusDays(1)),
                 label = "All time",
+                labelRes = R.string.period_all_time,
             )
         }
 
@@ -103,3 +120,15 @@ data class TimeSlice(
             Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
     }
 }
+
+/**
+ * The slice's name, in the reader's language.
+ *
+ * A month or a date is localized by the formatter that wrote it, so it arrives ready.
+ * The rest are words - "All time", "Last 6 months", and the "to" between two dates -
+ * which no formatter can produce, so the slice carries the resource it was built from
+ * and whoever draws it resolves that here.
+ */
+@Composable
+fun TimeSlice.title(): String =
+    labelRes?.let { stringResource(it, *labelArgs.toTypedArray()) } ?: label

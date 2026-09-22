@@ -562,7 +562,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         }
                         if (totals.otherCurrencyCount > 0) {
                             Text(
-                                "Charts show $currency only, " + countOf(totals.otherCurrencyCount, "transaction") + " in other currencies are listed in Activity.",
+                                "Charts show $currency only, " + countOf(totals.otherCurrencyCount, "transaction") + " in other currencies are listed in Transactions.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

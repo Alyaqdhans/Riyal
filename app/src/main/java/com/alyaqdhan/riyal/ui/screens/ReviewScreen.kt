@@ -111,7 +111,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
     }
     val autoNote = if (autoConfirmOn && autoConfirmed > 0) {
         countOf(autoConfirmed, "matching pair") + " were confirmed as transfers for you, so they " +
-            "count as neither spending nor income. Open one in Activity to split it back " +
+            "count as neither spending nor income. Open one in Transactions to split it back " +
             "apart, or turn off \"Confirm transfers for me\" in Settings to be asked each time."
     } else {
         null

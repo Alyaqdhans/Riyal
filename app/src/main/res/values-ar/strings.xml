@@ -42,6 +42,7 @@
     <string name="action_got_it">فهمت</string>
     <string name="action_undo">تراجع</string>
     <string name="action_add_transaction">إضافة معاملة</string>
+    <string name="action_back">رجوع</string>
 
     <string name="label_amount">المبلغ</string>
     <string name="label_account">الحساب</string>
@@ -61,7 +62,7 @@
 
     <string name="tab_home">ريال</string>
     <string name="tab_home_a11y">الرئيسية</string>
-    <string name="tab_activity">الحركات</string>
+    <string name="tab_transactions">المعاملات</string>
     <string name="tab_analysis">التحليل</string>
     <string name="tab_settings">الإعدادات</string>
 
@@ -129,7 +130,7 @@
 
     <!-- ─────────────────────────── الرئيسية ─────────────────────────── -->
     <string name="home_net">الصافي</string>
-    <string name="home_recent_activity">آخر الحركات</string>
+    <string name="home_recent_transactions">آخر المعاملات</string>
 
     <string name="home_sms_off_title">قراءة الرسائل متوقفة</string>
     <string name="home_sms_off_body">لا تُقرأ الرسائل إلا حين تطلب ذلك، ولا تغادر هذا الهاتف أبداً.</string>
@@ -184,4 +185,93 @@
 
     <string name="home_out">%s صادر</string>
     <string name="home_in">%s وارد</string>
+
+    <!-- ─────────────────────────── قائمة المعاملات ─────────────────────────── -->
+    <string name="txn_filters">تصفية</string>
+    <string name="txn_filters_count">تصفية (%d)</string>
+    <string name="txn_export_csv">تصدير CSV</string>
+    <string name="txn_type_out">صادر</string>
+    <string name="txn_type_in">وارد</string>
+    <string name="txn_type_transfers">تحويلات</string>
+    <string name="txn_back_to_yours">العودة إلى معاملاتك</string>
+    <string name="txn_archived_count">المؤرشفة (%d)</string>
+    <string name="txn_swipe_hint">اسحب الصف، ثم اضغط أرشفة أو إزالة.</string>
+    <string name="txn_empty_title">لا معاملات هنا</string>
+    <string name="txn_empty_archived">الأرشيف فارغ. اسحب الصف يميناً لوضعه فيه.</string>
+    <string name="txn_empty_filtered">لا شيء يطابق هذه التصفية.</string>
+    <string name="txn_empty_none">اسحب للأسفل لبدء الفحص، أو أضف معاملة يدوياً بزر +.</string>
+
+    <string name="sort_newest">الأحدث</string>
+    <string name="sort_oldest">الأقدم</string>
+    <string name="sort_biggest_out">الأكبر صادراً</string>
+    <string name="sort_biggest_in">الأكبر وارداً</string>
+
+    <!-- ─────────────────────── الصف، وما يفعله السحب به ─────────────────────── -->
+    <string name="row_archive">أرشفة</string>
+    <string name="row_unarchive">إخراج من الأرشيف</string>
+    <string name="row_remove">إزالة</string>
+    <string name="row_remove_both">إزالة الطرفين</string>
+    <string name="row_archived">تمت الأرشفة</string>
+    <string name="row_unarchived">عادت إلى معاملاتك</string>
+    <string name="row_deleted">تم الحذف</string>
+    <string name="row_removed">أُزيلت، ولن تعود في الفحوصات القادمة</string>
+    <string name="row_unassigned">غير محدَّد</string>
+    <!-- السهم يشير إلى جهة القراءة: من اليمين إلى اليسار. -->
+    <string name="row_transfer_route">%1$s ← %2$s · %3$s</string>
+    <string name="row_account_time">%1$s · %2$s</string>
+    <string name="row_low_confidence">المحلِّل واثق بنسبة %d%%، اضغط للتصحيح</string>
+    <string name="row_not_counted">غير محتسبة</string>
+    <string name="day_today">اليوم</string>
+    <string name="day_yesterday">أمس</string>
+
+    <string name="help_about">عن %s</string>
+
+    <!-- ─────────────────────────── اختيار الفترة ─────────────────────────── -->
+    <string name="period_earlier">الفترة السابقة</string>
+    <string name="period_later">الفترة التالية</string>
+    <string name="period_pick">اختر فترة</string>
+    <string name="period_this_month">هذا الشهر</string>
+    <string name="period_last_month">الشهر الماضي</string>
+    <string name="period_this_week">هذا الأسبوع</string>
+    <string name="period_last_n_months">آخر %d أشهر</string>
+    <string name="period_this_year">هذه السنة</string>
+    <string name="period_all_time">منذ البداية</string>
+    <string name="period_custom">مدة مخصصة…</string>
+    <string name="period_range">من %1$s إلى %2$s</string>
+
+    <!-- ─────────────────────────── صفحة تصنيف واحد ─────────────────────────── -->
+    <string name="cat_detail_in_period">%1$s في %2$s</string>
+    <string name="cat_detail_where">أين ذهبت</string>
+    <string name="cat_detail_records">السجلات</string>
+    <string name="cat_detail_empty_title">لا شيء هنا في %s</string>
+    <string name="cat_detail_empty_subtitle">ارجع فترة إلى الوراء، أو اختر فترة أوسع من العنوان أعلاه.</string>
+
+    <!-- المقارنة مع الفترة التي قبلها. -->
+    <string name="compare_nothing_before">لا شيء في الفترة السابقة</string>
+    <string name="compare_level">مثل الفترة السابقة تماماً</string>
+    <string name="compare_up">أعلى بـ %1$d%% من %2$s سابقاً</string>
+    <string name="compare_down">أقل بـ %1$d%% من %2$s سابقاً</string>
+
+    <!-- ─────────────────────────── التشغيل الأول ─────────────────────────── -->
+    <string name="onboarding_pitch">مصروفاتك مرتَّبة من رسائل بنكك،\nبهدوء، وعلى هذا الهاتف وحده.</string>
+    <string name="onboarding_promise_ask_title">لا يقرأ إلا حين تطلب</string>
+    <string name="onboarding_promise_ask_detail">لا يعمل في الخلفية أبداً.</string>
+    <string name="onboarding_promise_stays_title">مالك يبقى هنا</string>
+    <string name="onboarding_promise_stays_detail">لا يُرسَل عنه شيء. التحديثات وحدها ما يطلبه من الإنترنت.</string>
+    <string name="onboarding_promise_matters_title">ما يهمّ فقط</string>
+    <string name="onboarding_promise_matters_detail">رسائل البنوك التي فيها مبالغ. وما عداها يُتجاهل.</string>
+    <string name="onboarding_promise_control_title">القرار لك</string>
+    <string name="onboarding_promise_control_detail">كل ما هو غير واضح تقرره أنت، وكل خطوة مسجَّلة.</string>
+    <string name="onboarding_history_question">إلى أي مدى يقرأ في الماضي؟</string>
+    <string name="onboarding_allow">السماح بالرسائل وبدء الفحص</string>
+    <string name="onboarding_explore">تصفَّح أولاً</string>
+
+    <string name="history_all">الكل</string>
+    <string name="history_year">سنة</string>
+    <string name="history_quarter">3 أشهر</string>
+    <string name="history_from_now">من اليوم</string>
+    <string name="history_all_explained">كل رسائل البنوك الموجودة في صندوق الوارد، ليكتمل سجلك من أول فحص.</string>
+    <string name="history_year_explained">آخر 12 شهراً فقط. وما قبلها يبقى غير مقروء.</string>
+    <string name="history_quarter_explained">آخر 3 أشهر فقط. وما قبلها يبقى غير مقروء.</string>
+    <string name="history_from_now_explained">لا يُقرأ شيء وصل من قبل. يبدأ ريال فارغاً، وتظهر حساباتك وسجلك مع رسائل بنكك من اليوم فصاعداً.</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -14,7 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,13 +31,16 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.R
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sign
@@ -85,7 +89,7 @@ fun SwipeableTxnRow(
     onArchive: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
-    deleteLabel: String = "Remove",
+    @StringRes deleteLabel: Int = R.string.row_remove,
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -134,14 +138,20 @@ fun SwipeableTxnRow(
                         if (remove) MaterialTheme.colorScheme.errorContainer
                         else MaterialTheme.colorScheme.secondaryContainer
                     ),
-                contentAlignment = if (remove) Alignment.CenterEnd else Alignment.CenterStart,
+                // Absolute, not start/end: which side is uncovered is decided by which
+                // way the thumb went, and that does not turn around in Arabic. Aligning
+                // by reading order put the action under the row it was meant to reveal.
+                contentAlignment =
+                    if (remove) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft,
             ) {
                 RevealedAction(
-                    label = when {
-                        remove -> deleteLabel
-                        archived -> "Unarchive"
-                        else -> "Archive"
-                    },
+                    label = stringResource(
+                        when {
+                            remove -> deleteLabel
+                            archived -> R.string.row_unarchive
+                            else -> R.string.row_archive
+                        }
+                    ),
                     remove = remove,
                     width = with(density) { reveal.toDp() },
                     onClick = {
@@ -154,7 +164,10 @@ fun SwipeableTxnRow(
 
         Box(
             Modifier
-                .offset { IntOffset(x.roundToInt(), 0) }
+                // Absolute, because a drag is measured in screen pixels: Modifier.offset
+                // mirrors its x in a right-to-left layout, which sent the row the
+                // opposite way to the finger for every Arabic reader.
+                .absoluteOffset { IntOffset(x.roundToInt(), 0) }
                 .fillMaxWidth()
                 .draggable(
                     orientation = Orientation.Horizontal,
