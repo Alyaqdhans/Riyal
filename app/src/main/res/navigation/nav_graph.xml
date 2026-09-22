@@ -7,47 +7,47 @@
     <fragment
         android:id="@+id/onboardingFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.OnboardingFragment"
-        android:label="Welcome" />
+        android:label="@string/onboarding_welcome" />
 
     <fragment
         android:id="@+id/homeFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.HomeFragment"
-        android:label="Home" />
+        android:label="@string/tab_home_a11y" />
 
     <fragment
         android:id="@+id/transactionsFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.TransactionsFragment"
-        android:label="Transactions" />
+        android:label="@string/tab_transactions" />
 
     <fragment
         android:id="@+id/analysisFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.AnalysisFragment"
-        android:label="Analysis" />
+        android:label="@string/an_title" />
 
     <fragment
         android:id="@+id/reviewFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.ReviewFragment"
-        android:label="Needs review" />
+        android:label="@string/review_title" />
 
     <fragment
         android:id="@+id/accountsFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.AccountsFragment"
-        android:label="Bank accounts" />
+        android:label="@string/acct_title" />
 
     <fragment
         android:id="@+id/needsCategoryFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.NeedsCategoryFragment"
-        android:label="Needs a category" />
+        android:label="@string/needs_title" />
 
     <fragment
         android:id="@+id/categoriesFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.CategoriesFragment"
-        android:label="Categories" />
+        android:label="@string/cats_title" />
 
     <fragment
         android:id="@+id/categoryDetailFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.CategoryDetailFragment"
-        android:label="Category">
+        android:label="@string/label_category">
         <argument
             android:name="categoryId"
             app:argType="string" />
@@ -56,6 +56,6 @@
     <fragment
         android:id="@+id/settingsFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.SettingsFragment"
-        android:label="Settings" />
+        android:label="@string/tab_settings" />
 
 </navigation>

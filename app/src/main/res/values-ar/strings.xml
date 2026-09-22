@@ -986,4 +986,5 @@
     <string name="reason_amount_unparsable">تعذّرت قراءة المبلغ \"%1$s\"</string>
     <string name="reason_amount_zero">المبلغ صفر</string>
     <string name="reason_direction_unknown">المبلغ واضح، والاتجاه غير واضح</string>
+    <string name="onboarding_welcome">أهلاً بك</string>
 </resources>

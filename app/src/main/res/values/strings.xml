@@ -878,4 +878,5 @@
     <string name="reason_amount_unparsable">could not parse amount \"%1$s\"</string>
     <string name="reason_amount_zero">amount is zero</string>
     <string name="reason_direction_unknown">the amount is clear, the direction is not</string>
+    <string name="onboarding_welcome">Welcome</string>
 </resources>
