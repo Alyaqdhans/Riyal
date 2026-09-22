@@ -322,7 +322,6 @@
     <string name="acct_empty_title">No accounts yet</string>
     <string name="acct_empty_subtitle">Scan your messages and Riyal will set accounts up from what your bank already told you, or add one here by hand.</string>
     <string name="acct_add">Add an account</string>
-    <string name="acct_delete_title">Delete %s?</string>
     <string name="acct_delete_body">Its transactions are kept, because the money still moved, but they\'ll no longer belong to any account, so they stop counting towards a balance.</string>
     <string name="acct_confirm_title">Are these right?</string>
     <!-- %1$s is a count of accounts, already in words. -->
@@ -346,4 +345,75 @@
     <string name="acct_senders_help">Messages from these senders are filed under this account.</string>
     <string name="acct_archived">Closed account (hide it from pickers)</string>
     <string name="label_currency">Currency</string>
+
+    <!-- ─────────────────────── the built-in categories ─────────────────────── -->
+    <!-- Keyed by the id in Categories.BUILTIN, which never changes. A record filed
+         under "groceries" stays there whatever this line says. -->
+    <string name="cat_food">Food &amp; Dining</string>
+    <string name="cat_groceries">Groceries</string>
+    <string name="cat_transport">Transport &amp; Fuel</string>
+    <string name="cat_bills">Phone &amp; Internet</string>
+    <string name="cat_utilities">Utilities</string>
+    <string name="cat_rent">Rent</string>
+    <string name="cat_shopping">Shopping</string>
+    <string name="cat_health">Health</string>
+    <string name="cat_entertainment">Entertainment</string>
+    <string name="cat_subscriptions">Subscriptions</string>
+    <string name="cat_travel">Travel</string>
+    <string name="cat_education">Education</string>
+    <string name="cat_personalcare">Personal Care</string>
+    <string name="cat_home">Home &amp; Furniture</string>
+    <string name="cat_insurance">Insurance</string>
+    <string name="cat_loan">Loan &amp; Credit</string>
+    <string name="cat_charity">Charity &amp; Zakat</string>
+    <string name="cat_giving">Gifts Given</string>
+    <string name="cat_government">Government &amp; Taxes</string>
+    <string name="cat_fees">Fees &amp; Charges</string>
+    <string name="cat_cash">Cash &amp; ATM</string>
+    <string name="cat_sending">Money Sent</string>
+    <string name="cat_transfer">Transfers</string>
+    <string name="cat_other">Other</string>
+    <string name="cat_salary">Salary</string>
+    <string name="cat_business">Business &amp; Freelance</string>
+    <string name="cat_investment">Investment &amp; Interest</string>
+    <string name="cat_rental">Rent Received</string>
+    <string name="cat_reimbursement">Reimbursement</string>
+    <string name="cat_cashback">Cashback &amp; Rewards</string>
+    <string name="cat_refund">Refunds</string>
+    <string name="cat_gift">Gifts &amp; Support</string>
+    <string name="cat_borrowed">Loan Received</string>
+    <string name="cat_income">Other Income</string>
+
+    <!-- ─────────────────────────── the categories page ─────────────────────────── -->
+    <string name="cats_title">Categories</string>
+    <string name="cats_spending">Spending</string>
+    <string name="cats_income">Income</string>
+    <string name="cats_hide_empty">Hide empty categories</string>
+    <string name="cats_show_all">Show all categories (%d empty)</string>
+    <string name="cats_transfers_note">%1$s moved between your own accounts in this period. Transfers have no category: they\'re neither spending nor income.</string>
+    <string name="cats_add">Add a category</string>
+    <string name="cats_learned_title">What Riyal has learned</string>
+    <string name="cats_learned_empty">Nothing yet. Filing a record with \"Always\" left on saves the name here, and every later message mentioning it is filed the same way without asking. You can also add a word yourself, below.</string>
+    <string name="cats_learned_intro">Names filed without asking, and names always asked about. Forgetting a rule also re-answers the records it had filed.</string>
+    <string name="cats_add_keyword">Add a keyword</string>
+    <string name="cats_filed_as">filed as %s</string>
+    <string name="cats_forget">Forget</string>
+    <string name="cats_asked_every_time">Asked every time</string>
+    <string name="cats_never_rule">never saved as a rule</string>
+    <string name="cats_delete_body">Records filed under it move to %1$s. Nothing is lost.</string>
+    <string name="cats_nothing_in_period">nothing in this period</string>
+    <!-- %1$s is a count of records, already in words; %2$d a percentage. -->
+    <string name="cats_share_of_spending">%1$s · %2$d%% of spending</string>
+    <string name="cats_share_of_income">%1$s · %2$d%% of income</string>
+    <string name="cats_open">Open %s</string>
+    <string name="cats_keyword_word">Word to look for</string>
+    <string name="cats_keyword_blocked">\"%1$s\" is a name you asked to be asked about every time, so no rule can be saved for it. Remove it from the list below first.</string>
+    <string name="cats_keyword_effect_out">Any money out mentioning \"%1$s\" is filed as %2$s, including records already read. Anything you filed by hand is left alone.</string>
+    <string name="cats_keyword_effect_in">Any money in mentioning \"%1$s\" is filed as %2$s, including records already read. Anything you filed by hand is left alone.</string>
+    <string name="cats_keyword_whole">Short words are matched whole, so this matches \"%1$s\" on its own and not inside a longer word.</string>
+    <string name="cats_new_title">New category</string>
+    <string name="cats_edit_title">Edit category</string>
+    <string name="cats_selected">Selected</string>
+    <!-- Shared by every "are you sure" that names the thing it would remove. -->
+    <string name="delete_title">Delete %s?</string>
 </resources>

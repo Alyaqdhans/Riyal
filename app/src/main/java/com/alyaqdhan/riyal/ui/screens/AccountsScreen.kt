@@ -186,7 +186,7 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
             title = {
-                Text(stringResource(R.string.acct_delete_title, account.displayName))
+                Text(stringResource(R.string.delete_title, account.displayName))
             },
             text = { Text(stringResource(R.string.acct_delete_body)) },
             confirmButton = {

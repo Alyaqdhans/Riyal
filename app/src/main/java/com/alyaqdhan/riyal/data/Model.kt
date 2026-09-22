@@ -118,10 +118,33 @@ object Categories {
         custom = list.map { it.copy(custom = true) }
     }
 
-    /** Built-ins first (their order is meaningful), then user categories. */
-    val ALL: List<Category> get() = BUILTIN + custom
+    /**
+     * The built-ins under the reader's own names.
+     *
+     * The names in [BUILTIN] are English, and this file cannot read resources: it is
+     * plain Kotlin so that the parser and the tests can use it without an Android
+     * runtime. So the names arrive from outside, keyed by id, and everything that
+     * already reads [Category.name] - every chip, badge, row and the CSV export - says
+     * the translated word without knowing there was a translation.
+     *
+     * Ids never change, which is what makes this safe: a record filed under "groceries"
+     * stays filed under "groceries" whatever the word above it says today.
+     */
+    fun setNames(translated: Map<String, String>) {
+        localized = BUILTIN.map { cat -> translated[cat.id]?.let { cat.copy(name = it) } ?: cat }
+        localizedById = localized.associateBy { it.id }
+    }
 
-    private val builtinById = BUILTIN.associateBy { it.id }
+    @Volatile
+    private var localized: List<Category> = BUILTIN
+
+    @Volatile
+    private var localizedById: Map<String, Category> = BUILTIN.associateBy { it.id }
+
+    /** Built-ins first (their order is meaningful), then user categories. */
+    val ALL: List<Category> get() = localized + custom
+
+    private val builtinById: Map<String, Category> get() = localizedById
 
     fun byId(id: String): Category =
         builtinById[id] ?: custom.firstOrNull { it.id == id } ?: builtinById.getValue(DEFAULT_EXPENSE)

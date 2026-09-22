@@ -5,6 +5,7 @@ import android.content.pm.ApplicationInfo
 import com.alyaqdhan.riyal.core.Prefs
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Store
+import com.alyaqdhan.riyal.ui.CategoryNames
 import com.google.android.material.color.DynamicColors
 
 class RiyalApp : Application() {
@@ -22,6 +23,9 @@ class RiyalApp : Application() {
         Verbose.mirrorToLogcat =
             (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         prefs = Prefs(this)
+        // Before the store loads anything: a category resolved during that load would
+        // otherwise carry its English name until something re-read it.
+        CategoryNames.apply(this)
         store = Store(this, prefs.autoConfirmTransfers)
         DynamicColors.applyToActivitiesIfAvailable(this)
         Verbose.info("Riyal started · verbose processing log is live")
