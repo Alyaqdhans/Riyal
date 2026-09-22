@@ -4,6 +4,7 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Prefs
 import com.alyaqdhan.riyal.data.Categorizer
 import com.alyaqdhan.riyal.data.Direction
+import com.alyaqdhan.riyal.data.ReviewReason
 import com.alyaqdhan.riyal.data.SmsParser
 import java.math.BigDecimal
 import org.junit.Assert.assertEquals
@@ -201,14 +202,14 @@ class SmsParserTest {
     fun keywordWithoutAmountGoesToReview() {
         val r = parser.parse("Withdrawal request received for your account")
         assertTrue(r is SmsParser.Result.NeedsReview)
-        assertEquals("no amount found", (r as SmsParser.Result.NeedsReview).reason)
+        assertEquals(ReviewReason.NO_AMOUNT, (r as SmsParser.Result.NeedsReview).reason)
     }
 
     @Test
     fun balanceOnlyAmountGoesToReview() {
         val r = parser.parse("Withdrawal alert. Avl Bal RO 100.000")
         assertTrue(r is SmsParser.Result.NeedsReview)
-        assertEquals("only balance-like amounts found", (r as SmsParser.Result.NeedsReview).reason)
+        assertEquals(ReviewReason.BALANCE_ONLY, (r as SmsParser.Result.NeedsReview).reason)
     }
 
     @Test

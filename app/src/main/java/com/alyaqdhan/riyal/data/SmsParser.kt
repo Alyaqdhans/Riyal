@@ -1,5 +1,8 @@
 package com.alyaqdhan.riyal.data
 
+import androidx.annotation.StringRes
+import com.alyaqdhan.riyal.R
+
 import com.alyaqdhan.riyal.core.Money
 import java.math.BigDecimal
 import kotlin.math.abs
@@ -21,6 +24,8 @@ import kotlin.math.max
  *
  * Every decision is appended to a trace so the UI can show exactly what happened.
  */
+data class ParseNote(@StringRes val id: Int, val args: List<Any?> = emptyList())
+
 class SmsParser(
     expenseKeywords: Collection<String>,
     incomeKeywords: Collection<String>,
@@ -34,7 +39,7 @@ class SmsParser(
             val direction: Direction,
             val merchant: String?,
             val confidence: Int,
-            val trace: List<String>,
+            val trace: List<ParseNote>,
             /** The balance the bank quoted in this message, if it quoted one. */
             val balanceMinor: Long? = null,
             /** Last digits of the account this message is about ("a/c XXXX1234"). */
@@ -63,7 +68,7 @@ class SmsParser(
 
         data class NeedsReview(
             val reason: String,
-            val trace: List<String>,
+            val trace: List<ParseNote>,
             /**
              * What was readable even though the message as a whole was not.
              *
@@ -83,16 +88,16 @@ class SmsParser(
             val suggestedWords: List<String> = emptyList(),
         ) : Result()
 
-        data class Skipped(val reason: String) : Result()
+        data class Skipped(val reason: ParseNote) : Result()
     }
 
     private val expense = expenseKeywords.map { it.trim().lowercase() }.filter { it.isNotEmpty() }
     private val income = incomeKeywords.map { it.trim().lowercase() }.filter { it.isNotEmpty() }
 
     fun parse(rawBody: String): Result {
-        val trace = mutableListOf<String>()
+        val trace = mutableListOf<ParseNote>()
         val body = normalize(rawBody)
-        if (body != rawBody) trace += "normalized text (digits, separators, whitespace)"
+        if (body != rawBody) trace += ParseNote(R.string.trace_normalized)
         val lower = body.lowercase()
 
         // 1 ── keyword gate
@@ -116,7 +121,7 @@ class SmsParser(
         // make the queue useless.
         val advert = ADVERT_WORDS.filter { it in lower }
         if (advert.isNotEmpty()) {
-            return Result.Skipped("advertising, not a transaction (\"${advert.first()}\")")
+            return Result.Skipped(ParseNote(R.string.skip_advert, listOf(advert.first())))
         }
 
         // 1c ── a bank also texts about money that did NOT move: a request waiting for
@@ -124,7 +129,7 @@ class SmsParser(
         // names an amount, and recording any of them invents a transaction.
         val notMoved = NOT_MOVED_WORDS.firstOrNull { it in lower }
         if (notMoved != null) {
-            return Result.Skipped("no money moved (\"$notMoved\")")
+            return Result.Skipped(ParseNote(R.string.skip_not_moved, listOf(notMoved)))
         }
 
         // 1d ── no keyword, but possibly still a transaction.
@@ -139,52 +144,68 @@ class SmsParser(
         hits.sortBy { it.pos }
         val hit = hits.first()
         var confidence = 100
-        trace += "keyword \"${hit.keyword}\" found → ${if (hit.direction == Direction.EXPENSE) "money out" else "money in"}"
+        trace += ParseNote(
+            R.string.trace_keyword,
+            listOf(
+                hit.keyword,
+                ParseNote(
+                    if (hit.direction == Direction.EXPENSE) R.string.log_word_out
+                    else R.string.log_word_in
+                ),
+            ),
+        )
         if (hits.any { it.direction != hit.direction }) {
             confidence -= 20
-            trace += "both directions mentioned; trusting the earliest keyword"
+            trace += ParseNote(R.string.trace_both_directions)
         }
 
         // 2 ── amount
         val candidates = findAmounts(body, lower)
-        trace += if (candidates.isEmpty()) {
-            "no amount candidates found"
+        if (candidates.isEmpty()) {
+            trace += ParseNote(R.string.trace_no_candidates)
         } else {
-            "amount candidates: " + candidates.joinToString("; ") { c ->
-                buildString {
-                    append(c.raw)
-                    c.currencyToken?.let { append(" [").append(it).append("]") }
-                    if (c.nearBalance) append(" ← looks like a balance, ignored")
-                }
+            trace += ParseNote(
+                R.string.trace_candidates,
+                listOf(
+                    candidates.joinToString("; ") { c ->
+                        c.raw + (c.currencyToken?.let { " [$it]" } ?: "")
+                    }
+                ),
+            )
+            if (candidates.any { it.nearBalance }) {
+                trace += ParseNote(R.string.trace_candidates_balance)
             }
         }
-        if (candidates.isEmpty()) return Result.NeedsReview("no amount found", trace)
+        if (candidates.isEmpty()) return Result.NeedsReview(ReviewReason.NO_AMOUNT, trace)
         val usable = candidates.filter { !it.nearBalance }
-        if (usable.isEmpty()) return Result.NeedsReview("only balance-like amounts found", trace)
+        if (usable.isEmpty()) return Result.NeedsReview(ReviewReason.BALANCE_ONLY, trace)
         val chosen = usable.minByOrNull { abs(it.pos - hit.pos) }!!
 
         var currency = chosen.currencyToken?.let { tokenToIso(it) }
         if (currency == null) {
             currency = defaultCurrency
             confidence -= 15
-            trace += "no currency token; assuming default $defaultCurrency"
+            trace += ParseNote(R.string.trace_default_currency, listOf(defaultCurrency))
         }
         val value = try {
             BigDecimal(chosen.raw.replace(",", ""))
         } catch (e: NumberFormatException) {
-            return Result.NeedsReview("could not parse amount \"${chosen.raw}\"", trace)
+            return Result.NeedsReview(
+                ReviewReason.AMOUNT_UNPARSABLE + ReviewReason.SEPARATOR + chosen.raw,
+                trace,
+            )
         }
-        if (value.signum() <= 0) return Result.NeedsReview("amount is zero", trace)
+        if (value.signum() <= 0) return Result.NeedsReview(ReviewReason.AMOUNT_ZERO, trace)
         val minor = Money.toMinor(value, currency)
-        trace += "amount = $currency ${value.toPlainString()} (candidate closest to keyword)"
+        trace += ParseNote(R.string.trace_amount, listOf(currency, value.toPlainString()))
 
         // 3 ── merchant / counterparty
         val merchant = findMerchant(body, hit.pos, hit.direction, lower)
         if (merchant != null) {
-            trace += "merchant/counterparty: \"$merchant\""
+            trace += ParseNote(R.string.trace_merchant, listOf(merchant))
         } else {
             confidence -= 10
-            trace += "no merchant pattern matched"
+            trace += ParseNote(R.string.trace_no_merchant)
         }
 
         // 4 ── account context: the balance-like numbers the amount step rejected are
@@ -193,25 +214,31 @@ class SmsParser(
             runCatching { Money.toMinor(BigDecimal(c.raw.replace(",", "")), currency) }.getOrNull()
         }
         if (balanceMinor != null) {
-            trace += "balance quoted: ${Money.format(balanceMinor, currency)} (used to set up your account, not counted)"
+            trace += ParseNote(
+                R.string.trace_balance,
+                listOf(Money.format(balanceMinor, currency)),
+            )
         }
         val tail = findAccountTail(body)
         val accountTail = tail?.digits
         if (tail != null) {
-            trace += if (tail.fromCard) "card ending ${tail.digits}" else "account ending ${tail.digits}"
+            trace += ParseNote(
+                if (tail.fromCard) R.string.trace_card_ending else R.string.trace_account_ending,
+                listOf(tail.digits),
+            )
         }
         val transferHint = TRANSFER_WORDS.any { it in lower }
-        if (transferHint) trace += "wording suggests a transfer between accounts"
+        if (transferHint) trace += ParseNote(R.string.trace_transfer_hint)
         // One message, both ends: the bank is telling you it moved money between two
         // of your own accounts. Judged on its first keyword alone this reads as a plain
         // debit, which counts your own transfer as spending.
         val selfTransferTo = SELF_TRANSFER.find(body)?.groupValues?.get(1)
             ?.takeLastWhile { it.isDigit() }?.takeIf { it.length >= 3 }?.takeLast(4)
         if (selfTransferTo != null) {
-            trace += "this message names both accounts: money moved to your own ···$selfTransferTo"
+            trace += ParseNote(R.string.trace_self_transfer, listOf(selfTransferTo))
         }
         val bankStamp = findBankStamp(body)
-        if (bankStamp != null) trace += "the bank dates this $bankStamp (its clock, not the message's)"
+        if (bankStamp != null) trace += ParseNote(R.string.trace_bank_stamp, listOf(bankStamp))
 
         return Result.Parsed(
             amountMinor = minor,
@@ -240,13 +267,16 @@ class SmsParser(
      * balance-like ones, means the message is something else - a statement summary, a
      * promotion - and asking would be noise.
      */
-    private fun unknownDirection(body: String, lower: String, trace: MutableList<String>): Result {
+    private fun unknownDirection(body: String, lower: String, trace: MutableList<ParseNote>): Result {
         val candidates = findAmounts(body, lower)
         val usable = candidates.filter { !it.nearBalance }
         if (usable.size != 1) {
             return Result.Skipped(
-                if (usable.isEmpty()) "no withdraw/deposit keyword, and no amount either"
-                else "no withdraw/deposit keyword, and ${usable.size} amounts to choose from"
+                if (usable.isEmpty()) {
+                    ParseNote(R.string.skip_no_kw_no_amount)
+                } else {
+                    ParseNote(R.string.skip_no_kw_many_amounts, listOf(usable.size))
+                }
             )
         }
         val chosen = usable.first()
@@ -254,19 +284,19 @@ class SmsParser(
         val value = try {
             BigDecimal(chosen.raw.replace(",", ""))
         } catch (e: NumberFormatException) {
-            return Result.Skipped("no withdraw/deposit keyword, and the amount would not parse")
+            return Result.Skipped(ParseNote(R.string.skip_no_kw_unparsable))
         }
-        if (value.signum() <= 0) return Result.Skipped("no withdraw/deposit keyword, and the amount is zero")
+        if (value.signum() <= 0) return Result.Skipped(ParseNote(R.string.skip_no_kw_zero))
 
-        trace += "no withdraw/deposit keyword in this message"
-        trace += "but it names one amount: $currency ${value.toPlainString()}"
+        trace += ParseNote(R.string.trace_no_keyword)
+        trace += ParseNote(R.string.trace_one_amount, listOf(currency, value.toPlainString()))
         val words = suggestKeywords(lower, chosen.pos)
         if (words.isNotEmpty()) {
-            trace += "words that would make it readable next time: " + words.joinToString(", ")
+            trace += ParseNote(R.string.trace_suggest_words, listOf(words.joinToString(", ")))
         }
-        trace += "→ asking you which way it went, rather than guessing or dropping it"
+        trace += ParseNote(R.string.trace_asking)
         return Result.NeedsReview(
-            reason = "the amount is clear, the direction is not",
+            reason = ReviewReason.DIRECTION_UNKNOWN,
             trace = trace,
             amountMinor = Money.toMinor(value, currency),
             currency = currency,

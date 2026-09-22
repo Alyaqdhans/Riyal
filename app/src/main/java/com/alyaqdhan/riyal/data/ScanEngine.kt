@@ -85,57 +85,58 @@ class ScanEngine(
         val readEverything = plan.readEverything
         val from = plan.fromMillis
 
-        Verbose.scan("──────── scan started ────────")
-        Verbose.scan("mode: manual one-shot, this app has no background receiver")
-        Verbose.scan(
-            "range: " + when {
-                since == 0L -> "entire inbox"
-                since == freshStart ->
-                    "fresh start, nothing before ${fmtDate(freshStart)} is read " +
-                        "(your history builds up from there)"
-                else -> "last $months month(s), since ${fmtDate(since)}"
-            }
-        )
-        Verbose.scan("expense keywords: ${prefs.expenseKeywords.joinToString(", ")}")
-        Verbose.scan("income keywords: ${prefs.incomeKeywords.joinToString(", ")}")
+        Verbose.scan(R.string.scanlog_started)
+        Verbose.scan(R.string.scanlog_mode)
+        when {
+            since == 0L -> Verbose.scan(R.string.scanlog_range_all)
+            since == freshStart ->
+                Verbose.scan(R.string.scanlog_range_fresh, fmtDate(freshStart))
+            else -> Verbose.scan(
+                R.string.scanlog_range_months,
+                Verbose.count(R.plurals.count_months, months),
+                fmtDate(since),
+            )
+        }
+        Verbose.scan(R.string.scanlog_kw_out, prefs.expenseKeywords.joinToString(", "))
+        Verbose.scan(R.string.scanlog_kw_in, prefs.incomeKeywords.joinToString(", "))
         val allowlistOn = prefs.senderFilterEnabled
         var allowlist = prefs.senderAllowlist.map { it.lowercase() }.toSet()
         val bankOnly = prefs.bankSendersOnly
         if (allowlistOn) {
-            Verbose.scan("sender allowlist ON: only ${prefs.senderAllowlist.joinToString(", ")}")
+            Verbose.scan(R.string.scanlog_allowlist_on, prefs.senderAllowlist.joinToString(", "))
         } else if (bankOnly) {
-            Verbose.scan(
-                "bank senders first: known bank names are read directly; other senders are " +
-                    "recorded only when a message parses as a real transaction, and such " +
-                    "senders are then auto-approved (your second bank gets learned)"
-            )
+            Verbose.scan(R.string.scanlog_bank_first)
             if (allowlist.isNotEmpty()) {
-                Verbose.scan("approved/learned senders: ${prefs.senderAllowlist.joinToString(", ")}")
+                Verbose.scan(
+                    R.string.scanlog_approved_senders,
+                    prefs.senderAllowlist.joinToString(", "),
+                )
             }
         } else {
-            Verbose.scan("sender filters OFF: every sender is considered (bodies are still keyword-gated)")
+            Verbose.scan(R.string.scanlog_filters_off)
         }
 
-        Verbose.scan(
-            when (plan.reason) {
-                ScanWindow.Reason.ASKED -> "reading everything again because you asked for it"
-                ScanWindow.Reason.RULES_CHANGED ->
-                    "reading everything again: the keywords, sender rules or the parser " +
-                        "changed, so the records already stored were made under different rules"
-                ScanWindow.Reason.NOTHING_READ_YET ->
-                    "reading everything: nothing has been read before"
-                ScanWindow.Reason.ONLY_WHAT_IS_NEW ->
-                    "reading only what is new, from ${fmtDateTime(from)} " +
-                        "(${Prefs.SCAN_OVERLAP_MILLIS / 3_600_000} hours before the newest " +
-                        "message last time, so nothing dated oddly is missed)"
-            }
-        )
+        when (plan.reason) {
+            ScanWindow.Reason.ASKED -> Verbose.scan(R.string.scanlog_reason_asked)
+            ScanWindow.Reason.RULES_CHANGED -> Verbose.scan(R.string.scanlog_reason_rules)
+            ScanWindow.Reason.NOTHING_READ_YET -> Verbose.scan(R.string.scanlog_reason_first)
+            ScanWindow.Reason.ONLY_WHAT_IS_NEW -> Verbose.scan(
+                R.string.scanlog_reason_new,
+                fmtDateTime(from),
+                Prefs.SCAN_OVERLAP_MILLIS / 3_600_000,
+            )
+        }
 
         val tQuery0 = System.currentTimeMillis()
         val messages = SmsReader.readInbox(context, from)
         val queryMs = System.currentTimeMillis() - tQuery0
         val seenSenders = messages.mapTo(HashSet()) { it.sender }
-        Verbose.scan("inbox query returned ${messages.size} message(s) from ${seenSenders.size} sender(s) in ${queryMs}ms")
+        Verbose.scan(
+            R.string.scanlog_inbox_query,
+            Verbose.count(R.plurals.count_messages, messages.size),
+            Verbose.count(R.plurals.count_senders, seenSenders.size),
+            queryMs,
+        )
 
         val parser = SmsParser(prefs.expenseKeywords, prefs.incomeKeywords, prefs.defaultCurrency)
         val rules = store.rules.value
@@ -143,8 +144,8 @@ class ScanEngine(
         val neededTemplates = store.needed.value
         if (mutedTemplates.isNotEmpty()) {
             Verbose.scan(
-                "${mutedTemplates.size} dismissed message kind(s): similar messages are " +
-                    "auto-dismissed, restore them any time in Review"
+                R.string.scanlog_muted_kinds,
+                Verbose.count(R.plurals.count_dismissed_kinds, mutedTemplates.size),
             )
         }
         val parsedMsgs = LinkedHashMap<String, ParsedMsg>()
@@ -169,10 +170,7 @@ class ScanEngine(
                     recordLinesLogged++
                 }
                 recordLinesLogged == MAX_RECORD_LINES -> {
-                    Verbose.scan(
-                        "…more records than this log can hold; they are all still read and " +
-                            "counted, they are just no longer described one by one"
-                    )
+                    Verbose.scan(R.string.scanlog_more_records)
                     recordLinesLogged++
                 }
             }
@@ -185,7 +183,7 @@ class ScanEngine(
                     skipLinesLogged++
                 }
                 skipLinesLogged == MAX_SKIP_LINES -> {
-                    Verbose.skip("…more skipped messages, muting further skip lines (counts still tallied)")
+                    Verbose.skip(R.string.scanlog_more_skips)
                     skipLinesLogged++
                 }
             }
@@ -207,8 +205,9 @@ class ScanEngine(
                 prefs.senderAllowlist = prefs.senderAllowlist.filterNot { it.lowercase() in bogus }.toSet()
                 allowlist = allowlist - bogus.toSet()
                 Verbose.scan(
-                    "removed ${bogus.size} approved sender(s) that hold none of your accounts: " +
-                        bogus.joinToString(", ")
+                    R.string.scanlog_removed_bogus,
+                    Verbose.count(R.plurals.count_approved_senders, bogus.size),
+                    bogus.joinToString(", "),
                 )
             }
         }
@@ -235,12 +234,12 @@ class ScanEngine(
             // Settings → Senders (that's where a bank texting from a number is added).
             if (isPhoneNumber(msg.sender) && msg.sender.lowercase() !in allowlist) {
                 skipped++
-                logSkip("${msg.sender} · skipped (numeric sender = personal contact; approve it in Settings if it's really a bank)")
+                logSkip(Verbose.str(R.string.scanlog_skip_numeric, msg.sender))
                 return@forEachIndexed
             }
             if (allowlistOn && msg.sender.lowercase() !in allowlist) {
                 skipped++
-                logSkip("${msg.sender} · skipped (sender not in your allowlist)")
+                logSkip(Verbose.str(R.string.scanlog_skip_not_allowlisted, msg.sender))
                 return@forEachIndexed
             }
             // Bank gate. Only a bank can move money in a bank account, so a sender
@@ -257,7 +256,7 @@ class ScanEngine(
                 AccountDiscovery.isKnownSender(existingAccounts, msg.sender)
             if (bankOnly && !bankSender) {
                 skipped++
-                logSkip("${msg.sender} · skipped (not one of your banks, so it cannot move your money)")
+                logSkip(Verbose.str(R.string.scanlog_skip_not_bank, msg.sender))
                 return@forEachIndexed
             }
             val trustedSender = !bankOnly || bankSender
@@ -265,23 +264,20 @@ class ScanEngine(
             when (val result = parser.parse(msg.body)) {
                 is SmsParser.Result.Skipped -> {
                     skipped++
-                    logSkip("${msg.sender} · skipped (${result.reason}), content not processed")
+                    logSkip(Verbose.str(R.string.scanlog_skip_reason, msg.sender, result.reason.text()))
                 }
 
                 is SmsParser.Result.NeedsReview -> {
                     val template = MsgTemplate.of(msg.sender, msg.body)
                     if (!trustedSender && template !in neededTemplates) {
                         skipped++
-                        logSkip("${msg.sender} · matched keywords but unparsable and sender isn't a known bank, skipped")
+                        logSkip(Verbose.str(R.string.scanlog_skip_unparsable, msg.sender))
                         return@forEachIndexed
                     }
                     matched++
                     if (template in mutedTemplates) {
                         autoDismissed++
-                        logSkip(
-                            "${msg.sender} · unreadable, but you dismissed this kind of message " +
-                                "before → auto-dismissed (restore it in Review)"
-                        )
+                        logSkip(Verbose.str(R.string.scanlog_skip_auto_dismissed, msg.sender))
                         reviews += ReviewItem(
                             msgId, msg.atMillis, msg.sender, msg.body, result.reason,
                             state = ReviewItem.STATE_DISMISSED,
@@ -292,12 +288,15 @@ class ScanEngine(
                         return@forEachIndexed
                     }
                     needsReview++
-                    Verbose.fail("✉ ${msg.sender} · ${fmtDateTime(msg.atMillis)} → COULD NOT READ: ${result.reason}")
-                    result.trace.forEach { Verbose.fail("    · $it") }
-                    if (!trustedSender) {
-                        Verbose.fail("    · sender isn't a known bank, kept because you recorded a message like this before")
-                    }
-                    Verbose.fail("    → added to Review so you decide what it was")
+                    Verbose.fail(
+                        R.string.scanlog_could_not_read,
+                        msg.sender,
+                        fmtDateTime(msg.atMillis),
+                        reasonText(result.reason),
+                    )
+                    result.trace.forEach { Verbose.fail(R.string.scanlog_trace, it.text()) }
+                    if (!trustedSender) Verbose.fail(R.string.scanlog_kept_by_history)
+                    Verbose.fail(R.string.scanlog_added_to_review)
                     reviews += ReviewItem(
                         msgId, msg.atMillis, msg.sender, msg.body, result.reason,
                         amountMinor = result.amountMinor,
@@ -311,7 +310,7 @@ class ScanEngine(
                     val id = msgId
                     if (parsedMsgs.containsKey(id)) {
                         duplicates++
-                        logSkip("${msg.sender} · exact duplicate message, ignored")
+                        logSkip(Verbose.str(R.string.scanlog_skip_duplicate, msg.sender))
                         return@forEachIndexed
                     }
                     parsedMsgs[id] = ParsedMsg(id, msg, result)
@@ -352,24 +351,31 @@ class ScanEngine(
                 accounts = accounts + found
                 store.replaceAccounts(accounts)
                 Verbose.scan(
-                    if (firstRun) "──────── accounts found ────────"
-                    else "──────── new account(s) ────────"
+                    if (firstRun) R.string.scanlog_accounts_found
+                    else R.string.scanlog_new_accounts
                 )
                 found.forEach { a ->
-                    Verbose.ok(
-                        "✦ ${a.displayName} (${a.currency})" +
-                            (a.last4?.let { " ···$it" } ?: "") + " · " +
-                            if (a.needsBalance) {
-                                "no balance quoted in any message, please enter it"
-                            } else {
-                                "opening balance ${Money.format(a.openingBalanceMinor, a.currency)} " +
-                                    "as of ${fmtDateTime(a.openingAtMillis)}"
-                            }
-                    )
+                    val tail = a.last4?.let { Verbose.str(R.string.scanlog_account_tail, it) }.orEmpty()
+                    if (a.needsBalance) {
+                        Verbose.ok(
+                            R.string.scanlog_account_needs_balance,
+                            a.displayName,
+                            a.currency,
+                            tail,
+                        )
+                    } else {
+                        Verbose.ok(
+                            R.string.scanlog_account_opening,
+                            a.displayName,
+                            a.currency,
+                            tail,
+                            Money.format(a.openingBalanceMinor, a.currency),
+                            fmtDateTime(a.openingAtMillis),
+                        )
+                    }
                 }
                 Verbose.scan(
-                    if (firstRun) "→ check these on Home before trusting the balances"
-                    else "→ this bank texted for the first time, so its account was created now"
+                    if (firstRun) R.string.scanlog_check_on_home else R.string.scanlog_new_bank
                 )
             }
         }
@@ -405,8 +411,14 @@ class ScanEngine(
             // money, whatever its text says. Oman TV offering "cash prizes up to 60,000
             // OMR" was the single biggest expense in the whole history.
             if (accounts.isNotEmpty() && !AccountDiscovery.isKnownSender(accounts, pm.msg.sender)) {
-                logRecord("✉ ${pm.msg.sender} · ${fmtDateTime(pm.msg.atMillis)}")
-                logRecord("    → not one of your banks, so it cannot have moved your money; not recorded")
+                logRecord(
+                    Verbose.str(
+                        R.string.scanlog_msg_header,
+                        pm.msg.sender,
+                        fmtDateTime(pm.msg.atMillis),
+                    )
+                )
+                logRecord(Verbose.str(R.string.scanlog_not_your_bank))
                 skippedNonBank++
                 continue
             }
@@ -423,25 +435,48 @@ class ScanEngine(
             }?.takeIf { it != accountId }
             val cat = Categorizer.categorize(result.direction, result.merchant, pm.msg.body, rules, pm.msg.sender)
             val type = if (selfTo != null) TxnType.TRANSFER else TxnType.of(result.direction)
-            logRecord("✉ ${pm.msg.sender} · ${fmtDateTime(pm.msg.atMillis)}")
-            result.trace.forEach { logRecord("    · $it") }
-            val catNote = cat.pattern?.let { "${cat.source} match \"$it\"" } ?: cat.source
-            logRecord("    · category: ${Categories.byId(cat.categoryId).name} ($catNote)")
             logRecord(
-                "    · account: " + (accounts.firstOrNull { it.id == accountId }?.displayName
-                    ?: "not matched, assign it from the transaction row")
+                Verbose.str(
+                    R.string.scanlog_msg_header,
+                    pm.msg.sender,
+                    fmtDateTime(pm.msg.atMillis),
+                )
+            )
+            result.trace.forEach { logRecord(Verbose.str(R.string.scanlog_trace, it.text())) }
+            val catNote = cat.pattern?.let { "${cat.source} match \"$it\"" } ?: cat.source
+            logRecord(
+                Verbose.str(
+                    R.string.scanlog_category,
+                    Categories.byId(cat.categoryId).name,
+                    catNote,
+                )
+            )
+            logRecord(
+                Verbose.str(
+                    R.string.scanlog_account,
+                    accounts.firstOrNull { it.id == accountId }?.displayName
+                        ?: Verbose.str(R.string.scanlog_account_unmatched),
+                )
             )
             if (type == TxnType.TRANSFER) {
                 logRecord(
-                    "    ✓ recorded as a transfer between your own accounts · " +
-                        "${Money.format(result.amountMinor, result.currency)} · it counts as " +
-                        "neither spending nor income",
+                    Verbose.str(
+                        R.string.scanlog_recorded_transfer,
+                        Money.format(result.amountMinor, result.currency),
+                    ),
                     LogLine.Kind.OK,
                 )
             } else {
                 logRecord(
-                    "    ✓ recorded ${Money.formatSigned(result.amountMinor, result.currency, type == TxnType.EXPENSE)}" +
-                        " · confidence ${result.confidence}%",
+                    Verbose.str(
+                        R.string.scanlog_recorded,
+                        Money.formatSigned(
+                            result.amountMinor,
+                            result.currency,
+                            type == TxnType.EXPENSE,
+                        ),
+                        result.confidence,
+                    ),
                     LogLine.Kind.OK,
                 )
             }
@@ -489,22 +524,19 @@ class ScanEngine(
             bankStamps = bankStamps,
         )
         if (proposals.isNotEmpty()) {
-            Verbose.scan("──────── possible transfers ────────")
+            Verbose.scan(R.string.scanlog_transfers_header)
             proposals.forEach { p ->
                 Verbose.scan(
-                    "⇄ ${Money.format(p.amountMinor, p.currency)} left " +
-                        "${accountName(accounts, p.fromAccountId)} and arrived in " +
-                        "${accountName(accounts, p.toAccountId)} around ${fmtDateTime(p.atMillis)}"
+                    R.string.scanlog_transfer_pair,
+                    Money.format(p.amountMinor, p.currency),
+                    accountName(accounts, p.fromAccountId),
+                    accountName(accounts, p.toAccountId),
+                    fmtDateTime(p.atMillis),
                 )
             }
             Verbose.scan(
-                if (prefs.autoConfirmTransfers) {
-                    "→ each pair is merged into one transfer straight away and stops counting " +
-                        "as spending and income; open a row in Transactions to split it back apart"
-                } else {
-                    "→ nothing was merged: confirm each one in Review, and only then does it " +
-                        "stop counting as spending and income"
-                }
+                if (prefs.autoConfirmTransfers) R.string.scanlog_transfers_auto
+                else R.string.scanlog_transfers_manual
             )
         }
 
@@ -540,37 +572,51 @@ class ScanEngine(
             maxOf(prefs.scanHighWaterMillis, messages.maxOfOrNull { it.atMillis } ?: 0L)
         prefs.scanFingerprint = fingerprint
 
-        Verbose.scan("──────── scan finished in ${"%.1f".format(took / 1000f)}s ────────")
+        Verbose.scan(R.string.scanlog_finished, "%.1f".format(took / 1000f))
         // Where the time went, because "the scan is slow" is not something anyone can
         // act on and these three numbers are.
-        Verbose.scan("time: inbox query ${queryMs}ms · reading ${parseMs}ms · saving ${storeMs}ms")
+        Verbose.scan(R.string.scanlog_time, queryMs, parseMs, storeMs)
         Verbose.scan(
-            "scanned ${summary.scanned} · keyword matches ${summary.matched} · recorded ${summary.parsed}" +
-                (if (duplicates > 0) " ($duplicates duplicate(s) ignored)" else "") +
-                " · needs review ${summary.review} · skipped ${summary.skipped}"
+            R.string.scanlog_summary,
+            summary.scanned,
+            summary.matched,
+            summary.parsed,
+            if (duplicates > 0) {
+                Verbose.str(
+                    R.string.scanlog_summary_dupes,
+                    Verbose.count(R.plurals.count_duplicates, duplicates),
+                )
+            } else {
+                ""
+            },
+            summary.review,
+            summary.skipped,
         )
         if (needsReview > 0) {
-            Verbose.scan("→ ${needsReview} message(s) could not be read, they are waiting in the Review tab")
+            Verbose.scan(
+                R.string.scanlog_needs_review,
+                Verbose.count(R.plurals.count_messages, needsReview),
+            )
         }
         if (skippedNonBank > 0) {
             Verbose.scan(
-                "→ $skippedNonBank message(s) came from senders that hold none of your " +
-                    "accounts (telecoms, shops, TV draws); they mention money but cannot move it"
+                R.string.scanlog_non_bank,
+                Verbose.count(R.plurals.count_messages, skippedNonBank),
             )
         }
         if (unrouted > 0) {
             Verbose.scan(
-                "→ $unrouted record(s) couldn't be matched to an account (the bank didn't quote " +
-                    "one); assign them by tapping the row in Transactions"
+                R.string.scanlog_unrouted,
+                Verbose.count(R.plurals.count_records, unrouted),
             )
         }
         if (autoDismissed > 0) {
             Verbose.scan(
-                "→ $autoDismissed unreadable message(s) auto-dismissed because you dismissed " +
-                    "that kind before, restore them in Review"
+                R.string.scanlog_auto_dismissed,
+                Verbose.count(R.plurals.home_unreadable_messages, autoDismissed),
             )
         }
-        Verbose.scan("skipped messages were never stored; only their count was kept")
+        Verbose.scan(R.string.scanlog_skipped_note)
         Verbose.flush()
         return summary.copy(tookMs = took)
     }

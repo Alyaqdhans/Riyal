@@ -52,6 +52,7 @@ import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.MsgTemplate
 import com.alyaqdhan.riyal.data.ReviewItem
+import com.alyaqdhan.riyal.data.reasonText
 import com.alyaqdhan.riyal.data.TransferProposal
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
@@ -460,7 +461,7 @@ private fun ReviewCard(
                 }
             }
             SummaryPill(
-                item.reason,
+                reasonText(item.reason),
                 if (item.directionOnly) MaterialTheme.colorScheme.secondaryContainer
                 else MaterialTheme.colorScheme.errorContainer,
                 if (item.directionOnly) MaterialTheme.colorScheme.onSecondaryContainer

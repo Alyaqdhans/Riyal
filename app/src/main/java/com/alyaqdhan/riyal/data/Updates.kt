@@ -164,7 +164,7 @@ object UpdateApi {
         } catch (e: Exception) {
             // Offline, DNS, a timeout, a body that would not parse. All the same thing
             // to the user: no answer this time, ask again tomorrow.
-            Verbose.info("could not reach GitHub (${e.javaClass.simpleName}), will try again later")
+            Verbose.info(R.string.log_github_unreachable, e.javaClass.simpleName)
             null
         } finally {
             connection.disconnect()

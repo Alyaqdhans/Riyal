@@ -17,6 +17,7 @@ import com.alyaqdhan.riyal.RiyalApp
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Account
+import com.alyaqdhan.riyal.data.reasonText
 import com.alyaqdhan.riyal.data.AccountDiscovery
 import com.alyaqdhan.riyal.data.BudgetPlan
 import com.alyaqdhan.riyal.data.Categories
@@ -797,7 +798,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun dismissReview(item: ReviewItem, alsoSimilar: Boolean) = viewModelScope.launch(Dispatchers.IO) {
         val extra = store.dismissReview(item, smart = alsoSimilar)
         Verbose.info(
-            Verbose.str(R.string.log_review_dismissed, item.sender, item.reason) +
+            Verbose.str(R.string.log_review_dismissed, item.sender, reasonText(item.reason)) +
                 if (alsoSimilar) {
                     Verbose.str(
                         R.string.log_review_dismissed_smart,
