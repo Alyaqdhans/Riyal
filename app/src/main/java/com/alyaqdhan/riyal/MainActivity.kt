@@ -40,6 +40,7 @@ import androidx.core.view.isVisible
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.navOptions
+import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.CategoryNames
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
@@ -62,6 +63,7 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         CategoryNames.apply(this)
+        Verbose.attach(this)
         setContentView(R.layout.activity_main)
 
         val navHost = supportFragmentManager.findFragmentById(R.id.nav_host) as NavHostFragment

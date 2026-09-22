@@ -12,7 +12,6 @@ import androidx.core.content.ContextCompat
 import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.RiyalApp
 import com.alyaqdhan.riyal.core.Money
@@ -150,8 +149,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         ) == PackageManager.PERMISSION_GRANTED
         if (lastLoggedPermission != granted) {
             Verbose.info(
-                if (granted) "READ_SMS permission: granted, you can revoke it anytime in system settings"
-                else "READ_SMS permission: not granted, the app cannot and will not read anything"
+                if (granted) R.string.log_perm_granted else R.string.log_perm_denied
             )
             Verbose.flush()
             lastLoggedPermission = granted
@@ -167,7 +165,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         launchScanDone = true
         refreshPermission()
         if (prefs.onboardingDone && prefs.scanOnLaunch && _hasSmsPermission.value) {
-            Verbose.info("scan on app open is ON (Settings → Scanning to turn it off)")
+            Verbose.info(R.string.log_scan_on_launch)
             Verbose.flush()
             startScan(showSheet = false)
         }
@@ -186,7 +184,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         refreshPermission()
         if (!_hasSmsPermission.value) {
-            Verbose.fail("scan requested, but READ_SMS is not granted, nothing was read")
+            Verbose.fail(R.string.log_scan_no_permission)
             Verbose.flush()
             _scanState.value = ScanState.Failed("SMS reading permission is not granted")
             if (showSheet) scanSheetVisible.value = true
@@ -205,13 +203,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 prefs.lastScanAt = summary.at
                 _scanState.value = ScanState.Done(summary)
             } catch (e: SecurityException) {
-                Verbose.fail("scan aborted: the system refused the SMS read (permission revoked?)")
+                Verbose.fail(R.string.log_scan_aborted_permission)
                 Verbose.flush()
                 _scanState.value = ScanState.Failed(
                     getApplication<Application>().getString(R.string.scan_permission_refused)
                 )
             } catch (e: Exception) {
-                Verbose.fail("scan failed: ${e.javaClass.simpleName}: ${e.message}")
+                Verbose.fail(R.string.log_scan_failed, e.javaClass.simpleName, e.message)
                 Verbose.flush()
                 val unknown = getApplication<Application>().getString(R.string.scan_unknown_error)
                 _scanState.value = ScanState.Failed(e.message ?: unknown)
@@ -232,8 +230,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val existing = accounts.value.any { it.id == account.id }
         if (existing) store.updateAccount(account) else store.addAccount(account)
         Verbose.ok(
-            (if (existing) "account updated by you: " else "account added by you: ") +
-                "${account.displayName} · opening ${Money.format(account.openingBalanceMinor, account.currency)}"
+            if (existing) R.string.log_account_updated else R.string.log_account_added,
+            account.displayName,
+            Money.format(account.openingBalanceMinor, account.currency),
         )
         Verbose.flush()
     }
@@ -241,7 +240,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteAccount(id: String) = viewModelScope.launch(Dispatchers.IO) {
         val name = accounts.value.firstOrNull { it.id == id }?.displayName ?: id
         store.deleteAccount(id)
-        Verbose.info("account deleted by you: \"$name\" · its records kept, now unassigned")
+        Verbose.info(R.string.log_account_deleted, name)
         Verbose.flush()
     }
 
@@ -254,7 +253,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             accounts.value.filter { it.needsBalance }.forEach {
                 store.updateAccount(it.copy(needsBalance = false))
             }
-            Verbose.ok("accounts confirmed by you: " + countOf(accounts.value.size, "account") + " are now the source of your balances")
+            Verbose.ok(
+                R.string.log_accounts_confirmed,
+                Verbose.count(R.plurals.count_accounts, accounts.value.size),
+            )
             Verbose.flush()
         }
     }
@@ -262,7 +264,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setTxnAccount(txn: Txn, accountId: String) = viewModelScope.launch(Dispatchers.IO) {
         store.setTxnAccount(txn.id, accountId)
         val name = accounts.value.firstOrNull { it.id == accountId }?.displayName ?: accountId
-        Verbose.ok("account set by you: ${Money.format(txn.amountMinor, txn.currency)} → $name")
+        Verbose.ok(
+            R.string.log_account_set,
+            Money.format(txn.amountMinor, txn.currency),
+            name,
+        )
         Verbose.flush()
     }
 
@@ -271,18 +277,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun acceptTransfer(proposal: TransferProposal) = viewModelScope.launch(Dispatchers.IO) {
         store.acceptTransfer(proposal)
         Verbose.ok(
-            "transfer confirmed by you: ${Money.format(proposal.amountMinor, proposal.currency)} " +
-                "moved between your accounts · it no longer counts as spending or income"
+            R.string.log_transfer_confirmed,
+            Money.format(proposal.amountMinor, proposal.currency),
         )
         Verbose.flush()
     }
 
     fun rejectTransfer(proposal: TransferProposal) = viewModelScope.launch(Dispatchers.IO) {
         store.rejectTransfer(proposal)
-        Verbose.info(
-            "transfer rejected by you: both messages stay a real expense and a real income, " +
-                "and this pair won't be suggested again"
-        )
+        Verbose.info(R.string.log_transfer_rejected)
         Verbose.flush()
     }
 
@@ -298,12 +301,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch(Dispatchers.IO) {
                 store.setAutoConfirmTransfers(v)
                 Verbose.info(
-                    if (v) {
-                        "auto-confirm transfers on: matched pairs stop asking and stop " +
-                            "counting as spending or income"
-                    } else {
-                        "auto-confirm transfers off: every matched pair waits for your answer in Review"
-                    }
+                    if (v) R.string.log_auto_confirm_on else R.string.log_auto_confirm_off
                 )
                 Verbose.flush()
             }
@@ -314,7 +312,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun splitTransfer(txn: Txn) = viewModelScope.launch(Dispatchers.IO) {
         store.splitTransfer(txn)
-        Verbose.info("transfer split by you: both sides count again")
+        Verbose.info(R.string.log_transfer_split)
         Verbose.flush()
     }
 
@@ -322,8 +320,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.IO) {
             store.markAsTransfer(txn, fromAccountId, toAccountId)
             Verbose.ok(
-                "marked as a transfer by you: ${Money.format(txn.amountMinor, txn.currency)} " +
-                    "no longer counts as spending or income"
+                R.string.log_marked_transfer,
+                Money.format(txn.amountMinor, txn.currency),
             )
             Verbose.flush()
         }
@@ -424,16 +422,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             if (Updates.isNewer(release.tag, currentVersion)) {
                 _updateState.value = UpdateState.Available(release)
                 Verbose.ok(
-                    "${release.tag} is newer than the ${currentVersion} you have · " +
-                        if (release.hasApk) {
-                            "Settings offers to download it"
-                        } else {
-                            "but the release carries no APK, so there is nothing to download"
-                        }
+                    if (release.hasApk) R.string.log_update_newer_apk
+                    else R.string.log_update_newer_no_apk,
+                    release.tag,
+                    currentVersion,
                 )
             } else {
                 _updateState.value = UpdateState.UpToDate(release)
-                Verbose.info("you are on ${currentVersion}, which is the latest (GitHub has ${release.tag})")
+                Verbose.info(R.string.log_update_latest, currentVersion, release.tag)
             }
             Verbose.flush()
         }
@@ -455,10 +451,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun downloadUpdate(): Boolean {
         val release = update.value ?: return false
         val url = release.apkUrl ?: run {
-            Verbose.fail(
-                "${release.tag} has no APK attached to it, so there is nothing to " +
-                    "download here - the release page on GitHub will have it"
-            )
+            Verbose.fail(R.string.log_update_no_apk, release.tag)
             Verbose.flush()
             return false
         }
@@ -475,15 +468,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
             val manager = context.getSystemService(DownloadManager::class.java)
             manager.enqueue(request)
-            Verbose.ok(
-                "downloading $name to your Downloads folder · nothing installs on its " +
-                    "own, tap the file there when it has finished"
-            )
+            Verbose.ok(R.string.log_download_started, name)
             Verbose.flush()
             openDownloads(context)
             true
         } catch (e: Exception) {
-            Verbose.fail("could not start the download (${e.javaClass.simpleName})")
+            Verbose.fail(R.string.log_download_failed, e.javaClass.simpleName)
             Verbose.flush()
             false
         }
@@ -500,7 +490,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         } catch (e: Exception) {
             // A phone with no Downloads UI. The file still arrives; the notification
             // DownloadManager posts is another way to reach it.
-            Verbose.info("no Downloads screen on this phone, use the download notification")
+            Verbose.info(R.string.log_no_downloads_screen)
             Verbose.flush()
         }
     }
@@ -515,24 +505,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     endExclusiveMillis = endExclusiveMillis,
                 )
             )
-            Verbose.ok("budget plan created by you: \"$label\"")
+            Verbose.ok(R.string.log_budget_created, label)
             Verbose.flush()
         }
 
     fun setBudgetLine(planId: String, categoryId: String, minor: Long) =
         viewModelScope.launch(Dispatchers.IO) {
             store.setBudgetLine(planId, categoryId, minor)
-            Verbose.info(
-                if (minor > 0) "budget set by you: ${Categories.byId(categoryId).name} capped at $minor (minor units)"
-                else "budget removed by you: ${Categories.byId(categoryId).name}"
-            )
+            if (minor > 0) {
+                Verbose.info(R.string.log_budget_set, Categories.byId(categoryId).name, minor)
+            } else {
+                Verbose.info(R.string.log_budget_removed, Categories.byId(categoryId).name)
+            }
             Verbose.flush()
         }
 
     fun deleteBudget(id: String) = viewModelScope.launch(Dispatchers.IO) {
         val label = budgets.value.firstOrNull { it.id == id }?.label ?: id
         store.deleteBudget(id)
-        Verbose.info("budget plan deleted by you: \"$label\"")
+        Verbose.info(R.string.log_budget_deleted, label)
         Verbose.flush()
     }
 
@@ -550,7 +541,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     endExclusiveMillis = endExclusiveMillis,
                 )
             )
-            Verbose.info("budget period changed by you: \"${plan.label}\" → \"$label\"")
+            Verbose.info(R.string.log_budget_period, plan.label, label)
             Verbose.flush()
         }
 
@@ -566,7 +557,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     lines = source.lines,
                 )
             )
-            Verbose.ok("budget plan copied by you: \"${source.label}\" → \"$label\"")
+            Verbose.ok(R.string.log_budget_copied, source.label, label)
             Verbose.flush()
         }
 
@@ -576,13 +567,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.IO) {
             store.setCategory(txn.id, categoryId)
             Verbose.ok(
-                "category set by you: \"${txn.merchant ?: txn.sender}\" → ${Categories.byId(categoryId).name}"
+                R.string.log_category_set,
+                txn.merchant ?: txn.sender,
+                Categories.byId(categoryId).name,
             )
             if (!alsoRulePattern.isNullOrBlank()) {
                 val changed = store.addRule(UserRule(alsoRulePattern.trim().lowercase(), categoryId))
                 Verbose.ok(
-                    "rule saved: \"${alsoRulePattern.trim().lowercase()}\" → ${Categories.byId(categoryId).name}" +
-                        " · re-categorized " + countOf(changed, "past transaction")
+                    R.string.log_rule_saved_recat,
+                    alsoRulePattern.trim().lowercase(),
+                    Categories.byId(categoryId).name,
+                    Verbose.count(R.plurals.count_past_transactions, changed),
                 )
             }
             Verbose.flush()
@@ -608,8 +603,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val pattern = UserRule.patternOf(group.merchant)
             val filed = store.setCategories(txnIds, categoryId)
             Verbose.ok(
-                "filed by you: " + countOf(txnIds.size, "record") + " from \"${group.merchant}\" → " +
-                    Categories.byId(categoryId).name
+                R.string.log_filed,
+                Verbose.count(R.plurals.count_records, txnIds.size),
+                group.merchant,
+                Categories.byId(categoryId).name,
             )
             // A rule is a statement about the name, so it may only be saved when the
             // answer was about the name. Picking four of a merchant's six records means
@@ -618,20 +615,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val wholeName = txnIds.toSet().containsAll(group.txnIds)
             when {
                 !wholeName -> Verbose.info(
-                    "no rule saved for \"$pattern\": you filed ${txnIds.size} of " +
-                        countOf(group.count, "record") + " from this name, so it does not all belong " +
-                        "in one place and the rest are still waiting"
+                    R.string.log_no_rule_partial,
+                    pattern,
+                    txnIds.size,
+                    Verbose.count(R.plurals.count_records, group.count),
                 )
-                pattern in store.askEachTime.value -> Verbose.info(
-                    "no rule saved for \"$pattern\": you asked to be asked about this name " +
-                        "every time, so the next message from it comes back to you"
-                )
+                pattern in store.askEachTime.value ->
+                    Verbose.info(R.string.log_no_rule_ask, pattern)
                 else -> {
                     val byRule = store.addRule(UserRule(pattern, categoryId))
                     Verbose.ok(
-                        "rule saved: \"$pattern\" → ${Categories.byId(categoryId).name} · " +
-                            countOf(filed, "record") + " filed now, $byRule more re-categorized, and anything " +
-                            "matching from now on lands there without being asked"
+                        R.string.log_rule_saved_filed,
+                        pattern,
+                        Categories.byId(categoryId).name,
+                        Verbose.count(R.plurals.count_records, filed),
+                        byRule,
                     )
                 }
             }
@@ -647,8 +645,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun deferAll(txnIds: Collection<String>) = viewModelScope.launch(Dispatchers.IO) {
         val set = store.deferCategory(txnIds)
         Verbose.info(
-            countOf(set, "record") + " left under Other for now · they were not answered, and the " +
-                "next scan asks about them again"
+            R.string.log_left_under_other,
+            Verbose.count(R.plurals.count_records, set),
         )
         Verbose.flush()
     }
@@ -686,12 +684,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun archiveTxn(txn: Txn, archive: Boolean) = viewModelScope.launch(Dispatchers.IO) {
         store.archiveTxn(txn, archive)
         Verbose.info(
-            if (archive) {
-                "archived by you: ${Money.format(txn.amountMinor, txn.currency)} is out of the " +
-                    "lists but still counts towards your balance"
-            } else {
-                "unarchived by you: ${Money.format(txn.amountMinor, txn.currency)} is back in the lists"
-            }
+            if (archive) R.string.log_archived else R.string.log_unarchived,
+            Money.format(txn.amountMinor, txn.currency),
         )
         Verbose.flush()
     }
@@ -699,8 +693,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun ignoreTxn(txn: Txn) = viewModelScope.launch(Dispatchers.IO) {
         store.ignoreTxn(txn)
         Verbose.info(
-            "transaction removed by you: ${Money.format(txn.amountMinor, txn.currency)} (${txn.sender})" +
-                if (!txn.manual) " · this message will stay ignored on future scans" else ""
+            Verbose.str(
+                R.string.log_removed,
+                Money.format(txn.amountMinor, txn.currency),
+                txn.sender,
+            ) + if (!txn.manual) Verbose.str(R.string.log_removed_ignored) else ""
         )
         Verbose.flush()
     }
@@ -711,20 +708,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         // merchant: the store refuses a rule for a name marked "ask me every time", and
         // reporting "rule saved" for one it dropped would be a lie in the log.
         if (key in store.askEachTime.value) {
-            Verbose.info("no rule saved for \"$key\": you asked to be asked about this name every time")
+            Verbose.info(R.string.log_no_rule_ask_short, key)
             Verbose.flush()
             return@launch
         }
         val changed = store.addRule(UserRule(key, categoryId))
-        Verbose.ok("rule saved: \"$key\" → ${Categories.byId(categoryId).name} · re-categorized " + countOf(changed, "transaction"))
+        Verbose.ok(
+            R.string.log_rule_saved_recat,
+            key,
+            Categories.byId(categoryId).name,
+            Verbose.count(R.plurals.count_transactions, changed),
+        )
         Verbose.flush()
     }
 
     fun removeRule(pattern: String) = viewModelScope.launch(Dispatchers.IO) {
         val changed = store.removeRule(pattern)
         Verbose.info(
-            "rule removed: \"$pattern\"" +
-                if (changed > 0) " · " + countOf(changed, "record") + " it had filed were answered again" else ""
+            Verbose.str(R.string.log_rule_removed, pattern) +
+                if (changed > 0) {
+                    Verbose.str(
+                        R.string.log_rule_removed_undone,
+                        Verbose.count(R.plurals.count_records, changed),
+                    )
+                } else {
+                    ""
+                }
         )
         Verbose.flush()
     }
@@ -740,12 +749,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val undone = store.setAskEachTime(pattern, on)
         Verbose.info(
             if (on) {
-                "\"$pattern\" will be asked about every time, no rule will be saved for it" +
+                Verbose.str(R.string.log_ask_each_on, pattern) +
                     if (undone > 0) {
-                        " · its rule is gone and " + countOf(undone, "record") + " it had filed were answered again"
-                    } else ""
+                        Verbose.str(
+                            R.string.log_ask_each_undone,
+                            Verbose.count(R.plurals.count_records, undone),
+                        )
+                    } else {
+                        ""
+                    }
             } else {
-                "\"$pattern\" can be remembered by a rule again"
+                Verbose.str(R.string.log_ask_each_off, pattern)
             }
         )
         Verbose.flush()
@@ -757,20 +771,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun addCategory(name: String, income: Boolean, color: Int, icon: String) = viewModelScope.launch(Dispatchers.IO) {
         store.addCategory(name.trim(), income, color, icon)
-        Verbose.ok("category added by you: \"${name.trim()}\" (${if (income) "income" else "expense"})")
+        Verbose.ok(
+            R.string.log_category_added,
+            name.trim(),
+            Verbose.str(if (income) R.string.log_word_in else R.string.log_word_out),
+        )
         Verbose.flush()
     }
 
     fun updateCategory(id: String, name: String, color: Int, icon: String) = viewModelScope.launch(Dispatchers.IO) {
         store.updateCategory(id, name.trim(), color, icon)
-        Verbose.info("category updated by you: \"${name.trim()}\"")
+        Verbose.info(R.string.log_category_updated, name.trim())
         Verbose.flush()
     }
 
     fun deleteCategory(id: String) = viewModelScope.launch(Dispatchers.IO) {
         val name = Categories.byId(id).name
         store.deleteCategory(id)
-        Verbose.info("category deleted by you: \"$name\" · its transactions moved to the default category")
+        Verbose.info(R.string.log_category_deleted, name)
         Verbose.flush()
     }
 
@@ -779,11 +797,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun dismissReview(item: ReviewItem, alsoSimilar: Boolean) = viewModelScope.launch(Dispatchers.IO) {
         val extra = store.dismissReview(item, smart = alsoSimilar)
         Verbose.info(
-            "review item dismissed by you (${item.sender}, ${item.reason})" +
+            Verbose.str(R.string.log_review_dismissed, item.sender, item.reason) +
                 if (alsoSimilar) {
-                    " · remembered: " + countOf(extra, "similar message") + " dismissed with it, future ones " +
-                        "will be auto-dismissed (restore any time in Review)"
-                } else ""
+                    Verbose.str(
+                        R.string.log_review_dismissed_smart,
+                        Verbose.count(R.plurals.count_similar_messages, extra),
+                    )
+                } else {
+                    ""
+                }
         )
         Verbose.flush()
     }
@@ -791,8 +813,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun restoreReview(item: ReviewItem) = viewModelScope.launch(Dispatchers.IO) {
         val extra = store.restoreReview(item)
         Verbose.info(
-            "review item restored by you" +
-                if (extra > 0) " together with " + countOf(extra, "similar message") + ", that kind is no longer auto-dismissed" else ""
+            Verbose.str(R.string.log_review_restored) +
+                if (extra > 0) {
+                    Verbose.str(
+                        R.string.log_review_restored_extra,
+                        Verbose.count(R.plurals.count_similar_messages, extra),
+                    )
+                } else {
+                    ""
+                }
         )
         Verbose.flush()
     }
@@ -816,9 +845,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             prefs.incomeKeywords = prefs.incomeKeywords + w
         }
         Verbose.ok(
-            "added \"$w\" as a ${if (direction == Direction.EXPENSE) "money out" else "money in"} " +
-                "word · the next scan reads messages like that one on its own " +
-                "(Settings › Keywords to take it back)"
+            R.string.log_keyword_added,
+            w,
+            Verbose.str(
+                if (direction == Direction.EXPENSE) R.string.log_word_out
+                else R.string.log_word_in
+            ),
         )
         Verbose.flush()
     }
@@ -852,8 +884,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         )
         store.resolveReview(item.id, txn, learn = learnSimilar)
         Verbose.ok(
-            "review resolved by you: recorded ${Money.format(amountMinor, currency)} (${Categories.byId(categoryId).name})" +
-                if (learnSimilar) " · remembered: similar messages will always reach Review" else ""
+            Verbose.str(
+                R.string.log_review_resolved,
+                Money.format(amountMinor, currency),
+                Categories.byId(categoryId).name,
+            ) + if (learnSimilar) Verbose.str(R.string.log_review_resolved_learn) else ""
         )
         Verbose.flush()
     }
@@ -885,7 +920,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             manual = true,
         )
         store.addManual(txn)
-        Verbose.ok("manual transaction added: ${Money.format(amountMinor, currency)} (${Categories.byId(categoryId).name})")
+        Verbose.ok(
+            R.string.log_manual_added,
+            Money.format(amountMinor, currency),
+            Categories.byId(categoryId).name,
+        )
         Verbose.flush()
     }
 
@@ -896,7 +935,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _autoConfirmOn.value = prefs.autoConfirmTransfers
         store.setAutoConfirmTransfers(prefs.autoConfirmTransfers)
         _accountsConfirmed.value = prefs.accountsConfirmed
-        Verbose.info("all data and settings wiped by you")
+        Verbose.info(R.string.log_wiped)
         Verbose.flush()
     }
 
@@ -924,9 +963,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 }
             }
-            Verbose.ok("exported " + countOf(list.size, "transaction") + " to the CSV file you picked, stayed on your device")
+            Verbose.ok(
+                R.string.log_exported,
+                Verbose.count(R.plurals.count_transactions, list.size),
+            )
         } catch (e: Exception) {
-            Verbose.fail("CSV export failed: ${e.message}")
+            Verbose.fail(R.string.log_export_failed, e.message)
         }
         Verbose.flush()
     }

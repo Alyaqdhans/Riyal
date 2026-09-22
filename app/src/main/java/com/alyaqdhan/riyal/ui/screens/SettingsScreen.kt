@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -144,9 +145,11 @@ fun SettingsScreen(
     val language = Language.current()
 
     fun note(text: String) {
-        Verbose.info("setting changed by you: $text")
+        Verbose.info(Verbose.str(R.string.log_setting_changed, text))
         Verbose.flush()
     }
+
+    fun note(@StringRes id: Int, vararg args: Any?) = note(Verbose.str(id, *args))
 
     Scaffold(
         topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_settings)) }) },
@@ -197,7 +200,7 @@ fun SettingsScreen(
                     onCheckedChange = {
                         budgetsEnabled = it
                         vm.budgetsEnabled = it
-                        note("budget planning ${if (it) "enabled" else "disabled"}")
+                        note(if (it) R.string.log_note_budget_on else R.string.log_note_budget_off)
                     },
                     detail = stringResource(R.string.set_help_budget),
                 )
@@ -225,7 +228,7 @@ fun SettingsScreen(
                     onCheckedChange = {
                         scanOnLaunch = it
                         prefs.scanOnLaunch = it
-                        note("scan on app open ${if (it) "enabled" else "disabled"}")
+                        note(if (it) R.string.log_note_scan_open_on else R.string.log_note_scan_open_off)
                     },
                     detail = stringResource(R.string.set_help_scan_on_open),
                 )
@@ -249,7 +252,7 @@ fun SettingsScreen(
                                 onClick = {
                                     rangeMonths = months
                                     prefs.scanRangeMonths = months
-                                    note("scan range → $label")
+                                    note(R.string.log_note_scan_range, label)
                                 },
                                 shape = SegmentedButtonDefaults.itemShape(index = index, count = ranges.size),
                                 modifier = Modifier.weight(1f),
@@ -273,7 +276,7 @@ fun SettingsScreen(
                         onAction = {
                             prefs.scanSinceMillis = 0L
                             freshStart = 0L
-                            note("fresh start lifted, older messages can be read again")
+                            note(R.string.log_note_fresh_start_lifted)
                         },
                     )
                 }
@@ -294,7 +297,7 @@ fun SettingsScreen(
                     KeywordChips(expenseKw) { kw ->
                         expenseKw = expenseKw - kw
                         prefs.expenseKeywords = expenseKw
-                        note("removed expense keyword \"$kw\"")
+                        note(R.string.log_note_kw_removed_out, kw)
                     }
                     AddKeywordRow(
                         value = newExpenseKw,
@@ -304,7 +307,7 @@ fun SettingsScreen(
                             if (kw.isNotEmpty()) {
                                 expenseKw = expenseKw + kw
                                 prefs.expenseKeywords = expenseKw
-                                note("added expense keyword \"$kw\"")
+                                note(R.string.log_note_kw_added_out, kw)
                             }
                             newExpenseKw = ""
                         },
@@ -316,7 +319,7 @@ fun SettingsScreen(
                     KeywordChips(incomeKw) { kw ->
                         incomeKw = incomeKw - kw
                         prefs.incomeKeywords = incomeKw
-                        note("removed income keyword \"$kw\"")
+                        note(R.string.log_note_kw_removed_in, kw)
                     }
                     AddKeywordRow(
                         value = newIncomeKw,
@@ -326,7 +329,7 @@ fun SettingsScreen(
                             if (kw.isNotEmpty()) {
                                 incomeKw = incomeKw + kw
                                 prefs.incomeKeywords = incomeKw
-                                note("added income keyword \"$kw\"")
+                                note(R.string.log_note_kw_added_in, kw)
                             }
                             newIncomeKw = ""
                         },
@@ -335,7 +338,7 @@ fun SettingsScreen(
                         prefs.resetKeywords()
                         expenseKw = prefs.expenseKeywords
                         incomeKw = prefs.incomeKeywords
-                        note("keywords reset to defaults (withdraw/debited/purchase… + deposit/credited/salary… incl. Arabic)")
+                        note(R.string.log_note_kw_reset)
                     }) { Text(stringResource(R.string.set_reset_defaults)) }
                 }
 
@@ -350,7 +353,7 @@ fun SettingsScreen(
                         onCheckedChange = {
                             bankOnly = it
                             prefs.bankSendersOnly = it
-                            note("bank-senders-only ${if (it) "enabled" else "disabled"}")
+                            note(if (it) R.string.log_note_bank_only_on else R.string.log_note_bank_only_off)
                         },
                         detail = stringResource(R.string.set_help_bank_only),
                     )
@@ -360,7 +363,7 @@ fun SettingsScreen(
                         onCheckedChange = {
                             senderFilter = it
                             prefs.senderFilterEnabled = it
-                            note("sender allowlist ${if (it) "enabled" else "disabled"}")
+                            note(if (it) R.string.log_note_allowlist_on else R.string.log_note_allowlist_off)
                         },
                         detail = stringResource(R.string.set_help_only_approved),
                     )
@@ -379,7 +382,7 @@ fun SettingsScreen(
                             KeywordChips(allowlist) { sender ->
                                 allowlist = allowlist - sender
                                 prefs.senderAllowlist = allowlist
-                                note("removed sender \"$sender\" from allowlist")
+                                note(R.string.log_note_sender_removed, sender)
                             }
                         }
                         // Add a sender by name directly, for a bank whose ID hasn't shown up
@@ -393,7 +396,7 @@ fun SettingsScreen(
                                 if (s.isNotEmpty() && s !in allowlist) {
                                     allowlist = allowlist + s
                                     prefs.senderAllowlist = allowlist
-                                    note("approved sender \"$s\" (added by name)")
+                                    note(R.string.log_note_sender_added_by_name, s)
                                 }
                                 newSender = ""
                             },
@@ -413,7 +416,7 @@ fun SettingsScreen(
                                         onClick = {
                                             allowlist = allowlist + sender
                                             prefs.senderAllowlist = allowlist
-                                            note("approved sender \"$sender\"")
+                                            note(R.string.log_note_sender_approved, sender)
                                         },
                                         label = { Text(sender) },
                                     )
@@ -469,7 +472,7 @@ fun SettingsScreen(
                     onCheckedChange = {
                         smartRules = it
                         prefs.smartRules = it
-                        note("smart category learning ${if (it) "enabled" else "disabled"}")
+                        note(if (it) R.string.log_note_smart_on else R.string.log_note_smart_off)
                     },
                     detail = stringResource(R.string.set_help_learn),
                 )
@@ -479,7 +482,7 @@ fun SettingsScreen(
                     onCheckedChange = {
                         autoConfirmTransfers = it
                         vm.autoConfirmTransfers = it
-                        note("auto-confirm transfers ${if (it) "enabled" else "disabled"}")
+                        note(if (it) R.string.log_note_autoconfirm_on else R.string.log_note_autoconfirm_off)
                     },
                     detail = stringResource(R.string.set_help_confirm_transfers),
                 )
@@ -503,11 +506,11 @@ fun SettingsScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick = {
                             scope.launch { clipboard.setClipEntry(plainText(Verbose.dump())) }
-                            note("verbose log copied to clipboard")
+                            note(R.string.log_note_log_copied)
                         }) { Text(stringResource(R.string.action_copy)) }
                         TextButton(onClick = {
                             Verbose.clear()
-                            Verbose.info("log cleared by you")
+                            Verbose.info(R.string.log_note_log_cleared)
                             Verbose.flush()
                         }) { Text(stringResource(R.string.action_clear)) }
                     }
@@ -587,12 +590,12 @@ fun SettingsScreen(
                     onAction = {
                         if (offered == null) {
                             asked = true
-                            note("checking GitHub for a newer release")
+                            note(R.string.log_note_checking)
                             vm.checkForUpdate(version, force = true)
                         } else if (!offered.hasApk) {
-                            note("${offered.tag} has no APK attached to it")
+                            note(R.string.log_note_no_apk, offered.tag)
                         } else if (vm.downloadUpdate()) {
-                            note("downloading ${offered.tag} to your Downloads folder")
+                            note(R.string.log_note_downloading, offered.tag)
                         }
                     },
                 )
@@ -601,11 +604,11 @@ fun SettingsScreen(
                 LaunchedEffect(updateState) {
                     when (val u = updateState) {
                         is MainViewModel.UpdateState.UpToDate ->
-                            if (asked) { asked = false; note("$version is the latest, nothing to install") }
+                            if (asked) { asked = false; note(R.string.log_note_latest, version) }
                         is MainViewModel.UpdateState.Available ->
-                            if (asked) { asked = false; note("${u.release.tag} is available") }
+                            if (asked) { asked = false; note(R.string.log_note_available, u.release.tag) }
                         is MainViewModel.UpdateState.Unreachable ->
-                            if (asked) { asked = false; note("could not reach GitHub, try again later") }
+                            if (asked) { asked = false; note(R.string.log_note_unreachable) }
                         else -> Unit
                     }
                 }
@@ -630,7 +633,7 @@ fun SettingsScreen(
             onPick = {
                 currency = it
                 prefs.defaultCurrency = it
-                note("default currency → $it")
+                note(R.string.log_note_currency, it)
                 pickCurrency = false
             },
             onDismiss = { pickCurrency = false },
@@ -651,7 +654,7 @@ fun SettingsScreen(
                 pickLanguage = false
                 val choice = labels.entries.first { it.value == picked }.key
                 if (choice != language) {
-                    note("language -> $picked")
+                    note(R.string.log_note_language, picked)
                     Language.set(choice)
                 }
             },

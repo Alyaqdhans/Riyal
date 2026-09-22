@@ -13,7 +13,6 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.navOptions
-import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.MainActivity
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.ScanHistory
@@ -79,8 +78,7 @@ class HomeFragment : ScreenFragment() {
 
     private val requestSms = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         Verbose.info(
-            if (granted) "you granted READ_SMS from Home"
-            else "you declined READ_SMS, nothing will be read",
+            if (granted) R.string.log_perm_granted_home else R.string.log_perm_denied_home
         )
         Verbose.flush()
         vm.refreshPermission()
@@ -227,7 +225,7 @@ class TransactionsFragment : ScreenFragment() {
         if (uri != null) {
             vm.exportCsv(uri)
         } else {
-            Verbose.info("CSV export cancelled by you, nothing was written")
+            Verbose.info(R.string.log_export_cancelled)
             Verbose.flush()
         }
     }
@@ -256,7 +254,7 @@ class SettingsFragment : ScreenFragment() {
         if (uri != null) {
             vm.exportCsv(uri)
         } else {
-            Verbose.info("CSV export cancelled by you, nothing was written")
+            Verbose.info(R.string.log_export_cancelled)
             Verbose.flush()
         }
     }
@@ -282,8 +280,8 @@ class OnboardingFragment : ScreenFragment() {
 
     private val requestSms = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         Verbose.info(
-            if (granted) "you granted READ_SMS during onboarding"
-            else "you declined READ_SMS, Riyal stays fully inert until you allow it",
+            if (granted) R.string.log_perm_granted_onboarding
+            else R.string.log_perm_denied_onboarding
         )
         Verbose.flush()
         vm.refreshPermission()
@@ -308,13 +306,14 @@ class OnboardingFragment : ScreenFragment() {
 
     private fun chooseHistory(choice: ScanHistory) {
         vm.prefs.applyScanHistory(choice)
-        Verbose.info(
-            "you chose to read " + when (choice) {
-                ScanHistory.ALL -> "the whole inbox"
-                ScanHistory.FROM_NOW -> "nothing older than today; history starts here"
-                else -> "the last " + countOf(choice.months, "month")
-            }
-        )
+        when (choice) {
+            ScanHistory.ALL -> Verbose.info(R.string.log_history_all)
+            ScanHistory.FROM_NOW -> Verbose.info(R.string.log_history_from_now)
+            else -> Verbose.info(
+                R.string.log_history_months,
+                Verbose.count(R.plurals.count_months, choice.months),
+            )
+        }
         Verbose.flush()
     }
 
