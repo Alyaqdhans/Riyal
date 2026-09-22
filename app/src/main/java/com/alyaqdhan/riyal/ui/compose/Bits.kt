@@ -211,8 +211,10 @@ fun TxnRow(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    if (transfer) Money.format(txn.amountMinor, txn.currency)
-                    else Money.formatSigned(txn.amountMinor, txn.currency, expense),
+                    bidi(
+                        if (transfer) Money.format(txn.amountMinor, txn.currency)
+                        else Money.formatSigned(txn.amountMinor, txn.currency, expense)
+                    ),
                     style = MaterialTheme.typography.titleSmall,
                     // Money direction is semantic: out = danger red, in = success green,
                     // moved between your own accounts = neither.
@@ -318,6 +320,21 @@ fun SummaryPill(text: String, container: Color, content: Color) {
  * values/strings.xml.
  */
 fun countOf(n: Int, noun: String): String = "$n $noun" + if (n == 1) "" else "s"
+
+/**
+ * A money figure that keeps its shape in an Arabic sentence.
+ *
+ * Amounts read left to right in both languages - "OMR 4.500" is the same string either
+ * way - but a sign or a currency code sitting next to Arabic text gets reordered by the
+ * bidirectional algorithm, which puts the minus on the far side of the number where it
+ * reads as part of the next word instead of as "minus". Wrapping the figure in an LTR
+ * isolate (U+2066 .. U+2069) says "this runs one way, leave it alone" without affecting
+ * anything around it.
+ *
+ * Display only, and deliberately not inside Money.format: those marks are invisible
+ * characters, and they must never reach the CSV export or a stored record.
+ */
+fun bidi(amount: String): String = "\u2066" + amount + "\u2069"
 
 /**
  * A counted noun in the reader's language: `counted(R.plurals.count_records, n)`.

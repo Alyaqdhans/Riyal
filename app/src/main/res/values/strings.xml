@@ -144,4 +144,9 @@
     <string name="mood_fine">Doing fine, keep an eye on it</string>
     <string name="mood_close">Cutting it close this month</string>
     <string name="mood_over">Spending is above income this month</string>
+
+    <!-- The spent/received line under Net. %s is an amount with no currency code,
+         which the figure above has already named. -->
+    <string name="home_out">%s out</string>
+    <string name="home_in">%s in</string>
 </resources>

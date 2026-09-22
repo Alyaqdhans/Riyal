@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.appVersion
+import com.alyaqdhan.riyal.ui.compose.bidi
 import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Money
@@ -184,7 +185,10 @@ fun HomeScreen(
                         )
                         val net = totals.net
                         Text(
-                            (if (net < 0) "\u2212 " else "") + Money.format(kotlin.math.abs(net), currency),
+                            bidi(
+                                (if (net < 0) "\u2212 " else "") +
+                                    Money.format(kotlin.math.abs(net), currency)
+                            ),
                             style = MaterialTheme.typography.headlineMedium,
                             color = if (net < 0) MaterialTheme.colorScheme.error else successColor(),
                             maxLines = 1,
@@ -198,7 +202,7 @@ fun HomeScreen(
                         // is which, and the currency was named by the number above.
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                Money.formatAmount(totals.spent, currency) + " out",
+                                stringResource(R.string.home_out, Money.formatAmount(totals.spent, currency)),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error,
                             )
@@ -208,7 +212,7 @@ fun HomeScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                Money.formatAmount(totals.received, currency) + " in",
+                                stringResource(R.string.home_in, Money.formatAmount(totals.received, currency)),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = successColor(),
                             )

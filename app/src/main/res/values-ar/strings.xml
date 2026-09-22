@@ -177,4 +177,7 @@
     <string name="mood_fine">الوضع جيد، ابقَ منتبهاً</string>
     <string name="mood_close">الوضع على الحافة هذا الشهر</string>
     <string name="mood_over">المصروفات تجاوزت الدخل هذا الشهر</string>
+
+    <string name="home_out">%s صادر</string>
+    <string name="home_in">%s وارد</string>
 </resources>
