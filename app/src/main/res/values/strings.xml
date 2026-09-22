@@ -466,4 +466,99 @@
     <string name="sheet_more">More (%d)</string>
     <string name="sheet_less">Less</string>
     <string name="sheet_no_category_matches">No category matches that.</string>
+
+    <!-- ─────────────────────────── the budget section ─────────────────────────── -->
+    <string name="budget_title">Budget</string>
+    <string name="budget_plan_runs">Plan runs %1$s</string>
+    <string name="budget_no_plan">No plan for %1$s yet.</string>
+    <string name="budget_create">Create plan</string>
+    <string name="budget_copy">Copy %1$s</string>
+    <string name="budget_no_caps">No caps yet.</string>
+    <string name="budget_add_cap">Add a cap</string>
+    <string name="budget_show_less">Show less</string>
+    <string name="budget_show_all">Show all %d</string>
+    <string name="budget_uncapped">%1$s uncapped</string>
+    <string name="budget_delete_title">Delete this plan?</string>
+    <string name="budget_delete_body">\"%1$s\" and its caps will be removed. Your transactions are untouched.</string>
+    <!-- "OMR 40.000 of OMR 60.000" -->
+    <string name="budget_spent_of_cap">%1$s of %2$s</string>
+    <string name="budget_percent">%d%%</string>
+    <string name="budget_over_by">Over by %1$s</string>
+    <string name="budget_ahead">%1$d%% of the period gone, %2$d%% of the budget spent · running ahead</string>
+    <string name="budget_left">%1$d%% of the period gone, %2$s still to spend</string>
+    <!-- "OMR 12.000 / OMR 40.000" on one category\'s bar -->
+    <string name="budget_bar_amounts">%1$s / %2$s</string>
+    <string name="budget_add_or_change">Add or change a cap</string>
+    <string name="budget_cap_label">Cap for this period</string>
+    <!-- "Groceries: OMR 40.000" -->
+    <string name="budget_line">%1$s: %2$s</string>
+
+    <!-- ─────────────────────────── the analysis screen ─────────────────────────── -->
+    <string name="an_title">Analysis</string>
+    <string name="an_empty_title">Nothing to analyze yet</string>
+    <string name="an_empty_subtitle">Once you scan your messages, the charts light up here.</string>
+    <string name="an_all_accounts">All accounts</string>
+    <string name="an_spent">Spent</string>
+    <string name="an_received">Received</string>
+    <string name="an_moved_note">%1$s moved between your own accounts and is counted in neither figure.</string>
+    <string name="an_donut_spent">spent</string>
+    <string name="an_donut_received">received</string>
+    <!-- Under the donut\'s figure: "OMR · 6 categories" or "OMR · nothing recorded". -->
+    <string name="an_donut_nothing">%1$s · nothing recorded</string>
+    <string name="an_donut_categories">%1$s · %2$d categories</string>
+    <string name="an_percent">%d%%</string>
+    <string name="an_no_spending">No spending recorded for this period.</string>
+    <string name="an_no_income">No income recorded for this period.</string>
+    <string name="an_pacing">Budget pacing</string>
+    <!-- "42% of \"August\" gone, 61% of the budget spent · running ahead" -->
+    <string name="an_pacing_line">%1$d%% of \"%2$s\" gone, %3$d%% of the budget spent</string>
+    <string name="an_pacing_over"> · over</string>
+    <string name="an_pacing_ahead"> · running ahead</string>
+    <string name="an_pacing_on_track"> · on track</string>
+    <string name="an_movers">Biggest movers</string>
+    <!-- %1$s is a count of days, already in words. -->
+    <string name="an_movers_against">Against the %1$s before this period.</string>
+    <string name="an_up_amount">▲ %1$s</string>
+    <string name="an_down_amount">▼ %1$s</string>
+    <string name="an_recurring">Looks recurring</string>
+    <string name="an_recurring_note">Same merchant, steady amount, steady rhythm, so it will very likely land again.</string>
+    <!-- "every month · 7 so far · next around 3 Oct" -->
+    <string name="an_recurring_line">every %1$s · %2$d so far · next around %3$s</string>
+    <string name="an_stats">Statistics</string>
+    <string name="an_biggest_expense">Biggest expense</string>
+    <string name="an_heaviest_day">Heaviest day</string>
+    <string name="an_normal_payment">A normal payment</string>
+    <string name="an_none_yet">none yet</string>
+    <!-- "Al Meera · OMR 24.500" and "3 Sep · OMR 80.000" -->
+    <string name="an_named_amount">%1$s · %2$s</string>
+    <string name="an_median_average">%1$s · average %2$s</string>
+    <string name="an_payments">Payments</string>
+    <string name="an_payments_value">%1$d out · %2$d in</string>
+    <string name="an_days_with_spending">Days with spending</string>
+    <string name="an_days_value">%1$d of %2$d</string>
+    <string name="an_average_per_day">Average per day</string>
+    <string name="an_kept">Kept of what came in</string>
+    <string name="an_overspent">Spent beyond what came in</string>
+    <!-- %1$s is the currency code, %2$s a count of transactions, already in words. -->
+    <string name="an_other_currencies">Charts show %1$s only, %2$s in other currencies are listed in Transactions.</string>
+    <string name="an_cashflow">Cashflow</string>
+    <string name="an_running_total">Running total</string>
+    <string name="an_running_total_note">Running totals: steep red = heavy spending days, the gap to green is what\'s left.</string>
+    <string name="an_cashflow_note">Money in against money out, side by side, so a lean stretch is obvious.</string>
+    <string name="an_not_enough">Not enough activity in this period to draw it.</string>
+    <string name="an_legend_out">money out</string>
+    <string name="an_legend_in">money in</string>
+    <string name="an_no_baseline">no baseline</string>
+    <string name="an_level">level</string>
+    <string name="an_delta_up">▲ %1$d%%</string>
+    <string name="an_delta_down">▼ %1$d%%</string>
+    <string name="cadence_week">week</string>
+    <string name="cadence_fortnight">2 weeks</string>
+    <string name="cadence_month">month</string>
+    <string name="cadence_quarter">3 months</string>
+    <string name="cadence_year">year</string>
+    <plurals name="count_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
 </resources>
