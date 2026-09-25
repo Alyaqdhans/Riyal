@@ -1,6 +1,7 @@
 package com.alyaqdhan.riyal.ui.nav
 
 import android.Manifest
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -155,7 +156,7 @@ class CategoriesFragment : InnerFragment() {
         CategoriesScreen(
             vm,
             onBack = { back() },
-            onOpenCategory = { id, slice -> openCategory(findNavController(), id, slice) },
+            onOpenCategory = { id, slice -> openCategory(findNavController(), requireContext(), id, slice) },
         )
     }
 }
@@ -187,6 +188,7 @@ const val ARG_SLICE_MONTH = "sliceMonth"
  */
 fun openCategory(
     navController: androidx.navigation.NavController,
+    context: Context,
     categoryId: String,
     slice: TimeSlice,
 ) {
@@ -196,7 +198,10 @@ fun openCategory(
             ARG_CATEGORY_ID to categoryId,
             ARG_SLICE_START to slice.start,
             ARG_SLICE_END to slice.endExclusive,
-            ARG_SLICE_LABEL to slice.label,
+            ARG_SLICE_LABEL to (
+                slice.labelRes?.let { context.getString(it, *slice.labelArgs.toTypedArray()) }
+                    ?: slice.label
+                ),
             // Kept so the chevrons keep stepping whole calendar months rather than
             // drifting by the month's own length in days.
             ARG_SLICE_MONTH to slice.month?.toString(),
@@ -241,7 +246,7 @@ class AnalysisFragment : ScreenFragment() {
     override fun Screen() {
         AnalysisScreen(
             vm,
-            onOpenCategory = { id, slice -> openCategory(findNavController(), id, slice) },
+            onOpenCategory = { id, slice -> openCategory(findNavController(), requireContext(), id, slice) },
         )
     }
 }
