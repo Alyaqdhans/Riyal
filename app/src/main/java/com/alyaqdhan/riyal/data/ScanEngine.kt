@@ -12,6 +12,7 @@ import com.alyaqdhan.riyal.core.Verbose
 import java.security.MessageDigest
 import java.time.Instant
 import java.time.ZoneId
+import java.util.Locale
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
@@ -572,7 +573,7 @@ class ScanEngine(
             maxOf(prefs.scanHighWaterMillis, messages.maxOfOrNull { it.atMillis } ?: 0L)
         prefs.scanFingerprint = fingerprint
 
-        Verbose.scan(R.string.scanlog_finished, "%.1f".format(took / 1000f))
+        Verbose.scan(R.string.scanlog_finished, String.format(Locale.ROOT, "%.1f", took / 1000f))
         // Where the time went, because "the scan is slow" is not something anyone can
         // act on and these three numbers are.
         Verbose.scan(R.string.scanlog_time, queryMs, parseMs, storeMs)

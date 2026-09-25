@@ -3,6 +3,7 @@ package com.alyaqdhan.riyal
 import android.app.Application
 import android.content.pm.ApplicationInfo
 import com.alyaqdhan.riyal.core.Dates
+import com.alyaqdhan.riyal.core.Language
 import com.alyaqdhan.riyal.core.Prefs
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Store
@@ -23,7 +24,7 @@ class RiyalApp : Application() {
         // over a full inbox writes.
         Verbose.mirrorToLogcat =
             (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        Verbose.attach(this)
+        Verbose.attach(Language.latinDigits(this))
         Dates.use(resources.configuration.locales[0])
         prefs = Prefs(this)
         Words.apply(this)

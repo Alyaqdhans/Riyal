@@ -2,6 +2,7 @@
 
 package com.alyaqdhan.riyal
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -41,6 +42,7 @@ import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.navOptions
 import com.alyaqdhan.riyal.core.Dates
+import com.alyaqdhan.riyal.core.Language
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.Words
 import com.alyaqdhan.riyal.ui.MainViewModel
@@ -58,6 +60,10 @@ class MainActivity : AppCompatActivity() {
 
     private val vm: MainViewModel by viewModels()
     private val currentDestination = MutableStateFlow(0)
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(Language.latinDigits(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()

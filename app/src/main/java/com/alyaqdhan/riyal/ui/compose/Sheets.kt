@@ -84,6 +84,7 @@ import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.MainViewModel
 import java.time.Instant
 import java.time.ZoneId
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 val CURRENCIES = listOf("OMR", "SAR", "AED", "KWD", "BHD", "QAR", "USD", "EUR", "GBP", "INR")
@@ -184,7 +185,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                             Text(
                                 stringResource(
                                     R.string.scan_took,
-                                    "%.1f".format(s.summary.tookMs / 1000f),
+                                    String.format(Locale.ROOT, "%.1f", s.summary.tookMs / 1000f),
                                     counted(R.plurals.count_messages, s.summary.scanned),
                                 ),
                                 style = MaterialTheme.typography.bodyMedium,
