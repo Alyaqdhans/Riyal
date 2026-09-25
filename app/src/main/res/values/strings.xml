@@ -226,6 +226,7 @@
     <string name="review_keep_both">No, keep both</string>
     <string name="review_yes_transfer">Yes, it\'s a transfer</string>
     <string name="review_learn_word">Read messages like this automatically from now on</string>
+    <string name="review_learn_word_chip">\"%1$s\"</string>
     <string name="review_remember_similar">Remember for similar messages</string>
     <string name="review_add_manually">Add manually</string>
     <string name="action_show">Show</string>

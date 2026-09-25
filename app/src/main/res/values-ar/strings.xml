@@ -262,6 +262,7 @@
     <string name="review_keep_both">لا، أبقِ الاثنتين</string>
     <string name="review_yes_transfer">نعم، إنه تحويل</string>
     <string name="review_learn_word">اقرأ الرسائل المشابهة تلقائياً من الآن فصاعداً</string>
+    <string name="review_learn_word_chip">«%1$s»</string>
     <string name="review_remember_similar">تذكَّر هذا للرسائل المشابهة</string>
     <string name="review_add_manually">إضافة يدوية</string>
     <string name="action_show">إظهار</string>

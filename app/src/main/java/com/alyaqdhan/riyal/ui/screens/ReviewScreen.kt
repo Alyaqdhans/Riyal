@@ -494,7 +494,7 @@ private fun ReviewCard(
                         FilterChip(
                             selected = learnWord == word,
                             onClick = { learnWord = if (learnWord == word) null else word },
-                            label = { Text("\"$word\"") },
+                            label = { Text(stringResource(R.string.review_learn_word_chip, word)) },
                         )
                     }
                 }
