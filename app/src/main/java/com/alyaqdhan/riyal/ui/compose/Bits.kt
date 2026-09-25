@@ -299,7 +299,7 @@ fun LogRow(line: LogLine) {
         LogLine.Kind.INFO -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     Text(
-        "[${line.time}] ${line.text}",
+        bidi("[${line.time}]") + " " + line.text,
         fontFamily = FontFamily.Monospace,
         fontSize = 11.sp,
         lineHeight = 15.sp,

@@ -61,6 +61,7 @@ import com.alyaqdhan.riyal.ui.compose.toolbarSpace
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.SortChip
 import com.alyaqdhan.riyal.ui.compose.TxnSort
+import com.alyaqdhan.riyal.ui.compose.bidi
 import com.alyaqdhan.riyal.ui.compose.dayLabel
 import com.alyaqdhan.riyal.ui.compose.localDateOf
 import com.alyaqdhan.riyal.ui.compose.popIn
@@ -362,7 +363,7 @@ private fun DayHeader(date: LocalDate, dayTxns: List<Txn>) {
     val spentByCurrency = dayTxns
         .filter { it.type == TxnType.EXPENSE }
         .groupBy { it.currency }
-        .map { (currency, list) -> "− ${Money.format(list.sumOf { it.amountMinor }, currency)}" }
+        .map { (currency, list) -> bidi("− " + Money.format(list.sumOf { it.amountMinor }, currency)) }
     Row(
         Modifier
             .fillMaxWidth()
