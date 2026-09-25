@@ -42,7 +42,7 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.navOptions
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Verbose
-import com.alyaqdhan.riyal.ui.CategoryNames
+import com.alyaqdhan.riyal.ui.Words
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
 import com.alyaqdhan.riyal.ui.theme.RiyalTheme
@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity() {
         installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        CategoryNames.apply(this)
+        Words.apply(this)
         Verbose.attach(this)
         Dates.use(resources.configuration.locales[0])
         setContentView(R.layout.activity_main)

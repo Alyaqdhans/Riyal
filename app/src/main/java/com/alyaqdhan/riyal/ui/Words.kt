@@ -2,11 +2,12 @@ package com.alyaqdhan.riyal.ui
 
 import android.content.Context
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Categories
 
-object CategoryNames {
+object Words {
 
-    private val RES: Map<String, Int> = mapOf(
+    private val CATEGORIES: Map<String, Int> = mapOf(
         "food" to R.string.cat_food,
         "groceries" to R.string.cat_groceries,
         "transport" to R.string.cat_transport,
@@ -43,6 +44,8 @@ object CategoryNames {
         "income" to R.string.cat_income,
     )
 
-    fun apply(context: Context) =
-        Categories.setNames(RES.mapValues { (_, res) -> context.getString(res) })
+    fun apply(context: Context) {
+        Categories.setNames(CATEGORIES.mapValues { (_, res) -> context.getString(res) })
+        Account.genericName = context.getString(R.string.acct_generic_name)
+    }
 }

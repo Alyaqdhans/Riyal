@@ -6,7 +6,7 @@ import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Prefs
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Store
-import com.alyaqdhan.riyal.ui.CategoryNames
+import com.alyaqdhan.riyal.ui.Words
 import com.google.android.material.color.DynamicColors
 
 class RiyalApp : Application() {
@@ -26,7 +26,7 @@ class RiyalApp : Application() {
         Verbose.attach(this)
         Dates.use(resources.configuration.locales[0])
         prefs = Prefs(this)
-        CategoryNames.apply(this)
+        Words.apply(this)
         store = Store(this, prefs.autoConfirmTransfers)
         DynamicColors.applyToActivitiesIfAvailable(this)
         Verbose.info(R.string.log_started)

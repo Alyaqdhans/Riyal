@@ -255,6 +255,9 @@ data class Account(
     companion object {
         const val ID_PREFIX = "acc_"
 
+        @Volatile
+        var genericName: String = "Account"
+
         /** The name an account carries when the user hasn't nicknamed it. */
         fun defaultNameOf(bankName: String, last4: String?): String {
             val bank = bankName.trim()
@@ -262,8 +265,8 @@ data class Account(
             return when {
                 bank.isNotEmpty() && tail != null -> "$bank · $tail"
                 bank.isNotEmpty() -> bank
-                tail != null -> "Account · $tail"
-                else -> "Account"
+                tail != null -> "$genericName · $tail"
+                else -> genericName
             }
         }
     }

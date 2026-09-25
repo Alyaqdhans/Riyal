@@ -260,6 +260,7 @@
     <string name="needs_hide_message">Hide the message</string>
     <string name="needs_read_message">Read the message</string>
 
+    <string name="acct_generic_name">Account</string>
     <string name="acct_title">Bank accounts</string>
     <string name="acct_empty_title">No accounts yet</string>
     <string name="acct_empty_subtitle">Scan your messages and Riyal will set accounts up from what your bank already told you, or add one here by hand.</string>

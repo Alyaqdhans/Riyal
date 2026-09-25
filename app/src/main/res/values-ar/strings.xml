@@ -300,6 +300,7 @@
     <string name="needs_hide_message">إخفاء الرسالة</string>
     <string name="needs_read_message">قراءة الرسالة</string>
 
+    <string name="acct_generic_name">حساب</string>
     <string name="acct_title">الحسابات البنكية</string>
     <string name="acct_empty_title">لا حسابات بعد</string>
     <string name="acct_empty_subtitle">افحص رسائلك لينشئ ريال حساباتك مما قاله بنكك أصلاً، أو أضف حساباً هنا بنفسك.</string>
