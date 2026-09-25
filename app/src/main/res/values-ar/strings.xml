@@ -145,6 +145,7 @@
 
     <string name="home_out">%s صادر</string>
     <string name="home_in">%s وارد</string>
+    <string name="home_other_currencies">+%1$s في عملات أخرى</string>
 
     <string name="txn_filters">تصفية</string>
     <string name="txn_filters_count">تصفية (%d)</string>

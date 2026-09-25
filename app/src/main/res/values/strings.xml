@@ -113,6 +113,7 @@
 
     <string name="home_out">%s out</string>
     <string name="home_in">%s in</string>
+    <string name="home_other_currencies">+%1$s in other currencies</string>
 
     <string name="txn_filters">Filters</string>
     <string name="txn_filters_count">Filters (%d)</string>

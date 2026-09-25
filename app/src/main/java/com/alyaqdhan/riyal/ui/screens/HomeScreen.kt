@@ -219,7 +219,10 @@ fun HomeScreen(
                         }
                         if (totals.otherCurrencyCount > 0) {
                             Text(
-                                "+${totals.otherCurrencyCount} in other currencies",
+                                stringResource(
+                                    R.string.home_other_currencies,
+                                    counted(R.plurals.count_transactions, totals.otherCurrencyCount),
+                                ),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
