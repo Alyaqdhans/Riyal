@@ -47,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Direction
@@ -71,7 +72,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
-private val reviewDateFmt = DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a")
+private val reviewDateFmt: DateTimeFormatter get() = Dates.pattern("dd MMM uuuu, h:mm a")
 
 /**
  * Inner page (opened from the Home "Needs review" section): messages that matched the

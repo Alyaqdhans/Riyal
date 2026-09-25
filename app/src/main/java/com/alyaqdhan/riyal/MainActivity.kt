@@ -40,6 +40,7 @@ import androidx.core.view.isVisible
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.navOptions
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.CategoryNames
 import com.alyaqdhan.riyal.ui.MainViewModel
@@ -64,6 +65,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         CategoryNames.apply(this)
         Verbose.attach(this)
+        Dates.use(resources.configuration.locales[0])
         setContentView(R.layout.activity_main)
 
         val navHost = supportFragmentManager.findFragmentById(R.id.nav_host) as NavHostFragment

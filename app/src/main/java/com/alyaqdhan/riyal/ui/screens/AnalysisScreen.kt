@@ -64,6 +64,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.RoundedPolygon
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
@@ -101,8 +102,8 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private val ChartLabelsKey = ExtraStore.Key<List<String>>()
-private val nextDueFmt = DateTimeFormatter.ofPattern("d MMM")
-private val dayFmt = DateTimeFormatter.ofPattern("d MMM")
+private val nextDueFmt: DateTimeFormatter get() = Dates.pattern("d MMM")
+private val dayFmt: DateTimeFormatter get() = Dates.pattern("d MMM")
 
 /**
  * Analysis answers three questions the rest of the app can't: where the money went,

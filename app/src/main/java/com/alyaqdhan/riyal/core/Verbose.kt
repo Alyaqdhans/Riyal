@@ -26,7 +26,7 @@ data class LogLine(val atMillis: Long, val kind: Kind, val text: String) {
     val time: String get() = timeFmt.format(Instant.ofEpochMilli(atMillis).atZone(zone))
 
     private companion object {
-        val timeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm:ss a")
+        val timeFmt: DateTimeFormatter get() = Dates.pattern("h:mm:ss a")
         val zone: ZoneId = ZoneId.systemDefault()
     }
 }

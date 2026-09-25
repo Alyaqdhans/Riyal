@@ -71,6 +71,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Account
@@ -83,7 +84,6 @@ import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.MainViewModel
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
 val CURRENCIES = listOf("OMR", "SAR", "AED", "KWD", "BHD", "QAR", "USD", "EUR", "GBP", "INR")
@@ -532,7 +532,7 @@ fun ManualTxnDialog(
         categoryId = Categories.defaultFor(type)
     }
     val parsed = amount.trim().replace(",", "").toBigDecimalOrNull()
-    val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a") }
+    val dateFmt = Dates.pattern("dd MMM uuuu, h:mm a")
     // A transfer needs two different ends, otherwise it isn't a movement at all.
     val transferValid = type != TxnType.TRANSFER ||
         (fromAccount != null && toAccount != null && fromAccount?.id != toAccount?.id)

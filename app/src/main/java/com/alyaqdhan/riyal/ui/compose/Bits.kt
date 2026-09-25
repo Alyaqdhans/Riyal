@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.LogLine
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Account
@@ -57,12 +58,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 
-private val rowTimeFmt = DateTimeFormatter.ofPattern("dd MMM · h:mm a")
+private val rowTimeFmt: DateTimeFormatter get() = Dates.pattern("dd MMM · h:mm a")
 // For a list already broken into days: the header above the row states the date, so
 // repeating it in the row is one more thing to read that says nothing new - and it was
 // the segment that pushed the account name into an ellipsis on every single row.
-private val rowClockFmt = DateTimeFormatter.ofPattern("h:mm a")
-private val dayFmt = DateTimeFormatter.ofPattern("EEEE, dd MMM uuuu")
+private val rowClockFmt: DateTimeFormatter get() = Dates.pattern("h:mm a")
+private val dayFmt: DateTimeFormatter get() = Dates.pattern("EEEE, dd MMM uuuu")
 
 @Composable
 fun dayLabel(date: LocalDate): String {

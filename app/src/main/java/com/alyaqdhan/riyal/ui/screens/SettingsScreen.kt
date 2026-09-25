@@ -73,6 +73,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Language
@@ -90,7 +91,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-private val settingsDayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM uuuu")
+private val settingsDayFmt: DateTimeFormatter get() = Dates.pattern("d MMM uuuu")
 
 /**
  * Everything the scanner does is decided here, but the reason to open Settings is

@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
@@ -73,8 +74,8 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-private val recordFmt = DateTimeFormatter.ofPattern("d MMM uu")
-private val recordClockFmt = DateTimeFormatter.ofPattern("h:mm a")
+private val recordFmt: DateTimeFormatter get() = Dates.pattern("d MMM uu")
+private val recordClockFmt: DateTimeFormatter get() = Dates.pattern("h:mm a")
 
 /**
  * The backlog of records the scan could not place, as decisions rather than rows.

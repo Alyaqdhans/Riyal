@@ -2,6 +2,7 @@ package com.alyaqdhan.riyal
 
 import android.app.Application
 import android.content.pm.ApplicationInfo
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Prefs
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Store
@@ -23,6 +24,7 @@ class RiyalApp : Application() {
         Verbose.mirrorToLogcat =
             (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         Verbose.attach(this)
+        Dates.use(resources.configuration.locales[0])
         prefs = Prefs(this)
         CategoryNames.apply(this)
         store = Store(this, prefs.autoConfirmTransfers)

@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.data.Txn
 import java.time.Instant
 import java.time.LocalDate
@@ -12,8 +13,8 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
-private val monthTitleFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM uuuu")
-private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM uu")
+private val monthTitleFmt: DateTimeFormatter get() = Dates.pattern("MMMM uuuu")
+private val dayFmt: DateTimeFormatter get() = Dates.pattern("d MMM uu")
 
 /**
  * One selected period of time, shared by Analysis, the budget section and the category

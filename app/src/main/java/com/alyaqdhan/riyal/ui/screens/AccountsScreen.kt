@@ -50,6 +50,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Categories
@@ -70,7 +71,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-private val asOfFmt = DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a")
+private val asOfFmt: DateTimeFormatter get() = Dates.pattern("dd MMM uuuu, h:mm a")
 
 /**
  * The bank account manager, and the first-run confirmation the app asks for once.

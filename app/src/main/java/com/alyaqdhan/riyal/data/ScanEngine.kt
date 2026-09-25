@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import com.alyaqdhan.riyal.R
 
 import android.content.Context
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.LogLine
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Prefs
@@ -689,8 +690,8 @@ class ScanEngine(
         /** How many lines of per-record narration a single pass may write. */
         const val MAX_RECORD_LINES = 1200
 
-        val DATE_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM uuuu")
-        val DATE_TIME_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM uuuu h:mm a")
+        val DATE_FMT: DateTimeFormatter get() = Dates.pattern("dd MMM uuuu")
+        val DATE_TIME_FMT: DateTimeFormatter get() = Dates.pattern("dd MMM uuuu h:mm a")
         val ZONE: ZoneId = ZoneId.systemDefault()
 
         val HEX = "0123456789abcdef".toCharArray()
