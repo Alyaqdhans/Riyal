@@ -549,6 +549,11 @@
     <string name="set_verbose_log">Verbose log</string>
     <string name="set_verbose_value">every step, in plain words</string>
     <string name="set_where_it_lives">Where it lives</string>
+    <string name="set_backup">Backup</string>
+    <string name="set_restore">Restore from a backup</string>
+    <string name="set_backup_messages">Include the message text</string>
+    <string name="set_restore_title">Replace everything with this backup?</string>
+    <string name="set_restore_body">Every record, account, category, rule and budget in the app now is replaced by whatever the file holds. There is no undo.</string>
     <string name="set_this_phone_only">this phone only</string>
     <string name="set_card_about">About</string>
     <string name="set_checking">checking…</string>
@@ -623,6 +628,9 @@
     <string name="set_help_learn">When you fix a category on a transaction with a merchant, that merchant is remembered and applied to past and future messages. The category picker still lets you opt out for a single edit, and a name marked “ask every time” is never remembered at all.</string>
     <string name="set_help_confirm_transfers">A matching pair is the same amount and currency, moving between two of your own accounts, minutes apart. With this on it becomes one transfer straight away and stops counting as spending or income; any of them can be split back apart from its row in Transactions. With it off, every pair waits in Review for your yes or no.</string>
     <string name="set_help_export">Writes every record to a CSV file you choose: date, type, amount, accounts, merchant, category and the message it was read from.</string>
+    <string name="set_help_backup">Writes everything Riyal knows to one file you choose: accounts, records, categories, rules, budgets and every answer you have given it. Riyal writes it where you point and sends it nowhere.</string>
+    <string name="set_help_restore">Reads a backup file back in and replaces what is in the app with it. A backup from an older version is refused rather than half-read.</string>
+    <string name="set_help_backup_messages">The backup carries the bank messages themselves. Left out, a record still keeps its amount, date, account, shop and category, and the text fills itself back in on the next scan as long as the messages are still in this phone\'s inbox. Leave it out if the file is going somewhere you would not put a message.</string>
     <string name="set_help_verbose">Everything the scanner did and why, written as it happens. It never leaves the phone unless you copy it out yourself.</string>
     <string name="set_help_where_it_lives">Everything lives in one JSON file inside this app\'s private storage, and backups are disabled. The app does reach the network, for one thing: it asks GitHub whether a newer release exists, and downloads that APK if you ask it to. Nothing goes the other way. No record, message, account or figure is ever put in a request, and there is no analytics and no backend.</string>
 
@@ -696,6 +704,15 @@
     <string name="log_wiped">all data and settings wiped by you</string>
     <string name="log_exported">exported %1$s to the CSV file you picked, stayed on your device</string>
     <string name="log_export_failed">CSV export failed: %1$s</string>
+    <string name="log_backup_saved">backup written where you chose: %1$s, message text included</string>
+    <string name="log_backup_saved_bare">backup written where you chose: %1$s, without the message text</string>
+    <string name="log_backup_failed">backup failed: %1$s</string>
+    <string name="log_backup_cancelled">you cancelled the backup, so nothing was written</string>
+    <string name="log_restore_cancelled">you cancelled the restore, so nothing changed</string>
+    <string name="log_restore_done">restored %1$s from the backup</string>
+    <string name="log_restore_empty">that file was empty, so nothing changed</string>
+    <string name="log_restore_unreadable">that file could not be read as a backup: %1$s, so nothing changed</string>
+    <string name="log_restore_wrong_version">that backup is version %1$d and this build reads version %2$d, so nothing changed</string>
     <plurals name="count_past_transactions">
         <item quantity="one">%d past transaction</item>
         <item quantity="other">%d past transactions</item>

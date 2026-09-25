@@ -593,6 +593,11 @@
     <string name="set_verbose_log">السجل التفصيلي</string>
     <string name="set_verbose_value">كل خطوة، بكلمات واضحة</string>
     <string name="set_where_it_lives">أين تُحفظ</string>
+    <string name="set_backup">النسخ الاحتياطي</string>
+    <string name="set_restore">الاستعادة من نسخة</string>
+    <string name="set_backup_messages">تضمين نص الرسائل</string>
+    <string name="set_restore_title">تُستبدل كل البيانات بهذه النسخة؟</string>
+    <string name="set_restore_body">كل سجل وحساب وتصنيف وقاعدة وميزانية في التطبيق الآن يُستبدل بما يحمله الملف. ولا رجوع بعدها.</string>
     <string name="set_this_phone_only">على هذا الهاتف وحده</string>
     <string name="set_card_about">عن التطبيق</string>
     <string name="set_checking">جارٍ التحقق…</string>
@@ -687,6 +692,9 @@
     <string name="set_help_learn">حين تصحّح تصنيف معاملة لها متجر، يُحفظ ذلك المتجر ويُطبَّق على الرسائل السابقة واللاحقة. ويظل بإمكانك رفض ذلك لتعديل واحد من مُنتقي التصنيف، والاسم المعلَّم بـ“اسألني في كل مرة” لا يُحفظ أبداً.</string>
     <string name="set_help_confirm_transfers">الزوج المتطابق هو المبلغ نفسه والعملة نفسها، ينتقل بين حسابين من حساباتك، تفصل بينهما دقائق. وبتفعيل هذا يصير تحويلاً واحداً فوراً ويتوقف عن الاحتساب مصروفاً أو دخلاً؛ ويمكن فصل أيٍّ منها من جديد من صفّه في المعاملات. وبإيقافه ينتظر كل زوج في المراجعة قبولك أو رفضك.</string>
     <string name="set_help_export">يكتب كل سجل في ملف CSV تختاره أنت: التاريخ والنوع والمبلغ والحسابات والمتجر والتصنيف والرسالة التي قُرئ منها.</string>
+    <string name="set_help_backup">يكتب كل ما يعرفه ريال في ملف واحد تختاره أنت: الحسابات والسجلات والتصنيفات والقواعد والميزانيات وكل إجابة أعطيتها له. ويكتبه ريال حيث تشير، ولا يرسله إلى أي مكان.</string>
+    <string name="set_help_restore">يقرأ ملف نسخة احتياطية ويستبدل به ما في التطبيق. وتُرفض النسخة القادمة من إصدار أقدم بدل أن تُقرأ نصف قراءة.</string>
+    <string name="set_help_backup_messages">النسخة تحمل رسائل البنك نفسها. وإن تركتها، يبقى للسجل مبلغه وتاريخه وحسابه ومتجره وتصنيفه، ويعود النص من تلقاء نفسه في الفحص التالي ما دامت الرسائل في صندوق هذا الهاتف. اتركها إن كان الملف ذاهباً إلى مكان لا تضع فيه رسالة.</string>
     <string name="set_help_verbose">كل ما فعله الفاحص ولماذا، يُكتب لحظة حدوثه. ولا يغادر الهاتف أبداً إلا إذا نسخته بنفسك.</string>
     <string name="set_help_where_it_lives">كل شيء يعيش في ملف JSON واحد داخل التخزين الخاص بهذا التطبيق، والنسخ الاحتياطي معطَّل. ويتصل التطبيق بالشبكة لأمر واحد: أن يسأل GitHub إن كان هناك إصدار أحدث، وأن ينزّل ملف APK إن طلبت ذلك. ولا يذهب شيء في الاتجاه الآخر. فلا يُوضَع في أي طلب سجل ولا رسالة ولا حساب ولا رقم، ولا يوجد تتبّع ولا خادم.</string>
 
@@ -760,6 +768,15 @@
     <string name="log_wiped">مسحت كل البيانات والإعدادات</string>
     <string name="log_exported">صُدِّرت %1$s إلى ملف CSV الذي اخترته، ولم تغادر جهازك</string>
     <string name="log_export_failed">فشل تصدير CSV: %1$s</string>
+    <string name="log_backup_saved">كُتبت النسخة حيث اخترت: %1$s، مع نص الرسائل</string>
+    <string name="log_backup_saved_bare">كُتبت النسخة حيث اخترت: %1$s، بلا نص الرسائل</string>
+    <string name="log_backup_failed">فشل حفظ النسخة: %1$s</string>
+    <string name="log_backup_cancelled">ألغيت حفظ النسخة، فلم يُكتب شيء</string>
+    <string name="log_restore_cancelled">ألغيت الاستعادة، فلم يتغيّر شيء</string>
+    <string name="log_restore_done">استُعيد %1$s من النسخة</string>
+    <string name="log_restore_empty">الملف فارغ، فلم يتغيّر شيء</string>
+    <string name="log_restore_unreadable">تعذّرت قراءة الملف كنسخة احتياطية: %1$s، فلم يتغيّر شيء</string>
+    <string name="log_restore_wrong_version">النسخة من الإصدار %1$d وهذا الإصدار يقرأ %2$d، فلم يتغيّر شيء</string>
     <plurals name="count_past_transactions">
         <item quantity="zero">لا معاملات سابقة</item>
         <item quantity="one">معاملة سابقة واحدة</item>

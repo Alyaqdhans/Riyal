@@ -34,6 +34,7 @@ import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.theme.RiyalTheme
 import com.google.android.material.transition.MaterialFadeThrough
 import com.google.android.material.transition.MaterialSharedAxis
+import java.time.LocalDate
 import java.time.YearMonth
 
 /**
@@ -181,6 +182,8 @@ const val ARG_SLICE_END = "sliceEnd"
 const val ARG_SLICE_LABEL = "sliceLabel"
 const val ARG_SLICE_MONTH = "sliceMonth"
 
+private val BACKUP_TYPES = arrayOf("application/json", "text/plain", "application/octet-stream")
+
 /**
  * Opens a category with the period the caller was looking at. Sending the id alone
  * dropped it: tapping August's biggest category answered for the current month, and
@@ -264,6 +267,24 @@ class SettingsFragment : ScreenFragment() {
         }
     }
 
+    private val saveBackup = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) {
+            vm.backup(uri)
+        } else {
+            Verbose.info(R.string.log_backup_cancelled)
+            Verbose.flush()
+        }
+    }
+
+    private val openBackup = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            vm.restore(uri)
+        } else {
+            Verbose.info(R.string.log_restore_cancelled)
+            Verbose.flush()
+        }
+    }
+
     @Composable
     override fun Screen() {
         SettingsScreen(
@@ -271,6 +292,8 @@ class SettingsFragment : ScreenFragment() {
             onOpenAccounts = { findNavController().navigate(R.id.accountsFragment) },
             onOpenCategories = { findNavController().navigate(R.id.categoriesFragment) },
             onExport = { exportCsv.launch("riyal-transactions.csv") },
+            onBackup = { saveBackup.launch("riyal-backup-" + LocalDate.now() + ".json") },
+            onRestore = { openBackup.launch(BACKUP_TYPES) },
         )
     }
 }

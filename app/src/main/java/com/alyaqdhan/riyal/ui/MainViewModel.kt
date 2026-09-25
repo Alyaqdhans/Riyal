@@ -976,6 +976,38 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
     }
 
+    fun backup(uri: Uri) = viewModelScope.launch(Dispatchers.IO) {
+        val withMessages = prefs.backupIncludeMessages
+        try {
+            val json = store.backupJson(withMessages)
+            getApplication<Application>().contentResolver.openOutputStream(uri)
+                ?.bufferedWriter()?.use { it.write(json) }
+            Verbose.ok(
+                if (withMessages) R.string.log_backup_saved else R.string.log_backup_saved_bare,
+                Verbose.count(R.plurals.count_records, txns.value.size),
+            )
+        } catch (e: Exception) {
+            Verbose.fail(R.string.log_backup_failed, e.message)
+        }
+        Verbose.flush()
+    }
+
+    fun restore(uri: Uri) = viewModelScope.launch(Dispatchers.IO) {
+        try {
+            val json = getApplication<Application>().contentResolver.openInputStream(uri)
+                ?.bufferedReader()?.use { it.readText() }
+            if (json.isNullOrBlank()) {
+                Verbose.fail(R.string.log_restore_empty)
+                Verbose.flush()
+            } else if (store.restoreFrom(json)) {
+                _accountsConfirmed.value = prefs.accountsConfirmed
+            }
+        } catch (e: Exception) {
+            Verbose.fail(R.string.log_restore_unreadable, e.message)
+            Verbose.flush()
+        }
+    }
+
     private fun csv(s: String) = "\"" + s.replace("\"", "\"\"") + "\""
 
 }
