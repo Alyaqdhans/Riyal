@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
+import com.alyaqdhan.riyal.core.Numerals
 import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.ui.MainViewModel
@@ -332,7 +333,7 @@ private fun AccountEditorDialog(
             else Money.toMajor(account.openingBalanceMinor, account.currency).toPlainString()
         )
     }
-    val parsedBalance = balance.trim().replace(",", "").toBigDecimalOrNull()
+    val parsedBalance = Numerals.decimal(balance)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -403,7 +404,7 @@ private fun AccountEditorDialog(
                 )
                 OutlinedTextField(
                     value = last4,
-                    onValueChange = { last4 = it.filter(Char::isDigit).take(6) },
+                    onValueChange = { last4 = Numerals.latin(it).filter { c -> c in '0'..'9' }.take(6) },
                     label = { Text(stringResource(R.string.acct_last4)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

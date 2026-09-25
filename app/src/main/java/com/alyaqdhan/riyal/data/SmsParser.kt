@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import com.alyaqdhan.riyal.R
 
 import com.alyaqdhan.riyal.core.Money
+import com.alyaqdhan.riyal.core.Numerals
 import java.math.BigDecimal
 import kotlin.math.abs
 import kotlin.math.max
@@ -459,20 +460,7 @@ class SmsParser(
         return s.take(40)
     }
 
-    private fun normalize(s: String): String {
-        val sb = StringBuilder(s.length)
-        for (ch in s) {
-            when (ch) {
-                in '٠'..'٩' -> sb.append('0' + (ch - '٠')) // Arabic-Indic digits
-                in '۰'..'۹' -> sb.append('0' + (ch - '۰')) // Eastern Arabic-Indic digits
-                '٫' -> sb.append('.')                       // Arabic decimal separator
-                '٬' -> sb.append(',')                       // Arabic thousands separator
-                ' ', ' ', ' ', '​', '‎', '‏' -> sb.append(' ')
-                else -> sb.append(ch)
-            }
-        }
-        return sb.toString().replace(runOfSpace, " ").trim()
-    }
+    private fun normalize(s: String): String = Numerals.latin(s)
 
     companion object {
         /**
@@ -646,7 +634,6 @@ class SmsParser(
          * and a scan of a full inbox runs this thousands of times.
          */
         val dotOrSpace = Regex("[.\\s]")
-        val runOfSpace = Regex("\\s+")
         val tillPrefix = Regex("^\\d{2,}\\s*-\\s*")
         val digitTail = Regex("[\\d/:\\-]{4,}\\s*$")
         val doubleSpace = Regex("\\s{2,}")

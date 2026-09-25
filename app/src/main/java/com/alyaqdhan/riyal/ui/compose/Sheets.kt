@@ -73,6 +73,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
+import com.alyaqdhan.riyal.core.Numerals
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Categories
@@ -532,7 +533,7 @@ fun ManualTxnDialog(
     LaunchedEffect(type) {
         categoryId = Categories.defaultFor(type)
     }
-    val parsed = amount.trim().replace(",", "").toBigDecimalOrNull()
+    val parsed = Numerals.decimal(amount)
     val dateFmt = Dates.pattern("dd MMM uuuu, h:mm a")
     // A transfer needs two different ends, otherwise it isn't a movement at all.
     val transferValid = type != TxnType.TRANSFER ||

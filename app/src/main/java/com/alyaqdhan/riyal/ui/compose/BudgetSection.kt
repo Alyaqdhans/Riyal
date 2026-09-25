@@ -43,6 +43,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Money
+import com.alyaqdhan.riyal.core.Numerals
 import com.alyaqdhan.riyal.data.BudgetPlan
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
@@ -423,7 +424,7 @@ private fun BudgetEditorDialog(
     var current by remember { mutableStateOf(plan.lines) }
     var label by remember { mutableStateOf(plan.label) }
     var showRange by remember { mutableStateOf(false) }
-    val parsed = amount.trim().replace(",", "").toBigDecimalOrNull()
+    val parsed = Numerals.decimal(amount)
 
     AlertDialog(
         onDismissRequest = onDismiss,
