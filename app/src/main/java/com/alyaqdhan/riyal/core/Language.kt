@@ -12,7 +12,7 @@ object Language {
     enum class Choice(val tag: String?) {
         SYSTEM(null),
         ENGLISH("en"),
-        ARABIC("ar"),
+        ARABIC("ar-u-nu-latn"),
     }
 
     fun current(): Choice {
