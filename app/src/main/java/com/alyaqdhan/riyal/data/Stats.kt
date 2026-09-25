@@ -1,10 +1,10 @@
 package com.alyaqdhan.riyal.data
 
+import com.alyaqdhan.riyal.core.Dates
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 
 /**
@@ -217,7 +217,7 @@ object Stats {
 
         return when {
             spanDays <= 14 -> {
-                val fmt = DateTimeFormatter.ofPattern("d MMM")
+                val fmt = Dates.pattern("d MMM")
                 val byDay = inSlice.groupBy { Instant.ofEpochMilli(it.atMillis).atZone(zone).toLocalDate() }
                 generateSequence(startDay) { it.plusDays(1) }.takeWhile { it <= lastDay }
                     .map { day ->
@@ -227,7 +227,7 @@ object Stats {
             }
 
             spanDays <= 120 -> {
-                val fmt = DateTimeFormatter.ofPattern("d MMM")
+                val fmt = Dates.pattern("d MMM")
                 val byWeek = inSlice.groupBy {
                     val d = Instant.ofEpochMilli(it.atMillis).atZone(zone).toLocalDate()
                     startDay.plusDays(((d.toEpochDay() - startDay.toEpochDay()) / 7) * 7)
@@ -240,7 +240,7 @@ object Stats {
             }
 
             else -> {
-                val fmt = DateTimeFormatter.ofPattern("MMM uu")
+                val fmt = Dates.pattern("MMM uu")
                 val byMonth = inSlice.groupBy { ym(it.atMillis) }
                 generateSequence(YearMonth.from(startDay)) { it.plusMonths(1) }
                     .takeWhile { it <= YearMonth.from(lastDay) }
@@ -615,7 +615,7 @@ object Stats {
 
         if (totalDays <= 92) {
             val byDay = inSlice.groupBy { Instant.ofEpochMilli(it.atMillis).atZone(zone).toLocalDate() }
-            val fmt = DateTimeFormatter.ofPattern("d MMM")
+            val fmt = Dates.pattern("d MMM")
             var day = startDay
             while (day <= lastDay) {
                 byDay[day]?.forEach { t ->
@@ -626,7 +626,7 @@ object Stats {
             }
         } else {
             val byMonth = inSlice.groupBy { ym(it.atMillis) }
-            val fmt = DateTimeFormatter.ofPattern("MMM uu")
+            val fmt = Dates.pattern("MMM uu")
             var m = YearMonth.from(startDay)
             val lastMonth = YearMonth.from(lastDay)
             while (m <= lastMonth) {
@@ -650,16 +650,18 @@ object Stats {
         return (1f - (ratio / 1.25f) * 2f).coerceIn(-1f, 1f)
     }
 
-    fun moodLabel(totals: MonthTotals): String {
+    enum class Mood { QUIET, NO_INCOME_YET, WELL_UNDER, FINE, CLOSE, OVER }
+
+    fun moodLabel(totals: MonthTotals): Mood {
         if (totals.received <= 0L) {
-            return if (totals.spent == 0L) "Quiet month so far" else "Tracking spending, no income seen yet"
+            return if (totals.spent == 0L) Mood.QUIET else Mood.NO_INCOME_YET
         }
         val ratio = totals.spent.toFloat() / totals.received.toFloat()
         return when {
-            ratio < 0.5f -> "Smooth sailing, well under your income"
-            ratio < 0.8f -> "Doing fine, keep an eye on it"
-            ratio <= 1.0f -> "Cutting it close this month"
-            else -> "Spending is above income this month"
+            ratio < 0.5f -> Mood.WELL_UNDER
+            ratio < 0.8f -> Mood.FINE
+            ratio <= 1.0f -> Mood.CLOSE
+            else -> Mood.OVER
         }
     }
 

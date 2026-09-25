@@ -19,9 +19,13 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.annotation.PluralsRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -29,6 +33,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.LogLine
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Account
@@ -52,18 +58,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 
-private val rowTimeFmt = DateTimeFormatter.ofPattern("dd MMM · h:mm a")
+private val rowTimeFmt: DateTimeFormatter get() = Dates.pattern("dd MMM · h:mm a")
 // For a list already broken into days: the header above the row states the date, so
 // repeating it in the row is one more thing to read that says nothing new - and it was
 // the segment that pushed the account name into an ellipsis on every single row.
-private val rowClockFmt = DateTimeFormatter.ofPattern("h:mm a")
-private val dayFmt = DateTimeFormatter.ofPattern("EEEE, dd MMM uuuu")
+private val rowClockFmt: DateTimeFormatter get() = Dates.pattern("h:mm a")
+private val dayFmt: DateTimeFormatter get() = Dates.pattern("EEEE, dd MMM uuuu")
 
+@Composable
 fun dayLabel(date: LocalDate): String {
     val today = LocalDate.now()
     return when (date) {
-        today -> "Today"
-        today.minusDays(1) -> "Yesterday"
+        today -> stringResource(R.string.day_today)
+        today.minusDays(1) -> stringResource(R.string.day_yesterday)
         else -> dayFmt.format(date)
     }
 }
@@ -178,7 +185,8 @@ fun TxnRow(
             CategoryBadge(category.id)
             Column(Modifier.weight(1f)) {
                 Text(
-                    if (transfer) "Transfer" else txn.merchant?.let(::unmasked) ?: category.name,
+                    if (transfer) stringResource(R.string.label_transfer)
+                    else txn.merchant?.let(::unmasked) ?: category.name,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -187,12 +195,17 @@ fun TxnRow(
                     .format(Instant.ofEpochMilli(txn.atMillis).atZone(ZoneId.systemDefault()))
                 Text(
                     if (transfer) {
-                        val from = accountName(txn.fromAccountId) ?: "unassigned"
-                        val to = accountName(txn.toAccountId) ?: "unassigned"
-                        "$from → $to · $time"
+                        val unassigned = stringResource(R.string.row_unassigned)
+                        stringResource(
+                            R.string.row_transfer_route,
+                            accountName(txn.fromAccountId) ?: unassigned,
+                            accountName(txn.toAccountId) ?: unassigned,
+                            time,
+                        )
                     } else {
                         val account = accountName(txn.accountId) ?: txn.sender
-                        if (showAccount) "$account · $time" else time
+                        if (showAccount) stringResource(R.string.row_account_time, account, time)
+                        else time
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -201,7 +214,7 @@ fun TxnRow(
                 )
                 if (!transfer && txn.categorySource == "auto" && txn.confidence < 70) {
                     Text(
-                        "parser was ${txn.confidence}% sure, tap to fix",
+                        stringResource(R.string.row_low_confidence, txn.confidence),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary,
                     )
@@ -209,8 +222,10 @@ fun TxnRow(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    if (transfer) Money.format(txn.amountMinor, txn.currency)
-                    else Money.formatSigned(txn.amountMinor, txn.currency, expense),
+                    bidi(
+                        if (transfer) Money.format(txn.amountMinor, txn.currency)
+                        else Money.formatSigned(txn.amountMinor, txn.currency, expense)
+                    ),
                     style = MaterialTheme.typography.titleSmall,
                     // Money direction is semantic: out = danger red, in = success green,
                     // moved between your own accounts = neither.
@@ -228,7 +243,7 @@ fun TxnRow(
                 // transfer's amount is neither red nor green.
                 if (transfer) {
                     Text(
-                        "not counted",
+                        stringResource(R.string.row_not_counted),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -284,7 +299,7 @@ fun LogRow(line: LogLine) {
         LogLine.Kind.INFO -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     Text(
-        "[${line.time}] ${line.text}",
+        bidi("[${line.time}]") + " " + line.text,
         fontFamily = FontFamily.Monospace,
         fontSize = 11.sp,
         lineHeight = 15.sp,
@@ -305,11 +320,10 @@ fun SummaryPill(text: String, container: Color, content: Color) {
     }
 }
 
-/**
- * "1 record(s)" is not English, and it appears wherever a count does. One place to
- * decide it, so a screen counting things never has to think about the s.
- */
-fun countOf(n: Int, noun: String): String = "$n $noun" + if (n == 1) "" else "s"
+fun bidi(amount: String): String = "\u2066" + amount + "\u2069"
+
+@Composable
+fun counted(@PluralsRes plural: Int, n: Int): String = pluralStringResource(plural, n, n)
 
 // ─────────────────────────── a screen's own explanation ───────────────────────────
 
@@ -330,7 +344,7 @@ fun HelpAction(title: String, help: String) {
     IconButton(onClick = { open = true }) {
         Icon(
             Icons.Outlined.Info,
-            contentDescription = "About $title",
+            contentDescription = stringResource(R.string.help_about, title),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -339,7 +353,11 @@ fun HelpAction(title: String, help: String) {
             onDismissRequest = { open = false },
             title = { Text(title) },
             text = { Text(help) },
-            confirmButton = { TextButton(onClick = { open = false }) { Text("Got it") } },
+            confirmButton = {
+                TextButton(onClick = { open = false }) {
+                    Text(stringResource(R.string.action_got_it))
+                }
+            },
         )
     }
 }

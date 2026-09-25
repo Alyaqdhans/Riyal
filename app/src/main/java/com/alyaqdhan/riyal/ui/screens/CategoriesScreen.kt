@@ -59,8 +59,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.alyaqdhan.riyal.ui.compose.countOf
+import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.ui.compose.bidi
+import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Category
@@ -88,14 +91,6 @@ import kotlin.math.roundToInt
  * This is also where custom categories are created and edited - it used to be a block
  * buried in Settings, which is a strange place to manage something you look at daily.
  */
-/** What the page is for, behind the (i) rather than above the work. */
-private const val HELP =
-    "Every category and what it came to in the period shown, spending and income " +
-        "kept apart. Open one to see its records; make your own with the button, and " +
-        "edit or delete the ones you made.\n\n" +
-        "Below them are the names Riyal has learned: the ones it files without asking, " +
-        "and the ones you asked to be asked about every time."
-
 @Composable
 fun CategoriesScreen(
     vm: MainViewModel,
@@ -128,13 +123,19 @@ fun CategoriesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Categories") },
+                title = { Text(stringResource(R.string.cats_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back),
+                        )
                     }
                 },
-                actions = { HelpAction("Categories", HELP) },
+                actions = { HelpAction(
+                        stringResource(R.string.cats_title),
+                        stringResource(R.string.help_categories),
+                    ) },
             )
         },
     ) { padding ->
@@ -152,7 +153,7 @@ fun CategoriesScreen(
                 PeriodBar(slice = slice, onChange = { slice = it }, txns = txns)
             }
 
-            item(key = "expense-title") { SectionTitle("Spending") }
+            item(key = "expense-title") { SectionTitle(stringResource(R.string.cats_spending)) }
             val expenseCats = shown(Categories.forType(TxnType.EXPENSE), counts, showEmpty)
             items(expenseCats, key = { "e-" + it.id }) { cat ->
                 val row = expenses.firstOrNull { it.categoryId == cat.id }
@@ -168,7 +169,7 @@ fun CategoriesScreen(
                 )
             }
 
-            item(key = "income-title") { SectionTitle("Income") }
+            item(key = "income-title") { SectionTitle(stringResource(R.string.cats_income)) }
             val incomeCats = shown(Categories.forType(TxnType.INCOME), counts, showEmpty)
             items(incomeCats, key = { "i-" + it.id }) { cat ->
                 val row = incomes.firstOrNull { it.categoryId == cat.id }
@@ -195,8 +196,8 @@ fun CategoriesScreen(
                         modifier = Modifier.padding(top = 4.dp),
                     ) {
                         Text(
-                            if (showEmpty) "Hide empty categories"
-                            else "Show all categories ($hidden empty)"
+                            if (showEmpty) stringResource(R.string.cats_hide_empty)
+                            else stringResource(R.string.cats_show_all, hidden)
                         )
                     }
                 }
@@ -206,8 +207,10 @@ fun CategoriesScreen(
                 val moved = Stats.transferTotalIn(txns, slice.start, slice.endExclusive, currency)
                 if (moved > 0) {
                     Text(
-                        "${Money.format(moved, currency)} moved between your own accounts in this " +
-                            "period. Transfers have no category: they're neither spending nor income.",
+                        stringResource(
+                            R.string.cats_transfers_note,
+                            bidi(Money.format(moved, currency)),
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 12.dp),
@@ -219,24 +222,22 @@ fun CategoriesScreen(
                 FilledTonalButton(
                     onClick = { editing = Category(id = "", name = "", color = Categories.PALETTE.random()) },
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp).pressBounce(),
-                ) { Text("Add a category") }
+                ) { Text(stringResource(R.string.cats_add)) }
             }
 
             // What the app has been taught, and the only place it can be untaught. A
             // rule re-files past records as well as future ones, which is too much to
             // do invisibly: it should be possible to read back every name that was
             // learned and take any of them away.
-            item(key = "learned-title") { SectionTitle("What Riyal has learned") }
+            item(key = "learned-title") {
+                SectionTitle(stringResource(R.string.cats_learned_title))
+            }
             item(key = "learned-intro") {
                 Text(
-                    if (rules.isEmpty() && askEachTime.isEmpty()) {
-                        "Nothing yet. Filing a record with \"Always\" left on saves the name " +
-                            "here, and every later message mentioning it is filed the same way " +
-                            "without asking. You can also add a word yourself, below."
-                    } else {
-                        "Names filed without asking, and names always asked about. Forgetting " +
-                            "a rule also re-answers the records it had filed."
-                    },
+                    stringResource(
+                        if (rules.isEmpty() && askEachTime.isEmpty()) R.string.cats_learned_empty
+                        else R.string.cats_learned_intro
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 4.dp),
@@ -246,22 +247,25 @@ fun CategoriesScreen(
                 FilledTonalButton(
                     onClick = { addingKeyword = true },
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).pressBounce(),
-                ) { Text("Add a keyword") }
+                ) { Text(stringResource(R.string.cats_add_keyword)) }
             }
             val sortedRules = rules.sortedBy { it.pattern }
             items(sortedRules, key = { "rule-" + it.pattern + "-" + it.categoryId }) { rule ->
                 LearnedRow(
                     name = rule.pattern,
-                    detail = "filed as ${Categories.byId(rule.categoryId).name}",
+                    detail = stringResource(
+                        R.string.cats_filed_as,
+                        Categories.byId(rule.categoryId).name,
+                    ),
                     categoryId = rule.categoryId,
-                    actionLabel = "Forget",
+                    actionLabel = stringResource(R.string.cats_forget),
                     onAction = { vm.removeRule(rule.pattern) },
                 )
             }
             if (askEachTime.isNotEmpty()) {
                 item(key = "asked-title") {
                     Text(
-                        "Asked every time",
+                        stringResource(R.string.cats_asked_every_time),
                         style = MaterialTheme.typography.labelLarge,
                         modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
                     )
@@ -269,9 +273,9 @@ fun CategoriesScreen(
                 items(askEachTime.sorted(), key = { "ask-$it" }) { name ->
                     LearnedRow(
                         name = name,
-                        detail = "never saved as a rule",
+                        detail = stringResource(R.string.cats_never_rule),
                         categoryId = null,
-                        actionLabel = "Remove",
+                        actionLabel = stringResource(R.string.action_remove),
                         onAction = { vm.setAskEachTime(name, false) },
                     )
                 }
@@ -310,22 +314,27 @@ fun CategoriesScreen(
     confirmDelete?.let { cat ->
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
-            title = { Text("Delete ${cat.name}?") },
+            title = { Text(stringResource(R.string.delete_title, cat.name)) },
             text = {
                 Text(
-                    "Records filed under it move to " +
-                        (if (cat.income) Categories.byId(Categories.DEFAULT_INCOME).name
-                        else Categories.byId(Categories.DEFAULT_EXPENSE).name) +
-                        ". Nothing is lost."
+                    stringResource(
+                        R.string.cats_delete_body,
+                        if (cat.income) Categories.byId(Categories.DEFAULT_INCOME).name
+                        else Categories.byId(Categories.DEFAULT_EXPENSE).name,
+                    )
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
                     vm.deleteCategory(cat.id)
                     confirmDelete = null
-                }) { Text("Delete") }
+                }) { Text(stringResource(R.string.action_delete)) }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
         )
     }
 }
@@ -362,12 +371,20 @@ private fun CategoryRow(
                         modifier = Modifier.weight(1f),
                     )
                     if (onEdit != null) {
-                        TextButton(onClick = onEdit) { Text("Edit") }
+                        TextButton(onClick = onEdit) { Text(stringResource(R.string.action_edit)) }
                     }
                 }
                 Text(
-                    if (count == 0) "nothing in this period"
-                    else countOf(count, "record") + " · ${(fraction * 100).roundToInt()}% of ${if (income) "income" else "spending"}",
+                    if (count == 0) {
+                        stringResource(R.string.cats_nothing_in_period)
+                    } else {
+                        stringResource(
+                            if (income) R.string.cats_share_of_income
+                            else R.string.cats_share_of_spending,
+                            counted(R.plurals.count_records, count),
+                            (fraction * 100).roundToInt(),
+                        )
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -382,7 +399,7 @@ private fun CategoryRow(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    Money.format(amountMinor, currency),
+                    bidi(Money.format(amountMinor, currency)),
                     style = MaterialTheme.typography.titleSmall,
                     color = when {
                         !used -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -393,7 +410,7 @@ private fun CategoryRow(
             }
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = "Open ${category.name}",
+                contentDescription = stringResource(R.string.cats_open, category.name),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp),
             )
@@ -468,7 +485,7 @@ private fun KeywordRuleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add a keyword") },
+        title = { Text(stringResource(R.string.cats_add_keyword)) },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
@@ -477,7 +494,7 @@ private fun KeywordRuleDialog(
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
-                    label = { Text("Word to look for") },
+                    label = { Text(stringResource(R.string.cats_keyword_word)) },
                     singleLine = true,
                     isError = blocked,
                 )
@@ -490,7 +507,13 @@ private fun KeywordRuleDialog(
                         },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                         modifier = Modifier.weight(1f),
-                    ) { Text("Money out", softWrap = false, maxLines = 1) }
+                    ) {
+                        Text(
+                            stringResource(R.string.label_money_out),
+                            softWrap = false,
+                            maxLines = 1,
+                        )
+                    }
                     SegmentedButton(
                         selected = income,
                         onClick = {
@@ -499,7 +522,13 @@ private fun KeywordRuleDialog(
                         },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                         modifier = Modifier.weight(1f),
-                    ) { Text("Money in", softWrap = false, maxLines = 1) }
+                    ) {
+                        Text(
+                            stringResource(R.string.label_money_in),
+                            softWrap = false,
+                            maxLines = 1,
+                        )
+                    }
                 }
                 CategoryChips(
                     type = type,
@@ -509,24 +538,24 @@ private fun KeywordRuleDialog(
                 )
                 if (blocked) {
                     Text(
-                        "\"$pattern\" is a name you asked to be asked about every time, so no " +
-                            "rule can be saved for it. Remove it from the list below first.",
+                        stringResource(R.string.cats_keyword_blocked, pattern),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error,
                     )
                 } else if (pattern.isNotBlank()) {
                     Text(
-                        "Any " + (if (income) "money in" else "money out") +
-                            " mentioning \"$pattern\" is filed as " +
-                            "${Categories.byId(categoryId).name}, including records already " +
-                            "read. Anything you filed by hand is left alone.",
+                        stringResource(
+                            if (income) R.string.cats_keyword_effect_in
+                            else R.string.cats_keyword_effect_out,
+                            pattern,
+                            Categories.byId(categoryId).name,
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     if (wholeWord) {
                         Text(
-                            "Short words are matched whole, so this matches \"$pattern\" on its " +
-                                "own and not inside a longer word.",
+                            stringResource(R.string.cats_keyword_whole, pattern),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -538,9 +567,11 @@ private fun KeywordRuleDialog(
             TextButton(
                 enabled = pattern.isNotBlank() && !blocked,
                 onClick = { onSave(pattern, categoryId) },
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.action_save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
     )
 }
 
@@ -562,7 +593,11 @@ private fun CategoryEditorDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isNew) "New category" else "Edit category") },
+        title = {
+            Text(
+                stringResource(if (isNew) R.string.cats_new_title else R.string.cats_edit_title)
+            )
+        },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
@@ -571,7 +606,7 @@ private fun CategoryEditorDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.label_name)) },
                     singleLine = true,
                 )
                 if (isNew) {
@@ -583,19 +618,31 @@ private fun CategoryEditorDialog(
                             onClick = { income = false },
                             shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                             modifier = Modifier.weight(1f),
-                        ) { Text("Expense", softWrap = false, maxLines = 1) }
+                        ) {
+                            Text(
+                                stringResource(R.string.label_expense),
+                                softWrap = false,
+                                maxLines = 1,
+                            )
+                        }
                         SegmentedButton(
                             selected = income,
                             onClick = { income = true },
                             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                             modifier = Modifier.weight(1f),
-                        ) { Text("Income", softWrap = false, maxLines = 1) }
+                        ) {
+                            Text(
+                                stringResource(R.string.label_income),
+                                softWrap = false,
+                                maxLines = 1,
+                            )
+                        }
                     }
                 }
                 // Shown above the swatches because the icon is what the badge reads as
                 // at a glance in a list; the colour only tells it apart from its
                 // neighbours.
-                Text("Icon", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.label_icon), style = MaterialTheme.typography.labelLarge)
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -635,7 +682,7 @@ private fun CategoryEditorDialog(
                         }
                     }
                 }
-                Text("Colour", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.label_colour), style = MaterialTheme.typography.labelLarge)
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -652,7 +699,7 @@ private fun CategoryEditorDialog(
                             if (swatch == color) {
                                 Icon(
                                     Icons.Filled.Check,
-                                    contentDescription = "Selected",
+                                    contentDescription = stringResource(R.string.cats_selected),
                                     tint = Color.White,
                                     modifier = Modifier.size(18.dp),
                                 )
@@ -666,14 +713,14 @@ private fun CategoryEditorDialog(
             TextButton(
                 enabled = name.isNotBlank(),
                 onClick = { onSave(name.trim(), income, color, icon) },
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
             Row {
                 if (onDelete != null) {
-                    TextButton(onClick = onDelete) { Text("Delete") }
+                    TextButton(onClick = onDelete) { Text(stringResource(R.string.action_delete)) }
                 }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
             }
         },
     )

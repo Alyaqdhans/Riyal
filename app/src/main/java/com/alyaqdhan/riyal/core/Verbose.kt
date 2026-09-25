@@ -1,6 +1,9 @@
 package com.alyaqdhan.riyal.core
 
+import android.content.Context
 import android.util.Log
+import androidx.annotation.PluralsRes
+import androidx.annotation.StringRes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.Instant
@@ -23,7 +26,7 @@ data class LogLine(val atMillis: Long, val kind: Kind, val text: String) {
     val time: String get() = timeFmt.format(Instant.ofEpochMilli(atMillis).atZone(zone))
 
     private companion object {
-        val timeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm:ss a")
+        val timeFmt: DateTimeFormatter get() = Dates.pattern("h:mm:ss a")
         val zone: ZoneId = ZoneId.systemDefault()
     }
 }
@@ -69,6 +72,26 @@ object Verbose {
     fun skip(text: String) = log(LogLine.Kind.SKIP, text)
     fun fail(text: String) = log(LogLine.Kind.FAIL, text)
     fun scan(text: String) = log(LogLine.Kind.SCAN, text)
+
+    @Volatile
+    private var strings: Context? = null
+
+    fun attach(context: Context) {
+        strings = context.applicationContext
+            .createConfigurationContext(context.resources.configuration)
+    }
+
+    fun str(@StringRes id: Int, vararg args: Any?): String =
+        strings?.getString(id, *args).orEmpty()
+
+    fun count(@PluralsRes id: Int, n: Int): String =
+        strings?.resources?.getQuantityString(id, n, n).orEmpty()
+
+    fun info(@StringRes id: Int, vararg args: Any?) = info(str(id, *args))
+    fun ok(@StringRes id: Int, vararg args: Any?) = ok(str(id, *args))
+    fun skip(@StringRes id: Int, vararg args: Any?) = skip(str(id, *args))
+    fun fail(@StringRes id: Int, vararg args: Any?) = fail(str(id, *args))
+    fun scan(@StringRes id: Int, vararg args: Any?) = scan(str(id, *args))
 
     @Synchronized
     fun flush() = flushLocked()

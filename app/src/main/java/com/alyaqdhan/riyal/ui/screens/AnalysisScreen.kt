@@ -54,6 +54,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
@@ -62,14 +63,16 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.RoundedPolygon
-import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.EmptyState
+import com.alyaqdhan.riyal.ui.compose.bidi
+import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
@@ -99,8 +102,8 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private val ChartLabelsKey = ExtraStore.Key<List<String>>()
-private val nextDueFmt = DateTimeFormatter.ofPattern("d MMM")
-private val dayFmt = DateTimeFormatter.ofPattern("d MMM")
+private val nextDueFmt: DateTimeFormatter get() = Dates.pattern("d MMM")
+private val dayFmt: DateTimeFormatter get() = Dates.pattern("d MMM")
 
 /**
  * Analysis answers three questions the rest of the app can't: where the money went,
@@ -171,13 +174,15 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
         }
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Analysis") }) }) { padding ->
+    Scaffold(
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.an_title)) }) },
+    ) { padding ->
         Column(Modifier.padding(padding)) {
             if (txns.isEmpty()) {
                 EmptyState(
                     style = FaceStyle.SLEEPY,
-                    title = "Nothing to analyze yet",
-                    subtitle = "Once you scan your messages, the charts light up here.",
+                    title = stringResource(R.string.an_empty_title),
+                    subtitle = stringResource(R.string.an_empty_subtitle),
                 )
                 return@Column
             }
@@ -193,7 +198,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         FilterChip(
                             selected = accountId == null,
                             onClick = { accountId = null },
-                            label = { Text("All accounts") },
+                            label = { Text(stringResource(R.string.an_all_accounts)) },
                         )
                     }
                     items(accounts) { acc ->
@@ -217,7 +222,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                 // ── the three headline numbers, each against the period before
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SummaryTile(
-                        label = "Spent",
+                        label = stringResource(R.string.an_spent),
                         amount = totals.spent,
                         previous = previous.spent,
                         currency = currency,
@@ -226,7 +231,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         modifier = Modifier.weight(1f).popIn(),
                     )
                     SummaryTile(
-                        label = "Received",
+                        label = stringResource(R.string.an_received),
                         amount = totals.received,
                         previous = previous.received,
                         currency = currency,
@@ -234,7 +239,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         modifier = Modifier.weight(1f).popIn(50),
                     )
                     SummaryTile(
-                        label = "Net",
+                        label = stringResource(R.string.home_net),
                         amount = totals.net,
                         previous = previous.net,
                         currency = currency,
@@ -245,8 +250,10 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                 }
                 if (moved > 0) {
                     Text(
-                        "${Money.format(moved, currency)} moved between your own accounts and is " +
-                            "counted in neither figure.",
+                        stringResource(
+                            R.string.an_moved_note,
+                            bidi(Money.format(moved, currency)),
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -265,13 +272,25 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                 onClick = { donutType = TxnType.EXPENSE },
                                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                                 modifier = Modifier.weight(1f),
-                            ) { Text("Spending", softWrap = false, maxLines = 1) }
+                            ) {
+                                Text(
+                                    stringResource(R.string.cats_spending),
+                                    softWrap = false,
+                                    maxLines = 1,
+                                )
+                            }
                             SegmentedButton(
                                 selected = donutType == TxnType.INCOME,
                                 onClick = { donutType = TxnType.INCOME },
                                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                                 modifier = Modifier.weight(1f),
-                            ) { Text("Income", softWrap = false, maxLines = 1) }
+                            ) {
+                                Text(
+                                    stringResource(R.string.cats_income),
+                                    softWrap = false,
+                                    maxLines = 1,
+                                )
+                            }
                         }
                         Box(contentAlignment = Alignment.Center) {
                             val grow = remember(slices) { Animatable(0f) }
@@ -311,20 +330,33 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    if (donutType == TxnType.EXPENSE) "spent" else "received",
+                                    stringResource(
+                                        if (donutType == TxnType.EXPENSE) R.string.an_donut_spent
+                                        else R.string.an_donut_received
+                                    ),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Text(
-                                    Money.formatAmount(
-                                        if (donutType == TxnType.EXPENSE) totals.spent else totals.received,
-                                        currency,
+                                    bidi(
+                                        Money.formatAmount(
+                                            if (donutType == TxnType.EXPENSE) totals.spent
+                                            else totals.received,
+                                            currency,
+                                        )
                                     ),
                                     style = MaterialTheme.typography.headlineSmall,
                                 )
                                 Text(
-                                    currency + if (slices.isEmpty()) " · nothing recorded"
-                                    else " · ${slices.size} categories",
+                                    if (slices.isEmpty()) {
+                                        stringResource(R.string.an_donut_nothing, currency)
+                                    } else {
+                                        stringResource(
+                                            R.string.an_donut_categories,
+                                            currency,
+                                            counted(R.plurals.count_categories, slices.size),
+                                        )
+                                    },
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -356,18 +388,21 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     // Bare figure: the donut's own centre names the
                                     // currency directly above, so printing "OMR" again
                                     // on all six rows is six readings of one fact.
-                                    Money.formatAmount(s.amountMinor, currency),
+                                    bidi(Money.formatAmount(s.amountMinor, currency)),
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                                 Text(
-                                    "${(s.fraction * 100).roundToInt()}%",
+                                    stringResource(
+                                        R.string.an_percent,
+                                        (s.fraction * 100).roundToInt(),
+                                    ),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.End,
                                 )
                                 Icon(
                                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = "Open ${cat.name}",
+                                    contentDescription = stringResource(R.string.cats_open, cat.name),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp),
                                 )
@@ -375,8 +410,10 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         }
                         if (slices.isEmpty()) {
                             Text(
-                                if (donutType == TxnType.EXPENSE) "No spending recorded for this period."
-                                else "No income recorded for this period.",
+                                stringResource(
+                                    if (donutType == TxnType.EXPENSE) R.string.an_no_spending
+                                    else R.string.an_no_income
+                                ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -391,19 +428,23 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                 budgetProgress?.let { progress ->
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text("Budget pacing", style = MaterialTheme.typography.titleMedium)
                             Text(
-                                buildString {
-                                    append((progress.elapsedFraction * 100).roundToInt())
-                                    append("% of \"")
-                                    append(progress.plan.label)
-                                    append("\" gone, ")
-                                    append((progress.fraction * 100).roundToInt())
-                                    append("% of the budget spent")
-                                    if (progress.over) append(" · over")
-                                    else if (progress.aheadOfPace) append(" · running ahead")
-                                    else append(" · on track")
-                                },
+                                stringResource(R.string.an_pacing),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            Text(
+                                stringResource(
+                                    R.string.an_pacing_line,
+                                    (progress.elapsedFraction * 100).roundToInt(),
+                                    progress.plan.label,
+                                    (progress.fraction * 100).roundToInt(),
+                                ) + stringResource(
+                                    when {
+                                        progress.over -> R.string.an_pacing_over
+                                        progress.aheadOfPace -> R.string.an_pacing_ahead
+                                        else -> R.string.an_pacing_on_track
+                                    }
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = when {
                                     progress.over -> MaterialTheme.colorScheme.error
@@ -428,9 +469,15 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                 if (movers.isNotEmpty()) {
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("Biggest movers", style = MaterialTheme.typography.titleMedium)
                             Text(
-                                "Against the " + countOf(slice.lengthDays.toInt(), "day") + " before this period.",
+                                stringResource(R.string.an_movers),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            Text(
+                                stringResource(
+                                    R.string.an_movers_against,
+                                    counted(R.plurals.count_days, slice.lengthDays.toInt()),
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -457,7 +504,11 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     )
                                     val up = mover.deltaMinor > 0
                                     Text(
-                                        (if (up) "▲ " else "▼ ") + Money.format(abs(mover.deltaMinor), currency),
+                                        stringResource(
+                                            if (up) R.string.an_up_amount
+                                            else R.string.an_down_amount,
+                                            bidi(Money.format(abs(mover.deltaMinor), currency)),
+                                        ),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = if (up) MaterialTheme.colorScheme.error else successColor(),
                                     )
@@ -471,10 +522,12 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                 if (recurring.isNotEmpty()) {
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("Looks recurring", style = MaterialTheme.typography.titleMedium)
                             Text(
-                                "Same merchant, steady amount, steady rhythm, so it will very " +
-                                    "likely land again.",
+                                stringResource(R.string.an_recurring),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            Text(
+                                stringResource(R.string.an_recurring_note),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -488,16 +541,21 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     Column(Modifier.weight(1f)) {
                                         Text(r.merchant, style = MaterialTheme.typography.bodyMedium)
                                         Text(
-                                            "every ${cadenceLabel(r.intervalDays)} · ${r.occurrences} so far · " +
-                                                "next around ${nextDueFmt.format(
-                                                    Instant.ofEpochMilli(r.nextAtMillis).atZone(ZoneId.systemDefault())
-                                                )}",
+                                            stringResource(
+                                                R.string.an_recurring_line,
+                                                cadenceLabel(r.intervalDays),
+                                                r.occurrences,
+                                                nextDueFmt.format(
+                                                    Instant.ofEpochMilli(r.nextAtMillis)
+                                                        .atZone(ZoneId.systemDefault())
+                                                ),
+                                            ),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
                                     Text(
-                                        Money.format(r.typicalMinor, currency),
+                                        bidi(Money.format(r.typicalMinor, currency)),
                                         style = MaterialTheme.typography.bodyMedium,
                                     )
                                 }
@@ -509,38 +567,79 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                 // ── the numbers behind the total
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Statistics", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            stringResource(R.string.an_stats),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
                         InsightRow(
-                            R.drawable.ic_insight_bolt, MaterialShapes.SoftBurst, "Biggest expense",
+                            R.drawable.ic_insight_bolt,
+                            MaterialShapes.SoftBurst,
+                            stringResource(R.string.an_biggest_expense),
                             biggest?.let {
-                                "${it.merchant ?: Categories.byId(it.categoryId).name} · ${Money.format(it.amountMinor, it.currency)}"
-                            } ?: "none yet",
+                                stringResource(
+                                    R.string.an_named_amount,
+                                    it.merchant ?: Categories.byId(it.categoryId).name,
+                                    bidi(Money.format(it.amountMinor, it.currency)),
+                                )
+                            } ?: stringResource(R.string.an_none_yet),
                         )
                         InsightRow(
-                            R.drawable.ic_insight_calendar, MaterialShapes.Clover4Leaf, "Heaviest day",
+                            R.drawable.ic_insight_calendar,
+                            MaterialShapes.Clover4Leaf,
+                            stringResource(R.string.an_heaviest_day),
                             spread.busiestDayMillis?.let {
-                                "${dayFmt.format(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()))} · " +
-                                    Money.format(spread.busiestDayMinor, currency)
-                            } ?: "none yet",
+                                stringResource(
+                                    R.string.an_named_amount,
+                                    dayFmt.format(
+                                        Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())
+                                    ),
+                                    bidi(Money.format(spread.busiestDayMinor, currency)),
+                                )
+                            } ?: stringResource(R.string.an_none_yet),
                         )
                         InsightRow(
-                            R.drawable.ic_insight_store, MaterialShapes.Cookie9Sided, "A normal payment",
-                            if (spread.payments == 0) "none yet" else
-                                "${Money.format(spread.medianMinor, currency)} · " +
-                                    "average ${Money.format(spread.averageMinor, currency)}",
+                            R.drawable.ic_insight_store,
+                            MaterialShapes.Cookie9Sided,
+                            stringResource(R.string.an_normal_payment),
+                            if (spread.payments == 0) {
+                                stringResource(R.string.an_none_yet)
+                            } else {
+                                stringResource(
+                                    R.string.an_median_average,
+                                    bidi(Money.format(spread.medianMinor, currency)),
+                                    bidi(Money.format(spread.averageMinor, currency)),
+                                )
+                            },
                         )
                         // The rest as plain figures: they are read, not compared, and
                         // one shape each would turn a card into a list of badges.
-                        StatLine("Payments", "${spread.payments} out · ${spread.deposits} in")
                         StatLine(
-                            "Days with spending",
-                            "${spread.activeDays} of ${spread.periodDays}",
+                            stringResource(R.string.an_payments),
+                            stringResource(
+                                R.string.an_payments_value,
+                                spread.payments,
+                                spread.deposits,
+                            ),
                         )
                         StatLine(
-                            "Average per day",
-                            Money.format(
-                                Stats.avgSpentPerDayIn(totals.spent, slice.start, slice.endExclusive),
-                                currency,
+                            stringResource(R.string.an_days_with_spending),
+                            stringResource(
+                                R.string.an_days_value,
+                                spread.activeDays,
+                                spread.periodDays,
+                            ),
+                        )
+                        StatLine(
+                            stringResource(R.string.an_average_per_day),
+                            bidi(
+                                Money.format(
+                                    Stats.avgSpentPerDayIn(
+                                        totals.spent,
+                                        slice.start,
+                                        slice.endExclusive,
+                                    ),
+                                    currency,
+                                )
                             ),
                         )
                         // Said in whichever direction is true: "kept −92%" is a riddle,
@@ -548,21 +647,34 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         spread.savedFraction(totals.received, totals.spent)?.let { saved ->
                             if (saved >= 0f) {
                                 StatLine(
-                                    "Kept of what came in",
-                                    "${(saved * 100).roundToInt()}%",
+                                    stringResource(R.string.an_kept),
+                                    stringResource(
+                                        R.string.an_percent,
+                                        (saved * 100).roundToInt(),
+                                    ),
                                     color = successColor(),
                                 )
                             } else {
                                 StatLine(
-                                    "Spent beyond what came in",
-                                    "${(-saved * 100).roundToInt()}%",
+                                    stringResource(R.string.an_overspent),
+                                    stringResource(
+                                        R.string.an_percent,
+                                        (-saved * 100).roundToInt(),
+                                    ),
                                     color = MaterialTheme.colorScheme.error,
                                 )
                             }
                         }
                         if (totals.otherCurrencyCount > 0) {
                             Text(
-                                "Charts show $currency only, " + countOf(totals.otherCurrencyCount, "transaction") + " in other currencies are listed in Activity.",
+                                stringResource(
+                                    R.string.an_other_currencies,
+                                    currency,
+                                    counted(
+                                        R.plurals.count_transactions,
+                                        totals.otherCurrencyCount,
+                                    ),
+                                ),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -596,20 +708,22 @@ private fun ChartsCard(
                     onClick = { showTrend = false },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                     modifier = Modifier.weight(1f),
-                ) { Text("Cashflow", softWrap = false, maxLines = 1) }
+                ) {
+                    Text(stringResource(R.string.an_cashflow), softWrap = false, maxLines = 1)
+                }
                 SegmentedButton(
                     selected = showTrend,
                     onClick = { showTrend = true },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                     modifier = Modifier.weight(1f),
-                ) { Text("Running total", softWrap = false, maxLines = 1) }
+                ) {
+                    Text(stringResource(R.string.an_running_total), softWrap = false, maxLines = 1)
+                }
             }
             Text(
-                if (showTrend) {
-                    "Running totals: steep red = heavy spending days, the gap to green is what's left."
-                } else {
-                    "Money in against money out, side by side, so a lean stretch is obvious."
-                },
+                stringResource(
+                    if (showTrend) R.string.an_running_total_note else R.string.an_cashflow_note
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -617,7 +731,7 @@ private fun ChartsCard(
             val enough = if (showTrend) trend.size >= 2 else flow.isNotEmpty()
             if (!enough) {
                 Text(
-                    "Not enough activity in this period to draw it.",
+                    stringResource(R.string.an_not_enough),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -698,8 +812,8 @@ private fun ChartsCard(
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                LegendDot(MaterialTheme.colorScheme.error, "money out")
-                LegendDot(successColor(), "money in")
+                LegendDot(MaterialTheme.colorScheme.error, stringResource(R.string.an_legend_out))
+                LegendDot(successColor(), stringResource(R.string.an_legend_in))
             }
         }
     }
@@ -787,7 +901,10 @@ private fun SummaryTile(
             )
         }
         Text(
-            (if (signed && amount < 0) "− " else "") + Money.formatAmount(abs(amount), currency),
+            bidi(
+                (if (signed && amount < 0) "− " else "") +
+                    Money.formatAmount(abs(amount), currency)
+            ),
             style = MaterialTheme.typography.titleMedium,
             color = if (signed && amount < 0) MaterialTheme.colorScheme.error
             else MaterialTheme.colorScheme.onSurface,
@@ -808,7 +925,7 @@ private fun DeltaText(now: Long, previous: Long, upIsGood: Boolean = false) {
     val pct = Stats.deltaPct(now, previous)
     if (pct == null || abs(pct) < 0.005f) {
         Text(
-            if (pct == null) "no baseline" else "level",
+            stringResource(if (pct == null) R.string.an_no_baseline else R.string.an_level),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -817,19 +934,23 @@ private fun DeltaText(now: Long, previous: Long, upIsGood: Boolean = false) {
     val up = pct > 0
     val good = up == upIsGood
     Text(
-        (if (up) "▲ " else "▼ ") + "${(abs(pct) * 100).roundToInt()}%",
+        stringResource(
+            if (up) R.string.an_delta_up else R.string.an_delta_down,
+            (abs(pct) * 100).roundToInt(),
+        ),
         style = MaterialTheme.typography.labelSmall,
         color = if (good) successColor() else MaterialTheme.colorScheme.error,
     )
 }
 
+@Composable
 private fun cadenceLabel(days: Int): String = when (days) {
-    in 6..8 -> "week"
-    in 13..16 -> "2 weeks"
-    in 26..35 -> "month"
-    in 85..95 -> "3 months"
-    in 355..375 -> "year"
-    else -> "$days days"
+    in 6..8 -> stringResource(R.string.cadence_week)
+    in 13..16 -> stringResource(R.string.cadence_fortnight)
+    in 26..35 -> stringResource(R.string.cadence_month)
+    in 85..95 -> stringResource(R.string.cadence_quarter)
+    in 355..375 -> stringResource(R.string.cadence_year)
+    else -> counted(R.plurals.count_days, days)
 }
 
 @Composable

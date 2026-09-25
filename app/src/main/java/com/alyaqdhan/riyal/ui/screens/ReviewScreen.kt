@@ -43,18 +43,23 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.alyaqdhan.riyal.ui.compose.countOf
+import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.MsgTemplate
 import com.alyaqdhan.riyal.data.ReviewItem
+import com.alyaqdhan.riyal.data.reasonText
 import com.alyaqdhan.riyal.data.TransferProposal
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.EmptyState
+import com.alyaqdhan.riyal.ui.compose.bidi
+import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.HelpAction
@@ -67,7 +72,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
-private val reviewDateFmt = DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a")
+private val reviewDateFmt: DateTimeFormatter get() = Dates.pattern("dd MMM uuuu, h:mm a")
 
 /**
  * Inner page (opened from the Home "Needs review" section): messages that matched the
@@ -76,18 +81,6 @@ private val reviewDateFmt = DateTimeFormatter.ofPattern("dd MMM uuuu, h:mm a")
  * teaches the app: dismissing hides similar messages too (restorable below), recording
  * marks that kind of message as wanted.
  */
-/** What the page is for, behind the (i) rather than above the work. */
-private const val HELP =
-    "Messages Riyal could not read on its own. Nothing was recorded for any of them. " +
-        "Resolve one to record it, or dismiss it to say it was never a transaction.\n\n" +
-        "Some show an amount and ask only which way the money went. Those are messages " +
-        "whose wording your keywords do not cover yet - \"your card was used for...\" " +
-        "and the like. Answering records the amount as it stands, and you can adopt the " +
-        "word that confused it so the next one is read automatically.\n\n" +
-        "Transfers appear here too: two messages that look like one movement between " +
-        "your own accounts. Confirming a pair stops it counting as both spending and " +
-        "income."
-
 /** The item the manual dialog is open for, and what is already decided about it. */
 private data class Resolving(
     val item: ReviewItem,
@@ -110,9 +103,10 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
         allTransfers.count { it.state == TransferProposal.STATE_ACCEPTED }
     }
     val autoNote = if (autoConfirmOn && autoConfirmed > 0) {
-        countOf(autoConfirmed, "matching pair") + " were confirmed as transfers for you, so they " +
-            "count as neither spending nor income. Open one in Activity to split it back " +
-            "apart, or turn off \"Confirm transfers for me\" in Settings to be asked each time."
+        stringResource(
+            R.string.review_auto_note,
+            counted(R.plurals.count_matching_pairs, autoConfirmed),
+        )
     } else {
         null
     }
@@ -125,17 +119,30 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
     var showDismissed by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val merged = stringResource(R.string.review_merged)
+    val keptSeparate = stringResource(R.string.review_kept_separate)
+    val restored = stringResource(R.string.review_restored)
+    val dismissedSimilar = stringResource(R.string.review_dismissed_plus_similar)
+    val dismissedFuture = stringResource(R.string.review_dismissed_future)
+    val dismissedOne = stringResource(R.string.review_dismissed_one)
+    val undo = stringResource(R.string.action_undo)
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Needs review") },
+                title = { Text(stringResource(R.string.review_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back),
+                        )
                     }
                 },
-                actions = { HelpAction("Needs review", HELP) },
+                actions = { HelpAction(
+                        stringResource(R.string.review_title),
+                        stringResource(R.string.help_review),
+                    ) },
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
@@ -145,8 +152,8 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                 EmptyState(
                     style = FaceStyle.NORMAL,
                     mood = 0.9f,
-                    title = "All clear",
-                    subtitle = "When a message matches your keywords but can't be read, it waits here for your decision, it is never guessed into your numbers." +
+                    title = stringResource(R.string.review_all_clear_title),
+                    subtitle = stringResource(R.string.review_all_clear_subtitle) +
                         (autoNote?.let { "\n\n$it" } ?: ""),
                 )
             } else {
@@ -158,13 +165,14 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                         item(key = "transfer-header") {
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
-                                    "Transfers to confirm (${transfers.size})",
+                                    stringResource(
+                                        R.string.review_transfers_header,
+                                        transfers.size,
+                                    ),
                                     style = MaterialTheme.typography.titleSmall,
                                 )
                                 Text(
-                                    "Two messages that look like one movement of your own money. " +
-                                        "Confirm and it stops counting as both spending and income; " +
-                                        "reject and both stay exactly as they are.",
+                                    stringResource(R.string.review_transfers_intro),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -176,11 +184,11 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                                 accounts = accounts,
                                 onAccept = {
                                     vm.acceptTransfer(proposal)
-                                    scope.launch { snackbar.showSnackbar("Merged into one transfer") }
+                                    scope.launch { snackbar.showSnackbar(merged) }
                                 },
                                 onReject = {
                                     vm.rejectTransfer(proposal)
-                                    scope.launch { snackbar.showSnackbar("Kept as separate records") }
+                                    scope.launch { snackbar.showSnackbar(keptSeparate) }
                                 },
                                 modifier = Modifier.animateItem(),
                             )
@@ -198,11 +206,14 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                     }
                     item(key = "intro") {
                         Text(
-                            when {
-                                pending.isEmpty() && transfers.isEmpty() -> "All clear, nothing is waiting for you."
-                                pending.isEmpty() -> "Nothing unreadable, just the transfers above."
-                                else -> "Nothing was recorded for these. You decide."
-                            },
+                            stringResource(
+                                when {
+                                    pending.isEmpty() && transfers.isEmpty() ->
+                                        R.string.review_intro_clear
+                                    pending.isEmpty() -> R.string.review_intro_only_transfers
+                                    else -> R.string.review_intro
+                                }
+                            ),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = if (transfers.isEmpty()) 0.dp else 12.dp),
@@ -231,11 +242,11 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                                 scope.launch {
                                     val result = snackbar.showSnackbar(
                                         message = when {
-                                            similar > 0 -> "Dismissed, along with $similar similar"
-                                            alsoSimilar -> "Dismissed, future ones will be too"
-                                            else -> "Message dismissed"
+                                            similar > 0 -> dismissedSimilar.format(similar)
+                                            alsoSimilar -> dismissedFuture
+                                            else -> dismissedOne
                                         },
-                                        actionLabel = "Undo",
+                                        actionLabel = undo,
                                     )
                                     if (result == SnackbarResult.ActionPerformed) {
                                         vm.restoreReview(item)
@@ -254,16 +265,27 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text("Dismissed (${dismissed.size})", style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    stringResource(
+                                        R.string.review_dismissed_header,
+                                        dismissed.size,
+                                    ),
+                                    style = MaterialTheme.typography.titleSmall,
+                                )
                                 TextButton(onClick = { showDismissed = !showDismissed }) {
-                                    Text(if (showDismissed) "Hide" else "Show")
+                                    Text(
+                                        stringResource(
+                                            if (showDismissed) R.string.action_hide
+                                            else R.string.action_show
+                                        )
+                                    )
                                 }
                             }
                         }
                         if (showDismissed) {
                             item(key = "dismissed-hint") {
                                 Text(
-                                    "Everything you dismissed stays here, nothing is deleted. Restoring one also brings back the similar ones hidden with it, and that kind of message will reach Review again.",
+                                    stringResource(R.string.review_dismissed_hint),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -273,7 +295,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                                     item = item,
                                     onRestore = {
                                         vm.restoreReview(item)
-                                        scope.launch { snackbar.showSnackbar("Restored to review") }
+                                        scope.launch { snackbar.showSnackbar(restored) }
                                     },
                                     modifier = Modifier.animateItem(),
                                 )
@@ -288,7 +310,10 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
     resolving?.let { open ->
         val item = open.item
         ManualTxnDialog(
-            title = if (open.type != null) "Which category?" else "What was this?",
+            title = stringResource(
+                if (open.type != null) R.string.review_which_category
+                else R.string.review_what_was_this
+            ),
             atMillis = item.atMillis,
             defaultCurrency = vm.prefs.defaultCurrency,
             accounts = accounts,
@@ -322,8 +347,9 @@ private fun TransferCard(
     onReject: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val unassigned = stringResource(R.string.review_unassigned_account)
     fun name(id: String?): String =
-        accounts.firstOrNull { it.id == id }?.displayName ?: "an unassigned account"
+        accounts.firstOrNull { it.id == id }?.displayName ?: unassigned
 
     Card(
         modifier.fillMaxWidth(),
@@ -339,7 +365,7 @@ private fun TransferCard(
                 Text("⇄", style = MaterialTheme.typography.headlineSmall)
                 Column(Modifier.weight(1f)) {
                     Text(
-                        Money.format(proposal.amountMinor, proposal.currency),
+                        bidi(Money.format(proposal.amountMinor, proposal.currency)),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                     )
@@ -354,12 +380,20 @@ private fun TransferCard(
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    "− ${Money.format(proposal.amountMinor, proposal.currency)} left ${name(proposal.fromAccountId)}",
+                    stringResource(
+                        R.string.review_left_account,
+                        bidi("− " + Money.format(proposal.amountMinor, proposal.currency)),
+                        name(proposal.fromAccountId),
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
                 Text(
-                    "+ ${Money.format(proposal.amountMinor, proposal.currency)} arrived in ${name(proposal.toAccountId)}",
+                    stringResource(
+                        R.string.review_arrived_account,
+                        bidi("+ " + Money.format(proposal.amountMinor, proposal.currency)),
+                        name(proposal.toAccountId),
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = successColor(),
                 )
@@ -368,12 +402,12 @@ private fun TransferCard(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
-                TextButton(onClick = onReject) { Text("No, keep both") }
+                TextButton(onClick = onReject) { Text(stringResource(R.string.review_keep_both)) }
                 Button(
                     onClick = onAccept,
                     shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.pressBounce(),
-                ) { Text("Yes, it's a transfer") }
+                ) { Text(stringResource(R.string.review_yes_transfer)) }
             }
         }
     }
@@ -402,12 +436,17 @@ private fun ReviewCard(
                 Column(Modifier.weight(1f)) {
                     if (item.directionOnly) {
                         Text(
-                            Money.format(item.amountMinor!!, item.currency ?: ""),
+                            bidi(Money.format(item.amountMinor!!, item.currency ?: "")),
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
-                            item.sender + " · " + reviewDateFmt.format(
-                                Instant.ofEpochMilli(item.atMillis).atZone(ZoneId.systemDefault())
+                            stringResource(
+                                R.string.row_account_time,
+                                item.sender,
+                                reviewDateFmt.format(
+                                    Instant.ofEpochMilli(item.atMillis)
+                                        .atZone(ZoneId.systemDefault())
+                                ),
                             ),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -423,7 +462,7 @@ private fun ReviewCard(
                 }
             }
             SummaryPill(
-                item.reason,
+                reasonText(item.reason),
                 if (item.directionOnly) MaterialTheme.colorScheme.secondaryContainer
                 else MaterialTheme.colorScheme.errorContainer,
                 if (item.directionOnly) MaterialTheme.colorScheme.onSecondaryContainer
@@ -446,7 +485,7 @@ private fun ReviewCard(
             var learnWord by remember { mutableStateOf<String?>(null) }
             if (item.directionOnly && item.suggestedWords.isNotEmpty()) {
                 Text(
-                    "Read messages like this automatically from now on",
+                    stringResource(R.string.review_learn_word),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -455,7 +494,7 @@ private fun ReviewCard(
                         FilterChip(
                             selected = learnWord == word,
                             onClick = { learnWord = if (learnWord == word) null else word },
-                            label = { Text("\"$word\"") },
+                            label = { Text(stringResource(R.string.review_learn_word_chip, word)) },
                         )
                     }
                 }
@@ -473,7 +512,7 @@ private fun ReviewCard(
                 ) {
                     Checkbox(checked = rememberChoice, onCheckedChange = { rememberChoice = it })
                     Text(
-                        "Remember for similar messages",
+                        stringResource(R.string.review_remember_similar),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -490,26 +529,28 @@ private fun ReviewCard(
                         onClick = { onDecide(Direction.EXPENSE, learnWord) },
                         shapes = ButtonDefaults.shapes(),
                         modifier = Modifier.weight(1f).pressBounce(),
-                    ) { Text("Money out") }
+                    ) { Text(stringResource(R.string.label_money_out)) }
                     FilledTonalButton(
                         onClick = { onDecide(Direction.INCOME, learnWord) },
                         shapes = ButtonDefaults.shapes(),
                         modifier = Modifier.weight(1f).pressBounce(),
-                    ) { Text("Money in") }
+                    ) { Text(stringResource(R.string.label_money_in)) }
                 }
             }
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
-                TextButton(onClick = { onDismiss(rememberChoice) }) { Text("Dismiss") }
+                TextButton(onClick = { onDismiss(rememberChoice) }) {
+                    Text(stringResource(R.string.action_dismiss))
+                }
                 if (!item.directionOnly) {
                     FilledTonalButton(
                         onClick = { onResolve(rememberChoice) },
                         shapes = ButtonDefaults.shapes(),
                         modifier = Modifier.pressBounce(),
                     ) {
-                        Text("Add manually")
+                        Text(stringResource(R.string.review_add_manually))
                     }
                 }
             }
@@ -549,7 +590,7 @@ private fun DismissedCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            TextButton(onClick = onRestore) { Text("Restore") }
+            TextButton(onClick = onRestore) { Text(stringResource(R.string.action_restore)) }
         }
     }
 }

@@ -2,6 +2,8 @@ package com.alyaqdhan.riyal.core
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.annotation.StringRes
+import com.alyaqdhan.riyal.R
 
 /**
  * The first-run answer to "how much of my inbox should this read?".
@@ -10,11 +12,15 @@ import android.content.SharedPreferences
  * history starts empty and fills in as the banks text, so accounts appear one at a
  * time, on the day their bank first says something.
  */
-enum class ScanHistory(val label: String, val months: Int) {
-    ALL("All", 0),
-    YEAR("1 year", 12),
-    QUARTER("3 months", 3),
-    FROM_NOW("From today", 0),
+enum class ScanHistory(
+    @param:StringRes val label: Int,
+    @param:StringRes val explanation: Int,
+    val months: Int,
+) {
+    ALL(R.string.history_all, R.string.history_all_explained, 0),
+    YEAR(R.string.history_year, R.string.history_year_explained, 12),
+    QUARTER(R.string.history_quarter, R.string.history_quarter_explained, 3),
+    FROM_NOW(R.string.history_from_now, R.string.history_from_now_explained, 0),
 }
 
 /**
@@ -111,7 +117,7 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putBoolean("auto_confirm_transfers", v).apply()
 
     /**
-     * Whether the Activity list has already explained that its rows can be swiped. The
+     * Whether the transactions list has already explained that its rows can be swiped. The
      * gesture is the only way to archive or remove a record and nothing on screen says
      * so, which leaves it undiscoverable until someone swipes by accident.
      */

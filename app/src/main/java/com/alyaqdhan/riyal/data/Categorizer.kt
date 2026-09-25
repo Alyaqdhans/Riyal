@@ -1,5 +1,7 @@
 package com.alyaqdhan.riyal.data
 
+import com.alyaqdhan.riyal.R
+
 /**
  * Keyword → category mapping tuned for Oman (Lulu, Talabat, Omantel, OOMCO, Mwasalat…)
  * plus the common international merchants. The user's own rules always win, and every
@@ -7,7 +9,7 @@ package com.alyaqdhan.riyal.data
  */
 object Categorizer {
 
-    data class Match(val categoryId: String, val pattern: String?, val source: String)
+    data class Match(val categoryId: String, val pattern: String?, val source: ParseNote)
 
     // Order matters: earlier entries win. Keep specific words before generic ones.
     // Internal rather than private so a test can assert every id here is a real
@@ -139,17 +141,25 @@ object Categorizer {
             // must not drag the incoming half in with it. Nothing enforced that, and an
             // expense category on an income record is a wrong answer that looks right.
             if (Categories.byId(rule.categoryId).income != wantIncome) continue
-            return Match(rule.categoryId, rule.pattern, "your rule")
+            return Match(
+                rule.categoryId,
+                rule.pattern,
+                ParseNote(R.string.scanlog_cat_rule, listOf(rule.pattern)),
+            )
         }
         for ((keyword, categoryId) in BUILTIN) {
             if (!contains(hay, keyword)) continue
             val category = Categories.byId(categoryId)
             if (category.income == (direction == Direction.INCOME)) {
-                return Match(categoryId, keyword, "built-in")
+                return Match(
+                    categoryId,
+                    keyword,
+                    ParseNote(R.string.scanlog_cat_builtin, listOf(keyword)),
+                )
             }
         }
         val fallback = if (direction == Direction.INCOME) Categories.DEFAULT_INCOME else Categories.DEFAULT_EXPENSE
-        return Match(fallback, null, "default")
+        return Match(fallback, null, ParseNote(R.string.scanlog_cat_default))
     }
 
     // Short keywords ("fee", "vat", "atm"…) must match whole words so "coffee" or

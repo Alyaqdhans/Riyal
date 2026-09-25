@@ -2,6 +2,7 @@
 
 package com.alyaqdhan.riyal
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -33,12 +34,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.isVisible
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.navOptions
+import com.alyaqdhan.riyal.core.Dates
+import com.alyaqdhan.riyal.core.Language
+import com.alyaqdhan.riyal.core.Verbose
+import com.alyaqdhan.riyal.ui.Words
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
 import com.alyaqdhan.riyal.ui.theme.RiyalTheme
@@ -55,10 +61,17 @@ class MainActivity : AppCompatActivity() {
     private val vm: MainViewModel by viewModels()
     private val currentDestination = MutableStateFlow(0)
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(Language.latinDigits(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        Words.apply(this)
+        Verbose.attach(this)
+        Dates.use(resources.configuration.locales[0])
         setContentView(R.layout.activity_main)
 
         val navHost = supportFragmentManager.findFragmentById(R.id.nav_host) as NavHostFragment
@@ -105,7 +118,7 @@ class MainActivity : AppCompatActivity() {
                 val categoryUse by vm.categoryUse.collectAsState()
                 if (showAdd) {
                     ManualTxnDialog(
-                        title = "Add transaction",
+                        title = getString(R.string.action_add_transaction),
                         atMillis = System.currentTimeMillis(),
                         defaultCurrency = vm.prefs.defaultCurrency,
                         accounts = accounts,
@@ -187,28 +200,28 @@ private fun RiyalNavBar(
                 // Review lives inside Home; a plain dot (no number) marks pending items,
                 // the count itself is on the Home "Needs review" card.
                 BadgedBox(badge = { if (reviewCount > 0) Badge() }) {
-                    Icon(Icons.Filled.Home, contentDescription = "Home")
+                    Icon(Icons.Filled.Home, contentDescription = stringResource(R.string.tab_home_a11y))
                 }
             }
             NavToggle(
                 checked = selected == R.id.transactionsFragment,
                 onCheck = { onSelect(R.id.transactionsFragment) },
-            ) { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Activity") }
+            ) { Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.tab_transactions)) }
             NavToggle(
                 checked = selected == R.id.analysisFragment,
                 onCheck = { onSelect(R.id.analysisFragment) },
-            ) { Icon(painterResource(R.drawable.ic_pie), contentDescription = "Analysis") }
+            ) { Icon(painterResource(R.drawable.ic_pie), contentDescription = stringResource(R.string.tab_analysis)) }
             NavToggle(
                 checked = selected == R.id.settingsFragment,
                 onCheck = { onSelect(R.id.settingsFragment) },
-            ) { Icon(Icons.Filled.Settings, contentDescription = "Settings") }
+            ) { Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.tab_settings)) }
         }
         FloatingActionButton(
             onClick = onAdd,
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         ) {
-            Icon(Icons.Filled.Add, contentDescription = "Add transaction")
+            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.action_add_transaction))
         }
     }
 }
