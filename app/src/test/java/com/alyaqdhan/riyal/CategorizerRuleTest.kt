@@ -24,7 +24,7 @@ class CategorizerRuleTest {
             Direction.EXPENSE, "MBI", "تم خصم 20.000 OMR عن طريق MBI", sending, "Meethaq",
         )
         assertEquals("sending", m.categoryId)
-        assertEquals("your rule", m.source)
+        assertEquals(R.string.scanlog_cat_rule, m.source.id)
     }
 
     @Test
@@ -35,7 +35,7 @@ class CategorizerRuleTest {
         // Not "sending": an expense category on an income record is a wrong answer that
         // looks like a right one.
         assertEquals("income", m.categoryId)
-        assertEquals("default", m.source)
+        assertEquals(R.string.scanlog_cat_default, m.source.id)
     }
 
     @Test

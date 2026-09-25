@@ -320,12 +320,6 @@ fun SummaryPill(text: String, container: Color, content: Color) {
     }
 }
 
-/**
- * "1 record(s)" is not English, and it appears wherever a count does. One place to
- * decide it, so a screen counting things never has to think about the s.
- */
-fun countOf(n: Int, noun: String): String = "$n $noun" + if (n == 1) "" else "s"
-
 fun bidi(amount: String): String = "\u2066" + amount + "\u2069"
 
 @Composable

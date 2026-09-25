@@ -627,6 +627,7 @@
         <item quantity="other">%d خطة</item>
     </plurals>
 
+    <string name="scan_permission_missing">إذن قراءة الرسائل غير ممنوح</string>
     <string name="scan_permission_refused">رفض النظام قراءة الرسائل، تحقّق من الإذن</string>
     <string name="scan_unknown_error">خطأ غير معروف</string>
     <string name="manual_entry_sender">إدخال يدوي</string>
@@ -905,6 +906,9 @@
     <string name="scanlog_msg_header">✉ %1$s · %2$s</string>
     <string name="scanlog_not_your_bank">    ← ليس من بنوكك، فلا يمكن أن يكون حرَّك مالك؛ ولم تُسجَّل</string>
     <string name="scanlog_category">    · التصنيف: %1$s (%2$s)</string>
+    <string name="scanlog_cat_rule">قاعدتك طابقت \"%1$s\"</string>
+    <string name="scanlog_cat_builtin">مطابقة مدمجة \"%1$s\"</string>
+    <string name="scanlog_cat_default">الافتراضي</string>
     <string name="scanlog_account">    · الحساب: %1$s</string>
     <string name="scanlog_account_unmatched">غير مطابق، حدِّده من صف المعاملة</string>
     <string name="scanlog_recorded_transfer">    ✓ سُجِّلت تحويلاً بين حساباتك أنت · %1$s · ولا تُحتسب مصروفاً ولا دخلاً</string>

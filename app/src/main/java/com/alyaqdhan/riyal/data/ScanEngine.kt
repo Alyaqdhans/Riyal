@@ -444,12 +444,11 @@ class ScanEngine(
                 )
             )
             result.trace.forEach { logRecord(Verbose.str(R.string.scanlog_trace, it.text())) }
-            val catNote = cat.pattern?.let { "${cat.source} match \"$it\"" } ?: cat.source
             logRecord(
                 Verbose.str(
                     R.string.scanlog_category,
                     Categories.byId(cat.categoryId).name,
-                    catNote,
+                    cat.source.text(),
                 )
             )
             logRecord(
@@ -644,7 +643,8 @@ class ScanEngine(
     ).joinToString("|")
 
     private fun accountName(accounts: List<Account>, id: String?): String =
-        accounts.firstOrNull { it.id == id }?.displayName ?: "an unassigned account"
+        accounts.firstOrNull { it.id == id }?.displayName
+            ?: Verbose.str(R.string.review_unassigned_account)
 
     /** "+96891234567", "9123 4567"… anything that's just a phone number. */
     private fun isPhoneNumber(sender: String): Boolean =

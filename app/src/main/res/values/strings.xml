@@ -571,6 +571,7 @@
         <item quantity="other">%d plans</item>
     </plurals>
 
+    <string name="scan_permission_missing">SMS reading permission is not granted</string>
     <string name="scan_permission_refused">The system refused the SMS read, check the permission</string>
     <string name="scan_unknown_error">Unknown error</string>
     <string name="manual_entry_sender">manual entry</string>
@@ -813,6 +814,9 @@
     <string name="scanlog_msg_header">✉ %1$s · %2$s</string>
     <string name="scanlog_not_your_bank">    → not one of your banks, so it cannot have moved your money; not recorded</string>
     <string name="scanlog_category">    · category: %1$s (%2$s)</string>
+    <string name="scanlog_cat_rule">your rule match \"%1$s\"</string>
+    <string name="scanlog_cat_builtin">built-in match \"%1$s\"</string>
+    <string name="scanlog_cat_default">default</string>
     <string name="scanlog_account">    · account: %1$s</string>
     <string name="scanlog_account_unmatched">not matched, assign it from the transaction row</string>
     <string name="scanlog_recorded_transfer">    ✓ recorded as a transfer between your own accounts · %1$s · it counts as neither spending nor income</string>

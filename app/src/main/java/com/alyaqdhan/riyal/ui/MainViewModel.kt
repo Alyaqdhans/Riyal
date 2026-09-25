@@ -187,7 +187,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (!_hasSmsPermission.value) {
             Verbose.fail(R.string.log_scan_no_permission)
             Verbose.flush()
-            _scanState.value = ScanState.Failed("SMS reading permission is not granted")
+            _scanState.value = ScanState.Failed(
+                getApplication<Application>().getString(R.string.scan_permission_missing)
+            )
             if (showSheet) scanSheetVisible.value = true
             return
         }
