@@ -302,6 +302,21 @@
     <string name="needs_read_message">قراءة الرسالة</string>
 
     <string name="acct_generic_name">حساب</string>
+    <string name="bank_muscat">بنك مسقط</string>
+    <string name="bank_meethaq">ميثاق الإسلامي</string>
+    <string name="bank_nbo">البنك الوطني العماني</string>
+    <string name="bank_muzn">مزن الإسلامي</string>
+    <string name="bank_sohar_intl">بنك صحار الدولي</string>
+    <string name="bank_sohar_islamic">صحار الإسلامي</string>
+    <string name="bank_dhofar">بنك ظفار</string>
+    <string name="bank_maisarah">ميسرة الإسلامي</string>
+    <string name="bank_alizz">بنك العز الإسلامي</string>
+    <string name="bank_nizwa">بنك نزوى</string>
+    <string name="bank_oman_arab">بنك عمان العربي</string>
+    <string name="bank_ahli">البنك الأهلي</string>
+    <string name="bank_cbd">بنك دبي التجاري</string>
+    <string name="bank_sharjah_islamic">مصرف الشارقة الإسلامي</string>
+    <string name="bank_sbi">بنك الدولة الهندي</string>
     <string name="acct_title">الحسابات البنكية</string>
     <string name="acct_empty_title">لا حسابات بعد</string>
     <string name="acct_empty_subtitle">افحص رسائلك لينشئ ريال حساباتك مما قاله بنكك أصلاً، أو أضف حساباً هنا بنفسك.</string>

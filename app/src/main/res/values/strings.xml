@@ -262,6 +262,21 @@
     <string name="needs_read_message">Read the message</string>
 
     <string name="acct_generic_name">Account</string>
+    <string name="bank_muscat">Bank Muscat</string>
+    <string name="bank_meethaq">Meethaq Islamic</string>
+    <string name="bank_nbo">National Bank of Oman</string>
+    <string name="bank_muzn">Muzn Islamic</string>
+    <string name="bank_sohar_intl">Sohar International</string>
+    <string name="bank_sohar_islamic">Sohar Islamic</string>
+    <string name="bank_dhofar">Bank Dhofar</string>
+    <string name="bank_maisarah">Maisarah Islamic</string>
+    <string name="bank_alizz">Alizz Islamic Bank</string>
+    <string name="bank_nizwa">Bank Nizwa</string>
+    <string name="bank_oman_arab">Oman Arab Bank</string>
+    <string name="bank_ahli">Ahli Bank</string>
+    <string name="bank_cbd">Commercial Bank of Dubai</string>
+    <string name="bank_sharjah_islamic">Sharjah Islamic Bank</string>
+    <string name="bank_sbi">State Bank of India</string>
     <string name="acct_title">Bank accounts</string>
     <string name="acct_empty_title">No accounts yet</string>
     <string name="acct_empty_subtitle">Scan your messages and Riyal will set accounts up from what your bank already told you, or add one here by hand.</string>

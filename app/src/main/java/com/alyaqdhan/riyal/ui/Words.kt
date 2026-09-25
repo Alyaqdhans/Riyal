@@ -44,8 +44,27 @@ object Words {
         "income" to R.string.cat_income,
     )
 
+    private val BANKS: Map<String, Int> = mapOf(
+        "Bank Muscat" to R.string.bank_muscat,
+        "Meethaq Islamic" to R.string.bank_meethaq,
+        "National Bank of Oman" to R.string.bank_nbo,
+        "Muzn Islamic" to R.string.bank_muzn,
+        "Sohar International" to R.string.bank_sohar_intl,
+        "Sohar Islamic" to R.string.bank_sohar_islamic,
+        "Bank Dhofar" to R.string.bank_dhofar,
+        "Maisarah Islamic" to R.string.bank_maisarah,
+        "Alizz Islamic Bank" to R.string.bank_alizz,
+        "Bank Nizwa" to R.string.bank_nizwa,
+        "Oman Arab Bank" to R.string.bank_oman_arab,
+        "Ahli Bank" to R.string.bank_ahli,
+        "Commercial Bank of Dubai" to R.string.bank_cbd,
+        "Sharjah Islamic Bank" to R.string.bank_sharjah_islamic,
+        "State Bank of India" to R.string.bank_sbi,
+    )
+
     fun apply(context: Context) {
         Categories.setNames(CATEGORIES.mapValues { (_, res) -> context.getString(res) })
         Account.genericName = context.getString(R.string.acct_generic_name)
+        Account.bankNames = BANKS.mapValues { (_, res) -> context.getString(res) }
     }
 }

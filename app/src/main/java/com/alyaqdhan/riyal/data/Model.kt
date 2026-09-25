@@ -249,7 +249,7 @@ data class Account(
      */
     val shortName: String
         get() = name.trim().ifEmpty {
-            last4?.trim()?.takeIf { it.isNotEmpty() } ?: bankName.trim().ifEmpty { displayName }
+            last4?.trim()?.takeIf { it.isNotEmpty() } ?: bankLabel(bankName).ifEmpty { displayName }
         }
 
     companion object {
@@ -258,9 +258,17 @@ data class Account(
         @Volatile
         var genericName: String = "Account"
 
+        @Volatile
+        var bankNames: Map<String, String> = emptyMap()
+
+        fun bankLabel(bankName: String): String {
+            val bank = bankName.trim()
+            return bankNames[bank] ?: bank
+        }
+
         /** The name an account carries when the user hasn't nicknamed it. */
         fun defaultNameOf(bankName: String, last4: String?): String {
-            val bank = bankName.trim()
+            val bank = bankLabel(bankName)
             val tail = last4?.trim()?.takeIf { it.isNotEmpty() }
             return when {
                 bank.isNotEmpty() && tail != null -> "$bank · $tail"
