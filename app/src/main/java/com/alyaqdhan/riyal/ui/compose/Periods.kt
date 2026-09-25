@@ -116,5 +116,8 @@ data class TimeSlice(
 }
 
 @Composable
-fun TimeSlice.title(): String =
-    labelRes?.let { stringResource(it, *labelArgs.toTypedArray()) } ?: label
+fun TimeSlice.title(): String = when {
+    labelRes != null -> stringResource(labelRes, *labelArgs.toTypedArray())
+    month != null -> month.format(monthTitleFmt)
+    else -> label
+}
