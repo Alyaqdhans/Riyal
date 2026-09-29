@@ -110,6 +110,8 @@ fun SettingsScreen(
     onOpenAccounts: () -> Unit,
     onOpenCategories: () -> Unit,
     onExport: () -> Unit,
+    onBackup: () -> Unit,
+    onRestore: () -> Unit,
 ) {
     val context = LocalContext.current
     val prefs = vm.prefs
@@ -141,6 +143,8 @@ fun SettingsScreen(
     var autoConfirmTransfers by remember { mutableStateOf(prefs.autoConfirmTransfers) }
     var confirmWipe by remember { mutableStateOf(false) }
     var confirmExport by remember { mutableStateOf(false) }
+    var confirmRestore by remember { mutableStateOf(false) }
+    var backupMessages by remember { mutableStateOf(prefs.backupIncludeMessages) }
     var pickCurrency by remember { mutableStateOf(false) }
     var pickLanguage by remember { mutableStateOf(false) }
     val language = Language.current()
@@ -499,6 +503,29 @@ fun SettingsScreen(
                     actionLabel = stringResource(R.string.action_export),
                     onAction = { confirmExport = true },
                 )
+                ActionLine(
+                    title = stringResource(R.string.set_backup),
+                    value = null,
+                    detail = stringResource(R.string.set_help_backup),
+                    actionLabel = stringResource(R.string.action_save),
+                    onAction = onBackup,
+                )
+                SwitchLine(
+                    title = stringResource(R.string.set_backup_messages),
+                    checked = backupMessages,
+                    onCheckedChange = {
+                        backupMessages = it
+                        prefs.backupIncludeMessages = it
+                    },
+                    detail = stringResource(R.string.set_help_backup_messages),
+                )
+                ActionLine(
+                    title = stringResource(R.string.set_restore),
+                    value = null,
+                    detail = stringResource(R.string.set_help_restore),
+                    actionLabel = stringResource(R.string.action_restore),
+                    onAction = { confirmRestore = true },
+                )
                 ExpandLine(
                     title = stringResource(R.string.set_verbose_log),
                     value = stringResource(R.string.set_verbose_value),
@@ -676,6 +703,25 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmWipe = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    if (confirmRestore) {
+        AlertDialog(
+            onDismissRequest = { confirmRestore = false },
+            title = { Text(stringResource(R.string.set_restore_title)) },
+            text = { Text(stringResource(R.string.set_restore_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRestore = false
+                    onRestore()
+                }) { Text(stringResource(R.string.action_restore)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRestore = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },

@@ -92,4 +92,5 @@ dependencies {
     // Vico: proper chart library (Analysis 6-month columns), Compose + Material 3.
     implementation(libs.vico.compose.m3)
     testImplementation(libs.junit)
+    testImplementation(libs.json)
 }

@@ -125,6 +125,10 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("swipe_hint_seen", false)
         set(v) = sp.edit().putBoolean("swipe_hint_seen", v).apply()
 
+    var backupIncludeMessages: Boolean
+        get() = sp.getBoolean("backup_include_messages", true)
+        set(v) = sp.edit().putBoolean("backup_include_messages", v).apply()
+
     var senderFilterEnabled: Boolean
         get() = sp.getBoolean("sender_filter_enabled", false)
         set(v) = sp.edit().putBoolean("sender_filter_enabled", v).apply()
@@ -193,8 +197,10 @@ class Prefs(context: Context) {
 
     fun wipe() {
         val onboarding = onboardingDone
+        val backupMessages = backupIncludeMessages
         sp.edit().clear().apply()
         onboardingDone = onboarding
+        backupIncludeMessages = backupMessages
     }
 
     companion object {

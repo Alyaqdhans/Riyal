@@ -825,6 +825,36 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         Verbose.flush()
     }
 
+    suspend fun backupJson(includeMessages: Boolean): String = mutex.withLock {
+        persistLocked()
+        Backup.of(file.readText(), includeMessages)
+    }
+
+    suspend fun restoreFrom(json: String): Boolean = mutex.withLock {
+        val version = try {
+            Backup.versionOf(json)
+        } catch (e: Exception) {
+            Verbose.fail(R.string.log_restore_unreadable, e.message)
+            Verbose.flush()
+            return@withLock false
+        }
+        if (version != SCHEMA_VERSION) {
+            Verbose.fail(R.string.log_restore_wrong_version, version, SCHEMA_VERSION)
+            Verbose.flush()
+            return@withLock false
+        }
+        val tmp = File(file.parentFile, file.name + ".tmp")
+        tmp.writeText(json)
+        if (!tmp.renameTo(file)) {
+            file.delete()
+            tmp.renameTo(file)
+        }
+        loadLocked()
+        Verbose.ok(R.string.log_restore_done, Verbose.count(R.plurals.count_records, rawTxns.size))
+        Verbose.flush()
+        true
+    }
+
     // ─────────────────────────── persistence ───────────────────────────
 
     private fun loadLocked() {
