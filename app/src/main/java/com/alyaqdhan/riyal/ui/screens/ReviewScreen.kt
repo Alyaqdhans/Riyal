@@ -4,7 +4,10 @@ package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -67,6 +70,7 @@ import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
 import com.alyaqdhan.riyal.ui.compose.SummaryPill
 import com.alyaqdhan.riyal.ui.theme.successColor
 import com.alyaqdhan.riyal.ui.compose.pressBounce
+import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -147,15 +151,18 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
-        Column(Modifier.padding(padding)) {
+        ScanRefresh(vm, Modifier.padding(padding)) {
+        Column {
             if (pending.isEmpty() && dismissed.isEmpty() && transfers.isEmpty()) {
-                EmptyState(
-                    style = FaceStyle.NORMAL,
-                    mood = 0.9f,
-                    title = stringResource(R.string.review_all_clear_title),
-                    subtitle = stringResource(R.string.review_all_clear_subtitle) +
-                        (autoNote?.let { "\n\n$it" } ?: ""),
-                )
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    EmptyState(
+                        style = FaceStyle.NORMAL,
+                        mood = 0.9f,
+                        title = stringResource(R.string.review_all_clear_title),
+                        subtitle = stringResource(R.string.review_all_clear_subtitle) +
+                            (autoNote?.let { "\n\n$it" } ?: ""),
+                    )
+                }
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(16.dp),
@@ -304,6 +311,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                     }
                 }
             }
+        }
         }
     }
 

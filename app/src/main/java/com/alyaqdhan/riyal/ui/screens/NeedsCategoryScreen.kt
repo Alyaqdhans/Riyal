@@ -70,6 +70,7 @@ import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.localDateOf
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.rememberCategoryOrder
+import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -152,8 +153,8 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
             )
         },
     ) { padding ->
+        ScanRefresh(vm, Modifier.padding(padding)) {
         LazyColumn(
-            modifier = Modifier.padding(padding),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -236,6 +237,7 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                     }
                 }
             }
+        }
         }
     }
 }

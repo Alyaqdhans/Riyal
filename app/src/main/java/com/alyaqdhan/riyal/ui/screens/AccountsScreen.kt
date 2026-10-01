@@ -66,6 +66,7 @@ import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.HelpAction
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
+import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import com.alyaqdhan.riyal.ui.theme.successColor
 import java.time.Instant
 import java.time.ZoneId
@@ -108,7 +109,8 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
             )
         },
     ) { padding ->
-        Column(Modifier.padding(padding)) {
+        ScanRefresh(vm, Modifier.padding(padding)) {
+        Column {
             if (accounts.isEmpty()) {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     EmptyState(
@@ -159,6 +161,7 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
                     ) { Text(stringResource(R.string.acct_add)) }
                 }
             }
+        }
         }
     }
 

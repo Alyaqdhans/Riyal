@@ -57,6 +57,7 @@ import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.TxnSort
 import com.alyaqdhan.riyal.ui.compose.popIn
+import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import com.alyaqdhan.riyal.ui.theme.successColor
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -126,8 +127,8 @@ fun CategoryDetailScreen(
             )
         },
     ) { padding ->
+        ScanRefresh(vm, Modifier.padding(padding)) {
         LazyColumn(
-            modifier = Modifier.padding(padding),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -211,6 +212,7 @@ fun CategoryDetailScreen(
                     }
                 }
             }
+        }
         }
     }
 
