@@ -71,6 +71,7 @@ import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.pressBounce
+import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import com.alyaqdhan.riyal.ui.theme.successColor
 import kotlinx.coroutines.launch
 
@@ -115,13 +116,9 @@ fun HomeScreen(
     val faceRotation = remember { Animatable(0f) }
 
     Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_home)) }) }) { padding ->
-        // Scanning is Settings' business and shows its progress there. Home used to pull
-        // to refresh, which put a spinner over the dashboard for work started somewhere
-        // else - and the sheet it belonged to was hosted here rather than on the screen
-        // holding the button that started it.
+        ScanRefresh(vm, Modifier.padding(padding)) {
         Column(
             Modifier
-                .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
@@ -385,6 +382,7 @@ fun HomeScreen(
                 }
             }
             ToolbarSpacer()
+        }
         }
     }
 

@@ -13,6 +13,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -79,6 +80,7 @@ import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.compose.popIn
+import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import com.alyaqdhan.riyal.ui.theme.successColor
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
@@ -177,13 +179,16 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
     Scaffold(
         topBar = { TopAppBar(title = { Text(stringResource(R.string.an_title)) }) },
     ) { padding ->
-        Column(Modifier.padding(padding)) {
+        ScanRefresh(vm, Modifier.padding(padding)) {
+        Column {
             if (txns.isEmpty()) {
-                EmptyState(
-                    style = FaceStyle.SLEEPY,
-                    title = stringResource(R.string.an_empty_title),
-                    subtitle = stringResource(R.string.an_empty_subtitle),
-                )
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    EmptyState(
+                        style = FaceStyle.SLEEPY,
+                        title = stringResource(R.string.an_empty_title),
+                        subtitle = stringResource(R.string.an_empty_subtitle),
+                    )
+                }
                 return@Column
             }
 
@@ -684,6 +689,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                 // Room for the floating toolbar hovering over the content.
                 ToolbarSpacer()
             }
+        }
         }
     }
 }

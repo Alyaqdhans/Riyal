@@ -31,9 +31,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -65,13 +62,13 @@ import com.alyaqdhan.riyal.ui.compose.bidi
 import com.alyaqdhan.riyal.ui.compose.dayLabel
 import com.alyaqdhan.riyal.ui.compose.localDateOf
 import com.alyaqdhan.riyal.ui.compose.popIn
+import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 
 @Composable
 fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     val txns by vm.txns.collectAsState()
-    val scan by vm.scanState.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val categoryUse by vm.categoryUse.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
@@ -152,21 +149,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             )
         },
     ) { padding ->
-        val ptrState = rememberPullToRefreshState()
-        val refreshing = scan is MainViewModel.ScanState.Running
-        PullToRefreshBox(
-            isRefreshing = refreshing,
-            onRefresh = { vm.startScan(showSheet = false) },
-            state = ptrState,
-            modifier = Modifier.padding(padding),
-            indicator = {
-                PullToRefreshDefaults.LoadingIndicator(
-                    state = ptrState,
-                    isRefreshing = refreshing,
-                    modifier = Modifier.align(Alignment.TopCenter),
-                )
-            },
-        ) {
+        ScanRefresh(vm, Modifier.padding(padding)) {
         Column(Modifier.fillMaxSize()) {
             // One row, four chips: the answers to "what kind of thing am I looking at?".
             // Categories and accounts have dozens of options each and live in the sheet.
