@@ -38,8 +38,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.ScanHistory
 import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.popIn
@@ -77,10 +79,10 @@ fun OnboardingScreen(
                     .popIn(),
             )
             Spacer(Modifier.height(16.dp))
-            Text("Riyal", style = MaterialTheme.typography.displaySmall)
+            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall)
             Spacer(Modifier.height(6.dp))
             Text(
-                "Your spending, sorted from your bank SMS,\nquietly, and only on this phone.",
+                stringResource(R.string.onboarding_pitch),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -91,10 +93,22 @@ fun OnboardingScreen(
                     Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Promise("Reads only when you ask", "No background listener, ever.")
-                    Promise("Your money stays here", "Nothing about it is ever sent. Updates are all it asks for.")
-                    Promise("Only what matters", "Bank messages with money words. The rest is ignored.")
-                    Promise("You're in control", "Anything unclear is yours to decide, every step logged.")
+                    Promise(
+                        stringResource(R.string.onboarding_promise_ask_title),
+                        stringResource(R.string.onboarding_promise_ask_detail),
+                    )
+                    Promise(
+                        stringResource(R.string.onboarding_promise_stays_title),
+                        stringResource(R.string.onboarding_promise_stays_detail),
+                    )
+                    Promise(
+                        stringResource(R.string.onboarding_promise_matters_title),
+                        stringResource(R.string.onboarding_promise_matters_detail),
+                    )
+                    Promise(
+                        stringResource(R.string.onboarding_promise_control_title),
+                        stringResource(R.string.onboarding_promise_control_detail),
+                    )
                 }
             }
             Spacer(Modifier.height(20.dp))
@@ -103,7 +117,10 @@ fun OnboardingScreen(
                     Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Text("How far back should it read?", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        stringResource(R.string.onboarding_history_question),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
                     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                         ScanHistory.entries.forEachIndexed { index, choice ->
                             SegmentedButton(
@@ -127,7 +144,7 @@ fun OnboardingScreen(
                                 contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
                             ) {
                                 Text(
-                                    choice.label,
+                                    stringResource(choice.label),
                                     // maxLines alone still breaks at the space and then
                                     // shows only the first line - "3 months" became "3".
                                     softWrap = false,
@@ -138,7 +155,7 @@ fun OnboardingScreen(
                         }
                     }
                     Text(
-                        historyExplanation(history),
+                        stringResource(history.explanation),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -154,24 +171,13 @@ fun OnboardingScreen(
             ) {
                 Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Allow SMS & scan")
+                Text(stringResource(R.string.onboarding_allow))
             }
             TextButton(onClick = { onSkip(history) }) {
-                Text("Explore first")
+                Text(stringResource(R.string.onboarding_explore))
             }
         }
     }
-}
-
-/** One sentence per choice, saying what it means for what you will see. */
-private fun historyExplanation(choice: ScanHistory): String = when (choice) {
-    ScanHistory.ALL ->
-        "Every bank message still in your inbox, so your history is complete from the first scan."
-    ScanHistory.YEAR -> "Only the last 12 months. Anything older stays unread."
-    ScanHistory.QUARTER -> "Only the last 3 months. Anything older stays unread."
-    ScanHistory.FROM_NOW ->
-        "Nothing that already arrived is read. Riyal starts empty, and your accounts and " +
-            "history appear as your banks text you from today on."
 }
 
 @Composable

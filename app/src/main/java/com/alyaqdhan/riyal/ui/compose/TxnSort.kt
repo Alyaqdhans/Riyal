@@ -1,5 +1,6 @@
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
@@ -14,6 +15,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
 
@@ -22,13 +25,14 @@ import com.alyaqdhan.riyal.data.TxnType
  * two "biggest" orders answer the other question people actually ask of one - what did
  * the money go on - without making them scroll a year of small card payments to find out.
  *
- * Shared by Activity and the per-category page, because the question is the same on both.
+ * Shared by the transactions list and the per-category page, because the question is
+ * the same on both.
  */
-enum class TxnSort(val label: String, val byDate: Boolean) {
-    NEWEST("Newest", true),
-    OLDEST("Oldest", true),
-    BIGGEST_OUT("Biggest out", false),
-    BIGGEST_IN("Biggest in", false),
+enum class TxnSort(@param:StringRes val label: Int, val byDate: Boolean) {
+    NEWEST(R.string.sort_newest, true),
+    OLDEST(R.string.sort_oldest, true),
+    BIGGEST_OUT(R.string.sort_biggest_out, false),
+    BIGGEST_IN(R.string.sort_biggest_in, false),
     ;
 
     /** Only meaningful for the amount orders; the date orders group by day instead. */
@@ -55,13 +59,13 @@ fun SortChip(current: TxnSort, onSelect: (TxnSort) -> Unit) {
         FilterChip(
             selected = current != TxnSort.NEWEST,
             onClick = { open = true },
-            label = { Text(current.label) },
+            label = { Text(stringResource(current.label)) },
             trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null) },
         )
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             TxnSort.entries.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option.label) },
+                    text = { Text(stringResource(option.label)) },
                     onClick = {
                         onSelect(option)
                         open = false

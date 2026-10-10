@@ -19,6 +19,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
+import com.alyaqdhan.riyal.R
 
 /**
  * On-device persistence: one JSON file in app-private storage, written atomically.
@@ -208,9 +209,9 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         superseded.forEach { (parsedId, manual) ->
             if (parsedId !in overrides) overrides[parsedId] = manual.categoryId
             Verbose.info(
-                "a message you answered by hand reads on its own now · keeping one record " +
-                    "of ${Money.format(manual.amountMinor, manual.currency)}, " +
-                    "still under ${Categories.byId(manual.categoryId).name}"
+                R.string.log_store_manual_kept,
+                Money.format(manual.amountMinor, manual.currency),
+                Categories.byId(manual.categoryId).name,
             )
         }
         val withOverrides = scanned.asSequence()
@@ -260,8 +261,8 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         // "You'll be asked about these again next time" was the deal. This is next time.
         if (deferred.isNotEmpty()) {
             Verbose.info(
-                "${deferred.size} record(s) you left under Other are back in the backlog, " +
-                    "as promised when you left them"
+                R.string.log_store_deferred_back,
+                Verbose.count(R.plurals.count_records, deferred.size),
             )
             deferred.clear()
             _deferredIds.value = emptySet()
@@ -278,7 +279,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         if (changed) {
             persistLocked()
         } else {
-            Verbose.info("nothing changed, so nothing was written")
+            Verbose.info(R.string.log_store_nothing_changed)
         }
     }
 
@@ -422,14 +423,17 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             }
         }
         if (changed > 0) {
-            Verbose.info(
-                if (autoConfirm) {
-                    "$changed matched pair(s) confirmed as transfers automatically · " +
-                        "they no longer count as spending or income, and each one can be split back apart"
-                } else {
-                    "$changed automatically confirmed transfer(s) moved back to Review for your answer"
-                }
-            )
+            if (autoConfirm) {
+                Verbose.info(
+                    R.string.log_store_auto_confirmed,
+                    Verbose.count(R.plurals.count_matching_pairs, changed),
+                )
+            } else {
+                Verbose.info(
+                    R.string.log_store_auto_unconfirmed,
+                    Verbose.count(R.plurals.count_confirmed_transfers, changed),
+                )
+            }
         }
     }
 
@@ -608,7 +612,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         // for one. Enforcing it here rather than in each screen is what makes the mark
         // a fact about the data instead of a habit of the UI.
         if (rule.pattern in _askEachTime.value) {
-            Verbose.info("rule not saved: \"${rule.pattern}\" is a name you asked to be asked about")
+            Verbose.info(R.string.log_store_rule_not_saved, rule.pattern)
             Verbose.flush()
             return@withLock 0
         }
@@ -817,15 +821,45 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         manualTransfers.clear()
         ignored.clear()
         file.delete()
-        Verbose.info("store: all saved data deleted by you")
+        Verbose.info(R.string.log_store_wiped)
         Verbose.flush()
+    }
+
+    suspend fun backupJson(includeMessages: Boolean): String = mutex.withLock {
+        persistLocked()
+        Backup.of(file.readText(), includeMessages)
+    }
+
+    suspend fun restoreFrom(json: String): Boolean = mutex.withLock {
+        val version = try {
+            Backup.versionOf(json)
+        } catch (e: Exception) {
+            Verbose.fail(R.string.log_restore_unreadable, e.message)
+            Verbose.flush()
+            return@withLock false
+        }
+        if (version != SCHEMA_VERSION) {
+            Verbose.fail(R.string.log_restore_wrong_version, version, SCHEMA_VERSION)
+            Verbose.flush()
+            return@withLock false
+        }
+        val tmp = File(file.parentFile, file.name + ".tmp")
+        tmp.writeText(json)
+        if (!tmp.renameTo(file)) {
+            file.delete()
+            tmp.renameTo(file)
+        }
+        loadLocked()
+        Verbose.ok(R.string.log_restore_done, Verbose.count(R.plurals.count_records, rawTxns.size))
+        Verbose.flush()
+        true
     }
 
     // ─────────────────────────── persistence ───────────────────────────
 
     private fun loadLocked() {
         if (!file.exists()) {
-            Verbose.info("store: no saved data yet (first run)")
+            Verbose.info(R.string.log_store_first_run)
             Verbose.flush()
             return
         }
@@ -837,11 +871,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
                 // record. Transactions are rebuilt from the inbox anyway, so the honest
                 // move is to start clean rather than guess at half-formed old rows.
                 file.delete()
-                Verbose.info(
-                    "store: saved data is from an older version (v$version) and this build " +
-                        "stores accounts and transfers, discarded it. Your inbox is untouched, " +
-                        "the next scan rebuilds everything."
-                )
+                Verbose.info(R.string.log_store_old_version, version)
                 Verbose.flush()
                 return
             }
@@ -897,14 +927,21 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             applyAutoConfirmLocked()
             recomputeTxnsLocked()
             Verbose.info(
-                "store: loaded ${_txns.value.size} transaction(s), " +
-                    "${_accounts.value.size} account(s), " +
-                    "${_transfers.value.count { it.state == TransferProposal.STATE_PENDING }} transfer(s) to confirm, " +
-                    "${_reviews.value.count { it.state == ReviewItem.STATE_PENDING }} pending review item(s), " +
-                    "${_rules.value.size} rule(s)"
+                R.string.log_store_loaded,
+                Verbose.count(R.plurals.count_transactions, _txns.value.size),
+                Verbose.count(R.plurals.count_accounts, _accounts.value.size),
+                Verbose.count(
+                    R.plurals.count_transfers,
+                    _transfers.value.count { it.state == TransferProposal.STATE_PENDING },
+                ),
+                Verbose.count(
+                    R.plurals.count_review_items,
+                    _reviews.value.count { it.state == ReviewItem.STATE_PENDING },
+                ),
+                Verbose.count(R.plurals.count_rules, _rules.value.size),
             )
         } catch (e: Exception) {
-            Verbose.fail("store: saved data unreadable (${e.message}), starting fresh, nothing was lost from your inbox")
+            Verbose.fail(R.string.log_store_unreadable, e.message)
         }
         Verbose.flush()
     }
@@ -953,7 +990,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
                 tmp.renameTo(file)
             }
         } catch (e: Exception) {
-            Verbose.fail("store: could not save (${e.message})")
+            Verbose.fail(R.string.log_store_save_failed, e.message)
         }
     }
 

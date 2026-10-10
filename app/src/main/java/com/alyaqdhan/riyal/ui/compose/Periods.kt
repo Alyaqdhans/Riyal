@@ -1,5 +1,10 @@
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.data.Txn
 import java.time.Instant
 import java.time.LocalDate
@@ -8,8 +13,8 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
-private val monthTitleFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM uuuu")
-private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM uu")
+private val monthTitleFmt: DateTimeFormatter get() = Dates.pattern("MMMM uuuu")
+private val dayFmt: DateTimeFormatter get() = Dates.pattern("d MMM uu")
 
 /**
  * One selected period of time, shared by Analysis, the budget section and the category
@@ -23,6 +28,8 @@ data class TimeSlice(
     val endExclusive: Long,
     val label: String,
     val month: YearMonth? = null,
+    @param:StringRes val labelRes: Int? = null,
+    val labelArgs: List<Any> = emptyList(),
 ) {
     val lengthDays: Long
         get() {
@@ -33,7 +40,6 @@ data class TimeSlice(
         }
 
     fun contains(millis: Long): Boolean = millis in start until endExclusive
-
 
     fun shifted(back: Boolean): TimeSlice {
         if (month != null) return ofMonth(if (back) month.minusMonths(1) else month.plusMonths(1))
@@ -63,6 +69,8 @@ data class TimeSlice(
             start = dayStart(startDay),
             endExclusive = dayStart(endDay.plusDays(1)),
             label = "${dayFmt.format(startDay)} to ${dayFmt.format(endDay)}",
+            labelRes = R.string.period_range,
+            labelArgs = listOf(dayFmt.format(startDay), dayFmt.format(endDay)),
         )
 
         fun thisWeek(): TimeSlice {
@@ -77,6 +85,8 @@ data class TimeSlice(
                 start = dayStart(end.minusMonths(n - 1L).atDay(1)),
                 endExclusive = dayStart(end.plusMonths(1).atDay(1)),
                 label = "Last $n months",
+                labelRes = R.string.period_last_n_months,
+                labelArgs = listOf(n),
             )
         }
 
@@ -95,6 +105,7 @@ data class TimeSlice(
                 start = dayStart(Instant.ofEpochMilli(oldest).atZone(zone).toLocalDate()),
                 endExclusive = dayStart(LocalDate.now().plusDays(1)),
                 label = "All time",
+                labelRes = R.string.period_all_time,
             )
         }
 
@@ -102,4 +113,11 @@ data class TimeSlice(
         fun utcDay(millis: Long): LocalDate =
             Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
     }
+}
+
+@Composable
+fun TimeSlice.title(): String = when {
+    labelRes != null -> stringResource(labelRes, *labelArgs.toTypedArray())
+    month != null -> month.format(monthTitleFmt)
+    else -> label
 }

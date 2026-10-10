@@ -4,6 +4,7 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Prefs
 import com.alyaqdhan.riyal.data.Categorizer
 import com.alyaqdhan.riyal.data.Direction
+import com.alyaqdhan.riyal.data.ReviewReason
 import com.alyaqdhan.riyal.data.SmsParser
 import java.math.BigDecimal
 import org.junit.Assert.assertEquals
@@ -201,14 +202,14 @@ class SmsParserTest {
     fun keywordWithoutAmountGoesToReview() {
         val r = parser.parse("Withdrawal request received for your account")
         assertTrue(r is SmsParser.Result.NeedsReview)
-        assertEquals("no amount found", (r as SmsParser.Result.NeedsReview).reason)
+        assertEquals(ReviewReason.NO_AMOUNT, (r as SmsParser.Result.NeedsReview).reason)
     }
 
     @Test
     fun balanceOnlyAmountGoesToReview() {
         val r = parser.parse("Withdrawal alert. Avl Bal RO 100.000")
         assertTrue(r is SmsParser.Result.NeedsReview)
-        assertEquals("only balance-like amounts found", (r as SmsParser.Result.NeedsReview).reason)
+        assertEquals(ReviewReason.BALANCE_ONLY, (r as SmsParser.Result.NeedsReview).reason)
     }
 
     @Test
@@ -319,6 +320,32 @@ class SmsParserTest {
             "23/07/2026 12:36:06. New Available Balance is OMR 0.000."
         val result = parser.parse(body) as SmsParser.Result.Parsed
         assertEquals(88_425L, result.amountMinor)
+    }
+
+    @Test
+    fun `a station whose name ends in TWIN is not an advert`() {
+        val body = "تم خصم 2.000 OMR من حسابك رقم 0630XXXXXXXX0001 " +
+            "بإستخدام بطاقة الخصم المباشر في 655185-OMAN OIL KUMAILIA TWIN MUSC " +
+            "بتاريخ 2026/10/06 13:45:56. رصيدك الحالي هو 1.015 OMR."
+        val result = parser.parse(body)
+        assertTrue("a fuel purchase is not advertising", result is SmsParser.Result.Parsed)
+        result as SmsParser.Result.Parsed
+        assertEquals(Direction.EXPENSE, result.direction)
+        assertEquals(2_000L, result.amountMinor)
+        assertTrue(result.merchant!!.contains("KUMAILIA TWIN"))
+    }
+
+    @Test
+    fun `an advert that really does say win is still dropped`() {
+        val body = "Top up or renew your plan to win the latest iPhone! " +
+            "Pay OMR 15.000 and enter the draw."
+        assertTrue(parser.parse(body) is SmsParser.Result.Skipped)
+    }
+
+    @Test
+    fun `an Arabic advert word still matches with the article attached`() {
+        val body = "اسحب أو ادفع واربح! الجائزة الكبرى 500.000 OMR."
+        assertTrue(parser.parse(body) is SmsParser.Result.Skipped)
     }
 
     // ── the bank's own transaction time ──

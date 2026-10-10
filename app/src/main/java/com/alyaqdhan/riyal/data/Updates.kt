@@ -4,6 +4,7 @@ import com.alyaqdhan.riyal.core.Verbose
 import java.net.HttpURLConnection
 import java.net.URL
 import org.json.JSONObject
+import com.alyaqdhan.riyal.R
 
 /**
  * Whether a published release is newer than what is installed, and what it contains.
@@ -116,7 +117,7 @@ object UpdateApi {
      */
     fun latestRelease(): Updates.Release? {
         val url = "https://api.github.com/repos/${Updates.OWNER}/${Updates.REPO}/releases/latest"
-        Verbose.scan("asking GitHub for the latest release of ${Updates.OWNER}/${Updates.REPO}")
+        Verbose.scan(R.string.log_asking_github, Updates.OWNER, Updates.REPO)
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = TIMEOUT_MS
@@ -128,17 +129,18 @@ object UpdateApi {
             val code = connection.responseCode
             if (code != 200) {
                 Verbose.info(
-                    "GitHub answered $code" + when (code) {
-                        404 -> ": no release has been published yet, nothing to update to"
-                        403, 429 -> ": too many requests from this network, it will ask again tomorrow"
-                        else -> ", so there is nothing to compare against this time"
-                    }
+                    when (code) {
+                        404 -> R.string.log_github_404
+                        403, 429 -> R.string.log_github_rate_limited
+                        else -> R.string.log_github_other_code
+                    },
+                    code,
                 )
                 return null
             }
             val root = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
             val tag = root.optString("tag_name").takeIf { it.isNotBlank() } ?: run {
-                Verbose.fail("GitHub's answer carried no tag name, ignoring it")
+                Verbose.fail(R.string.log_github_no_tag)
                 return null
             }
             val apk = root.optJSONArray("assets").let { assets ->
@@ -153,15 +155,16 @@ object UpdateApi {
                 apkName = apk?.optString("name"),
                 apkBytes = apk?.optLong("size") ?: 0L,
             ).also {
-                Verbose.ok(
-                    "GitHub's latest release is ${it.tag}" +
-                        if (it.hasApk) ", carrying ${it.apkName}" else ", with no APK attached"
-                )
+                if (it.hasApk) {
+                    Verbose.ok(R.string.log_github_latest_apk, it.tag, it.apkName)
+                } else {
+                    Verbose.ok(R.string.log_github_latest_no_apk, it.tag)
+                }
             }
         } catch (e: Exception) {
             // Offline, DNS, a timeout, a body that would not parse. All the same thing
             // to the user: no answer this time, ask again tomorrow.
-            Verbose.info("could not reach GitHub (${e.javaClass.simpleName}), will try again later")
+            Verbose.info(R.string.log_github_unreachable, e.javaClass.simpleName)
             null
         } finally {
             connection.disconnect()

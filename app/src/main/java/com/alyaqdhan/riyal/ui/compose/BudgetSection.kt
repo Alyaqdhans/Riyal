@@ -36,11 +36,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Money
+import com.alyaqdhan.riyal.core.Numerals
 import com.alyaqdhan.riyal.data.BudgetPlan
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
@@ -93,11 +96,15 @@ fun BudgetSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SectionTitle("Budget")
+            SectionTitle(stringResource(R.string.budget_title))
             if (plan != null) {
                 Row {
-                    TextButton(onClick = { showEditor = true }) { Text("Edit") }
-                    TextButton(onClick = { confirmDelete = true }) { Text("Delete") }
+                    TextButton(onClick = { showEditor = true }) {
+                        Text(stringResource(R.string.action_edit))
+                    }
+                    TextButton(onClick = { confirmDelete = true }) {
+                        Text(stringResource(R.string.action_delete))
+                    }
                 }
             }
         }
@@ -106,40 +113,41 @@ fun BudgetSection(
         // month selector above has already said it.
         if (plan != null && (plan.startMillis != slice.start || plan.endExclusiveMillis != slice.endExclusive)) {
             Text(
-                "Plan runs ${plan.label}",
+                stringResource(R.string.budget_plan_runs, plan.label),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
         if (plan == null || progress == null) {
+            val sliceTitle = slice.title()
             Text(
-                "No plan for ${slice.label} yet.",
+                stringResource(R.string.budget_no_plan, sliceTitle),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(
-                    onClick = { onCreate(slice.label, slice.start, slice.endExclusive) },
+                    onClick = { onCreate(sliceTitle, slice.start, slice.endExclusive) },
                     modifier = Modifier.pressBounce(),
-                ) { Text("Create plan") }
+                ) { Text(stringResource(R.string.budget_create)) }
                 val previous = plans.firstOrNull { it.endExclusiveMillis <= slice.start }
                 if (previous != null && previous.lines.isNotEmpty()) {
                     TextButton(onClick = {
-                        onCopy(previous, slice.label, slice.start, slice.endExclusive)
-                    }) { Text("Copy ${previous.label}") }
+                        onCopy(previous, sliceTitle, slice.start, slice.endExclusive)
+                    }) { Text(stringResource(R.string.budget_copy, previous.label)) }
                 }
             }
         } else if (plan.lines.isEmpty()) {
             Text(
-                "No caps yet.",
+                stringResource(R.string.budget_no_caps),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             FilledTonalButton(
                 onClick = { showEditor = true },
                 modifier = Modifier.pressBounce(),
-            ) { Text("Add a cap") }
+            ) { Text(stringResource(R.string.budget_add_cap)) }
         } else {
             // With one capped category the total *is* that category: drawing both said
             // "OMR 4.500 of OMR 60.000" twice, once with an icon.
@@ -173,15 +181,22 @@ fun BudgetSection(
                 if (progress.lines.size > VISIBLE_LINES) {
                     TextButton(onClick = { showAll = !showAll }) {
                         Text(
-                            if (showAll) "Show less"
-                            else "Show all ${progress.lines.size}",
+                            if (showAll) stringResource(R.string.budget_show_less)
+                            else stringResource(R.string.budget_show_all, progress.lines.size),
                         )
                     }
                 }
                 if (progress.unbudgetedMinor > 0) {
                     AssistChip(
                         onClick = { showEditor = true },
-                        label = { Text("${Money.formatAmount(progress.unbudgetedMinor, currency)} uncapped") },
+                        label = {
+                            Text(
+                                stringResource(
+                                    R.string.budget_uncapped,
+                                    bidi(Money.formatAmount(progress.unbudgetedMinor, currency)),
+                                )
+                            )
+                        },
                     )
                 }
             }
@@ -204,15 +219,19 @@ fun BudgetSection(
     if (confirmDelete && plan != null) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete this plan?") },
-            text = { Text("\"${plan.label}\" and its caps will be removed. Your transactions are untouched.") },
+            title = { Text(stringResource(R.string.budget_delete_title)) },
+            text = { Text(stringResource(R.string.budget_delete_body, plan.label)) },
             confirmButton = {
                 TextButton(onClick = {
                     onDelete(plan.id)
                     confirmDelete = false
-                }) { Text("Delete") }
+                }) { Text(stringResource(R.string.action_delete)) }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
         )
     }
 }
@@ -251,15 +270,18 @@ private fun BudgetTotal(
                     )
                 }
                 Text(
-                    Money.format(progress.totalSpentMinor, currency) + " of " +
-                        Money.format(progress.totalCapMinor, currency),
+                    stringResource(
+                        R.string.budget_spent_of_cap,
+                        bidi(Money.format(progress.totalSpentMinor, currency)),
+                        bidi(Money.format(progress.totalCapMinor, currency)),
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (soleCategoryId != null) MaterialTheme.colorScheme.onSurfaceVariant
                     else MaterialTheme.colorScheme.onSurface,
                 )
             }
             Text(
-                "${(used * 100).roundToInt()}%",
+                stringResource(R.string.budget_percent, (used * 100).roundToInt()),
                 style = MaterialTheme.typography.titleMedium,
                 color = color,
             )
@@ -274,12 +296,30 @@ private fun BudgetTotal(
         val elapsedPct = (progress.elapsedFraction * 100).roundToInt()
         Text(
             when {
-                progress.over ->
-                    "Over by ${Money.format(progress.totalSpentMinor - progress.totalCapMinor, currency)}"
-                progress.aheadOfPace ->
-                    "$elapsedPct% of the period gone, ${(used * 100).roundToInt()}% of the budget spent · running ahead"
-                else ->
-                    "$elapsedPct% of the period gone, ${Money.format(progress.totalCapMinor - progress.totalSpentMinor, currency)} still to spend"
+                progress.over -> stringResource(
+                    R.string.budget_over_by,
+                    bidi(
+                        Money.format(
+                            progress.totalSpentMinor - progress.totalCapMinor,
+                            currency,
+                        )
+                    ),
+                )
+                progress.aheadOfPace -> stringResource(
+                    R.string.budget_ahead,
+                    elapsedPct,
+                    (used * 100).roundToInt(),
+                )
+                else -> stringResource(
+                    R.string.budget_left,
+                    elapsedPct,
+                    bidi(
+                        Money.format(
+                            progress.totalCapMinor - progress.totalSpentMinor,
+                            currency,
+                        )
+                    ),
+                )
             },
             style = MaterialTheme.typography.bodySmall,
             color = if (progress.over) MaterialTheme.colorScheme.error
@@ -318,7 +358,11 @@ fun BudgetBar(
             CategoryIcon(categoryId, size = 16.dp)
             Text(cat.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             Text(
-                "${Money.format(spent, currency)} / ${Money.format(budget, currency)}",
+                stringResource(
+                    R.string.budget_bar_amounts,
+                    bidi(Money.format(spent, currency)),
+                    bidi(Money.format(budget, currency)),
+                ),
                 style = MaterialTheme.typography.labelMedium,
                 color = if (over) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -351,7 +395,7 @@ fun BudgetBar(
         }
         if (over) {
             Text(
-                "Over by ${Money.format(spent - budget, currency)}",
+                stringResource(R.string.budget_over_by, bidi(Money.format(spent - budget, currency))),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.error,
             )
@@ -380,7 +424,7 @@ private fun BudgetEditorDialog(
     var current by remember { mutableStateOf(plan.lines) }
     var label by remember { mutableStateOf(plan.label) }
     var showRange by remember { mutableStateOf(false) }
-    val parsed = amount.trim().replace(",", "").toBigDecimalOrNull()
+    val parsed = Numerals.decimal(amount)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -397,8 +441,13 @@ private fun BudgetEditorDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Period", style = MaterialTheme.typography.labelLarge)
-                    TextButton(onClick = { showRange = true }) { Text("Change") }
+                    Text(
+                        stringResource(R.string.label_period),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                    TextButton(onClick = { showRange = true }) {
+                        Text(stringResource(R.string.action_change))
+                    }
                 }
                 if (current.isNotEmpty()) {
                     current.entries.sortedByDescending { it.value }.forEach { (catId, minor) ->
@@ -409,18 +458,25 @@ private fun BudgetEditorDialog(
                         ) {
                             CategoryIcon(catId, size = 18.dp)
                             Text(
-                                "${Categories.byId(catId).name}: ${Money.format(minor, currency)}",
+                                stringResource(
+                                    R.string.budget_line,
+                                    Categories.byId(catId).name,
+                                    bidi(Money.format(minor, currency)),
+                                ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.weight(1f),
                             )
                             TextButton(onClick = {
                                 onSetLine(catId, 0L)
                                 current = current - catId
-                            }) { Text("Remove") }
+                            }) { Text(stringResource(R.string.action_remove)) }
                         }
                     }
                 }
-                Text("Add or change a cap", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    stringResource(R.string.budget_add_or_change),
+                    style = MaterialTheme.typography.labelLarge,
+                )
                 CategoryChips(
                     type = TxnType.EXPENSE,
                     selectedId = selected,
@@ -430,7 +486,7 @@ private fun BudgetEditorDialog(
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
-                    label = { Text("Cap for this period") },
+                    label = { Text(stringResource(R.string.budget_cap_label)) },
                     suffix = { Text(currency) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -446,13 +502,20 @@ private fun BudgetEditorDialog(
                     current = current + (selected to minor)
                     amount = ""
                 },
-            ) { Text("Add") }
+            ) { Text(stringResource(R.string.action_add)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_done)) }
+        },
     )
 
     if (showRange) {
         val rangeState = rememberDateRangePickerState()
+        val rangeTitle = rangeState.selectedStartDateMillis?.let { start ->
+            rangeState.selectedEndDateMillis?.let { end ->
+                TimeSlice.ofDays(TimeSlice.utcDay(start), TimeSlice.utcDay(end)).title()
+            }
+        }.orEmpty()
         DatePickerDialog(
             onDismissRequest = { showRange = false },
             confirmButton = {
@@ -464,13 +527,17 @@ private fun BudgetEditorDialog(
                             TimeSlice.utcDay(rangeState.selectedStartDateMillis!!),
                             TimeSlice.utcDay(rangeState.selectedEndDateMillis!!),
                         )
-                        onSetPeriod(slice.label, slice.start, slice.endExclusive)
-                        label = slice.label
+                        onSetPeriod(rangeTitle, slice.start, slice.endExclusive)
+                        label = rangeTitle
                         showRange = false
                     },
-                ) { Text("Apply") }
+                ) { Text(stringResource(R.string.action_apply)) }
             },
-            dismissButton = { TextButton(onClick = { showRange = false }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { showRange = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
         ) {
             DateRangePicker(state = rangeState, modifier = Modifier.height(460.dp))
         }

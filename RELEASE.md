@@ -19,8 +19,8 @@ You need two things that are deliberately not in this repository:
 In `app/build.gradle.kts`:
 
 ```kotlin
-versionCode = 4        // must be higher than the last released build
-versionName = "1.6.0"
+versionCode = 6        // must be higher than the last released build
+versionName = "1.7.0"
 ```
 
 `versionCode` is the only thing Android compares. It is not decoration: a build

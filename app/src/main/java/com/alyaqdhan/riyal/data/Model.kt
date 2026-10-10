@@ -118,10 +118,21 @@ object Categories {
         custom = list.map { it.copy(custom = true) }
     }
 
-    /** Built-ins first (their order is meaningful), then user categories. */
-    val ALL: List<Category> get() = BUILTIN + custom
+    fun setNames(translated: Map<String, String>) {
+        localized = BUILTIN.map { cat -> translated[cat.id]?.let { cat.copy(name = it) } ?: cat }
+        localizedById = localized.associateBy { it.id }
+    }
 
-    private val builtinById = BUILTIN.associateBy { it.id }
+    @Volatile
+    private var localized: List<Category> = BUILTIN
+
+    @Volatile
+    private var localizedById: Map<String, Category> = BUILTIN.associateBy { it.id }
+
+    /** Built-ins first (their order is meaningful), then user categories. */
+    val ALL: List<Category> get() = localized + custom
+
+    private val builtinById: Map<String, Category> get() = localizedById
 
     fun byId(id: String): Category =
         builtinById[id] ?: custom.firstOrNull { it.id == id } ?: builtinById.getValue(DEFAULT_EXPENSE)
@@ -238,21 +249,32 @@ data class Account(
      */
     val shortName: String
         get() = name.trim().ifEmpty {
-            last4?.trim()?.takeIf { it.isNotEmpty() } ?: bankName.trim().ifEmpty { displayName }
+            last4?.trim()?.takeIf { it.isNotEmpty() } ?: bankLabel(bankName).ifEmpty { displayName }
         }
 
     companion object {
         const val ID_PREFIX = "acc_"
 
+        @Volatile
+        var genericName: String = "Account"
+
+        @Volatile
+        var bankNames: Map<String, String> = emptyMap()
+
+        fun bankLabel(bankName: String): String {
+            val bank = bankName.trim()
+            return bankNames[bank] ?: bank
+        }
+
         /** The name an account carries when the user hasn't nicknamed it. */
         fun defaultNameOf(bankName: String, last4: String?): String {
-            val bank = bankName.trim()
+            val bank = bankLabel(bankName)
             val tail = last4?.trim()?.takeIf { it.isNotEmpty() }
             return when {
                 bank.isNotEmpty() && tail != null -> "$bank · $tail"
                 bank.isNotEmpty() -> bank
-                tail != null -> "Account · $tail"
-                else -> "Account"
+                tail != null -> "$genericName · $tail"
+                else -> genericName
             }
         }
     }

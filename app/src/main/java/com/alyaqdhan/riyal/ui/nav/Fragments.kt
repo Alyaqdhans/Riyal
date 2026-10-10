@@ -1,6 +1,7 @@
 package com.alyaqdhan.riyal.ui.nav
 
 import android.Manifest
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -13,7 +14,6 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.navOptions
-import com.alyaqdhan.riyal.ui.compose.countOf
 import com.alyaqdhan.riyal.MainActivity
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.ScanHistory
@@ -34,6 +34,7 @@ import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.theme.RiyalTheme
 import com.google.android.material.transition.MaterialFadeThrough
 import com.google.android.material.transition.MaterialSharedAxis
+import java.time.LocalDate
 import java.time.YearMonth
 
 /**
@@ -79,8 +80,7 @@ class HomeFragment : ScreenFragment() {
 
     private val requestSms = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         Verbose.info(
-            if (granted) "you granted READ_SMS from Home"
-            else "you declined READ_SMS, nothing will be read",
+            if (granted) R.string.log_perm_granted_home else R.string.log_perm_denied_home
         )
         Verbose.flush()
         vm.refreshPermission()
@@ -157,7 +157,7 @@ class CategoriesFragment : InnerFragment() {
         CategoriesScreen(
             vm,
             onBack = { back() },
-            onOpenCategory = { id, slice -> openCategory(findNavController(), id, slice) },
+            onOpenCategory = { id, slice -> openCategory(findNavController(), requireContext(), id, slice) },
         )
     }
 }
@@ -182,6 +182,8 @@ const val ARG_SLICE_END = "sliceEnd"
 const val ARG_SLICE_LABEL = "sliceLabel"
 const val ARG_SLICE_MONTH = "sliceMonth"
 
+private val BACKUP_TYPES = arrayOf("application/json", "text/plain", "application/octet-stream")
+
 /**
  * Opens a category with the period the caller was looking at. Sending the id alone
  * dropped it: tapping August's biggest category answered for the current month, and
@@ -189,6 +191,7 @@ const val ARG_SLICE_MONTH = "sliceMonth"
  */
 fun openCategory(
     navController: androidx.navigation.NavController,
+    context: Context,
     categoryId: String,
     slice: TimeSlice,
 ) {
@@ -198,7 +201,10 @@ fun openCategory(
             ARG_CATEGORY_ID to categoryId,
             ARG_SLICE_START to slice.start,
             ARG_SLICE_END to slice.endExclusive,
-            ARG_SLICE_LABEL to slice.label,
+            ARG_SLICE_LABEL to (
+                slice.labelRes?.let { context.getString(it, *slice.labelArgs.toTypedArray()) }
+                    ?: slice.label
+                ),
             // Kept so the chevrons keep stepping whole calendar months rather than
             // drifting by the month's own length in days.
             ARG_SLICE_MONTH to slice.month?.toString(),
@@ -227,7 +233,7 @@ class TransactionsFragment : ScreenFragment() {
         if (uri != null) {
             vm.exportCsv(uri)
         } else {
-            Verbose.info("CSV export cancelled by you, nothing was written")
+            Verbose.info(R.string.log_export_cancelled)
             Verbose.flush()
         }
     }
@@ -243,7 +249,7 @@ class AnalysisFragment : ScreenFragment() {
     override fun Screen() {
         AnalysisScreen(
             vm,
-            onOpenCategory = { id, slice -> openCategory(findNavController(), id, slice) },
+            onOpenCategory = { id, slice -> openCategory(findNavController(), requireContext(), id, slice) },
         )
     }
 }
@@ -256,7 +262,25 @@ class SettingsFragment : ScreenFragment() {
         if (uri != null) {
             vm.exportCsv(uri)
         } else {
-            Verbose.info("CSV export cancelled by you, nothing was written")
+            Verbose.info(R.string.log_export_cancelled)
+            Verbose.flush()
+        }
+    }
+
+    private val saveBackup = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) {
+            vm.backup(uri)
+        } else {
+            Verbose.info(R.string.log_backup_cancelled)
+            Verbose.flush()
+        }
+    }
+
+    private val openBackup = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            vm.restore(uri)
+        } else {
+            Verbose.info(R.string.log_restore_cancelled)
             Verbose.flush()
         }
     }
@@ -268,6 +292,8 @@ class SettingsFragment : ScreenFragment() {
             onOpenAccounts = { findNavController().navigate(R.id.accountsFragment) },
             onOpenCategories = { findNavController().navigate(R.id.categoriesFragment) },
             onExport = { exportCsv.launch("riyal-transactions.csv") },
+            onBackup = { saveBackup.launch("riyal-backup-" + LocalDate.now() + ".json") },
+            onRestore = { openBackup.launch(BACKUP_TYPES) },
         )
     }
 }
@@ -282,8 +308,8 @@ class OnboardingFragment : ScreenFragment() {
 
     private val requestSms = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         Verbose.info(
-            if (granted) "you granted READ_SMS during onboarding"
-            else "you declined READ_SMS, Riyal stays fully inert until you allow it",
+            if (granted) R.string.log_perm_granted_onboarding
+            else R.string.log_perm_denied_onboarding
         )
         Verbose.flush()
         vm.refreshPermission()
@@ -308,13 +334,14 @@ class OnboardingFragment : ScreenFragment() {
 
     private fun chooseHistory(choice: ScanHistory) {
         vm.prefs.applyScanHistory(choice)
-        Verbose.info(
-            "you chose to read " + when (choice) {
-                ScanHistory.ALL -> "the whole inbox"
-                ScanHistory.FROM_NOW -> "nothing older than today; history starts here"
-                else -> "the last " + countOf(choice.months, "month")
-            }
-        )
+        when (choice) {
+            ScanHistory.ALL -> Verbose.info(R.string.log_history_all)
+            ScanHistory.FROM_NOW -> Verbose.info(R.string.log_history_from_now)
+            else -> Verbose.info(
+                R.string.log_history_months,
+                Verbose.count(R.plurals.count_months, choice.months),
+            )
+        }
         Verbose.flush()
     }
 

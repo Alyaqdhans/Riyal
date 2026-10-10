@@ -18,8 +18,12 @@ android {
         applicationId = "com.alyaqdhan.riyal"
         minSdk = 29
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.6.1"
+        versionCode = 7
+        versionName = "1.7.1"
+
+        androidResources {
+            localeFilters += listOf("en", "ar")
+        }
     }
 
     // The key that signs a published build. Its location and passwords come from
@@ -88,4 +92,5 @@ dependencies {
     // Vico: proper chart library (Analysis 6-month columns), Compose + Material 3.
     implementation(libs.vico.compose.m3)
     testImplementation(libs.junit)
+    testImplementation(libs.json)
 }
