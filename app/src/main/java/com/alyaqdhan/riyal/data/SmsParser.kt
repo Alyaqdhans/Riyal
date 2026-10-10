@@ -120,7 +120,7 @@ class SmsParser(
         // keeps a message with an amount and no keyword from reaching the user as a
         // question: an advert has both, and being asked about every one of them would
         // make the queue useless.
-        val advert = ADVERT_WORDS.filter { it in lower }
+        val advert = ADVERT_WORDS.filter { wordIn(lower, it) }
         if (advert.isNotEmpty()) {
             return Result.Skipped(ParseNote(R.string.skip_advert, listOf(advert.first())))
         }
@@ -128,7 +128,7 @@ class SmsParser(
         // 1c ── a bank also texts about money that did NOT move: a request waiting for
         // your approval, an instruction you cancelled, a card that was declined. Each
         // names an amount, and recording any of them invents a transaction.
-        val notMoved = NOT_MOVED_WORDS.firstOrNull { it in lower }
+        val notMoved = NOT_MOVED_WORDS.firstOrNull { wordIn(lower, it) }
         if (notMoved != null) {
             return Result.Skipped(ParseNote(R.string.skip_not_moved, listOf(notMoved)))
         }
@@ -462,6 +462,18 @@ class SmsParser(
 
     private fun normalize(s: String): String = Numerals.latin(s)
 
+    private fun wordIn(hay: String, phrase: String): Boolean {
+        if (phrase.firstOrNull() !in 'a'..'z') return phrase in hay
+        var from = 0
+        while (from <= hay.length - phrase.length) {
+            val at = hay.indexOf(phrase, from)
+            if (at < 0) return false
+            if (at == 0 || !hay[at - 1].isLetter()) return true
+            from = at + 1
+        }
+        return false
+    }
+
     companion object {
         /**
          * Bumped whenever anything in this file changes what a message parses to.
@@ -471,7 +483,7 @@ class SmsParser(
          * is out of date and the inbox must be read again. Forgetting to bump it after a
          * parser fix means the fix only reaches messages that arrive afterwards.
          */
-        const val VERSION = 1
+        const val VERSION = 2
 
         const val NUM = """\d{1,3}(?:,\d{3})+(?:\.\d{1,3})?|\d+(?:\.\d{1,3})?"""
 
