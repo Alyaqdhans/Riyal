@@ -32,27 +32,20 @@ import com.alyaqdhan.riyal.ui.screens.SettingsScreen
 import com.alyaqdhan.riyal.ui.screens.TransactionsScreen
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.theme.RiyalTheme
-import com.google.android.material.transition.MaterialFadeThrough
-import com.google.android.material.transition.MaterialSharedAxis
 import java.time.LocalDate
 import java.time.YearMonth
 
 /**
  * Destinations of res/navigation/nav_graph.xml, the XML routing layer. Each fragment
- * enters/exits with native Material motion transitions and renders its screen with
- * Compose Material 3 Expressive (material3 1.5.0-alpha23).
+ * renders its screen with Compose Material 3 (material3 1.5.0-alpha23).
+ *
+ * No enter or exit transitions, on any destination. A page that fades or slides in
+ * makes every tap wait for the motion to finish before the content can be read, and a
+ * finance app is opened to read a number - so a destination simply appears.
  */
 abstract class ScreenFragment : Fragment() {
 
     protected val vm: MainViewModel by activityViewModels()
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enterTransition = MaterialFadeThrough()
-        exitTransition = MaterialFadeThrough()
-        reenterTransition = MaterialFadeThrough()
-        returnTransition = MaterialFadeThrough()
-    }
 
     final override fun onCreateView(
         inflater: LayoutInflater,
@@ -106,17 +99,11 @@ class HomeFragment : ScreenFragment() {
 }
 
 /**
- * Pages pushed on top of a tab rather than being one: they slide in along the X axis
- * and hide the bottom toolbar, which is what makes them feel like going *into*
- * something instead of switching between peers.
+ * Pages pushed on top of a tab rather than being one. They hide the bottom bar and
+ * carry a back arrow, which is what makes them read as going *into* something instead
+ * of switching between peers.
  */
 abstract class InnerFragment : ScreenFragment() {
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enterTransition = MaterialSharedAxis(MaterialSharedAxis.X, true)
-        returnTransition = MaterialSharedAxis(MaterialSharedAxis.X, false)
-    }
 
     protected fun back() {
         findNavController().navigateUp()
@@ -299,12 +286,6 @@ class SettingsFragment : ScreenFragment() {
 }
 
 class OnboardingFragment : ScreenFragment() {
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        // Slide the onboarding away with a shared-axis push into the app.
-        exitTransition = MaterialSharedAxis(MaterialSharedAxis.X, true)
-    }
 
     private val requestSms = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         Verbose.info(

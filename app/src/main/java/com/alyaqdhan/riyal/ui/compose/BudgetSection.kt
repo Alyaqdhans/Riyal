@@ -23,7 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.rememberDateRangePickerState
@@ -129,7 +129,6 @@ fun BudgetSection(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(
                     onClick = { onCreate(sliceTitle, slice.start, slice.endExclusive) },
-                    modifier = Modifier.pressBounce(),
                 ) { Text(stringResource(R.string.budget_create)) }
                 val previous = plans.firstOrNull { it.endExclusiveMillis <= slice.start }
                 if (previous != null && previous.lines.isNotEmpty()) {
@@ -146,7 +145,6 @@ fun BudgetSection(
             )
             FilledTonalButton(
                 onClick = { showEditor = true },
-                modifier = Modifier.pressBounce(),
             ) { Text(stringResource(R.string.budget_add_cap)) }
         } else {
             // With one capped category the total *is* that category: drawing both said
@@ -286,11 +284,11 @@ private fun BudgetTotal(
                 color = color,
             )
         }
-        LinearWavyProgressIndicator(
+        LinearProgressIndicator(
             progress = { used.coerceIn(0f, 1f) },
             color = color,
             trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            amplitude = { 1f },
+            drawStopIndicator = {},
             modifier = Modifier.fillMaxWidth(),
         )
         val elapsedPct = (progress.elapsedFraction * 100).roundToInt()

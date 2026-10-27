@@ -30,7 +30,7 @@ fun ScanRefresh(
         state = state,
         modifier = modifier,
         indicator = {
-            PullToRefreshDefaults.LoadingIndicator(
+            PullToRefreshDefaults.Indicator(
                 state = state,
                 isRefreshing = refreshing,
                 modifier = Modifier.align(Alignment.TopCenter),

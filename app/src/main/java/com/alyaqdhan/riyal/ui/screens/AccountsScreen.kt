@@ -64,8 +64,6 @@ import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.HelpAction
-import com.alyaqdhan.riyal.ui.compose.popIn
-import com.alyaqdhan.riyal.ui.compose.pressBounce
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import com.alyaqdhan.riyal.ui.theme.successColor
 import java.time.Instant
@@ -124,7 +122,6 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
                     ) {
                         FilledTonalButton(
                             onClick = { editing = blankAccount(vm.prefs.defaultCurrency) },
-                            modifier = Modifier.pressBounce(),
                         ) { Text(stringResource(R.string.acct_add)) }
                     }
                 }
@@ -157,7 +154,7 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
                 item(key = "add") {
                     FilledTonalButton(
                         onClick = { editing = blankAccount(vm.prefs.defaultCurrency) },
-                        modifier = Modifier.fillMaxWidth().pressBounce(),
+                        modifier = Modifier.fillMaxWidth(),
                     ) { Text(stringResource(R.string.acct_add)) }
                 }
             }
@@ -208,7 +205,7 @@ private fun ConfirmBanner(count: Int, anyMissingBalance: Boolean, onConfirm: () 
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.primaryContainer,
-        modifier = Modifier.fillMaxWidth().popIn(),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
@@ -237,7 +234,7 @@ private fun ConfirmBanner(count: Int, anyMissingBalance: Boolean, onConfirm: () 
             }
             Button(
                 onClick = onConfirm,
-                modifier = Modifier.fillMaxWidth().pressBounce(),
+                modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.acct_confirm_button)) }
         }
     }
@@ -280,9 +277,7 @@ private fun AccountCard(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = Modifier
-            .fillMaxWidth()
-            .popIn()
-            .pressBounce(0.98f),
+            .fillMaxWidth(),
     ) {
         Row(
             Modifier.padding(16.dp),

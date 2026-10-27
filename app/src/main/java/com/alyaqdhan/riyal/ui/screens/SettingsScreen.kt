@@ -9,11 +9,6 @@ package com.alyaqdhan.riyal.ui.screens
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
@@ -84,8 +79,6 @@ import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
 import com.alyaqdhan.riyal.ui.compose.appVersion
 import com.alyaqdhan.riyal.ui.compose.plainText
-import com.alyaqdhan.riyal.ui.compose.popIn
-import com.alyaqdhan.riyal.ui.compose.pressBounce
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -779,7 +772,7 @@ private fun StatusCard(
     accounts: Int,
     messagesRead: Int?,
 ) {
-    Card(Modifier.fillMaxWidth().popIn()) {
+    Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 if (lastScanAt <= 0L) {
@@ -993,7 +986,6 @@ private fun ActionLine(
         TextButton(
             onClick = onAction,
             enabled = enabled,
-            modifier = Modifier.pressBounce(),
         ) { Text(actionLabel) }
     }
 }
@@ -1029,11 +1021,7 @@ private fun ExpandLine(
                 modifier = Modifier.size(18.dp),
             )
         }
-        AnimatedVisibility(
-            visible = open,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
+        if (open) {
             Column(
                 Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -1066,7 +1054,7 @@ private fun StateNote(text: String, action: String, onAction: () -> Unit) {
 @Composable
 private fun DangerCard(onClick: () -> Unit) {
     Card(
-        Modifier.fillMaxWidth().popIn(),
+        Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer,
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
@@ -1135,7 +1123,7 @@ private fun PickerDialog(
 
 @Composable
 private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth().popIn()) {
+    Card(Modifier.fillMaxWidth()) {
         Column(
             Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),

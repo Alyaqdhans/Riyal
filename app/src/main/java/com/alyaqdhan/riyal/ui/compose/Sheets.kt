@@ -39,8 +39,8 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LinearWavyProgressIndicator
-import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -102,7 +102,7 @@ fun typeLabel(type: TxnType): Int = when (type) {
 }
 
 /**
- * The scan bottom sheet: expressive LoadingIndicator while working, the live verbose
+ * The scan bottom sheet: a progress indicator while working, the live verbose
  * log streaming underneath, and a plain-language summary when done. Dismissable at any
  * time, the scan itself keeps running; the user is in charge of the window, not the work.
  */
@@ -135,8 +135,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        // Material 3 Expressive shape-morphing loading indicator
-                        LoadingIndicator(Modifier.size(52.dp))
+                        CircularProgressIndicator(Modifier.size(40.dp))
                         Column {
                             Text(
                                 stringResource(
@@ -161,14 +160,14 @@ fun ScanSheetHost(vm: MainViewModel) {
                             )
                         }
                     }
-                    // Expressive squiggly progress, determinate once the total is known
+                    // Determinate once the total is known.
                     if (s.total > 0) {
-                        LinearWavyProgressIndicator(
+                        LinearProgressIndicator(
                             progress = { s.processed / s.total.toFloat() },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     } else {
-                        LinearWavyProgressIndicator(Modifier.fillMaxWidth())
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
                     }
                 }
 
@@ -177,7 +176,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Face(mood = 1f, modifier = Modifier.size(64.dp).popIn())
+                        Face(mood = 1f, modifier = Modifier.size(64.dp))
                         Column {
                             Text(
                                 stringResource(R.string.scan_done),
@@ -233,7 +232,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Face(mood = -1f, style = FaceStyle.DIZZY, modifier = Modifier.size(64.dp).popIn())
+                    Face(mood = -1f, style = FaceStyle.DIZZY, modifier = Modifier.size(64.dp))
                     Column {
                         Text(
                             stringResource(R.string.scan_failed),
@@ -284,8 +283,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                 onClick = { vm.closeScanSheet() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp)
-                    .pressBounce(),
+                    .padding(vertical = 16.dp),
             ) {
                 Text(
                     stringResource(
@@ -366,7 +364,7 @@ fun TxnEditSheet(
                 if (onSplitTransfer != null && txn.legIds.isNotEmpty()) {
                     Button(
                         onClick = onSplitTransfer,
-                        modifier = Modifier.fillMaxWidth().pressBounce(),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
                             stringResource(
@@ -444,7 +442,6 @@ fun TxnEditSheet(
                                 selected = acc.id == txn.accountId,
                                 onClick = { onSetAccount(acc.id) },
                                 label = { Text(acc.displayName) },
-                                modifier = Modifier.pressBounce(0.92f),
                             )
                         }
                     }
@@ -477,7 +474,6 @@ fun TxnEditSheet(
                                         }
                                     },
                                     label = { Text(acc.displayName) },
-                                    modifier = Modifier.pressBounce(0.92f),
                                 )
                             }
                         }
@@ -772,21 +768,18 @@ fun CategoryChips(
                     onClick = { onSelect(cat.id) },
                     label = { Text(cat.name) },
                     leadingIcon = { CategoryIcon(cat.id) },
-                    modifier = Modifier.pressBounce(0.92f),
                 )
             }
             if (!expanded && all.size > shown.size) {
                 AssistChip(
                     onClick = { expanded = true },
                     label = { Text(stringResource(R.string.sheet_more, all.size - shown.size)) },
-                    modifier = Modifier.pressBounce(0.92f),
                 )
             }
             if (expanded && !filtering) {
                 AssistChip(
                     onClick = { expanded = false; query = "" },
                     label = { Text(stringResource(R.string.sheet_less)) },
-                    modifier = Modifier.pressBounce(0.92f),
                 )
             }
         }

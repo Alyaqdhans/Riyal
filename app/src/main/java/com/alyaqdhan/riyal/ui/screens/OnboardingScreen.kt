@@ -44,8 +44,6 @@ import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.ScanHistory
 import com.alyaqdhan.riyal.ui.compose.Face
-import com.alyaqdhan.riyal.ui.compose.popIn
-import com.alyaqdhan.riyal.ui.compose.pressBounce
 
 /**
  * First-run pitch. The whole point of the app in four promises, then the user -
@@ -75,8 +73,7 @@ fun OnboardingScreen(
             Face(
                 mood = 1f,
                 modifier = Modifier
-                    .size(148.dp)
-                    .popIn(),
+                    .size(148.dp),
             )
             Spacer(Modifier.height(16.dp))
             Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall)
@@ -164,10 +161,8 @@ fun OnboardingScreen(
             Spacer(Modifier.height(20.dp))
             Button(
                 onClick = { onGrant(history) },
-                shapes = ButtonDefaults.shapes(),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .pressBounce(),
+                    .fillMaxWidth(),
             ) {
                 Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))

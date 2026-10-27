@@ -25,7 +25,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -232,12 +231,9 @@ private fun RowScope.NavToggle(
     onCheck: () -> Unit,
     icon: @Composable () -> Unit,
 ) {
-    // Expressive shape morph: round when idle, squarish when selected or pressed,
-    // instead of sitting in one perfect circle forever.
     FilledIconToggleButton(
         checked = checked,
         onCheckedChange = { if (it) onCheck() },
-        shapes = IconButtonDefaults.toggleableShapes(),
         content = icon,
     )
 }

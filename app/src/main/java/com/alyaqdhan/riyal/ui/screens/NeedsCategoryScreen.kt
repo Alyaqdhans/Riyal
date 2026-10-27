@@ -2,11 +2,6 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -68,7 +63,6 @@ import com.alyaqdhan.riyal.ui.compose.HelpAction
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.localDateOf
-import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.rememberCategoryOrder
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import java.time.Instant
@@ -313,7 +307,7 @@ private fun MerchantCard(
     var showing by rememberSaveable(cardKey) { mutableStateOf(listOf<String>()) }
     val chosen = remember(group.txnIds, excluded) { group.txnIds.filter { it !in excluded } }
 
-    Card(Modifier.fillMaxWidth().popIn()) {
+    Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 Modifier.fillMaxWidth().clickable { open = !open },
@@ -368,11 +362,7 @@ private fun MerchantCard(
                 )
             }
 
-            AnimatedVisibility(
-                visible = open,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
-            ) {
+            if (open) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     HorizontalDivider()
                     for (txn in group.txns) {
@@ -522,11 +512,7 @@ private fun RecordRow(
             )
         }
 
-        AnimatedVisibility(
-            visible = showing,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
+        if (showing) {
             // Quoted, not restated: the bank's own words, in a block of their own, with
             // no attempt to tidy the mixed Arabic and English the message arrived in.
             //

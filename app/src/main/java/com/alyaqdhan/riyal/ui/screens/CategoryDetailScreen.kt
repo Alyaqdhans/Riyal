@@ -56,7 +56,6 @@ import com.alyaqdhan.riyal.ui.compose.title
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.TxnSort
-import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import com.alyaqdhan.riyal.ui.theme.successColor
 import kotlin.math.abs
@@ -137,7 +136,7 @@ fun CategoryDetailScreen(
             }
 
             item(key = "summary") {
-                Card(Modifier.fillMaxWidth().popIn()) {
+                Card(Modifier.fillMaxWidth()) {
                     Row(
                         Modifier.padding(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),

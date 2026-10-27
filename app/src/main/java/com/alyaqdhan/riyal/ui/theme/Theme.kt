@@ -124,7 +124,10 @@ fun RiyalTheme(content: @Composable () -> Unit) {
     }
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
-        motionScheme = MotionScheme.expressive(),
+        // Standard, not expressive: the expressive springs overshoot, so every switch,
+        // sheet and button settled with a wobble. Components still move where the
+        // platform expects them to, without the bounce.
+        motionScheme = MotionScheme.standard(),
         shapes = RiyalShapes,
         content = content,
     )

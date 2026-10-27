@@ -7,9 +7,6 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -79,7 +76,6 @@ import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
-import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import com.alyaqdhan.riyal.ui.theme.successColor
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
@@ -233,7 +229,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         currency = currency,
                         // Spending less than last period is the good direction.
                         upIsGood = false,
-                        modifier = Modifier.weight(1f).popIn(),
+                        modifier = Modifier.weight(1f),
                     )
                     SummaryTile(
                         label = stringResource(R.string.an_received),
@@ -241,7 +237,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         previous = previous.received,
                         currency = currency,
                         upIsGood = true,
-                        modifier = Modifier.weight(1f).popIn(50),
+                        modifier = Modifier.weight(1f),
                     )
                     SummaryTile(
                         label = stringResource(R.string.home_net),
@@ -250,7 +246,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         currency = currency,
                         upIsGood = true,
                         signed = true,
-                        modifier = Modifier.weight(1f).popIn(100),
+                        modifier = Modifier.weight(1f),
                     )
                 }
                 if (moved > 0) {
@@ -298,16 +294,6 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                             }
                         }
                         Box(contentAlignment = Alignment.Center) {
-                            val grow = remember(slices) { Animatable(0f) }
-                            LaunchedEffect(slices) {
-                                grow.animateTo(
-                                    1f,
-                                    spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessVeryLow,
-                                    ),
-                                )
-                            }
                             // The empty track, then each category as its own arc on top
                             // of it. The ring underneath is what draws the circle when
                             // there is nothing to show.
@@ -327,7 +313,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     rotationDegrees = from * 360f + DonutGapDegrees / 2f,
                                     progress = {
                                         val sweep = s.fraction * 360f - DonutGapDegrees
-                                        (sweep.coerceAtLeast(1f) / 360f) * grow.value
+                                        sweep.coerceAtLeast(1f) / 360f
                                     },
                                     color = Color(Categories.colorFor(s.categoryId)),
                                     trackColor = Color.Transparent,
@@ -374,8 +360,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
                                     .clickable { onOpenCategory(cat.id, slice) }
-                                    .padding(vertical = 4.dp)
-                                    .popIn(index * 40),
+                                    .padding(vertical = 4.dp),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -776,6 +761,9 @@ private fun ChartsCard(
                     ),
                     modelProducer = producer,
                     modifier = Modifier.fillMaxWidth().height(200.dp),
+                    // Drawn where it lands: no growing bars, no lines sweeping in.
+                    animationSpec = null,
+                    animateIn = false,
                 )
             } else {
                 val spentVals = remember(flow) { flow.map { it.spent } }
@@ -814,6 +802,9 @@ private fun ChartsCard(
                     ),
                     modelProducer = producer,
                     modifier = Modifier.fillMaxWidth().height(200.dp),
+                    // Drawn where it lands: no growing bars, no lines sweeping in.
+                    animationSpec = null,
+                    animateIn = false,
                 )
             }
 

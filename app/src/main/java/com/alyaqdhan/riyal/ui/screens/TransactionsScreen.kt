@@ -61,7 +61,6 @@ import com.alyaqdhan.riyal.ui.compose.TxnSort
 import com.alyaqdhan.riyal.ui.compose.bidi
 import com.alyaqdhan.riyal.ui.compose.dayLabel
 import com.alyaqdhan.riyal.ui.compose.localDateOf
-import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
@@ -197,8 +196,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     color = MaterialTheme.colorScheme.secondaryContainer,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                        .popIn(),
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
                 ) {
                     Row(
                         Modifier.padding(start = 16.dp, end = 4.dp),
@@ -253,7 +251,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                                     onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
                                     onDelete = { removeForGood(vm, snackbar, scope, txn) },
                                     deleteLabel = deleteLabelFor(txn),
-                                    modifier = Modifier.animateItem(),
                                 ) {
                                     TxnRow(
                                         txn,
@@ -272,7 +269,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                                 onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
                                 onDelete = { removeForGood(vm, snackbar, scope, txn) },
                                 deleteLabel = deleteLabelFor(txn),
-                                modifier = Modifier.animateItem(),
                             ) {
                                 TxnRow(
                                     txn,

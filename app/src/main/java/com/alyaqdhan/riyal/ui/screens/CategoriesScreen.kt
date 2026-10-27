@@ -78,8 +78,6 @@ import com.alyaqdhan.riyal.ui.compose.CategoryVisuals
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
-import com.alyaqdhan.riyal.ui.compose.popIn
-import com.alyaqdhan.riyal.ui.compose.pressBounce
 import com.alyaqdhan.riyal.ui.compose.rememberCategoryOrder
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import com.alyaqdhan.riyal.ui.theme.successColor
@@ -222,7 +220,7 @@ fun CategoriesScreen(
             item(key = "add") {
                 FilledTonalButton(
                     onClick = { editing = Category(id = "", name = "", color = Categories.PALETTE.random()) },
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp).pressBounce(),
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 ) { Text(stringResource(R.string.cats_add)) }
             }
 
@@ -247,7 +245,7 @@ fun CategoriesScreen(
             item(key = "learned-add") {
                 FilledTonalButton(
                     onClick = { addingKeyword = true },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).pressBounce(),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 ) { Text(stringResource(R.string.cats_add_keyword)) }
             }
             val sortedRules = rules.sortedBy { it.pattern }
@@ -357,7 +355,7 @@ private fun CategoryRow(
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth().popIn().pressBounce(0.98f),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -436,7 +434,7 @@ private fun LearnedRow(
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth().popIn(),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             Modifier.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
@@ -670,8 +668,7 @@ private fun CategoryEditorDialog(
                                         CircleShape,
                                     ) else Modifier
                                 )
-                                .clickable { icon = key }
-                                .pressBounce(0.9f),
+                                .clickable { icon = key },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(

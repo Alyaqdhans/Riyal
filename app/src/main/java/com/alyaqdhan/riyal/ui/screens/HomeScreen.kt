@@ -2,11 +2,6 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,12 +34,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
@@ -69,11 +62,8 @@ import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.TxnRow
-import com.alyaqdhan.riyal.ui.compose.popIn
-import com.alyaqdhan.riyal.ui.compose.pressBounce
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import com.alyaqdhan.riyal.ui.theme.successColor
-import kotlinx.coroutines.launch
 
 
 @Composable
@@ -112,9 +102,6 @@ fun HomeScreen(
     // The budget follows the selector above it: one period control per screen.
     val budgetSlice = slice
 
-    val scope = rememberCoroutineScope()
-    val faceRotation = remember { Animatable(0f) }
-
     Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_home)) }) }) { padding ->
         ScanRefresh(vm, Modifier.padding(padding)) {
         Column(
@@ -132,8 +119,7 @@ fun HomeScreen(
             Card(
                 shape = RoundedCornerShape(28.dp),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .popIn(),
+                    .fillMaxWidth(),
             ) {
                 Row(
                     Modifier.padding(16.dp),
@@ -154,25 +140,9 @@ fun HomeScreen(
                         mood = Stats.mood(totals),
                         modifier = Modifier
                             .size(88.dp)
-                            .graphicsLayer { rotationZ = faceRotation.value }
                             // The sentence that used to say this is gone from the screen,
                             // so the face carries it for anyone reading by screen reader.
-                            .semantics { contentDescription = moodLabel }
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                            ) {
-                                scope.launch {
-                                    faceRotation.snapTo(-12f)
-                                    faceRotation.animateTo(
-                                        0f,
-                                        spring(
-                                            dampingRatio = Spring.DampingRatioHighBouncy,
-                                            stiffness = Spring.StiffnessLow,
-                                        ),
-                                    )
-                                }
-                            },
+                            .semantics { contentDescription = moodLabel },
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
@@ -245,7 +215,6 @@ fun HomeScreen(
                     container = MaterialTheme.colorScheme.primaryContainer,
                     content = MaterialTheme.colorScheme.onPrimaryContainer,
                     onClick = onOpenAccounts,
-                    modifier = Modifier.popIn(140),
                 )
             }
 
@@ -261,7 +230,6 @@ fun HomeScreen(
                     onSetLine = { planId, categoryId, minor -> vm.setBudgetLine(planId, categoryId, minor) },
                     onSetPeriod = { planId, label, start, end -> vm.setBudgetPeriod(planId, label, start, end) },
                     onDelete = { vm.deleteBudget(it) },
-                    modifier = Modifier.popIn(160),
                 )
             }
 
@@ -269,8 +237,7 @@ fun HomeScreen(
             if (!hasPerm) {
                 Card(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .popIn(180),
+                        .fillMaxWidth(),
                 ) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(
@@ -292,8 +259,7 @@ fun HomeScreen(
                         Button(
                             onClick = onRequestPermission,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .pressBounce(),
+                                .fillMaxWidth(),
                         ) {
                             Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
@@ -317,7 +283,6 @@ fun HomeScreen(
                     container = MaterialTheme.colorScheme.tertiaryContainer,
                     content = MaterialTheme.colorScheme.onTertiaryContainer,
                     onClick = onOpenReview,
-                    modifier = Modifier.popIn(200),
                 )
             }
 
@@ -334,7 +299,6 @@ fun HomeScreen(
                     container = MaterialTheme.colorScheme.secondaryContainer,
                     content = MaterialTheme.colorScheme.onSecondaryContainer,
                     onClick = onOpenNeedsCategory,
-                    modifier = Modifier.popIn(240),
                 )
             }
 
@@ -353,7 +317,6 @@ fun HomeScreen(
                     container = MaterialTheme.colorScheme.primaryContainer,
                     content = MaterialTheme.colorScheme.onPrimaryContainer,
                     onClick = onOpenSettings,
-                    modifier = Modifier.popIn(280),
                 )
             }
 
@@ -375,7 +338,6 @@ fun HomeScreen(
                         TxnRow(
                             txn,
                             onClick = { picker = txn },
-                            modifier = Modifier.popIn(index * 40),
                             accounts = accounts,
                         )
                     }
@@ -432,8 +394,7 @@ private fun ActionCard(
         shape = RoundedCornerShape(24.dp),
         color = container,
         modifier = modifier
-            .fillMaxWidth()
-            .pressBounce(0.97f),
+            .fillMaxWidth(),
     ) {
         Row(
             Modifier.padding(16.dp),

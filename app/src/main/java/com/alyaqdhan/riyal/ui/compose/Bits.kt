@@ -174,8 +174,7 @@ fun TxnRow(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = modifier
-            .fillMaxWidth()
-            .pressBounce(0.97f),
+            .fillMaxWidth(),
     ) {
         Row(
             Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -273,8 +272,7 @@ fun EmptyState(
             mood = mood,
             style = style,
             modifier = Modifier
-                .size(108.dp)
-                .popIn(),
+                .size(108.dp),
         )
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         if (subtitle != null) {

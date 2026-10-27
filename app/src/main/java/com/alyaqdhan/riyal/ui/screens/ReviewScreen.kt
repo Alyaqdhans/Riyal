@@ -69,7 +69,6 @@ import com.alyaqdhan.riyal.ui.compose.HelpAction
 import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
 import com.alyaqdhan.riyal.ui.compose.SummaryPill
 import com.alyaqdhan.riyal.ui.theme.successColor
-import com.alyaqdhan.riyal.ui.compose.pressBounce
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import java.time.Instant
 import java.time.ZoneId
@@ -197,7 +196,6 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                                     vm.rejectTransfer(proposal)
                                     scope.launch { snackbar.showSnackbar(keptSeparate) }
                                 },
-                                modifier = Modifier.animateItem(),
                             )
                         }
                     }
@@ -260,7 +258,6 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                                     }
                                 }
                             },
-                            modifier = Modifier.animateItem(),
                         )
                     }
                     if (dismissed.isNotEmpty()) {
@@ -304,7 +301,6 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                                         vm.restoreReview(item)
                                         scope.launch { snackbar.showSnackbar(restored) }
                                     },
-                                    modifier = Modifier.animateItem(),
                                 )
                             }
                         }
@@ -413,8 +409,6 @@ private fun TransferCard(
                 TextButton(onClick = onReject) { Text(stringResource(R.string.review_keep_both)) }
                 Button(
                     onClick = onAccept,
-                    shapes = ButtonDefaults.shapes(),
-                    modifier = Modifier.pressBounce(),
                 ) { Text(stringResource(R.string.review_yes_transfer)) }
             }
         }
@@ -535,13 +529,11 @@ private fun ReviewCard(
                 ) {
                     FilledTonalButton(
                         onClick = { onDecide(Direction.EXPENSE, learnWord) },
-                        shapes = ButtonDefaults.shapes(),
-                        modifier = Modifier.weight(1f).pressBounce(),
+                        modifier = Modifier.weight(1f),
                     ) { Text(stringResource(R.string.label_money_out)) }
                     FilledTonalButton(
                         onClick = { onDecide(Direction.INCOME, learnWord) },
-                        shapes = ButtonDefaults.shapes(),
-                        modifier = Modifier.weight(1f).pressBounce(),
+                        modifier = Modifier.weight(1f),
                     ) { Text(stringResource(R.string.label_money_in)) }
                 }
             }
@@ -555,8 +547,6 @@ private fun ReviewCard(
                 if (!item.directionOnly) {
                     FilledTonalButton(
                         onClick = { onResolve(rememberChoice) },
-                        shapes = ButtonDefaults.shapes(),
-                        modifier = Modifier.pressBounce(),
                     ) {
                         Text(stringResource(R.string.review_add_manually))
                     }

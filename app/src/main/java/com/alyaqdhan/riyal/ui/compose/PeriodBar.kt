@@ -2,7 +2,6 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -65,20 +64,18 @@ fun PeriodBar(
                 contentDescription = stringResource(R.string.period_earlier),
             )
         }
-        AnimatedContent(targetState = slice.title(), label = "sliceTitle") { label ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                ) { showPicker = true },
-            ) {
-                Text(label, style = MaterialTheme.typography.titleMedium)
-                Icon(
-                    Icons.Filled.ArrowDropDown,
-                    contentDescription = stringResource(R.string.period_pick),
-                )
-            }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { showPicker = true },
+        ) {
+            Text(slice.title(), style = MaterialTheme.typography.titleMedium)
+            Icon(
+                Icons.Filled.ArrowDropDown,
+                contentDescription = stringResource(R.string.period_pick),
+            )
         }
         IconButton(
             onClick = { onChange(slice.shifted(back = false)) },
