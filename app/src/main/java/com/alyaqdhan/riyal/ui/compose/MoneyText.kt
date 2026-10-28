@@ -15,6 +15,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.key
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalDensity
@@ -193,9 +198,6 @@ private fun RollingAmount(
     shrink: Boolean,
 ) {
     val info = Currencies.of(code)
-    // Which way this change goes, settled once per value.
-    val last = remember { longArrayOf(minor) }
-    val rising = remember(minor) { (minor >= last[0]).also { last[0] = minor } }
     val figures = style.copy(color = tint, fontFeatureSettings = "tnum")
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
@@ -237,9 +239,8 @@ private fun RollingAmount(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (prefix.isNotEmpty()) Text(prefix, style = fitted, maxLines = 1, softWrap = false)
                     if (info == null || !info.symbolAfter) Sign()
-                    number.forEachIndexed { i, c ->
-                        key(number.length - i) { RollingChar(c, rising, fitted) }
-                    }
+                    // Keyed on the replay count: a finished scan starts the roll over.
+                    key(Rolls.generation) { RollingDigits(minor, number, fitted) }
                 }
             }
             if (info != null && info.symbolAfter) {
@@ -247,6 +248,36 @@ private fun RollingAmount(
                 Sign()
             }
         }
+    }
+}
+
+/**
+ * The digits of [number], rolling to it. They arrive from zeros, so a figure is seen to
+ * land when its screen opens - a tab switch included - and after a scan; from then on
+ * each change rolls up when the value grows and down when it shrinks.
+ */
+@Composable
+private fun RollingDigits(minor: Long, number: String, style: TextStyle) {
+    var shown by remember { mutableStateOf(number.map { if (it.isDigit()) '0' else it }.joinToString("")) }
+    var rising by remember { mutableStateOf(true) }
+    var was by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(number, minor) {
+        rising = was?.let { minor >= it } ?: true
+        was = minor
+        shown = number
+    }
+    shown.forEachIndexed { i, c ->
+        key(shown.length - i) { RollingChar(c, rising, style) }
+    }
+}
+
+/** Bumped when a scan lands, so every rolling figure on screen rolls in again. */
+object Rolls {
+    var generation by mutableIntStateOf(0)
+        private set
+
+    fun replay() {
+        generation++
     }
 }
 

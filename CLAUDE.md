@@ -28,8 +28,9 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   slide, and every dialog's pop-in with a quick close (`ui/compose/DialogPop.kt`: put
   `Modifier.popIn(pop)` on the dialog and send every way of closing it through
   `pop.leave { … }`). Bottom sheets keep their own slide. And headline figures roll their
-  digits when they change (`MoneyText(roll = true)`, like firePOS's NumberFlow): Home's
-  net and pills, Analysis totals, Accounts balances. List rows never roll.
+  digits (`MoneyText(roll = true)`, like firePOS's NumberFlow): in from zero when they
+  appear, again when a scan lands (`Rolls.replay()`), and on every change. Home's net and
+  pills, Analysis totals, Accounts balances. List rows never roll.
 - **Choices of dates are tiles** (`ui/compose/Presets.kt`: `PresetSheet`/`PresetGrid`),
   never a plain list of words. Each tile says what it covers, and all tiles are one size.
 - **Exact versions.** `androidx.compose.material3:material3:1.5.0-alpha23` with

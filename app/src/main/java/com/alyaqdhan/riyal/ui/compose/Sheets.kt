@@ -6,6 +6,10 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Icon
 import androidx.annotation.StringRes
@@ -711,25 +715,19 @@ class CategoryOrder private constructor(private val use: Map<String, Int>) {
 fun rememberCategoryOrder(use: Map<String, Int>): CategoryOrder =
     remember { CategoryOrder.of(use) }
 
-/** How many chips the folded picker shows before it offers the rest. */
-private const val TOP_CHIPS = 6
-
-/** Past this many categories, reading the list stops being faster than typing. */
-private const val SEARCH_THRESHOLD = 20
+/** Rows of chips in the picker; the rest of the categories are a sideways scroll away. */
+private const val CHIP_ROWS = 3
 
 /**
  * The one category picker used everywhere: the correction sheet, the manual-entry
  * dialog, the budget editor and the backlog card, so "pick a category" is a single
  * gesture app-wide and no two of them can disagree about the order.
  *
- * It opens folded to the categories the user files into most, because the common case
- * is one tap and every extra chip is one more thing to read past. Whatever is already
- * selected stays visible even when it is not in that first handful - re-filing a record
- * must never hide where it currently sits.
- *
- * [allowSearch] is off for the backlog card, which draws one picker per merchant and
- * has to stay compact. Even where it is on, the field only appears once the list is
- * long enough that reading it is the slower option.
+ * Every category, in three rows that scroll sideways together - nothing folded away
+ * behind a "more". They run down the columns in the order the user files into most, so
+ * the first column holds the three likeliest and the rest are a swipe away. Whatever is
+ * already selected is scrolled into view when the picker opens: re-filing a record must
+ * never hide where it currently sits.
  */
 @Composable
 fun CategoryChips(
@@ -737,64 +735,36 @@ fun CategoryChips(
     selectedId: String,
     onSelect: (String) -> Unit,
     order: CategoryOrder = CategoryOrder.Empty,
-    allowSearch: Boolean = true,
 ) {
     val all = remember(type, order) { order.sort(Categories.forType(type)) }
-    var expanded by rememberSaveable(type) { mutableStateOf(false) }
-    var query by rememberSaveable(type) { mutableStateOf("") }
-
-    val searchable = allowSearch && all.size > SEARCH_THRESHOLD
-    val filtering = expanded && searchable && query.isNotBlank()
-    val shown = when {
-        filtering -> all.filter { it.name.contains(query.trim(), ignoreCase = true) }
-        expanded -> all
-        else -> {
-            val top = all.take(TOP_CHIPS)
-            if (top.none { it.id == selectedId }) top + all.filter { it.id == selectedId } else top
-        }
+    val rows = remember(all) { List(CHIP_ROWS) { r -> all.filterIndexed { i, _ -> i % CHIP_ROWS == r } } }
+    val scroll = rememberScrollState()
+    var selectedAt by remember { mutableStateOf<Int?>(null) }
+    val gutter = with(LocalDensity.current) { 24.dp.roundToPx() }
+    LaunchedEffect(selectedAt != null) {
+        selectedAt?.let { scroll.scrollTo((it - gutter).coerceAtLeast(0)) }
     }
-
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (expanded && searchable) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                label = { Text(stringResource(R.string.sheet_find_category)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            shown.forEach { cat ->
-                FilterChip(
-                    selected = cat.id == selectedId,
-                    onClick = { onSelect(cat.id) },
-                    label = { Text(cat.name) },
-                    leadingIcon = { CategoryIcon(cat.id) },
-                )
+    Column(
+        Modifier.fillMaxWidth().horizontalScroll(scroll),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        rows.forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { cat ->
+                    val selected = cat.id == selectedId
+                    FilterChip(
+                        selected = selected,
+                        onClick = { onSelect(cat.id) },
+                        label = { Text(cat.name, maxLines = 1) },
+                        leadingIcon = { CategoryIcon(cat.id) },
+                        modifier = if (selected && selectedAt == null) {
+                            Modifier.onPlaced { selectedAt = it.positionInParent().x.toInt() }
+                        } else {
+                            Modifier
+                        },
+                    )
+                }
             }
-            if (!expanded && all.size > shown.size) {
-                AssistChip(
-                    onClick = { expanded = true },
-                    label = { Text(stringResource(R.string.sheet_more, all.size - shown.size)) },
-                )
-            }
-            if (expanded && !filtering) {
-                AssistChip(
-                    onClick = { expanded = false; query = "" },
-                    label = { Text(stringResource(R.string.sheet_less)) },
-                )
-            }
-        }
-        if (filtering && shown.isEmpty()) {
-            Text(
-                stringResource(R.string.sheet_no_category_matches),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }

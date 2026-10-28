@@ -561,10 +561,6 @@
     <string name="sheet_merchant_optional">Merchant / from (optional)</string>
     <string name="sheet_transfer_no_category">A transfer has no category: it isn\'t spending or income, it\'s your own money changing pocket.</string>
     <string name="sheet_date">Date: %1$s</string>
-    <string name="sheet_find_category">Find a category</string>
-    <string name="sheet_more">More (%d)</string>
-    <string name="sheet_less">Less</string>
-    <string name="sheet_no_category_matches">No category matches that.</string>
 
     <string name="budget_title">Budget</string>
     <string name="budget_plan_runs">Plan runs %1$s</string>
@@ -691,6 +687,10 @@
     <string name="set_export_body">Every record Riyal holds goes into one CSV file, and you choose where it is written. Nothing leaves the phone on its own.</string>
     <string name="set_no_scan_yet">No scan yet</string>
     <string name="set_last_scan">Last scan %1$s</string>
+    <string name="set_status_up_to_date">Up to date</string>
+    <string name="set_status_scanning">Reading your messages</string>
+    <string name="set_status_failed">The last scan didn\'t finish</string>
+    <string name="set_status_never_body">Scan to build your records from your bank\'s messages</string>
     <string name="set_messages_read">%1$s read</string>
     <string name="set_just_now">just now</string>
     <string name="set_ago">%1$s ago</string>

@@ -12,7 +12,7 @@ is attached there.
   Android's installer on an update you chose to download. Android still shows its own
   install screen and asks you to confirm.
 - **The first scan after updating reads your whole inbox again.** How messages are read
-  changed (parser version 6), so records are rebuilt. Your categories, rules, accounts
+  changed (parser version 7), so records are rebuilt. Your categories, rules, accounts
   and budgets are kept; nothing is wiped.
 - **What you taught a test build is asked again.** Templates are recognised differently
   now (skeleton version 2), so answers given to an earlier 1.8.0 build no longer apply.
@@ -52,7 +52,8 @@ is attached there.
   are one account, whatever digits they quote, and an account made from such a number
   is folded back into the real one on the next full read.
 - Accounts masked with "#", with or without spaces ("00210 ###### 001"), read their
-  real last digits, however the spaces fall. An account an earlier build made from
+  real last digits, however the spaces fall and whatever invisible marks the message
+  carries around them; a number whose end is hidden names no account. An account an earlier build made from
   where the number starts ("0210") is folded into the one its end names on the next
   full read, even if it was given a name since.
 - Bank Nizwa purchases read the shop, not the date after it.
@@ -105,7 +106,12 @@ is attached there.
   like setup's, float over the page.
 - Dialogs pop in, and leave quickly.
 - Headline figures - Home's net and its pills, Analysis totals, account balances - roll
-  their digits to a new value, up when it grows and down when it shrinks.
+  their digits: in from zero when they appear, again when a scan or a refresh lands, and
+  to each new value, up when it grows and down when it shrinks.
+- Settings opens on a status card: up to date, reading, or what went wrong, when it last
+  read, and what it holds.
+- Category choices are every category in three rows that scroll sideways, instead of a
+  handful and "More".
 - **No more motion for its own sake.** Cards no longer pop in, buttons no longer
   bounce, charts draw in place, and the coin mascot no longer blinks. What moves is
   movement between places - tabs, pages - dialogs, and figures that change. The category wheel is back

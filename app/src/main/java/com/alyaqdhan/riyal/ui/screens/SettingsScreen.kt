@@ -2,6 +2,12 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.material3.Surface
+import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Box
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -130,6 +136,7 @@ fun SettingsScreen(
                 .padding(bottom = toolbarSpace + 16.dp),
         ) {
             StatusCard(
+                scan = scan,
                 lastScanAt = prefs.lastScanAt,
                 records = txns.size,
                 accounts = accounts.size,
@@ -626,25 +633,104 @@ private fun <T> ChoiceDialog(
  * where people go to find out whether the thing is working.
  */
 @Composable
-private fun StatusCard(lastScanAt: Long, records: Int, accounts: Int, messagesRead: Int?) {
-    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                if (lastScanAt <= 0L) stringResource(R.string.set_no_scan_yet)
-                else stringResource(R.string.set_last_scan, relativeTime(lastScanAt)),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                listOfNotNull(
-                    counted(R.plurals.count_records, records),
-                    counted(R.plurals.count_accounts, accounts),
+private fun StatusCard(
+    scan: MainViewModel.ScanState,
+    lastScanAt: Long,
+    records: Int,
+    accounts: Int,
+    messagesRead: Int?,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val running = scan as? MainViewModel.ScanState.Running
+    val failed = running == null && scan is MainViewModel.ScanState.Failed
+    val never = lastScanAt <= 0L
+    // One state, said once: the icon, the headline and the colour they share. Working
+    // is the quiet case; only trouble takes a colour of its own.
+    val icon = when {
+        running != null -> R.drawable.ic_sym_sync
+        failed -> R.drawable.ic_sym_error
+        never -> R.drawable.ic_sym_info
+        else -> R.drawable.ic_sym_check_circle
+    }
+    val (tone, onTone) = when {
+        failed -> scheme.errorContainer to scheme.onErrorContainer
+        never && running == null -> scheme.tertiaryContainer to scheme.onTertiaryContainer
+        else -> scheme.primaryContainer to scheme.onPrimaryContainer
+    }
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainer),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Surface(shape = CircleShape, color = tone, contentColor = onTone, modifier = Modifier.size(48.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(26.dp))
+                    }
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        stringResource(
+                            when {
+                                running != null -> R.string.set_status_scanning
+                                failed -> R.string.set_status_failed
+                                never -> R.string.set_no_scan_yet
+                                else -> R.string.set_status_up_to_date
+                            }
+                        ),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        when {
+                            running != null && running.total > 0 ->
+                                stringResource(R.string.set_scan_progress, running.processed, running.total)
+                            running != null -> stringResource(R.string.set_scan_starting)
+                            never -> stringResource(R.string.set_status_never_body)
+                            else -> stringResource(R.string.set_last_scan, relativeTime(lastScanAt))
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (running != null) {
+                ScanBar(
+                    progress = if (running.total > 0) ({ running.processed.toFloat() / running.total }) else null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (!never) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatusPill(R.drawable.ic_sym_payments, counted(R.plurals.count_records, records))
+                    StatusPill(R.drawable.ic_sym_account_balance, counted(R.plurals.count_accounts, accounts))
                     messagesRead?.let {
-                        stringResource(R.string.set_messages_read, counted(R.plurals.count_messages, it))
-                    },
-                ).joinToString(" · "),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        StatusPill(
+                            R.drawable.ic_sym_mail_read,
+                            stringResource(R.string.set_messages_read, counted(R.plurals.count_messages, it)),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** One count under the status: an icon and the figure in words, on a tonal pill. */
+@Composable
+private fun StatusPill(@DrawableRes icon: Int, text: String) {
+    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHighest) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                painterResource(icon),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
             )
+            Text(text, style = MaterialTheme.typography.labelLarge)
         }
     }
 }

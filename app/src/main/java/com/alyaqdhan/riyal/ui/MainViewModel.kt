@@ -216,6 +216,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 prefs.lastScanAt = summary.at
                 _scanState.value = ScanState.Done(summary)
+                // The figures roll again, changed or not: a refresh should be seen to land.
+                com.alyaqdhan.riyal.ui.compose.Rolls.replay()
             } catch (e: SecurityException) {
                 Verbose.fail(R.string.log_scan_aborted_permission)
                 Verbose.flush()

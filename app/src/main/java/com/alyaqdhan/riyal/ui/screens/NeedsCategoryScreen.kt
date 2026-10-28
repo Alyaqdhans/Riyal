@@ -399,9 +399,6 @@ private fun MerchantCard(
                     CategoryChips(
                         type = group.type,
                         order = order,
-                        // One picker per merchant card, several on screen at once: a
-                        // filter field on each would cost more room than it saves.
-                        allowSearch = false,
                         // Nothing is preselected: the category it currently carries is
                         // the fallback, and showing it as a choice already made is how
                         // a backlog gets "confirmed" without being read.

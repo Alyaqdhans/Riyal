@@ -613,10 +613,6 @@
     <string name="sheet_merchant_optional">المتجر / الجهة (اختياري)</string>
     <string name="sheet_transfer_no_category">التحويل بلا تصنيف: فهو ليس مصروفاً ولا دخلاً، بل مالك ينتقل من جيب إلى جيب.</string>
     <string name="sheet_date">التاريخ: %1$s</string>
-    <string name="sheet_find_category">ابحث عن تصنيف</string>
-    <string name="sheet_more">المزيد (%d)</string>
-    <string name="sheet_less">أقل</string>
-    <string name="sheet_no_category_matches">لا تصنيف يطابق ذلك.</string>
 
     <string name="budget_title">الميزانية</string>
     <string name="budget_plan_runs">الخطة تغطي %1$s</string>
@@ -747,6 +743,10 @@
     <string name="set_export_body">كل سجل لدى ريال يذهب إلى ملف CSV واحد، وأنت تختار أين يُكتب. ولا يغادر الهاتف شيء من تلقاء نفسه.</string>
     <string name="set_no_scan_yet">لا فحص بعد</string>
     <string name="set_last_scan">آخر فحص %1$s</string>
+    <string name="set_status_up_to_date">كل شيء محدّث</string>
+    <string name="set_status_scanning">جارٍ قراءة رسائلك</string>
+    <string name="set_status_failed">لم تكتمل آخر قراءة</string>
+    <string name="set_status_never_body">ابدأ القراءة لتُبنى سجلاتك من رسائل بنكك</string>
     <string name="set_messages_read">%1$s مقروءة</string>
     <string name="set_just_now">الآن</string>
     <string name="set_ago">قبل %1$s</string>
