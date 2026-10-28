@@ -104,10 +104,13 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
    An incremental scan reads back the newest stored records (`ANCHORS_PER_SENDER`) so a
    new message still finds its line. A full scan folds accounts proven to be such
    numbers into the real one (`AccountDiscovery.foreignAccounts`), and their digits stay
-   as `Account.aliases`. A masked number is read in the order the phone shows it:
-   `SmsParser.asShown` runs it through `java.text.Bidi` (the Unicode bidirectional
-   algorithm, marks included) before anything else - Bank Nizwa sends "001 ###### 00210"
-   to show "00210 ###### 001". A number whose end repeats its start (refunds:
+   as `Account.aliases`. No reading order is guessed for a masked number:
+   banks write one account several ways (Bank Nizwa: "002########001", "001 ###### 00210",
+   "001######00210"). The parser reports its digit groups, and
+   `AccountDiscovery.resolveMaskedTails` settles which is the account across the bank's
+   messages - numbers on one balance line, or runs sharing a group that never overlap in
+   time, are one account, known by the group they all share (else the one no other account
+   has, else the shorter). A number whose end repeats its start (refunds:
    "00210 ###### 00210") names no account, and within one bank an account quoted by under
    the main account folds into it unless it tops a balance line the main account never
    appears on, over the same months (`minorityFolds`). The account is always the end of a masked number; the digits

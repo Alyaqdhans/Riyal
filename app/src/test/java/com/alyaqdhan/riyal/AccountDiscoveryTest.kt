@@ -368,6 +368,52 @@ class AccountDiscoveryTest {
         assertEquals(mapOf("acc_stray" to main.id), AccountDiscovery.minorityFolds(listOf(main, stray), many + older))
     }
 
+    // ── which group of a masked number is the account ──
+
+    private fun masked(vararg groups: String, at: Long, line: Int?) =
+        seen(groups.last().takeLast(4), 100_000L - at, at, -100, line = line).copy(groups = groups.toList())
+
+    private fun settled(observations: List<AccountDiscovery.Observation>) =
+        AccountDiscovery.resolveMaskedTails(observations).mapNotNull { it.accountTail }.toSet()
+
+    @Test
+    fun `one account written every which way is the group all its numbers share`() {
+        // Bank Nizwa's formats, with made-up times: before a renumbering "002…001",
+        // after it "001 … 00350" spaced and unspaced. One balance line runs through.
+        val older = List(4) { masked("002", "001", at = it.toLong(), line = 1) }
+        val newer = List(4) { masked("001", "00350", at = 10L + it, line = 1) }
+        assertEquals(setOf("001"), settled(older + newer))
+        // The balance line broken at the renumbering: two runs sharing "001" that
+        // never overlap are still one account.
+        val split = older + newer.map { it.copy(line = 2) }
+        assertEquals(setOf("001"), settled(split))
+    }
+
+    @Test
+    fun `an account an earlier build made from the branch group folds into the real one`() {
+        val observed = AccountDiscovery.resolveMaskedTails(
+            List(4) { masked("005", "00350", at = it.toLong(), line = 1) }
+        )
+        val main = AccountDiscovery.propose(observed).single()
+        val stale = main.copy(id = "acc_stale", last4 = "0350")
+        assertEquals("005", main.last4)
+        assertEquals(mapOf("acc_stale" to main.id), AccountDiscovery.headFolds(listOf(main, stale), observed))
+    }
+
+    @Test
+    fun `two accounts at one branch are told apart by their ends`() {
+        val a = List(4) { masked("001", "00350", at = it.toLong() * 2, line = 1) }
+        val b = List(4) { masked("002", "00350", at = it.toLong() * 2 + 1, line = 2) }
+        val tails = AccountDiscovery.resolveMaskedTails(a + b).map { it.accountTail }
+        assertEquals(List(4) { "001" } + List(4) { "002" }, tails)
+    }
+
+    @Test
+    fun `an account only ever written one way is known by its shorter group`() {
+        assertEquals(setOf("001"), settled(List(3) { masked("001", "00350", at = it.toLong(), line = 1) }))
+        assertEquals(setOf("0019"), settled(List(3) { masked("0427", "0019", at = it.toLong(), line = 1) }))
+    }
+
     @Test
     fun `a sender is one bank however it is spelled`() {
         val main = AccountDiscovery.propose(oneLine).single()

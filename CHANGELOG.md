@@ -12,7 +12,7 @@ is attached there.
   Android's installer on an update you chose to download. Android still shows its own
   install screen and asks you to confirm.
 - **The first scan after updating reads your whole inbox again.** How messages are read
-  changed (parser version 10), so records are rebuilt. Your categories, rules, accounts
+  changed (parser version 11), so records are rebuilt. Your categories, rules, accounts
   and budgets are kept; nothing is wiped.
 - **What you taught a test build is asked again.** Templates are recognised differently
   now (skeleton version 2), so answers given to an earlier 1.8.0 build no longer apply.
@@ -54,11 +54,13 @@ is attached there.
 - Accounts masked with "#", with or without spaces ("00210 ###### 001"), read their
   real last digits, however the spaces fall and whatever invisible marks the message
   carries around them; a number whose end is hidden names no account.
-- **Account numbers read the way the phone shows them.** An Arabic message is laid out
-  right to left, and the phone's text engine can show a number in another order than it
-  was sent: Bank Nizwa sends "001 ###### 00210" so the screen shows "00210 ###### 001".
-  Riyal now runs each masked number through the same Unicode rules, invisible direction
-  marks included, and takes the account from the end you see.
+- **A masked account number is settled by all of the bank's messages, not by its
+  order.** Bank Nizwa writes one account "002########001", "001 ###### 00210" and
+  "001######00210", so no reading order is right for all of them. Each number is taken
+  as its groups of digits; numbers whose balances run on from one another are one
+  account, and so are runs that share a group and never overlap in time (the account
+  renumbered). The account is the group all its numbers share - and two accounts at one
+  branch are told apart by their ends, never by the branch they share.
 - **The majority decides.** Within one bank, the account most messages name is the main
   one. Any other is folded into it - named or not - unless it shows a balance of its own,
   never shared with the main account, over the same months: the other party's number on

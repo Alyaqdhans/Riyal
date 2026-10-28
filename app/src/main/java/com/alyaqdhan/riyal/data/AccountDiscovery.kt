@@ -101,7 +101,7 @@ object AccountDiscovery {
      * Bumped when the rules that tidy existing accounts change: it is in the scan's
      * fingerprint, so the next scan reads everything and the new rules see every message.
      */
-    const val VERSION = 4
+    const val VERSION = 5
 
     /** A sender as one bank, however it is spelled: case, spaces and dots set aside. */
     fun senderKey(sender: String): String = sender.lowercase().filter { it.isLetterOrDigit() }
@@ -122,7 +122,16 @@ object AccountDiscovery {
         val accountId: String? = null,
         /** The digits before the mask of a masked account number ([SmsParser.Result.Parsed.accountHead]). */
         val head: String? = null,
+        /** The digit groups of a masked account number ([SmsParser.Result.Parsed.accountGroups]). */
+        val groups: List<String>? = null,
     ) {
+        /**
+         * Whether [digits] are one of this masked number's groups without being the one
+         * it was settled on: where "00210" stands in "001 ###### 00210".
+         */
+        fun namesGroup(digits: String): Boolean =
+            head?.endsWith(digits) == true || groups?.any { it.takeLast(4) == digits } == true
+
         /** The digits only when they name an account, which is what an account is keyed by. */
         val accountNumberTail: String? get() = accountTail?.takeUnless { tailIsCard }
     }
@@ -286,6 +295,99 @@ object AccountDiscovery {
     }
 
     /**
+     * Which group of a masked account number is the account, decided by the bank's
+     * messages rather than by the order the digits happen to be written in.
+     *
+     * A masked number shows two groups of digits, and banks do not keep them in one
+     * order: Bank Nizwa writes one account "002########001", "001 ###### 00210" and
+     * "001######00210". So each number is taken as the pair it is, and the pairs are
+     * joined into accounts by what the balances prove: numbers on one balance line are
+     * one account, and so are two runs of numbers that share a group and never overlap
+     * in time (the account renumbered, as Bank Nizwa's prefix went from "002" to
+     * "00210" while the balance carried on). An account is then known by the group all
+     * its numbers share; where two do, by the one no other account also has - two
+     * accounts at one branch share the branch, never their ends - and failing that by
+     * the shorter, an account's last digits being shorter than a branch.
+     *
+     * Every masked number's [Observation.accountTail] becomes its account's group.
+     * Numbers nothing decides keep the parser's first answer.
+     */
+    fun resolveMaskedTails(observations: List<Observation>): List<Observation> {
+        val out = observations.toMutableList()
+        fun last4(g: String) = g.takeLast(4)
+        val masked = observations.indices.filter { i ->
+            val o = observations[i]
+            !o.tailIsCard && (o.groups?.map(::last4)?.distinct()?.size ?: 0) >= 2
+        }
+        for ((_, idx) in masked.groupBy { senderKey(observations[it].sender) }) {
+            val pairOf = idx.associateWith { i -> observations[i].groups!!.map(::last4).distinct().sorted() }
+            val keyOf = pairOf.mapValues { it.value.joinToString("|") }
+            val parent = HashMap<String, String>()
+            fun find(x: String): String {
+                var r = x
+                while (parent[r] != null && parent[r] != r) r = parent.getValue(r)
+                return r
+            }
+            fun union(a: String, b: String) {
+                val ra = find(a)
+                val rb = find(b)
+                if (ra != rb) parent[ra] = rb
+            }
+            keyOf.values.forEach { parent.putIfAbsent(it, it) }
+            // One balance line is one account, whatever its numbers look like.
+            idx.filter { observations[it].line != null }
+                .groupBy { observations[it].line!! }
+                .values.forEach { members -> members.map(keyOf::getValue).distinct().zipWithNext(::union) }
+
+            fun clusters() = keyOf.values.distinct().groupBy(::find)
+            fun common(keys: List<String>) = keys.map { it.split("|").toSet() }.reduce { a, b -> a intersect b }
+            fun span(keys: List<String>): LongRange {
+                val times = idx.filter { keyOf.getValue(it) in keys }.map { observations[it].atMillis }
+                return times.min()..times.max()
+            }
+            // Renumbered: two runs sharing a group whose times never overlap.
+            var merged = true
+            while (merged) {
+                merged = false
+                val list = clusters().values.toList()
+                loop@ for (a in list.indices) for (b in a + 1 until list.size) {
+                    val ka = list[a]
+                    val kb = list[b]
+                    if ((common(ka) intersect common(kb)).isEmpty()) continue
+                    val sa = span(ka)
+                    val sb = span(kb)
+                    if (sa.last < sb.first || sb.last < sa.first) {
+                        union(ka.first(), kb.first())
+                        merged = true
+                        break@loop
+                    }
+                }
+            }
+
+            val groups = clusters()
+            val commons = groups.mapValues { common(it.value) }
+            val rawLength = HashMap<String, Int>()
+            idx.forEach { i -> observations[i].groups!!.forEach { g -> rawLength.merge(last4(g), g.length, ::maxOf) } }
+            val identity = commons.mapValues { (root, shared) ->
+                val own = shared.filter { g -> commons.none { (other, s) -> other != root && g in s } }
+                when {
+                    shared.size == 1 -> shared.single()
+                    own.size == 1 -> own.single()
+                    else -> (own.ifEmpty { shared.toList() }).let { candidates ->
+                        val shortest = candidates.minOf { rawLength[it] ?: 4 }
+                        candidates.filter { (rawLength[it] ?: 4) == shortest }.singleOrNull()
+                    }
+                }
+            }
+            for (i in idx) {
+                val tail = identity[find(keyOf.getValue(i))] ?: continue
+                out[i] = out[i].copy(accountTail = tail)
+            }
+        }
+        return out
+    }
+
+    /**
      * The majority decides. Within one bank, the account most messages name is the main
      * one, and any other is folded into it unless it is plainly a second account in use
      * beside it: a balance of its own - a line it tops that the main account never
@@ -356,7 +458,7 @@ object AccountDiscovery {
         val tail = account.last4 ?: return null
         if (mine.any { it.accountNumberTail == tail }) return null
         return mine.firstNotNullOfOrNull { o ->
-            o.accountNumberTail?.takeIf { o.head?.endsWith(tail) == true }
+            o.accountNumberTail?.takeIf { it != tail && o.namesGroup(tail) }
                 ?.let { ownerOf(accounts, o.sender, it) }
                 ?.takeIf { it != account.id }
         }
@@ -385,7 +487,7 @@ object AccountDiscovery {
             // Or the only account of its bank was made from where a masked number starts,
             // so there is no other account to fold into: it takes the number's end, where
             // no other account has it.
-            val end = mine.filter { it.head?.endsWith(tail) == true }
+            val end = mine.filter { it.namesGroup(tail) }
                 .mapNotNull { it.accountNumberTail }
                 .groupingBy { it }.eachCount()
                 .entries.sortedByDescending { it.value }

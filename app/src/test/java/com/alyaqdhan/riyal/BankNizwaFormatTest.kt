@@ -57,34 +57,31 @@ class BankNizwaFormatTest {
     }
 
     @Test
-    fun `a hash-masked account number reads as its last digits`() {
-        // Sent as "005######00350" so that, laid out right to left, the phone shows
-        // "00350######005". The token used to stop at the first "#" and read "0350".
+    fun `a masked account number gives its groups, in no particular order`() {
+        // Which group is the account is not read from the order: the bank writes one
+        // account "002########001", "001 ###### 00210" and "001######00210". The groups
+        // go to AccountDiscovery.resolveMaskedTails, which settles it across messages.
         val r = parsed(withdrawal)
-        assertEquals("005", r.accountTail)
+        assertEquals(setOf("005", "00350"), r.accountGroups!!.toSet())
         assertEquals(6_000L, r.amountMinor)
         assertEquals(304_420L, r.balanceMinor)
-    }
-
-    @Test
-    fun `a spaced number reads in the order the phone shows it`() {
-        // Sent as "005 ###### 00350" so that, right to left, the phone shows
-        // "00350 ###### 005". Read in the order it was sent, the account was "0350".
-        val r = parsed(
-            "تم سحب 6.000 ر.ع من حساب رقم 005 ###### 00350 الى SALI####AHMD. " +
-                "الرصيد المتوفر هو 304.420 ر.ع"
-        )
-        assertEquals("005", r.accountTail)
-        assertEquals("00350", r.accountHead)
         assertEquals("1234", parsed("Withdrawal of RO 1.000 from a/c XXXX 1234 at X").accountTail)
     }
 
     @Test
-    fun `invisible marks and full-width masks still read the end, and a hidden end names nothing`() {
-        listOf("00350‎ ###### ‎005", "⁦00350######005⁩", "005＃＃＃＃00350").forEach { number ->
+    fun `spacing, invisible marks and full-width masks give the same groups`() {
+        listOf(
+            "005 ###### 00350", "005  ###### 00350", "005 ### ### 00350", "005######00350",
+            "00350‎ ###### ‎005", "⁦00350######005⁩",
+            "005＃＃＃＃00350", "005 ###### 00350",
+        ).forEach { number ->
             val r = parsed("تم سحب 6.000 ر.ع من حساب رقم $number الى SALI####AHMD. الرصيد المتوفر هو 304.420 ر.ع")
-            assertEquals(number, "005", r.accountTail)
+            assertEquals(number, setOf("005", "00350"), r.accountGroups!!.toSet())
         }
+    }
+
+    @Test
+    fun `a hidden end names nothing`() {
         assertNull(parsed("تم سحب 6.000 ر.ع من حساب رقم 00350###### الى SALI. الرصيد المتوفر هو 304.420 ر.ع").accountTail)
         assertNull(parsed("تم سحب 6.000 ر.ع من حساب رقم 00350 ###### الى SALI. الرصيد المتوفر هو 304.420 ر.ع").accountTail)
     }
@@ -99,16 +96,8 @@ class BankNizwaFormatTest {
                 Direction.INCOME,
             )!!
             assertNull(number, r.accountTail)
+            assertNull(number, r.accountGroups)
             assertEquals(542_006L, r.balanceMinor)
-        }
-    }
-
-    @Test
-    fun `wider or unbroken spacing around the mask still reads the end`() {
-        listOf("005  ###### 00350", "005 ###### 00350", "005 ### ### 00350", "005######00350").forEach { number ->
-            val r = parsed("تم سحب 6.000 ر.ع من حساب رقم $number الى SALI####AHMD. الرصيد المتوفر هو 304.420 ر.ع")
-            assertEquals(number, "005", r.accountTail)
-            assertEquals(number, "00350", r.accountHead)
         }
     }
 
@@ -118,7 +107,7 @@ class BankNizwaFormatTest {
             "تم خصم 10.000 ر.ع للتحويل إلى حساب رقم 0123456784410 من حسابك رقم 005######00350 " +
                 "الرصيد المتوفر هو 294.420 ر.ع"
         )
-        assertEquals("005", r.accountTail)
+        assertEquals(setOf("005", "00350"), r.accountGroups!!.toSet())
     }
 
     @Test

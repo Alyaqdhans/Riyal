@@ -408,15 +408,20 @@ class ScanEngine(
         var accounts = existingAccounts
         // Every parsed message, and the stored records read back beside them, each with
         // the balance line it is on: what decides which digits are an account.
-        val observations = parsedMsgs.values.map { pm ->
-            observationOf(pm.msg.sender, pm.msg.atMillis, pm.result, pm.result.direction, chains.lineOf[pm.id])
-        } + anchors.map { a ->
-            observationOf(
-                a.txn.sender, a.txn.atMillis, a.facts,
-                if (a.txn.type == TxnType.INCOME) Direction.INCOME else Direction.EXPENSE,
-                chains.lineOf[a.txn.id], a.txn.accountId,
-            )
-        }
+        val observations = AccountDiscovery.resolveMaskedTails(
+            parsedMsgs.values.map { pm ->
+                observationOf(pm.msg.sender, pm.msg.atMillis, pm.result, pm.result.direction, chains.lineOf[pm.id])
+            } + anchors.map { a ->
+                observationOf(
+                    a.txn.sender, a.txn.atMillis, a.facts,
+                    if (a.txn.type == TxnType.INCOME) Direction.INCOME else Direction.EXPENSE,
+                    chains.lineOf[a.txn.id], a.txn.accountId,
+                )
+            }
+        )
+        // Each message's account number as the bank's messages settle it, for routing.
+        val settledTail = HashMap<String, String>()
+        parsedMsgs.values.forEachIndexed { i, pm -> observations[i].accountTail?.let { settledTail[pm.id] = it } }
         // Accounts an earlier reading made out of a reference or the other party's
         // number. A pass over everything is the one that can see every message quoting
         // them sit on another account's balance line, and fold them back into it.
@@ -525,10 +530,11 @@ class ScanEngine(
                 skippedNonBank++
                 continue
             }
-            val accountId = result.accountTail?.takeUnless { result.tailIsCard }
+            val tail = settledTail[pm.id] ?: result.accountTail
+            val accountId = tail?.takeUnless { result.tailIsCard }
                 ?.let { AccountDiscovery.ownerOf(accounts, pm.msg.sender, it) }
                 ?: chains.lineOf[pm.id]?.let { lineAccounts[it] }
-                ?: AccountDiscovery.routeTo(accounts, pm.msg.sender, result.accountTail, result.tailIsCard)
+                ?: AccountDiscovery.routeTo(accounts, pm.msg.sender, tail, result.tailIsCard)
             if (accountId == null) unrouted++
             if (result.transferHint) hinted += pm.id
             result.bankStamp?.let { bankStamps[pm.id] = pm.msg.sender.trim().lowercase() + "|" + it }
@@ -836,6 +842,7 @@ class ScanEngine(
         line = line,
         accountId = accountId,
         head = f.accountHead?.takeUnless { f.tailIsCard },
+        groups = f.accountGroups?.takeUnless { f.tailIsCard },
     )
 
     /**
@@ -955,7 +962,8 @@ class ScanEngine(
             return BalanceChain.Point(
                 id = id,
                 sender = sender,
-                tail = f.accountTail?.takeUnless { f.tailIsCard },
+                tail = (f.accountGroups?.map { it.takeLast(4) }?.distinct()?.sorted()?.joinToString("|")
+                    ?: f.accountTail)?.takeUnless { f.tailIsCard },
                 atMillis = at,
                 amountMinor = f.amountMinor,
                 currency = f.currency,

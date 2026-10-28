@@ -1,6 +1,5 @@
 package com.alyaqdhan.riyal.data
 
-import java.text.Bidi
 import androidx.annotation.StringRes
 import com.alyaqdhan.riyal.R
 
@@ -64,6 +63,14 @@ class SmsParser(
              * its end for one, and this is how that account is recognised and folded.
              */
             val accountHead: String? = null,
+            /**
+             * Every group of digits a masked account number shows - "001" and "00210" of
+             * "001 ###### 00210" - in no particular order. A bank does not write them in
+             * one order (Bank Nizwa has "002########001", "001 ###### 00210" and
+             * "001######00210" for one account), so which group is the account is
+             * settled across all of the bank's messages: [AccountDiscovery.resolveMaskedTails].
+             */
+            val accountGroups: List<String>? = null,
             /** The wording suggests moving money between accounts rather than spending. */
             val transferHint: Boolean = false,
             /**
@@ -307,6 +314,7 @@ class SmsParser(
             accountTail = accountTail,
             tailIsCard = tail?.fromCard == true,
             accountHead = tail?.head,
+            accountGroups = tail?.groups,
             transferHint = transferHint,
             bankStamp = bankStamp,
             selfTransferTo = selfTransferTo,
@@ -442,7 +450,12 @@ class SmsParser(
         }
 
     /** The digits a message quotes, and whether they name a card or an account. */
-    private data class Tail(val digits: String, val fromCard: Boolean, val head: String? = null)
+    private data class Tail(
+        val digits: String,
+        val fromCard: Boolean,
+        val head: String? = null,
+        val groups: List<String>? = null,
+    )
 
     private fun findAccountTail(body: String): Tail? {
         var card: Tail? = null
@@ -456,6 +469,8 @@ class SmsParser(
             val rest = body.substring(m.groups[1]!!.range.first + written.length)
             if (written.all { it.isDigit() } && hiddenEnd.containsMatchIn(rest)) continue
             val token = written
+            // The last digits as written are only a first answer for a masked number;
+            // which of its groups is the account is settled across the bank's messages.
             val digits = token.takeLastWhile { it.isDigit() }
             // "00210 ###### 00210": Bank Nizwa's refunds repeat the branch where the last
             // digits go. That names no account - read as one, every refund was "0210" -
@@ -478,7 +493,8 @@ class SmsParser(
             val score = (if (isYours(body, m.range.first, keyword)) 2 else 0) + (if (masked) 1 else 0)
             if (score > bestScore) {
                 val head = token.takeWhile { it.isDigit() }.takeIf { masked && it.length >= 3 }
-                best = Tail(digits.takeLast(4), fromCard = false, head = head)
+                val groups = if (masked) digitGroups.findAll(token).map { it.value }.toList().takeIf { it.size >= 2 } else null
+                best = Tail(digits.takeLast(4), fromCard = false, head = head, groups = groups)
                 bestScore = score
             }
         }
@@ -569,40 +585,11 @@ class SmsParser(
      * and its mask was enough to end the account number at "00210", and its account
      * became "0210".
      */
-    private fun normalize(s: String): String = Numerals.latin(asShown(s))
+    private fun normalize(s: String): String = Numerals.latin(s)
         .replace(invisibleMarks, "")
         .replace('＃', '#')
         .replace('＊', '*')
         .replace('●', '•')
-
-    /**
-     * [raw] with every masked account number put in the order the phone shows it.
-     *
-     * The customer knows their account as it appears on screen, and in an Arabic message
-     * that is not always the order it was sent in: the phone lays text out with the
-     * Unicode bidirectional algorithm, which runs groups of digits separated by spaces
-     * right to left, unless direction marks around them say otherwise. Bank Nizwa's
-     * "00210 ###### 001" on screen can arrive either way round, so the number is put
-     * through the same algorithm - marks and all, before they are cleaned away - and read
-     * left to right as shown. Its end is then the account.
-     */
-    private fun asShown(raw: String): String = raw.split('\n').joinToString("\n") { line ->
-        val runs = maskedRun.findAll(line).filter { r -> r.value.count { it in "Xx*#\u2022＃＊●" } >= 2 }.toList()
-        if (runs.isEmpty()) return@joinToString line
-        val bidi = Bidi(line, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT)
-        if (bidi.isLeftToRight) return@joinToString line
-        val out = StringBuilder(line)
-        for (run in runs.asReversed()) {
-            val from = run.range.first
-            val until = run.range.last + 1
-            val levels = ByteArray(until - from) { bidi.getLevelAt(from + it).toByte() }
-            val chars: Array<Any> = Array(until - from) { line[from + it] }
-            Bidi.reorderVisually(levels, 0, chars, 0, chars.size)
-            val shown = chars.joinToString("") { it.toString() }.filterNot { invisibleMarks.matches(it.toString()) }
-            out.replace(from, until, shown)
-        }
-        out.toString()
-    }
 
     private fun wordIn(hay: String, phrase: String): Boolean {
         if (phrase.firstOrNull() !in 'a'..'z') return phrase in hay
@@ -625,18 +612,13 @@ class SmsParser(
          * is out of date and the inbox must be read again. Forgetting to bump it after a
          * parser fix means the fix only reaches messages that arrive afterwards.
          */
-        const val VERSION = 10
+        const val VERSION = 11
+
+        /** The runs of digits in an account number, around and between its masks. */
+        private val digitGroups = Regex("[0-9]{2,}")
 
         /** A mask straight after the digits, with nothing after it: an account's hidden end. */
         private val hiddenEnd = Regex("^\\s*[Xx*#\\u2022]{2,}(?!\\s*\\d)")
-
-        /**
-         * A masked account number as written, marks and spacing included: digits and
-         * masks with nothing else between, holding at least two masks.
-         */
-        private val maskedRun = Regex(
-            "[0-9\\u0660-\\u0669\\u06F0-\\u06F9][0-9\\u0660-\\u0669\\u06F0-\\u06F9Xx*#\\u2022＃＊●\\s\\u00A0\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069]*[0-9\\u0660-\\u0669\\u06F0-\\u06F9]"
-        )
 
         /** Direction marks, isolates, zero-width spaces and joiners: format, not text. */
         private val invisibleMarks = Regex("[\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069\\u061C\\uFEFF]")
