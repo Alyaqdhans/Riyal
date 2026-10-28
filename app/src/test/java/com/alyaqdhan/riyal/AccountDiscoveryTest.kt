@@ -341,6 +341,16 @@ class AccountDiscoveryTest {
     }
 
     @Test
+    fun `an account kept under the wrong digits by a merge takes the ones its messages end with`() {
+        // "001" merged into "0210" the wrong way round: one account, known by the branch.
+        val main = AccountDiscovery.propose(oneLine).single()
+        val wrong = main.copy(last4 = "0350", aliases = setOf("005"))
+        assertEquals(mapOf(main.id to "005"), AccountDiscovery.renumbered(listOf(wrong), oneLine))
+        // Its own digits still quoted: left as it is.
+        assertTrue(AccountDiscovery.renumbered(listOf(main.copy(aliases = setOf("4410"))), oneLine).isEmpty())
+    }
+
+    @Test
     fun `an account made from where a masked number starts folds into where it ends`() {
         // "0350" came from the start of "00350 ###### 005". Even named, and with no message
         // left to say where it was opened, it was never an account.

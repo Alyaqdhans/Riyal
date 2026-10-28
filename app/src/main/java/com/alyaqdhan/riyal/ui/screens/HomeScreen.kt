@@ -2,6 +2,7 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.ui.text.font.FontWeight
 import com.alyaqdhan.riyal.ui.compose.title
 import androidx.compose.foundation.layout.size
 import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
@@ -326,7 +327,7 @@ private fun SummaryCard(totals: Stats.MonthTotals, currency: String) {
                 currency,
                 sign = MoneySign.NEGATIVE,
                 roll = true,
-                style = MaterialTheme.typography.displaySmall,
+                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
                 color = if (totals.net < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                 autoSize = TextAutoSize.StepBased(
                     minFontSize = 20.sp,

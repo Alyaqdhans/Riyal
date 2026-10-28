@@ -6,6 +6,15 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.ui.text.rememberTextMeasurer
 import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
 import com.alyaqdhan.riyal.ui.theme.successContainer
@@ -114,6 +123,54 @@ fun typeIcon(type: TxnType): Int = when (type) {
     TxnType.EXPENSE -> R.drawable.ic_sym_arrow_up
     TxnType.INCOME -> R.drawable.ic_sym_arrow_down
     TxnType.TRANSFER -> R.drawable.ic_sym_swap
+}
+
+/**
+ * One of a few, as Material 3 Expressive's connected button group: the chosen one fills
+ * in [tone] and rounds fully, the others stay quiet. Replaces segmented buttons, which
+ * read as a row of boxes.
+ */
+@Composable
+fun <T> ConnectedChoice(
+    options: List<T>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    label: @Composable (T) -> String,
+    modifier: Modifier = Modifier,
+    icon: ((T) -> Int)? = null,
+    tone: @Composable (T) -> Pair<Color, Color> = {
+        MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
+    },
+) {
+    Row(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+    ) {
+        options.forEachIndexed { index, option ->
+            val (on, onOn) = tone(option)
+            ToggleButton(
+                checked = option == selected,
+                onCheckedChange = { onSelect(option) },
+                modifier = Modifier.weight(1f).semantics { role = Role.RadioButton },
+                shapes = when (index) {
+                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                },
+                colors = ToggleButtonDefaults.toggleButtonColors(
+                    checkedContainerColor = on,
+                    checkedContentColor = onOn,
+                ),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+            ) {
+                if (icon != null) {
+                    Icon(painterResource(icon(option)), contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                }
+                Text(label(option), maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
 }
 
 /**
@@ -404,42 +461,38 @@ fun TxnEditSheet(
                     order = order,
                 )
                 if (pattern != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Switch(
-                            checked = makeRule && !marked,
-                            enabled = !marked,
-                            onCheckedChange = { makeRule = it },
-                        )
-                        Text(
-                            stringResource(R.string.sheet_always_rule, txn.merchant.orEmpty()),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (marked) MaterialTheme.colorScheme.onSurfaceVariant
-                            else MaterialTheme.colorScheme.onSurface,
-                        )
+                    // What happens to this name's other records, as one choice. It was a
+                    // switch for "always" and a button below it for "ask each time":
+                    // two controls about the same thing, which could disagree.
+                    Text(
+                        stringResource(R.string.sheet_rule_title, txn.merchant.orEmpty()),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    val choices = buildList {
+                        add(R.string.sheet_rule_once)
+                        add(R.string.sheet_rule_remember)
+                        if (onAskEachTime != null || marked) add(R.string.sheet_rule_ask)
                     }
-                    if (marked) {
-                        Text(
-                            stringResource(R.string.sheet_asked_each_time),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    val current = when {
+                        marked -> R.string.sheet_rule_ask
+                        makeRule -> R.string.sheet_rule_remember
+                        else -> R.string.sheet_rule_once
                     }
-                    // Offered right here because this is where the problem shows itself:
-                    // picking a category for the same person for the second time, and
-                    // seeing that the first answer was not a fact about them.
-                    if (onAskEachTime != null) {
-                        TextButton(onClick = { onAskEachTime(!marked) }) {
-                            Text(
-                                stringResource(
-                                    if (marked) R.string.sheet_remember_after_all
-                                    else R.string.sheet_always_ask
-                                )
-                            )
-                        }
-                    }
+                    ConnectedChoice(
+                        options = choices,
+                        selected = current,
+                        onSelect = { choice ->
+                            if (choice == R.string.sheet_rule_ask) {
+                                makeRule = false
+                                if (!marked) onAskEachTime?.invoke(true)
+                            } else {
+                                if (marked) onAskEachTime?.invoke(false)
+                                makeRule = choice == R.string.sheet_rule_remember
+                            }
+                        },
+                        label = { stringResource(it) },
+                    )
                 }
             }
 
@@ -569,35 +622,23 @@ fun ManualTxnDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // Home's colours: spending red, income green, a transfer neither.
-                val tones = mapOf(
-                    TxnType.EXPENSE to (MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer),
-                    TxnType.INCOME to (successContainer() to onSuccessContainer()),
-                    TxnType.TRANSFER to (MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer),
-                )
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    TxnType.entries.forEachIndexed { index, option ->
-                        val (tone, onTone) = tones.getValue(option)
-                        SegmentedButton(
-                            selected = type == option,
-                            onClick = { type = option },
-                            shape = SegmentedButtonDefaults.itemShape(index = index, count = TxnType.entries.size),
-                            modifier = Modifier.weight(1f),
-                            colors = SegmentedButtonDefaults.colors(
-                                activeContainerColor = tone,
-                                activeContentColor = onTone,
-                            ),
-                            icon = {
-                                Icon(painterResource(typeIcon(option)), contentDescription = null, modifier = Modifier.size(18.dp))
-                            },
-                        ) {
-                            Text(
-                                stringResource(typeLabel(option)),
-                                softWrap = false,
-                                maxLines = 1,
-                            )
+                val expenseTone = MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+                val incomeTone = successContainer() to onSuccessContainer()
+                val transferTone = MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+                ConnectedChoice(
+                    options = TxnType.entries,
+                    selected = type,
+                    onSelect = { type = it },
+                    label = { stringResource(typeLabel(it)) },
+                    icon = ::typeIcon,
+                    tone = {
+                        when (it) {
+                            TxnType.EXPENSE -> expenseTone
+                            TxnType.INCOME -> incomeTone
+                            TxnType.TRANSFER -> transferTone
                         }
-                    }
-                }
+                    },
+                )
                 // The amount is what the form is for, so it is written large.
                 OutlinedTextField(
                     value = amount,

@@ -2,6 +2,7 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import com.alyaqdhan.riyal.ui.compose.CurrencySign
 import androidx.compose.material3.Surface
 import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.shape.CircleShape
@@ -156,7 +157,8 @@ fun SettingsScreen(
             NavRow(
                 R.drawable.ic_sym_payments,
                 stringResource(R.string.set_default_currency),
-                Currencies.of(currency)?.let { it.flag + "  " + stringResource(it.name) } ?: currency,
+                Currencies.of(currency)?.let { stringResource(it.name) } ?: currency,
+                valueLead = { CurrencySign(currency, height = 14.dp) },
             ) { dialog = SettingsDialog.CURRENCY }
             NavRow(
                 R.drawable.ic_sym_currency_exchange,
@@ -542,6 +544,8 @@ private fun NavRow(
     warning: Boolean = false,
     enabled: Boolean = true,
     chevron: Boolean = true,
+    /** Drawn before [value]: a currency's sign, where the value is a currency. */
+    valueLead: (@Composable () -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     ListItem(
@@ -549,10 +553,13 @@ private fun NavRow(
         enabled = enabled,
         leadingContent = { Icon(painterResource(icon), contentDescription = null) },
         supportingContent = {
-            Text(
-                value,
-                color = if (warning) MaterialTheme.colorScheme.error else Color.Unspecified,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                valueLead?.invoke()
+                Text(
+                    value,
+                    color = if (warning) MaterialTheme.colorScheme.error else Color.Unspecified,
+                )
+            }
         },
         trailingContent = if (chevron) {
             { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) }

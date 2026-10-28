@@ -113,9 +113,15 @@ is attached there.
   read, and what it holds.
 - Category choices are every category in three level rows that scroll sideways, Other
   last, instead of a handful and "More".
-- The Add form names its kinds as Home does - Expense, Income, Transfer - in Home's
-  colours and arrows, writes the amount large, and the currency field shows the
-  currency's sign instead of its flag.
+- The Add form names its kinds as Home does - Expense, Income, Transfer - on Material 3
+  Expressive's connected buttons, in Home's colours and arrows, and writes the amount
+  large. Currency fields and Settings show the currency's sign instead of its flag.
+- A record's sheet asks one question about the name's other records - just this one,
+  same category, or ask each time - instead of a switch and a button that overlapped.
+  An account's "closed" is a plain switch row.
+- Currency signs are drawn as heavy as the figures beside them, and Home's net is bold.
+- An account a merge left under the digits its messages never end with (merging "001"
+  into "0210") takes the digits they do end with on the next full read.
 - **No more motion for its own sake.** Cards no longer pop in, buttons no longer
   bounce, charts draw in place, and the coin mascot no longer blinks. What moves is
   movement between places - tabs, pages - dialogs, and figures that change. The category wheel is back

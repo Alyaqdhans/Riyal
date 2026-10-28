@@ -97,6 +97,12 @@ object Banks {
 object AccountDiscovery {
 
     /** One parsed message, reduced to what account setup cares about. */
+    /**
+     * Bumped when the rules that tidy existing accounts change: it is in the scan's
+     * fingerprint, so the next scan reads everything and the new rules see every message.
+     */
+    const val VERSION = 1
+
     data class Observation(
         val sender: String,
         val accountTail: String?,
@@ -282,6 +288,31 @@ object AccountDiscovery {
                 owners.distinct().singleOrNull() ?: continue
             }
             if (owner != account.id) out[account.id] = owner
+        }
+        return out
+    }
+
+    /**
+     * Accounts known by digits no message ends with, though one of their aliases is: a
+     * merge kept the wrong number on top - "Same account as…" picked the other way round
+     * leaves the account that was made from where "00210 ###### 001" starts, with the real
+     * "001" only an alias. Each comes back with the digits its bank does quote, the most
+     * quoted where there are several; the old digits become an alias, so nothing routes
+     * differently.
+     */
+    fun renumbered(accounts: List<Account>, observations: List<Observation>): Map<String, String> {
+        val out = HashMap<String, String>()
+        for (account in accounts) {
+            val tail = account.last4 ?: continue
+            if (account.aliases.isEmpty()) continue
+            val senders = account.senderIds.mapTo(HashSet()) { it.trim().lowercase() }
+            val quoted = observations
+                .filter { it.sender.trim().lowercase() in senders }
+                .mapNotNull { it.accountNumberTail }
+                .groupingBy { it }.eachCount()
+            if ((quoted[tail] ?: 0) > 0) continue
+            val real = account.aliases.filter { (quoted[it] ?: 0) > 0 }.maxByOrNull { quoted.getValue(it) } ?: continue
+            out[account.id] = real
         }
         return out
     }

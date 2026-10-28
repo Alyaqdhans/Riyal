@@ -429,6 +429,13 @@ class ScanEngine(
                 Verbose.ok(R.string.scanlog_account_folded, from.displayName, into.displayName)
             }
             if (foreign.isNotEmpty()) accounts = store.accounts.value
+            val renumbered = AccountDiscovery.renumbered(accounts, observations)
+            for ((id, last4) in renumbered) {
+                val account = accounts.first { it.id == id }
+                store.renumberAccount(id, last4)
+                Verbose.ok(R.string.scanlog_account_renumbered, account.displayName, last4)
+            }
+            if (renumbered.isNotEmpty()) accounts = store.accounts.value
         }
         if (parsedMsgs.isNotEmpty()) {
             val found = AccountDiscovery.proposeMissing(accounts, observations)
@@ -757,6 +764,7 @@ class ScanEngine(
         // A corrected exchange rate changes what every converted record is worth.
         "fx=" + Currencies.fingerprint(),
         "skeleton=${Skeleton.VERSION}",
+        "accounts=${AccountDiscovery.VERSION}",
         "excluded=" + prefs.excludedSenders.map { it.lowercase() }.sorted().joinToString(","),
         // What the user taught. Hashed, because there can be hundreds of templates.
         "taught=" + store.labels.value.entries.sortedBy { it.key }

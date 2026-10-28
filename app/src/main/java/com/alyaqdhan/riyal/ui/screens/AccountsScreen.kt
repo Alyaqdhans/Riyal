@@ -490,16 +490,21 @@ internal fun AccountEditorDialog(
                     placeholder = { Text(stringResource(R.string.acct_senders_placeholder)) },
                     supportingText = { Text(stringResource(R.string.acct_senders_help)) },
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Switch(checked = archived, onCheckedChange = { archived = it })
-                    Text(
-                        stringResource(R.string.acct_archived),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
+                // The whole row is the switch, and stays plain when on.
+                val plain = ListItemDefaults.colors(containerColor = Color.Transparent)
+                ListItem(
+                    checked = archived,
+                    onCheckedChange = { archived = it },
+                    colors = ListItemDefaults.colors(
+                        containerColor = Color.Transparent,
+                        selectedContainerColor = Color.Transparent,
+                        selectedContentColor = plain.contentColor,
+                        selectedSupportingContentColor = plain.supportingContentColor,
+                        selectedTrailingContentColor = plain.trailingContentColor,
+                    ),
+                    supportingContent = { Text(stringResource(R.string.acct_archived_detail)) },
+                    trailingContent = { Switch(checked = archived, onCheckedChange = null) },
+                ) { Text(stringResource(R.string.acct_archived)) }
             }
         },
         confirmButton = {

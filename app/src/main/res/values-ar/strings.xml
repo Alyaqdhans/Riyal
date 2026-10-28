@@ -505,7 +505,8 @@
     <string name="acct_senders">مُرسِلو الرسائل</string>
     <string name="acct_senders_placeholder">BankMuscat, NBO</string>
     <string name="acct_senders_help">الرسائل الواردة من هؤلاء المرسلين تُسجَّل تحت هذا الحساب.</string>
-    <string name="acct_archived">حساب مُغلق (أخفِه من القوائم)</string>
+    <string name="acct_archived">حساب مغلق</string>
+    <string name="acct_archived_detail">مخفي من القوائم</string>
     <string name="label_currency">العملة</string>
 
     <string name="cat_food">مطاعم ومأكولات</string>
@@ -597,10 +598,10 @@
     <string name="sheet_transfer_note">هذه مُسجَّلة كمال انتقل بين حساباتك أنت، فلا تُحتسب مصروفاً ولا دخلاً.</string>
     <string name="sheet_split_back">لم يكن تحويلاً، أعِد فصله</string>
     <string name="sheet_undo_transfer">لم يكن تحويلاً، تراجع عن هذا</string>
-    <string name="sheet_always_rule">دائماً: كل ما يذكر \"%1$s\" يأخذ التصنيف الذي أختاره</string>
-    <string name="sheet_asked_each_time">طلبت أن تُسأل في كل مرة عن هذا الاسم.</string>
-    <string name="sheet_remember_after_all">تذكَّر هذا الاسم بعد كل شيء</string>
-    <string name="sheet_always_ask">اسألني دائماً عن هذا الاسم</string>
+    <string name="sheet_rule_title">باقي سجلات %1$s</string>
+    <string name="sheet_rule_once">هذا فقط</string>
+    <string name="sheet_rule_remember">نفس الفئة</string>
+    <string name="sheet_rule_ask">اسأل كل مرة</string>
     <string name="sheet_account_unknown">لم يذكر البنك أي حساب يخص هذه المعاملة، فهي ليست ضمن أي رصيد بعد.</string>
     <string name="sheet_account_move">انقل هذا السجل إلى حساب آخر.</string>
     <string name="sheet_was_transfer">⇄  كان هذا تحويلاً بين حساباتي</string>
@@ -1010,6 +1011,7 @@
     <string name="scanlog_account_needs_balance">✦ %1$s (%2$s)%3$s · لم تذكر أي رسالة رصيداً، فأدخله بنفسك</string>
     <string name="scanlog_account_opening">✦ %1$s (%2$s)%3$s · الرصيد الافتتاحي %4$s كما في %5$s</string>
     <string name="scanlog_account_tail"> ···%1$s</string>
+    <string name="scanlog_account_renumbered">✦ صار %1$s يُعرف بـ %2$s: الرقم الذي تنتهي به رسائله</string>
     <string name="scanlog_account_folded">✦ %1$s لم يكن حساباً: كل رسالة تذكره تحرّك رصيد %2$s، فدُمج فيه</string>
     <string name="scanlog_check_on_home">← تحقّق منها في الشاشة الرئيسية قبل الوثوق بالأرصدة</string>
     <string name="scanlog_new_bank">← راسلك هذا البنك لأول مرة، فأُنشئ حسابه الآن</string>

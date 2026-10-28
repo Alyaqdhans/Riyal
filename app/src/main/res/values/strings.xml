@@ -453,7 +453,8 @@
     <string name="acct_senders">SMS senders</string>
     <string name="acct_senders_placeholder">BankMuscat, NBO</string>
     <string name="acct_senders_help">Messages from these senders are filed under this account.</string>
-    <string name="acct_archived">Closed account (hide it from pickers)</string>
+    <string name="acct_archived">Closed account</string>
+    <string name="acct_archived_detail">Hidden from pickers</string>
     <string name="label_currency">Currency</string>
 
     <string name="cat_food">Food &amp; Dining</string>
@@ -545,10 +546,10 @@
     <string name="sheet_transfer_note">This is recorded as money moved between your own accounts, so it counts as neither spending nor income.</string>
     <string name="sheet_split_back">It wasn\'t a transfer, split it back</string>
     <string name="sheet_undo_transfer">It wasn\'t a transfer, undo this</string>
-    <string name="sheet_always_rule">Always: anything mentioning \"%1$s\" gets the category I pick</string>
-    <string name="sheet_asked_each_time">You asked to be asked each time for this name.</string>
-    <string name="sheet_remember_after_all">Remember this name after all</string>
-    <string name="sheet_always_ask">Always ask for this name</string>
+    <string name="sheet_rule_title">Other records from %1$s</string>
+    <string name="sheet_rule_once">Just this one</string>
+    <string name="sheet_rule_remember">Same category</string>
+    <string name="sheet_rule_ask">Ask each time</string>
     <string name="sheet_account_unknown">The bank didn\'t say which account this was, so it isn\'t in any balance yet.</string>
     <string name="sheet_account_move">Move this record to a different account.</string>
     <string name="sheet_was_transfer">⇄  This was a transfer between my accounts</string>
@@ -910,6 +911,7 @@
     <string name="scanlog_account_needs_balance">✦ %1$s (%2$s)%3$s · no balance quoted in any message, please enter it</string>
     <string name="scanlog_account_opening">✦ %1$s (%2$s)%3$s · opening balance %4$s as of %5$s</string>
     <string name="scanlog_account_tail"> ···%1$s</string>
+    <string name="scanlog_account_renumbered">✦ %1$s goes by %2$s now: that is the number its messages end with</string>
     <string name="scanlog_account_folded">✦ %1$s was never an account: every message quoting it moves the balance of %2$s, so it is folded into that one</string>
     <string name="scanlog_check_on_home">→ check these on Home before trusting the balances</string>
     <string name="scanlog_new_bank">→ this bank texted for the first time, so its account was created now</string>

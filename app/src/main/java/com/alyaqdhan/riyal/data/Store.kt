@@ -560,6 +560,16 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         persistLocked()
     }
 
+    /** [last4] becomes the account's number; the number it had becomes an alias. */
+    suspend fun renumberAccount(id: String, last4: String) = mutex.withLock {
+        _accounts.value = _accounts.value.map {
+            if (it.id != id || it.last4 == last4) it
+            else it.copy(last4 = last4, aliases = it.aliases - last4 + listOfNotNull(it.last4))
+        }
+        recomputeTxnsLocked()
+        persistLocked()
+    }
+
     /** Routes one record to an account by hand, and remembers it across rescans. */
     suspend fun setTxnAccount(txnId: String, accountId: String) = mutex.withLock {
         accountOverrides[txnId] = accountId
