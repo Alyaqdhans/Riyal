@@ -112,8 +112,9 @@ is attached there.
   like setup's, float over the page.
 - Dialogs pop in, and leave quickly.
 - Headline figures - Home's net and its pills, Analysis totals, account balances - roll
-  like an odometer, the way firePOS's figures do: in from zero when they appear, again
-  when a scan or a refresh lands, and to each new value. Each digit turns through the
+  like an odometer, the way firePOS's figures do: in from zero when the app starts and
+  when a scan or a refresh lands, and to each new value while you watch. A tab switch or
+  a scroll shows them as they are. Each digit turns through the
   ones between, and a figure that gains digits grows leftwards from its decimals.
 - Settings opens on a status card: up to date, reading, or what went wrong, when it last
   read, and what it holds.
