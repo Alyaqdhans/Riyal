@@ -20,7 +20,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -50,7 +49,6 @@ import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.ui.MainViewModel
-import com.alyaqdhan.riyal.ui.compose.BottomBarHeight
 import com.alyaqdhan.riyal.ui.compose.BudgetSection
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.EmptyState
@@ -167,18 +165,10 @@ fun HomeScreen(
 
     Scaffold(
         topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_home)) }) },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { vm.requestManualAdd() },
-                modifier = Modifier.padding(bottom = BottomBarHeight),
-            ) {
-                Icon(painterResource(R.drawable.ic_sym_add), contentDescription = stringResource(R.string.action_add_transaction))
-            }
-        },
     ) { padding ->
         ScanRefresh(vm, Modifier.padding(padding)) {
             LazyColumn(
-                contentPadding = PaddingValues(bottom = toolbarSpace + 80.dp),
+                contentPadding = PaddingValues(bottom = toolbarSpace),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item(key = "period") {

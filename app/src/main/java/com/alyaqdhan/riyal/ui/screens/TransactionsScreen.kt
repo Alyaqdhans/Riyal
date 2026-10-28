@@ -4,9 +4,7 @@ package com.alyaqdhan.riyal.ui.screens
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
-import com.alyaqdhan.riyal.ui.compose.BottomBarHeight
 import androidx.compose.ui.res.painterResource
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -125,14 +123,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
         snackbarHost = {
             SnackbarHost(snackbar, modifier = Modifier.padding(bottom = toolbarSpace))
         },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { vm.requestManualAdd() },
-                modifier = Modifier.padding(bottom = BottomBarHeight),
-            ) {
-                Icon(painterResource(R.drawable.ic_sym_add), contentDescription = stringResource(R.string.action_add_transaction))
-            }
-        },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.tab_transactions)) },
@@ -250,7 +240,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                 // Rows are list items with their own inset, so the list adds none at the
                 // sides; the end leaves room for the bar and the Add button over it.
                 LazyColumn(
-                    contentPadding = PaddingValues(top = 4.dp, bottom = toolbarSpace + 80.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = toolbarSpace),
                 ) {
                     if (order.byDate) {
                         grouped.forEach { (date, dayTxns) ->

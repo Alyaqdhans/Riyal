@@ -78,8 +78,8 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
-    // Material Components (Views) 1.14.0: app theme + native MaterialFadeThrough/SharedAxis
-    // fragment transitions for the XML nav-graph routing.
+    // Material Components (Views) 1.14.0: the activities' theme. Pages are activities with
+    // their own layouts, so the phone's own transition plays between them.
     implementation(libs.material)
     implementation(libs.androidx.navigation.fragment)
     implementation(libs.androidx.activity.compose)

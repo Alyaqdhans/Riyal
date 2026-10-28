@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -85,16 +86,20 @@ fun dayLabel(date: LocalDate): String {
 fun localDateOf(millis: Long): LocalDate =
     Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
 
-/** The height of Material's short navigation bar, without the system bar under it. */
-val BottomBarHeight = 64.dp
+/**
+ * The floating toolbar: its height and the gap it floats above the system bar by,
+ * Material's own figures for both.
+ */
+val BottomBarHeight: Dp = FloatingToolbarDefaults.ContainerSize + FloatingToolbarDefaults.ScreenOffset
 
 /**
- * The room a scrolling page must leave at its end so its last row is not under the
- * navigation bar, which is drawn over the content rather than taking a row of its own.
+ * The room a scrolling tab must leave at its end so its last row can be read rather than
+ * sitting under the floating toolbar, which hovers over the content instead of taking a
+ * row of its own.
  *
- * Only the bar's own height: the system's navigation bar under it is already in the
- * padding every Scaffold gives its content. For the five top-level screens only - a
- * pushed page has no bar.
+ * Only the toolbar and a little clearance: the system's navigation bar under it is
+ * already in the padding every Scaffold gives its content. For the five tabs only - a
+ * page opened from one has no toolbar.
  */
 val toolbarSpace: Dp
     @Composable get() = BottomBarHeight + 8.dp

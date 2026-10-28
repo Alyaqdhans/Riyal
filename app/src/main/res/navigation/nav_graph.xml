@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The five tabs, switched by the floating toolbar. Pages opened from them are
+     activities (ui/nav/Pages.kt), each with its own layout. -->
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/nav_graph"
     app:startDestination="@id/homeFragment">
-
-    <fragment
-        android:id="@+id/onboardingFragment"
-        android:name="com.alyaqdhan.riyal.ui.nav.OnboardingFragment"
-        android:label="@string/onboarding_welcome" />
 
     <fragment
         android:id="@+id/homeFragment"
@@ -25,48 +22,9 @@
         android:label="@string/an_title" />
 
     <fragment
-        android:id="@+id/reviewFragment"
-        android:name="com.alyaqdhan.riyal.ui.nav.ReviewFragment"
-        android:label="@string/review_title" />
-
-    <fragment
         android:id="@+id/accountsFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.AccountsFragment"
         android:label="@string/acct_title" />
-
-    <fragment
-        android:id="@+id/needsCategoryFragment"
-        android:name="com.alyaqdhan.riyal.ui.nav.NeedsCategoryFragment"
-        android:label="@string/needs_title" />
-
-    <fragment
-        android:id="@+id/categoriesFragment"
-        android:name="com.alyaqdhan.riyal.ui.nav.CategoriesFragment"
-        android:label="@string/cats_title" />
-
-    <fragment
-        android:id="@+id/categoryDetailFragment"
-        android:name="com.alyaqdhan.riyal.ui.nav.CategoryDetailFragment"
-        android:label="@string/label_category">
-        <argument
-            android:name="categoryId"
-            app:argType="string" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/setupFragment"
-        android:name="com.alyaqdhan.riyal.ui.nav.SetupFragment"
-        android:label="@string/setup_title" />
-
-    <fragment
-        android:id="@+id/updatesFragment"
-        android:name="com.alyaqdhan.riyal.ui.nav.UpdatesFragment"
-        android:label="@string/upd_title" />
-
-    <fragment
-        android:id="@+id/changelogFragment"
-        android:name="com.alyaqdhan.riyal.ui.nav.ChangelogFragment"
-        android:label="@string/upd_changelog" />
 
     <fragment
         android:id="@+id/settingsFragment"

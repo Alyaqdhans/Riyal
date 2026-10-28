@@ -91,7 +91,7 @@ fun SetupScreen(vm: MainViewModel, onFinished: () -> Unit) {
     val step by vm.setupStep.collectAsState()
     var started by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        if (!started) {
+        if (!started || !vm.setupActive) {
             started = true
             vm.startSetup()
         }

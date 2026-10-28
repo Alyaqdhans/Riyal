@@ -41,6 +41,39 @@
             </intent-filter>
         </activity>
 
+        <!-- Every page opened from a tab is an activity with its own layout, so the phone
+             opens and closes it with its own transition. None is reachable from outside. -->
+        <activity
+            android:name=".ui.nav.OnboardingActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.nav.SetupActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.nav.ReviewActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.nav.NeedsCategoryActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.nav.CategoriesActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.nav.CategoryDetailActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.nav.UpdatesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.nav.ChangelogActivity"
+            android:exported="false" />
+
         <!-- Shares a downloaded update with the system installer, and only that. -->
         <provider
             android:name="androidx.core.content.FileProvider"

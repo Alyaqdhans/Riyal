@@ -165,9 +165,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private var launchScanDone = false
 
-    /** Auto-scan when the app opens (Settings toggle, on by default). Quiet: no sheet pops up. */
-    fun autoScanOnLaunch() {
-        if (launchScanDone) return
+    /**
+     * Auto-scan when the app opens (Settings toggle, on by default). Quiet: no sheet pops up.
+     *
+     * @param fresh the app was opened, rather than its screen rebuilt (rotated, or the
+     *   language changed). This view model lives as long as the app does, so leaving the
+     *   app and opening it again is a launch it has to be told about.
+     */
+    fun autoScanOnLaunch(fresh: Boolean) {
+        if (launchScanDone && !fresh) return
         launchScanDone = true
         refreshPermission()
         if (prefs.onboardingDone && prefs.scanOnLaunch && _hasSmsPermission.value) {
@@ -1033,6 +1039,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _canStepBack = MutableStateFlow(false)
     val canStepBack: StateFlow<Boolean> = _canStepBack
+
+    /**
+     * Whether a setup has been started in this process. A page restored after the
+     * system reclaimed the app has a fresh view model with nothing under way, and has
+     * to start again rather than wait on a read that is not happening.
+     */
+    val setupActive: Boolean get() = setupJob != null
 
     /** Whether the setup should be offered on Home: never finished, and messages can be read. */
     private val _setupDone = MutableStateFlow(prefs.setupDone)

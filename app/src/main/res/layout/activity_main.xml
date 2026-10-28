@@ -4,20 +4,23 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- The five tabs. Every other page is an activity with a layout of its own, so the
+         phone moves between them with its own transition. -->
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/nav_host"
         android:name="androidx.navigation.fragment.NavHostFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:defaultNavHost="true" />
+        app:defaultNavHost="true"
+        app:navGraph="@navigation/nav_graph" />
 
-    <!-- The Material 3 navigation bar, docked along the bottom across the full width.
-         It draws over the content, so the five top-level screens leave room for it at
-         the end of their lists (toolbarSpace). -->
+    <!-- Material 3 Expressive floating toolbar and its Add button, hovering over the
+         content at the bottom centre rather than taking a row of its own. The tabs
+         leave room for it at the end of their lists (toolbarSpace). -->
     <androidx.compose.ui.platform.ComposeView
         android:id="@+id/bottom_bar"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom" />
+        android:layout_gravity="bottom|center_horizontal" />
 
 </FrameLayout>
