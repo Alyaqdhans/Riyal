@@ -528,6 +528,38 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         persistLocked()
     }
 
+    /**
+     * Folds one account into another: they were the same account all along. Its records
+     * move across, and its digits stay with the survivor as an alias, so a message
+     * quoting them is routed there from now on instead of founding the account again.
+     */
+    suspend fun mergeAccount(fromId: String, intoId: String) = mutex.withLock {
+        if (fromId == intoId) return@withLock
+        val from = _accounts.value.firstOrNull { it.id == fromId } ?: return@withLock
+        val into = _accounts.value.firstOrNull { it.id == intoId } ?: return@withLock
+        val digits = (from.aliases + listOfNotNull(from.last4)) - listOfNotNull(into.last4).toSet()
+        val merged = into.copy(
+            aliases = into.aliases + digits,
+            senderIds = into.senderIds + from.senderIds,
+        )
+        _accounts.value = _accounts.value.mapNotNull {
+            when (it.id) {
+                fromId -> null
+                intoId -> merged
+                else -> it
+            }
+        }
+        rawTxns = rawTxns.map {
+            it.copy(
+                fromAccountId = if (it.fromAccountId == fromId) intoId else it.fromAccountId,
+                toAccountId = if (it.toAccountId == fromId) intoId else it.toAccountId,
+            )
+        }
+        for ((k, v) in accountOverrides.toMap()) if (v == fromId) accountOverrides[k] = intoId
+        recomputeTxnsLocked()
+        persistLocked()
+    }
+
     /** Routes one record to an account by hand, and remembers it across rescans. */
     suspend fun setTxnAccount(txnId: String, accountId: String) = mutex.withLock {
         accountOverrides[txnId] = accountId
@@ -1122,6 +1154,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         put("senders", JSONArray().apply { a.senderIds.forEach { put(it) } })
         put("color", a.color); put("archived", a.archived); put("needsBal", a.needsBalance)
         put("kind", a.kind.name)
+        if (a.aliases.isNotEmpty()) put("alias", JSONArray().apply { a.aliases.forEach { put(it) } })
     }
 
     /**
@@ -1145,6 +1178,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         archived = o.optBoolean("archived", false),
         needsBalance = o.optBoolean("needsBal", false),
         kind = runCatching { AccountKind.valueOf(o.optString("kind")) }.getOrDefault(AccountKind.CURRENT),
+        aliases = o.optJSONArray("alias").toStringSet(),
     )
 
     private fun budgetToJson(b: BudgetPlan) = JSONObject().apply {

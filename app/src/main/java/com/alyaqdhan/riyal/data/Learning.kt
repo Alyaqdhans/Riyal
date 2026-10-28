@@ -70,7 +70,7 @@ object Skeleton {
      * so a change here detaches every one the user taught - which is why it is its own
      * number and not the parser's.
      */
-    const val VERSION = 1
+    const val VERSION = 2
 
     private val amountWithCurrency = Regex(
         "(?i)(?:(?:${SmsParser.CUR})\\s*\\d[\\d,]*(?:\\.\\d+)?|\\d[\\d,]*(?:\\.\\d+)?\\s*(?:${SmsParser.CUR})(?![\\p{L}\\d]))"
@@ -96,6 +96,21 @@ object Skeleton {
     private val space = Regex("\\s+")
 
     /**
+     * Hashes a bank writes over what it hides: "00210######001", "HASS####AMAL". Dropped
+     * before anything else, so a hidden number is one number and a hidden name one name -
+     * otherwise every length of mask is a template of its own.
+     */
+    private val hashMask = Regex("#{2,}")
+
+    /**
+     * The card network's own field, pasted in whole: "LULU HYPERMARKET\\BOWSHAR\OM\123".
+     * Name, city, country and terminal are all filled in, so the whole field is one name;
+     * left to the other rules, a shop with a terminal number and one without were two
+     * templates.
+     */
+    private val cardField = Regex("""[A-Za-z0-9&'.\- ]*[A-Za-z][A-Za-z0-9&'.\- ]*(?:\\+[A-Za-z0-9&'.\- ]*)+""")
+
+    /**
      * A run of name-like words with the template's own words left in place, word by
      * word: "ATM SEEB" is a withdrawal at an ATM in Seeb, not a shop called that.
      */
@@ -112,8 +127,9 @@ object Skeleton {
      * every scan and a label taught once keeps applying.
      */
     fun of(sender: String, body: String): String {
-        var s = Numerals.latin(body)
+        var s = Numerals.latin(body).replace(hashMask, "")
         s = amountWithCurrency.replace(s, " ¤ ")
+        s = cardField.replace(s, " @ ")
         s = withDigit.replace(s, " # ")
         s = if (s.any(::isArabicLetter)) {
             latinRun.replace(s) { m -> maskNames(m.value) }
@@ -139,19 +155,32 @@ object Skeleton {
 }
 
 /**
- * Direction proven by arithmetic: an account's balance before and after a message.
+ * What an account's balance proves, by arithmetic alone.
  *
- * Messages are grouped by the account they quote, put in time order, and each one whose
- * balance differs from the one before by exactly its own amount is decided by the sign
- * of that difference. Exactly, not roughly: two purchases between a pair of messages, or
- * a fee, break the equality, and then nothing is claimed.
+ * Each message is joined to the latest earlier message from the same bank whose balance
+ * it continues: the balance it quotes is that one's, moved by exactly its own amount.
+ * Exactly, not roughly: a fee or a purchase nobody texted about breaks the equality, and
+ * then nothing is claimed. Two things follow from a join:
+ *
+ *  - which way the money went, from the sign of the move, whatever the words said;
+ *  - that the two messages are about one account. The joins make lines, and a line is
+ *    one account's balance told message by message - which is what tells an account
+ *    number from the other digits a bank puts where the account usually goes.
+ *
+ * The account digits a message quotes do not decide the join, because they are exactly
+ * what cannot be trusted: a transfer quotes the other party's account, some messages
+ * quote a reference. Only one coincidence is guarded against, the one a person's own
+ * accounts produce: moving money between two of them, where one side's balance after
+ * can equal the other's before.
  */
 object BalanceChain {
 
     data class Point(
         val id: String,
-        /** Sender and account tail: which balance this message quotes. */
-        val account: String,
+        /** Who sent it. One bank's balance never continues another's. */
+        val sender: String,
+        /** The account digits the message quoted, if any. */
+        val tail: String?,
         val atMillis: Long,
         val amountMinor: Long,
         val currency: String,
@@ -159,27 +188,73 @@ object BalanceChain {
         val balanceCurrency: String,
     )
 
-    fun directions(points: List<Point>): Map<String, Direction> {
-        val out = HashMap<String, Direction>()
-        for ((_, list) in points.groupBy { it.account }) {
+    class Chains(
+        /** Which way each joined message moved money. */
+        val directions: Map<String, Direction>,
+        /** Message id to its line. Messages on one line are one account. */
+        val lineOf: Map<String, Int>,
+    )
+
+    /** How many earlier messages a message is tried against, newest first. */
+    private const val LOOKBACK = 12
+
+    fun directions(points: List<Point>): Map<String, Direction> = chain(points).directions
+
+    fun chain(points: List<Point>): Chains {
+        val directions = HashMap<String, Direction>()
+        val index = points.withIndex().associate { it.value.id to it.index }
+        val parent = IntArray(points.size) { it }
+        fun root(i: Int): Int {
+            var r = i
+            while (parent[r] != r) {
+                parent[r] = parent[parent[r]]
+                r = parent[r]
+            }
+            return r
+        }
+
+        for ((_, list) in points.groupBy { it.sender.trim().lowercase() to it.balanceCurrency }) {
             val ordered = list.sortedWith(compareBy({ it.atMillis }, { it.id }))
-            for (i in 1 until ordered.size) {
-                val before = ordered[i - 1]
+            // A balance is continued once: two messages cannot both be the next one.
+            val continued = HashSet<Int>()
+            for (i in ordered.indices) {
                 val now = ordered[i]
-                if (before.balanceCurrency != now.balanceCurrency) continue
                 // Bought abroad: the balance moved by the converted figure, which the
                 // message does not state exactly.
-                if (now.currency != now.balanceCurrency) continue
-                if (now.amountMinor <= 0L) continue
-                val delta = now.balanceMinor - before.balanceMinor
-                when (delta) {
-                    -now.amountMinor -> out[now.id] = Direction.EXPENSE
-                    now.amountMinor -> out[now.id] = Direction.INCOME
+                if (now.currency != now.balanceCurrency || now.amountMinor <= 0L) continue
+                var j = i - 1
+                while (j >= 0 && j >= i - LOOKBACK) {
+                    val before = ordered[j]
+                    val direction = when (now.balanceMinor - before.balanceMinor) {
+                        -now.amountMinor -> Direction.EXPENSE
+                        now.amountMinor -> Direction.INCOME
+                        else -> null
+                    }
+                    if (direction != null && j !in continued && !transferBetween(before, now)) {
+                        directions[now.id] = direction
+                        continued += j
+                        val a = root(index.getValue(before.id))
+                        val b = root(index.getValue(now.id))
+                        if (a != b) parent[b] = a
+                        break
+                    }
+                    j--
                 }
             }
         }
-        return out
+        val lineOf = points.associate { it.id to root(index.getValue(it.id)) }
+        return Chains(directions, lineOf)
     }
+
+    /**
+     * Two of the user's accounts, one paying the other: the payer's balance after can be
+     * the payee's before, and then the payee's message looks like the payer's next one.
+     * Both quote the same amount and name different accounts, which an account's own
+     * consecutive messages almost never do.
+     */
+    private fun transferBetween(before: Point, now: Point): Boolean =
+        before.tail != null && now.tail != null && before.tail != now.tail &&
+            before.amountMinor == now.amountMinor
 }
 
 /**

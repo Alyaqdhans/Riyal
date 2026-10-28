@@ -246,15 +246,105 @@ class AccountDiscoveryTest {
     @Test
     fun `a new account number at a bank we know is still a new account`() {
         // After a fresh start the accounts arrive one at a time, and the second one
-        // must not be swallowed by the first: the bank named a number we don't hold.
+        // must not be swallowed by the first: the bank named a number we don't hold,
+        // and named it again.
         val existing = AccountDiscovery.propose(
             listOf(obs("BankMuscat", "0019", 350_250, base, -12_500))
         )
         val added = AccountDiscovery.proposeMissing(
             existing,
-            listOf(obs("BankMuscat", "0038", 5_000, base + hours(6), -500))
+            listOf(
+                obs("BankMuscat", "0038", 5_000, base + hours(6), -500),
+                obs("BankMuscat", "0038", 4_500, base + hours(7), -500),
+            )
         )
         assertEquals("0038", added.single().last4)
+    }
+
+    @Test
+    fun `a number a bank we know quotes once is not an account yet`() {
+        // It is as likely a reference or the other party's account as a new account of
+        // yours; its message waits unassigned rather than founding one.
+        val existing = AccountDiscovery.propose(
+            listOf(obs("BankMuscat", "0019", 350_250, base, -12_500))
+        )
+        val one = obs("BankMuscat", "0038", 5_000, base + hours(6), -500)
+        assertTrue(AccountDiscovery.proposeMissing(existing, listOf(one)).isEmpty())
+        assertNull(AccountDiscovery.routeTo(existing, "BankMuscat", "0038"))
+    }
+
+    // ── the digits that are not an account ──
+
+    private fun seen(
+        tail: String?,
+        balance: Long,
+        at: Long,
+        signed: Long,
+        line: Int?,
+        accountId: String? = null,
+    ) = AccountDiscovery.Observation(
+        "BANK NIZWA", tail, "OMR", balance, base + hours(at), signed, line = line, accountId = accountId,
+    )
+
+    /** One account's balance line: purchases naming nothing, withdrawals naming the account, a reference. */
+    private val oneLine = listOf(
+        seen(null, 310_420, 1, -2_750, line = 1),
+        seen("005", 306_420, 2, -4_000, line = 1),
+        seen(null, 304_820, 3, -1_600, line = 1),
+        seen("4410", 301_830, 4, -2_990, line = 1),
+        seen("005", 299_830, 5, -2_000, line = 1),
+        seen("7716", 298_730, 6, -1_100, line = 1),
+    )
+
+    @Test
+    fun `numbers on one balance line other than the account's are not accounts`() {
+        // One Bank Nizwa account came back as seven: every reference and every other
+        // party's number founded an account of its own.
+        val accounts = AccountDiscovery.propose(oneLine)
+        assertEquals(1, accounts.size)
+        assertEquals("005", accounts.single().last4)
+        // The newest balance on the line opens it.
+        assertEquals(298_730L, accounts.single().openingBalanceMinor)
+    }
+
+    @Test
+    fun `two balance lines that each quote their own number are two accounts`() {
+        val savings = listOf(
+            seen("0038", 900_000, 2, 10_000, line = 2),
+            seen("0038", 910_000, 4, 10_000, line = 2),
+        )
+        val accounts = AccountDiscovery.propose(oneLine + savings)
+        assertEquals(setOf("005", "0038"), accounts.map { it.last4 }.toSet())
+    }
+
+    @Test
+    fun `a reference after the last stored record lands in the account it belongs to`() {
+        // An incremental pass: the account's last stored record is read back, and the
+        // new message continues its balance while quoting someone else's number.
+        val existing = AccountDiscovery.propose(oneLine)
+        val id = existing.single().id
+        val observations = listOf(
+            seen("005", 299_830, 5, -2_000, line = 9, accountId = id),
+            seen("9182", 297_830, 7, -2_000, line = 9),
+        )
+        assertTrue(AccountDiscovery.proposeMissing(existing, observations).isEmpty())
+        assertEquals(id, AccountDiscovery.lineAccounts(existing, observations)[9])
+    }
+
+    @Test
+    fun `an account made from a reference is folded back into the real one`() {
+        val main = AccountDiscovery.propose(oneLine).single()
+        val phantom = main.copy(id = "acc_phantom", last4 = "4410")
+        val named = main.copy(id = "acc_named", last4 = "7716", name = "Mum's")
+        val folded = AccountDiscovery.foreignAccounts(listOf(main, phantom, named), oneLine)
+        assertEquals(mapOf("acc_phantom" to main.id), folded)
+    }
+
+    @Test
+    fun `digits folded into an account route to it from then on`() {
+        val account = account("a", "005", sender = "BANK NIZWA").copy(aliases = setOf("4410"))
+        assertEquals("a", AccountDiscovery.routeTo(listOf(account, account("b", "0038", "BANK NIZWA")), "BANK NIZWA", "4410"))
+        assertEquals("a", AccountDiscovery.ownerOf(listOf(account), "bank nizwa", "4410"))
     }
 
     @Test

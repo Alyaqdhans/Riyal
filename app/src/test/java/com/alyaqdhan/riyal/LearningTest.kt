@@ -74,8 +74,14 @@ class LearningTest {
 
     // ── balances ──
 
-    private fun point(id: String, at: Long, amount: Long, balance: Long, account: String = "bm|0001") =
-        BalanceChain.Point(id, account, at, amount, "OMR", balance, "OMR")
+    private fun point(
+        id: String,
+        at: Long,
+        amount: Long,
+        balance: Long,
+        tail: String? = "0001",
+        sender: String = "BankNizwa",
+    ) = BalanceChain.Point(id, sender, tail, at, amount, "OMR", balance, "OMR")
 
     @Test
     fun `a balance that falls by exactly the amount proves money out, and rises proves money in`() {
@@ -101,10 +107,63 @@ class LearningTest {
 
     @Test
     fun `two accounts are two balances`() {
-        val proven = BalanceChain.directions(
-            listOf(point("a", 1, 1_000, 100_000, "bm|0001"), point("b", 2, 5_000, 95_000, "bm|0022"))
+        val chains = BalanceChain.chain(
+            listOf(point("a", 1, 1_000, 100_000, "0001"), point("b", 2, 5_000, 495_000, "0022"))
         )
-        assertTrue(proven.isEmpty())
+        assertTrue(chains.directions.isEmpty())
+        assertNotEquals(chains.lineOf["a"], chains.lineOf["b"])
+    }
+
+    @Test
+    fun `a number that continues another's balance is the same account`() {
+        // Bank Nizwa: purchases name no account, a withdrawal names the account, and a
+        // transfer can name the other party's. The balance runs through all of them.
+        val chains = BalanceChain.chain(
+            listOf(
+                point("pos", 1, 2_750, 310_420, tail = null),
+                point("atm", 2, 4_000, 306_420, tail = "005"),
+                point("pos2", 3, 1_600, 304_820, tail = null),
+                point("other", 4, 2_990, 301_830, tail = "4410"),
+            )
+        )
+        assertEquals(Direction.EXPENSE, chains.directions["other"])
+        assertEquals(1, setOf("pos", "atm", "pos2", "other").map { chains.lineOf[it] }.distinct().size)
+    }
+
+    @Test
+    fun `a balance is continued from further back when another account texted in between`() {
+        val chains = BalanceChain.chain(
+            listOf(
+                point("a1", 1, 1_000, 100_000, "0001"),
+                point("b1", 2, 2_000, 50_000, "0022"),
+                point("a2", 3, 5_000, 95_000, "0001"),
+            )
+        )
+        assertEquals(Direction.EXPENSE, chains.directions["a2"])
+        assertEquals(chains.lineOf["a1"], chains.lineOf["a2"])
+        assertNotEquals(chains.lineOf["a1"], chains.lineOf["b1"])
+    }
+
+    @Test
+    fun `moving money between two accounts does not make them one balance`() {
+        // Everything out of one account into an empty one: the first ends at 0 and the
+        // second starts at 0, so the second's balance is the first's plus the amount.
+        val chains = BalanceChain.chain(
+            listOf(point("out", 1, 100_000, 0, "0001"), point("in", 2, 100_000, 100_000, "0022"))
+        )
+        assertTrue(chains.directions.isEmpty())
+        assertNotEquals(chains.lineOf["out"], chains.lineOf["in"])
+    }
+
+    @Test
+    fun `one bank's balance never continues another's`() {
+        val chains = BalanceChain.chain(
+            listOf(
+                point("a", 1, 1_000, 100_000, sender = "BankMuscat"),
+                point("b", 2, 5_000, 95_000, sender = "BankDhofar"),
+            )
+        )
+        assertTrue(chains.directions.isEmpty())
     }
 
     @Test

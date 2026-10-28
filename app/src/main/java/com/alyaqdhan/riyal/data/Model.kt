@@ -232,7 +232,16 @@ data class Account(
     val needsBalance: Boolean = false,
     /** What sort of account it is: a label and an icon, nothing in the arithmetic. */
     val kind: AccountKind = AccountKind.CURRENT,
+    /**
+     * Other digits that turned out to be this account: numbers a bank quoted where the
+     * account usually goes, proven by the balances to be this account's messages, or
+     * an account the user merged into this one. Messages quoting them route here.
+     */
+    val aliases: Set<String> = emptySet(),
 ) {
+    /** Whether a message quoting [tail] is about this account. */
+    fun answersTo(tail: String): Boolean = last4 == tail || tail in aliases
+
     /**
      * How the account is named everywhere in the app: "Bank Muscat · 0019" - the bank
      * plus the digits it quotes, which is how a bank account is actually recognised.

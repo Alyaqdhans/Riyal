@@ -298,7 +298,12 @@ class ScanEngine(
         // answer about a kind of message, a balance that moved by exactly the amount,
         // and a kind of message whose balances have proven its direction several times.
         val labels = store.labels.value
-        val proven = BalanceChain.directions(reads.mapNotNull { it.point() })
+        val anchors = if (readEverything) emptyList() else anchorsFor(reads, parser)
+        val chains = BalanceChain.chain(
+            reads.mapNotNull { it.point() } +
+                anchors.mapNotNull { pointOf(it.txn.id, it.txn.sender, it.txn.atMillis, it.facts) }
+        )
+        val proven = chains.directions
         val templates = TemplateInference.infer(
             reads.map { r ->
                 TemplateInference.Observation(
@@ -401,27 +406,32 @@ class ScanEngine(
         // texted before owns no account yet, and after a fresh start that is every
         // bank you have. Accounts already known are left exactly as they are.
         var accounts = existingAccounts
-        if (parsedMsgs.isNotEmpty()) {
-            val found = AccountDiscovery.proposeMissing(
-                accounts,
-                parsedMsgs.values.map { pm ->
-                    AccountDiscovery.Observation(
-                        sender = pm.msg.sender,
-                        accountTail = pm.result.accountTail,
-                        // The balance says what the account holds; a purchase abroad says
-                        // only what the shop charged.
-                        currency = pm.result.balanceCurrency ?: pm.result.currency,
-                        balanceMinor = pm.result.balanceMinor,
-                        atMillis = pm.msg.atMillis,
-                        signedMinor = if (pm.result.direction == Direction.EXPENSE) {
-                            -pm.result.amountMinor
-                        } else {
-                            pm.result.amountMinor
-                        },
-                        tailIsCard = pm.result.tailIsCard,
-                    )
-                }
+        // Every parsed message, and the stored records read back beside them, each with
+        // the balance line it is on: what decides which digits are an account.
+        val observations = parsedMsgs.values.map { pm ->
+            observationOf(pm.msg.sender, pm.msg.atMillis, pm.result, pm.result.direction, chains.lineOf[pm.id])
+        } + anchors.map { a ->
+            observationOf(
+                a.txn.sender, a.txn.atMillis, a.facts,
+                if (a.txn.type == TxnType.INCOME) Direction.INCOME else Direction.EXPENSE,
+                chains.lineOf[a.txn.id], a.txn.accountId,
             )
+        }
+        // Accounts an earlier reading made out of a reference or the other party's
+        // number. A pass over everything is the one that can see every message quoting
+        // them sit on another account's balance line, and fold them back into it.
+        if (readEverything && accounts.isNotEmpty() && observations.isNotEmpty()) {
+            val foreign = AccountDiscovery.foreignAccounts(accounts, observations)
+            for ((fromId, intoId) in foreign) {
+                val from = accounts.first { it.id == fromId }
+                val into = accounts.first { it.id == intoId }
+                store.mergeAccount(fromId, intoId)
+                Verbose.ok(R.string.scanlog_account_folded, from.displayName, into.displayName)
+            }
+            if (foreign.isNotEmpty()) accounts = store.accounts.value
+        }
+        if (parsedMsgs.isNotEmpty()) {
+            val found = AccountDiscovery.proposeMissing(accounts, observations)
             if (found.isNotEmpty()) {
                 val firstRun = accounts.isEmpty()
                 accounts = accounts + found
@@ -470,6 +480,9 @@ class ScanEngine(
         var unrouted = 0
         var skippedNonBank = 0
         var built = 0
+        // Which account each balance line is, so a message quoting a number no account
+        // answers to still lands where its balance says it belongs.
+        val lineAccounts = AccountDiscovery.lineAccounts(accounts, observations)
         for (pm in parsedMsgs.values) {
             if (built % 200 == 0) {
                 onProgress(
@@ -498,9 +511,10 @@ class ScanEngine(
                 skippedNonBank++
                 continue
             }
-            val accountId = AccountDiscovery.routeTo(
-                accounts, pm.msg.sender, result.accountTail, result.tailIsCard,
-            )
+            val accountId = result.accountTail?.takeUnless { result.tailIsCard }
+                ?.let { AccountDiscovery.ownerOf(accounts, pm.msg.sender, it) }
+                ?: chains.lineOf[pm.id]?.let { lineAccounts[it] }
+                ?: AccountDiscovery.routeTo(accounts, pm.msg.sender, result.accountTail, result.tailIsCard)
             if (accountId == null) unrouted++
             if (result.transferHint) hinted += pm.id
             result.bankStamp?.let { bankStamps[pm.id] = pm.msg.sender.trim().lowercase() + "|" + it }
@@ -760,20 +774,53 @@ class ScanEngine(
         val trusted: Boolean,
     ) {
         /** This message as a point on its account's balance line, if it quotes a balance. */
-        fun point(): BalanceChain.Point? {
-            val f = facts ?: return null
-            val balance = f.balanceMinor ?: return null
-            return BalanceChain.Point(
-                id = id,
-                account = msg.sender.trim().lowercase() + "|" + (f.accountTail ?: ""),
-                atMillis = msg.atMillis,
-                amountMinor = f.amountMinor,
-                currency = f.currency,
-                balanceMinor = balance,
-                balanceCurrency = f.balanceCurrency ?: f.currency,
-            )
-        }
+        fun point(): BalanceChain.Point? = facts?.let { pointOf(id, msg.sender, msg.atMillis, it) }
     }
+
+    /**
+     * A stored record read back for its balance. A pass that reads only what is new sees
+     * an account's latest message without the one before it, and that one is what puts
+     * the new message on its account's balance line.
+     */
+    private data class Anchor(val txn: Txn, val facts: SmsParser.Result.Parsed)
+
+    /** The newest stored records of every bank this pass heard from, read back. */
+    private fun anchorsFor(reads: List<Read>, parser: SmsParser): List<Anchor> {
+        val senders = reads.mapTo(HashSet()) { it.msg.sender.trim().lowercase() }
+        val readIds = reads.mapTo(HashSet()) { it.id }
+        return store.txns.value
+            .filter { t ->
+                !t.manual && t.legIds.isEmpty() && t.id !in readIds &&
+                    t.sender.trim().lowercase() in senders
+            }
+            .groupBy { it.sender.trim().lowercase() }
+            .flatMap { (_, list) -> list.sortedByDescending { it.atMillis }.take(ANCHORS_PER_SENDER) }
+            .mapNotNull { t ->
+                val direction = if (t.type == TxnType.INCOME) Direction.INCOME else Direction.EXPENSE
+                parser.parseAs(t.body, direction)?.let { Anchor(t, it) }
+            }
+    }
+
+    private fun observationOf(
+        sender: String,
+        at: Long,
+        f: SmsParser.Result.Parsed,
+        direction: Direction,
+        line: Int?,
+        accountId: String? = null,
+    ) = AccountDiscovery.Observation(
+        sender = sender,
+        accountTail = f.accountTail,
+        // The balance says what the account holds; a purchase abroad says only what the
+        // shop charged.
+        currency = f.balanceCurrency ?: f.currency,
+        balanceMinor = f.balanceMinor,
+        atMillis = at,
+        signedMinor = if (direction == Direction.EXPENSE) -f.amountMinor else f.amountMinor,
+        tailIsCard = f.tailIsCard,
+        line = line,
+        accountId = accountId,
+    )
 
     /**
      * What one message was, strongest evidence first: what the user taught about its
@@ -879,6 +926,27 @@ class ScanEngine(
 
         /** How many lines of per-record narration a single pass may write. */
         const val MAX_RECORD_LINES = 1200
+
+        /**
+         * Stored records read back per bank on a pass that reads only what is new: enough
+         * to reach the last message before the new ones, and to see a number come up
+         * again, without re-reading a whole history on every launch.
+         */
+        const val ANCHORS_PER_SENDER = 40
+
+        fun pointOf(id: String, sender: String, at: Long, f: SmsParser.Result.Parsed): BalanceChain.Point? {
+            val balance = f.balanceMinor ?: return null
+            return BalanceChain.Point(
+                id = id,
+                sender = sender,
+                tail = f.accountTail?.takeUnless { f.tailIsCard },
+                atMillis = at,
+                amountMinor = f.amountMinor,
+                currency = f.currency,
+                balanceMinor = balance,
+                balanceCurrency = f.balanceCurrency ?: f.currency,
+            )
+        }
 
         val DATE_FMT: DateTimeFormatter get() = Dates.pattern("dd MMM uuuu")
         val DATE_TIME_FMT: DateTimeFormatter get() = Dates.pattern("dd MMM uuuu h:mm a")

@@ -897,6 +897,7 @@
     <string name="scanlog_account_needs_balance">✦ %1$s (%2$s)%3$s · no balance quoted in any message, please enter it</string>
     <string name="scanlog_account_opening">✦ %1$s (%2$s)%3$s · opening balance %4$s as of %5$s</string>
     <string name="scanlog_account_tail"> ···%1$s</string>
+    <string name="scanlog_account_folded">✦ %1$s was never an account: every message quoting it moves the balance of %2$s, so it is folded into that one</string>
     <string name="scanlog_check_on_home">→ check these on Home before trusting the balances</string>
     <string name="scanlog_new_bank">→ this bank texted for the first time, so its account was created now</string>
     <string name="scanlog_msg_header">✉ %1$s · %2$s</string>

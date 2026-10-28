@@ -107,9 +107,48 @@ object AccountDiscovery {
         val signedMinor: Long,
         /** The tail names a card, which is not an account number. */
         val tailIsCard: Boolean = false,
+        /** The balance line it is on ([BalanceChain]); null when it quoted no balance. */
+        val line: Int? = null,
+        /** The account it already belongs to: a stored record, read back for context. */
+        val accountId: String? = null,
     ) {
         /** The digits only when they name an account, which is what an account is keyed by. */
         val accountNumberTail: String? get() = accountTail?.takeUnless { tailIsCard }
+    }
+
+    /**
+     * The number each balance line quotes most: the account that line is. Ties go to the
+     * number quoted most recently.
+     */
+    fun lineTails(observations: List<Observation>): Map<Int, String> =
+        observations.filter { it.line != null && it.accountNumberTail != null }
+            .groupBy { it.line!! }
+            .mapValues { (_, group) ->
+                group.groupBy { it.accountNumberTail!! }
+                    .maxWith(compareBy({ it.value.size }, { e -> e.value.maxOf { it.atMillis } }))
+                    .key
+            }
+
+    /**
+     * Which of the digits one sender's messages quote are account numbers.
+     *
+     * A bank does not only quote your account. A transfer quotes the other party's, and
+     * some messages put a reference where the account usually goes; taken at their word,
+     * one Bank Nizwa account became seven. The balances decide instead: a number is an
+     * account when it is what some balance line mostly quotes, and it has to come up more
+     * than once - a reference never repeats. Messages that quote no balance keep the old
+     * reading, every number an account, because nothing says otherwise.
+     *
+     * A sender whose numbers all appear once still has an account; its best-quoted
+     * number names it.
+     */
+    private fun accountTails(all: List<Observation>, tops: Map<Int, String>): List<String> {
+        val counts = all.mapNotNull { it.accountNumberTail }.groupingBy { it }.eachCount()
+        val onLines = all.mapNotNull { o -> o.line?.let { tops[it] } }.distinct()
+        val unlined = all.filter { it.line == null }.mapNotNull { it.accountNumberTail }.distinct()
+        val tails = (onLines.filter { (counts[it] ?: 0) >= 2 } + unlined).distinct()
+        if (tails.isNotEmpty() || onLines.isEmpty()) return tails
+        return listOf(onLines.maxWith(compareBy { counts[it] ?: 0 }))
     }
 
     fun propose(observations: List<Observation>, colorOffset: Int = 0): List<Account> {
@@ -123,6 +162,7 @@ object AccountDiscovery {
         // brought the accounts screen down.
         val bySender = observations.groupBy { it.sender.trim().lowercase() }
             .filterKeys { it.isNotBlank() }
+        val tops = lineTails(observations)
         val out = ArrayList<Account>()
 
         for ((_, all) in bySender) {
@@ -133,24 +173,86 @@ object AccountDiscovery {
             if (!holdsAnAccount(sender, all)) continue
             // Card digits are not an account number, so they never define an account -
             // otherwise every card you carry becomes a bank account you don't have.
-            val tails = all.mapNotNull { it.accountNumberTail }.distinct()
+            val tails = accountTails(all, tops)
             // What to do with messages that never quote an account number:
             //  · sender names no account anywhere → it has one account, best effort
             //  · sender names exactly one → they belong to it
-            //  · sender names several → they cannot be attributed, and inventing an
-            //    extra "Main" for them would invent an account the user doesn't have
-            //    (Bank Muscat's three accounts became four this way). They are left
-            //    unassigned instead, and can be placed by hand from the row.
+            //  · sender names several → a message goes where its own number or its
+            //    balance line says. One that neither places cannot be attributed, and
+            //    inventing an extra "Main" for it would invent an account the user
+            //    doesn't have (Bank Muscat's three accounts became four this way). It is
+            //    left unassigned instead, and can be placed by hand from the row.
             val groups: Map<String?, List<Observation>> = when (tails.size) {
                 0 -> mapOf(null to all)
                 1 -> mapOf(tails[0] as String? to all)
-                else -> all.filter { it.accountNumberTail != null }.groupBy { it.accountNumberTail }
+                else -> all.mapNotNull { o ->
+                    val tail = o.accountNumberTail?.takeIf { it in tails }
+                        ?: o.line?.let { tops[it] }?.takeIf { it in tails }
+                    tail?.let { it to o }
+                }.groupBy({ it.first }, { it.second })
             }
             for ((tail, group) in groups) {
                 out += accountFor(sender, tail, group, indexHint = out.size + colorOffset)
             }
         }
         return out.sortedWith(compareBy({ it.bankName }, { it.last4 ?: "" }))
+    }
+
+    /**
+     * The account each balance line belongs to, where something says: a stored record on
+     * the line, or the number the line quotes most being one an account answers to.
+     * Lines whose evidence points two ways are left out.
+     */
+    fun lineAccounts(accounts: List<Account>, observations: List<Observation>): Map<Int, String> {
+        val tops = lineTails(observations)
+        val out = HashMap<Int, String>()
+        for ((line, group) in observations.filter { it.line != null }.groupBy { it.line!! }) {
+            val sender = group.first().sender
+            val byTail = tops[line]?.let { tail -> ownerOf(accounts, sender, tail) }
+            val stored = group.mapNotNull { it.accountId }.distinct()
+            val id = when {
+                byTail != null && (stored.isEmpty() || stored == listOf(byTail)) -> byTail
+                byTail == null && stored.size == 1 -> stored[0]
+                else -> null
+            }
+            if (id != null) out[line] = id
+        }
+        return out
+    }
+
+    /** The account of [sender] that answers to [tail], by its own number or an alias. */
+    fun ownerOf(accounts: List<Account>, sender: String, tail: String): String? {
+        val s = sender.trim().lowercase()
+        return accounts.firstOrNull { a ->
+            a.answersTo(tail) && a.senderIds.any { it.trim().lowercase() == s }
+        }?.id
+    }
+
+    /**
+     * Accounts that the balances show were never accounts: every message quoting their
+     * number sits on a line that another of the sender's accounts is mostly quoted on, so
+     * the number was a reference or the other party's. Each comes back with the account
+     * it really is, to be folded into it. Only a pass that read everything can say
+     * "every message", and one the user named is left alone; a name means they meant it.
+     */
+    fun foreignAccounts(accounts: List<Account>, observations: List<Observation>): Map<String, String> {
+        val tops = lineTails(observations)
+        val out = HashMap<String, String>()
+        for (account in accounts) {
+            val tail = account.last4 ?: continue
+            if (account.name.isNotBlank()) continue
+            val quoting = observations.filter {
+                it.accountNumberTail == tail &&
+                    account.senderIds.any { s -> s.trim().lowercase() == it.sender.trim().lowercase() }
+            }
+            if (quoting.isEmpty() || quoting.any { it.line == null }) continue
+            val owners = quoting.map { o ->
+                tops[o.line]?.takeIf { it != tail }?.let { ownerOf(accounts, o.sender, it) }
+            }
+            val owner = owners.distinct().singleOrNull() ?: continue
+            if (owner != account.id) out[account.id] = owner
+        }
+        return out
     }
 
     /**
@@ -169,17 +271,31 @@ object AccountDiscovery {
         if (observations.isEmpty()) return emptyList()
         if (existing.isEmpty()) return propose(observations)
 
+        // A message on a balance line that already belongs to an account describes that
+        // account, whatever digits it quotes: that is the reference or the other party's
+        // number in a message about money that moved in yours.
+        val placedLines = lineAccounts(existing, observations).keys
         val unplaced = observations.filter {
-            routeTo(existing, it.sender, it.accountTail, it.tailIsCard) == null
+            it.accountId == null &&
+                (it.line == null || it.line !in placedLines) &&
+                routeTo(existing, it.sender, it.accountTail, it.tailIsCard) == null
         }
         if (unplaced.isEmpty()) return emptyList()
 
         val knownSenders = existing.flatMap { it.senderIds }.mapTo(HashSet()) { it.trim().lowercase() }
         val existingIds = existing.mapTo(HashSet()) { it.id }
+        // At a bank we already know, a number quoted once is not an account yet. It is as
+        // likely a reference as a new account, and a new account quotes its number again
+        // soon enough; until then its message waits unassigned rather than founding one.
+        val quoted = observations.mapNotNull { o ->
+            o.accountNumberTail?.let { o.sender.trim().lowercase() to it }
+        }.groupingBy { it }.eachCount()
         return propose(unplaced, colorOffset = existing.size).filter { candidate ->
+            val known = candidate.senderIds.filter { it.trim().lowercase() in knownSenders }
             candidate.id !in existingIds &&
-                (candidate.last4 != null ||
-                    candidate.senderIds.none { it.trim().lowercase() in knownSenders })
+                (known.isEmpty() ||
+                    candidate.last4 != null &&
+                    known.any { (quoted[it.trim().lowercase() to candidate.last4] ?: 0) >= 2 })
         }
     }
 
@@ -260,8 +376,8 @@ object AccountDiscovery {
         fun ownsSender(a: Account) = a.senderIds.any { it.trim().lowercase() == s }
 
         if (tail != null) {
-            accounts.firstOrNull { it.last4 == tail && ownsSender(it) }?.let { return it.id }
-            accounts.firstOrNull { it.last4 == tail }?.let { return it.id }
+            accounts.firstOrNull { it.answersTo(tail) && ownsSender(it) }?.let { return it.id }
+            accounts.firstOrNull { it.answersTo(tail) }?.let { return it.id }
         }
         val bySender = accounts.filter { ownsSender(it) }
         // The bank named an account number and none of ours carries it. Dropping the
