@@ -452,6 +452,9 @@ class SmsParser(
             // "رصيدك في الحساب 12.500" would otherwise read the balance as an account.
             if (amountLike.matches(token)) continue
             val digits = token.takeLastWhile { it.isDigit() }
+            // "00210######": the end is hidden, and what is left is the branch.
+            val rest = body.substring(m.groups[1]!!.range.first + token.length)
+            if (digits.length == token.length && hiddenEnd.containsMatchIn(rest)) continue
             if (digits.length < 3) continue
             val keyword = m.groupValues[0].trimStart().lowercase()
             // A message that quotes both ("purchase on card *4321 from a/c ...0019")
@@ -553,7 +556,17 @@ class SmsParser(
         return s.take(40)
     }
 
+    /**
+     * Latin digits, without the invisible marks Arabic messages carry around their
+     * numbers, and with full-width masks as plain ones. A direction mark between "00210"
+     * and its mask was enough to end the account number at "00210", and its account
+     * became "0210".
+     */
     private fun normalize(s: String): String = Numerals.latin(s)
+        .replace(invisibleMarks, "")
+        .replace('＃', '#')
+        .replace('＊', '*')
+        .replace('●', '•')
 
     private fun wordIn(hay: String, phrase: String): Boolean {
         if (phrase.firstOrNull() !in 'a'..'z') return phrase in hay
@@ -576,7 +589,13 @@ class SmsParser(
          * is out of date and the inbox must be read again. Forgetting to bump it after a
          * parser fix means the fix only reaches messages that arrive afterwards.
          */
-        const val VERSION = 6
+        const val VERSION = 7
+
+        /** A mask straight after the digits, with nothing after it: an account's hidden end. */
+        private val hiddenEnd = Regex("^\\s*[Xx*#\\u2022]{2,}(?!\\s*\\d)")
+
+        /** Direction marks, isolates, zero-width spaces and joiners: format, not text. */
+        private val invisibleMarks = Regex("[\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069\\u061C\\uFEFF]")
 
         const val NUM = """\d{1,3}(?:,\d{3})+(?:\.\d{1,3})?|\d+(?:\.\d{1,3})?"""
 

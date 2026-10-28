@@ -79,6 +79,16 @@ class BankNizwaFormatTest {
     }
 
     @Test
+    fun `invisible marks and full-width masks still read the end, and a hidden end names nothing`() {
+        listOf("00350‎ ###### ‎005", "⁦00350######005⁩", "00350＃＃＃＃005").forEach { number ->
+            val r = parsed("تم سحب 6.000 ر.ع من حساب رقم $number الى SALI####AHMD. الرصيد المتوفر هو 304.420 ر.ع")
+            assertEquals(number, "005", r.accountTail)
+        }
+        assertNull(parsed("تم سحب 6.000 ر.ع من حساب رقم 00350###### الى SALI. الرصيد المتوفر هو 304.420 ر.ع").accountTail)
+        assertNull(parsed("تم سحب 6.000 ر.ع من حساب رقم 00350 ###### الى SALI. الرصيد المتوفر هو 304.420 ر.ع").accountTail)
+    }
+
+    @Test
     fun `wider or unbroken spacing around the mask still reads the end`() {
         listOf("00350  ###### 005", "00350 ###### 005", "00350 ### ### 005", "00350######005").forEach { number ->
             val r = parsed("تم سحب 6.000 ر.ع من حساب رقم $number الى SALI####AHMD. الرصيد المتوفر هو 304.420 ر.ع")
