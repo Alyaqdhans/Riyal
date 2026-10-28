@@ -826,45 +826,57 @@ fun CategoryChips(
     order: CategoryOrder = CategoryOrder.Empty,
 ) {
     val all = remember(type, order) { order.sort(Categories.forType(type)) }
+    CategoryRows(all, selected = { it.id == selectedId }, onClick = { onSelect(it.id) })
+}
+
+/**
+ * Category chips in three rows that scroll sideways together. Each chip goes on whichever
+ * row is shortest so far, so the rows end level instead of stepping down like stairs,
+ * and Other always closes. The first selected chip is scrolled into view when they open.
+ */
+@Composable
+fun CategoryRows(
+    categories: List<Category>,
+    selected: (Category) -> Boolean,
+    onClick: (Category) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val measurer = rememberTextMeasurer()
     val labelStyle = MaterialTheme.typography.labelLarge
     val density = LocalDensity.current
-    val rows = remember(all, labelStyle, density) {
-        // Each chip goes on whichever row is shortest so far, so the three end level
-        // instead of stepping down like stairs. Other always closes, on the row it
-        // levels best.
-        val other = all.filter { it.id == Categories.DEFAULT_EXPENSE || it.id == Categories.DEFAULT_INCOME }
+    val rows = remember(categories, labelStyle, density) {
+        val other = categories.filter { it.id == Categories.DEFAULT_EXPENSE || it.id == Categories.DEFAULT_INCOME }
         val chipFrame = with(density) { (8 + 18 + 8 + 16 + 8).dp.toPx() }
         fun width(cat: Category) = measurer.measure(cat.name, labelStyle).size.width + chipFrame
         val lines = List(CHIP_ROWS) { mutableListOf<Category>() }
         val lengths = FloatArray(CHIP_ROWS)
-        (all - other.toSet() + other).forEach { cat ->
+        (categories - other.toSet() + other).forEach { cat ->
             val r = lengths.indices.minBy { lengths[it] }
             lines[r] += cat
             lengths[r] += width(cat)
         }
-        lines
+        lines.filter { it.isNotEmpty() }
     }
     val scroll = rememberScrollState()
     var selectedAt by remember { mutableStateOf<Int?>(null) }
-    val gutter = with(LocalDensity.current) { 24.dp.roundToPx() }
+    val gutter = with(density) { 24.dp.roundToPx() }
     LaunchedEffect(selectedAt != null) {
         selectedAt?.let { scroll.scrollTo((it - gutter).coerceAtLeast(0)) }
     }
     Column(
-        Modifier.fillMaxWidth().horizontalScroll(scroll),
+        modifier.fillMaxWidth().horizontalScroll(scroll),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         rows.forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { cat ->
-                    val selected = cat.id == selectedId
+                    val on = selected(cat)
                     FilterChip(
-                        selected = selected,
-                        onClick = { onSelect(cat.id) },
+                        selected = on,
+                        onClick = { onClick(cat) },
                         label = { Text(cat.name, maxLines = 1) },
                         leadingIcon = { CategoryIcon(cat.id) },
-                        modifier = if (selected && selectedAt == null) {
+                        modifier = if (on && selectedAt == null) {
                             Modifier.onPlaced { selectedAt = it.positionInParent().x.toInt() }
                         } else {
                             Modifier

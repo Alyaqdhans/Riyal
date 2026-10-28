@@ -261,8 +261,6 @@
     <string name="home_other_currencies">+%1$s in other currencies</string>
 
     <string name="txn_filters">Filters</string>
-    <string name="txn_filters_count">Filters (%d)</string>
-    <string name="txn_export_csv">Export CSV</string>
     <string name="txn_back_to_yours">Back to your transactions</string>
     <string name="txn_archived_count">Archived (%d)</string>
     <string name="txn_swipe_hint">Swipe a record either way to archive it. Tap it to change or remove it.</string>
@@ -584,8 +582,6 @@
     <string name="an_empty_title">Nothing to analyze yet</string>
     <string name="an_empty_subtitle">Once you scan your messages, the charts light up here.</string>
     <string name="an_all_accounts">All accounts</string>
-    <string name="an_spent">Spent</string>
-    <string name="an_received">Received</string>
     <string name="an_moved_note">%1$s moved between your own accounts and is counted in neither figure.</string>
     <string name="an_donut_spent">spent</string>
     <string name="an_donut_received">received</string>

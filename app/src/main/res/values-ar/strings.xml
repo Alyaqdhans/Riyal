@@ -305,8 +305,6 @@
     <string name="home_other_currencies">+%1$s في عملات أخرى</string>
 
     <string name="txn_filters">تصفية</string>
-    <string name="txn_filters_count">تصفية (%d)</string>
-    <string name="txn_export_csv">تصدير CSV</string>
     <string name="txn_back_to_yours">العودة إلى معاملاتك</string>
     <string name="txn_archived_count">المؤرشفة (%d)</string>
     <string name="txn_swipe_hint">اسحب السجل في أي اتجاه لأرشفته. اضغط عليه لتعديله أو إزالته.</string>
@@ -636,8 +634,6 @@
     <string name="an_empty_title">لا شيء لتحليله بعد</string>
     <string name="an_empty_subtitle">ما إن تفحص رسائلك حتى تُضيء الرسوم هنا.</string>
     <string name="an_all_accounts">كل الحسابات</string>
-    <string name="an_spent">المصروف</string>
-    <string name="an_received">الوارد</string>
     <string name="an_moved_note">%1$s انتقلت بين حساباتك أنت ولا تُحتسب في أي من الرقمين.</string>
     <string name="an_donut_spent">صُرف</string>
     <string name="an_donut_received">ورد</string>

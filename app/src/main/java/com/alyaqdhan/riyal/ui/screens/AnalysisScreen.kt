@@ -6,6 +6,18 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.Surface
+import androidx.compose.material3.CardDefaults
+import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
+import com.alyaqdhan.riyal.ui.theme.successContainer
+import com.alyaqdhan.riyal.ui.compose.iconFor
+import com.alyaqdhan.riyal.ui.compose.typeTone
+import com.alyaqdhan.riyal.ui.compose.typeIcon
+import com.alyaqdhan.riyal.ui.compose.typeLabel
+import com.alyaqdhan.riyal.ui.compose.ConnectedChoice
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,9 +47,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -204,6 +213,9 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                             selected = accountId == acc.id,
                             onClick = { accountId = if (accountId == acc.id) null else acc.id },
                             label = { Text(acc.displayName) },
+                            leadingIcon = {
+                                Icon(painterResource(iconFor(acc.kind)), contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
                         )
                     }
                 }
@@ -217,34 +229,12 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
             ) {
                 PeriodBar(slice = slice, onChange = { vm.setAnalysisSlice(it) }, txns = txns)
 
-                // ── the three headline numbers, each against the period before
+                // ── the headline numbers, each against the period before: net large, as
+                // Home has it, and what went out and came in under it in Home's colours.
+                NetCard(totals.net, previous.net, currency)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SummaryTile(
-                        label = stringResource(R.string.an_spent),
-                        amount = totals.spent,
-                        previous = previous.spent,
-                        currency = currency,
-                        // Spending less than last period is the good direction.
-                        upIsGood = false,
-                        modifier = Modifier.weight(1f),
-                    )
-                    SummaryTile(
-                        label = stringResource(R.string.an_received),
-                        amount = totals.received,
-                        previous = previous.received,
-                        currency = currency,
-                        upIsGood = true,
-                        modifier = Modifier.weight(1f),
-                    )
-                    SummaryTile(
-                        label = stringResource(R.string.home_net),
-                        amount = totals.net,
-                        previous = previous.net,
-                        currency = currency,
-                        upIsGood = true,
-                        signed = true,
-                        modifier = Modifier.weight(1f),
-                    )
+                    KindTile(TxnType.EXPENSE, totals.spent, previous.spent, currency, Modifier.weight(1f))
+                    KindTile(TxnType.INCOME, totals.received, previous.received, currency, Modifier.weight(1f))
                 }
                 if (moved > 0) {
                     MoneyAwareText(
@@ -264,32 +254,14 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                            SegmentedButton(
-                                selected = donutType == TxnType.EXPENSE,
-                                onClick = { donutType = TxnType.EXPENSE },
-                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text(
-                                    stringResource(R.string.cats_spending),
-                                    softWrap = false,
-                                    maxLines = 1,
-                                )
-                            }
-                            SegmentedButton(
-                                selected = donutType == TxnType.INCOME,
-                                onClick = { donutType = TxnType.INCOME },
-                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text(
-                                    stringResource(R.string.cats_income),
-                                    softWrap = false,
-                                    maxLines = 1,
-                                )
-                            }
-                        }
+                        ConnectedChoice(
+                            options = listOf(TxnType.EXPENSE, TxnType.INCOME),
+                            selected = donutType,
+                            onSelect = { donutType = it },
+                            label = { stringResource(typeLabel(it)) },
+                            icon = ::typeIcon,
+                            tone = { typeTone(it) },
+                        )
                         // Restored to M3's own wavy indicator, held flat: one arc per category.
                         CategoryWheel(slices = slices) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -655,24 +627,13 @@ private fun ChartsCard(
     var showTrend by remember { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = !showTrend,
-                    onClick = { showTrend = false },
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(stringResource(R.string.an_cashflow), softWrap = false, maxLines = 1)
-                }
-                SegmentedButton(
-                    selected = showTrend,
-                    onClick = { showTrend = true },
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(stringResource(R.string.an_running_total), softWrap = false, maxLines = 1)
-                }
-            }
+            ConnectedChoice(
+                options = listOf(false, true),
+                selected = showTrend,
+                onSelect = { showTrend = it },
+                label = { stringResource(if (it) R.string.an_running_total else R.string.an_cashflow) },
+                tone = { MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer },
+            )
             Text(
                 stringResource(
                     if (showTrend) R.string.an_running_total_note else R.string.an_cashflow_note
@@ -794,40 +755,84 @@ private fun labelAxisFormatter() = CartesianValueFormatter { context, x, _ ->
  * side leave each one about a third of the screen, and "OMR " ahead of the digits was
  * spending that width on a word that is the same on all three.
  */
+/** The period's net, large and bold, with how it compares to the period before. */
 @Composable
-private fun SummaryTile(
-    label: String,
-    amount: Long,
-    previous: Long,
-    currency: String,
-    upIsGood: Boolean,
-    modifier: Modifier = Modifier,
-    signed: Boolean = false,
-) {
-    Column(
-        modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+private fun NetCard(net: Long, previous: Long, currency: String) {
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                stringResource(R.string.home_net),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            MoneyText(
+                net,
+                currency,
+                sign = MoneySign.NEGATIVE,
+                roll = true,
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                color = if (net < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                autoSize = TextAutoSize.StepBased(minFontSize = 18.sp, maxFontSize = MaterialTheme.typography.headlineMedium.fontSize),
+            )
+            DeltaPill(net, previous, upIsGood = true)
+        }
+    }
+}
+
+/** What went out, or came in, in Home's colour and arrow for it. */
+@Composable
+private fun KindTile(type: TxnType, amount: Long, previous: Long, currency: String, modifier: Modifier) {
+    val (tone, onTone) = typeTone(type)
+    Surface(shape = RoundedCornerShape(20.dp), color = tone, contentColor = onTone, modifier = modifier) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(painterResource(typeIcon(type)), contentDescription = null, modifier = Modifier.size(16.dp))
+                Text(stringResource(typeLabel(type)), style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            }
+            MoneyText(
+                amount,
+                currency,
+                sign = MoneySign.NONE,
+                roll = true,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = onTone,
+                autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = MaterialTheme.typography.titleLarge.fontSize),
+            )
+            DeltaPill(amount, previous, upIsGood = type == TxnType.INCOME)
+        }
+    }
+}
+
+/**
+ * "▲ 18%" against the previous period, on a small pill coloured by whether that
+ * direction is welcome - spending more is red, earning more is green. A plain pill
+ * when there is no baseline, since a percentage change from nothing is not a fact.
+ */
+@Composable
+private fun DeltaPill(now: Long, previous: Long, upIsGood: Boolean) {
+    val pct = Stats.deltaPct(now, previous)
+    val flat = pct == null || abs(pct) < 0.005f
+    val good = !flat && (pct!! > 0) == upIsGood
+    val (container, content) = when {
+        flat -> MaterialTheme.colorScheme.surfaceContainerHighest to MaterialTheme.colorScheme.onSurfaceVariant
+        good -> successContainer() to onSuccessContainer()
+        else -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+    }
+    Surface(shape = CircleShape, color = container, contentColor = content) {
         Text(
-            label,
+            when {
+                pct == null -> stringResource(R.string.an_no_baseline)
+                flat -> stringResource(R.string.an_level)
+                pct > 0 -> stringResource(R.string.an_delta_up, (abs(pct) * 100).roundToInt())
+                else -> stringResource(R.string.an_delta_down, (abs(pct) * 100).roundToInt())
+            },
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
         )
-        // The currency's sign rides with the figure, so the tile no longer spends a
-        // line, or the end of the label's line, spelling out the code.
-        MoneyText(
-            amount,
-            currency,
-            sign = if (signed) MoneySign.NEGATIVE else MoneySign.NONE,
-            roll = true,
-            style = MaterialTheme.typography.titleMedium,
-            color = if (signed && amount < 0) MaterialTheme.colorScheme.error
-            else MaterialTheme.colorScheme.onSurface,
-        )
-        DeltaText(amount, previous, upIsGood = upIsGood)
     }
 }
 

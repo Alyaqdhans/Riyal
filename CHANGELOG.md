@@ -131,6 +131,12 @@ is attached there.
 - Expense, Income and Transfer are named the same everywhere - the Transactions filter
   (with Home's arrows and colours), Review, setup, keywords - instead of "Out", "Money
   out" and the like. The Add form's kinds wrap to two rows on a narrow phone.
+- Transactions' bar is a filter icon that counts the filters on, without the export
+  button (export is in Settings). The filter sheet shows accounts with their icons and
+  categories in the same level rows as everywhere else.
+- Analysis opens on its net, large, with Expense and Income under it in Home's colours,
+  each with a coloured pill comparing it to the period before. Its switches are
+  Material 3 Expressive's connected buttons.
 - An account a merge left under the digits its messages never end with (merging "001"
   into "0210") takes the digits they do end with on the next full read.
 - **No more motion for its own sake.** Cards no longer pop in, buttons no longer

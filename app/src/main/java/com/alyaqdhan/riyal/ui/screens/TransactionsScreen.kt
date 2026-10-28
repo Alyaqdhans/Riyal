@@ -2,6 +2,8 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.FilterChipDefaults
 import com.alyaqdhan.riyal.ui.compose.typeIcon
@@ -73,7 +75,7 @@ import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 
 @Composable
-fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
+fun TransactionsScreen(vm: MainViewModel) {
     val txns by vm.txns.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val categoryUse by vm.categoryUse.collectAsState()
@@ -136,20 +138,18 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     // one row pushed the Transfers chip off the right edge of something
                     // that gives no sign it scrolls.
                     SortChip(current = order, onSelect = { sort = it.name })
-                    TextButton(onClick = { showFilters = true }) {
-                        Text(
-                            if (hiddenFilterCount > 0) {
-                                stringResource(R.string.txn_filters_count, hiddenFilterCount)
-                            } else {
-                                stringResource(R.string.txn_filters)
-                            }
-                        )
-                    }
-                    IconButton(onClick = onExport, enabled = txns.isNotEmpty()) {
-                        Icon(
-                            Icons.Filled.Share,
-                            contentDescription = stringResource(R.string.txn_export_csv),
-                        )
+                    // Export lives in Settings with backup; this bar is for looking.
+                    IconButton(onClick = { showFilters = true }) {
+                        BadgedBox(
+                            badge = {
+                                if (hiddenFilterCount > 0) Badge { Text(hiddenFilterCount.toString()) }
+                            },
+                        ) {
+                            Icon(
+                                painterResource(R.drawable.ic_sym_filter_list),
+                                contentDescription = stringResource(R.string.txn_filters),
+                            )
+                        }
                     }
                 },
             )

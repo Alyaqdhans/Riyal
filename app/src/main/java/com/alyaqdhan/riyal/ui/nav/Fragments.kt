@@ -115,19 +115,9 @@ class AccountsFragment : ScreenFragment(R.layout.fragment_accounts) {
 private val BACKUP_TYPES = arrayOf("application/json", "text/plain", "application/octet-stream")
 
 class TransactionsFragment : ScreenFragment(R.layout.fragment_transactions) {
-
-    private val exportCsv = registerForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
-        if (uri != null) {
-            vm.exportCsv(uri)
-        } else {
-            Verbose.info(R.string.log_export_cancelled)
-            Verbose.flush()
-        }
-    }
-
     @Composable
     override fun Screen() {
-        TransactionsScreen(vm, onExport = { exportCsv.launch("riyal-transactions.csv") })
+        TransactionsScreen(vm)
     }
 }
 
