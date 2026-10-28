@@ -99,8 +99,10 @@ fun UpdateDialogHost(vm: MainViewModel) {
         }
     }
 
+    val pop = rememberDialogPop()
     AlertDialog(
-        onDismissRequest = { if (state !is DownloadState.Downloading) vm.dismissUpdatePrompt() },
+        onDismissRequest = { if (state !is DownloadState.Downloading) pop.leave { vm.dismissUpdatePrompt() } },
+        modifier = Modifier.popIn(pop),
         icon = { Icon(painterResource(R.drawable.ic_sym_system_update), contentDescription = null) },
         title = { Text(stringResource(R.string.upd_dialog_title, release.tag)) },
         text = {
@@ -160,7 +162,7 @@ fun UpdateDialogHost(vm: MainViewModel) {
                             needsPermission = true
                             vm.openInstallPermission()
                         }
-                        MainViewModel.InstallResult.STARTED -> vm.dismissUpdatePrompt()
+                        MainViewModel.InstallResult.STARTED -> pop.leave { vm.dismissUpdatePrompt() }
                         MainViewModel.InstallResult.FAILED -> openOnGitHub()
                     }
                 }) { Text(stringResource(R.string.upd_install)) }
@@ -179,8 +181,8 @@ fun UpdateDialogHost(vm: MainViewModel) {
                 if (state is DownloadState.Downloading) {
                     TextButton(onClick = { vm.cancelDownload() }) { Text(stringResource(R.string.action_cancel)) }
                 } else {
-                    TextButton(onClick = { vm.skipUpdate(release) }) { Text(stringResource(R.string.upd_skip)) }
-                    TextButton(onClick = { vm.dismissUpdatePrompt() }) { Text(stringResource(R.string.upd_later)) }
+                    TextButton(onClick = { pop.leave { vm.skipUpdate(release) } }) { Text(stringResource(R.string.upd_skip)) }
+                    TextButton(onClick = { pop.leave { vm.dismissUpdatePrompt() } }) { Text(stringResource(R.string.upd_later)) }
                 }
             }
         },

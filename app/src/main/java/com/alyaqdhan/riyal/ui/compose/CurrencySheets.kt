@@ -319,8 +319,10 @@ private fun RateDialog(
         mutableStateOf(Currencies.rate(info.code, base)?.let(::rateText).orEmpty())
     }
     val value = Numerals.decimal(text)
+    val pop = rememberDialogPop()
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { pop.leave(onDismiss) },
+        modifier = Modifier.popIn(pop),
         title = { Text(stringResource(R.string.cur_rate_edit_title, stringResource(info.name))) },
         text = {
             Column {
@@ -333,18 +335,21 @@ private fun RateDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )
                 if (Currencies.isOverridden(info.code)) {
-                    TextButton(onClick = onReset) { Text(stringResource(R.string.cur_rate_reset)) }
+                    TextButton(onClick = { pop.leave(onReset) }) { Text(stringResource(R.string.cur_rate_reset)) }
                 }
             }
         },
         confirmButton = {
             TextButton(
                 enabled = value != null && value.signum() > 0,
-                onClick = { onSave(value!!) },
+                onClick = {
+                    val rate = value!!
+                    pop.leave { onSave(rate) }
+                },
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

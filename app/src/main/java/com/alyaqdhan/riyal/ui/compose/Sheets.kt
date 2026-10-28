@@ -6,12 +6,6 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutLinearInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Icon
 import androidx.annotation.StringRes
@@ -547,31 +541,11 @@ fun ManualTxnDialog(
     val transferValid = type != TxnType.TRANSFER ||
         (fromAccount != null && toAccount != null && fromAccount?.id != toAccount?.id)
 
-    // The form pops in - it is what the Add button is for, and a little life on arrival
-    // says so - and leaves faster than it came, because by then the user is done with it.
-    val pop = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
-    var leaving by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        pop.animateTo(1f, spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow))
-    }
-    fun leave(then: () -> Unit) {
-        if (leaving) return
-        leaving = true
-        scope.launch {
-            pop.animateTo(0f, tween(durationMillis = 120, easing = FastOutLinearInEasing))
-            then()
-        }
-    }
+    val pop = rememberDialogPop()
 
     AlertDialog(
-        onDismissRequest = { leave(onDismiss) },
-        modifier = Modifier.graphicsLayer {
-            val p = pop.value
-            scaleX = 0.85f + 0.15f * p
-            scaleY = 0.85f + 0.15f * p
-            alpha = p.coerceIn(0f, 1f)
-        },
+        onDismissRequest = { pop.leave(onDismiss) },
+        modifier = Modifier.popIn(pop),
         title = { Text(title) },
         text = {
             Column(
@@ -700,12 +674,12 @@ fun ManualTxnDialog(
                     val category = categoryId
                     val from = if (type == TxnType.INCOME) null else fromAccount?.id
                     val to = if (type == TxnType.EXPENSE) null else toAccount?.id
-                    leave { onSave(minor, chosenCurrency, chosenType, name, category, from, to) }
+                    pop.leave { onSave(minor, chosenCurrency, chosenType, name, category, from, to) }
                 },
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = { leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

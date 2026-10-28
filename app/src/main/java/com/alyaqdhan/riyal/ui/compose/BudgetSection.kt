@@ -213,18 +213,23 @@ fun BudgetSection(
     }
 
     if (confirmDelete && plan != null) {
+        val pop = rememberDialogPop()
         AlertDialog(
-            onDismissRequest = { confirmDelete = false },
+            onDismissRequest = { pop.leave { confirmDelete = false } },
+            modifier = Modifier.popIn(pop),
             title = { Text(stringResource(R.string.budget_delete_title)) },
             text = { Text(stringResource(R.string.budget_delete_body, plan.label)) },
             confirmButton = {
                 TextButton(onClick = {
-                    onDelete(plan.id)
-                    confirmDelete = false
+                    val id = plan.id
+                    pop.leave {
+                        onDelete(id)
+                        confirmDelete = false
+                    }
                 }) { Text(stringResource(R.string.action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) {
+                TextButton(onClick = { pop.leave { confirmDelete = false } }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -415,9 +420,11 @@ private fun BudgetEditorDialog(
     var label by remember { mutableStateOf(plan.label) }
     var showRange by remember { mutableStateOf(false) }
     val parsed = Numerals.decimal(amount)
+    val pop = rememberDialogPop()
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { pop.leave(onDismiss) },
+        modifier = Modifier.popIn(pop),
         title = { Text(label) },
         text = {
             Column(
@@ -495,7 +502,7 @@ private fun BudgetEditorDialog(
             ) { Text(stringResource(R.string.action_add)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_done)) }
+            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_done)) }
         },
     )
 
@@ -506,8 +513,10 @@ private fun BudgetEditorDialog(
                 TimeSlice.ofDays(TimeSlice.utcDay(start), TimeSlice.utcDay(end)).title()
             }
         }.orEmpty()
+        val rangePop = rememberDialogPop()
         DatePickerDialog(
-            onDismissRequest = { showRange = false },
+            onDismissRequest = { rangePop.leave { showRange = false } },
+            modifier = Modifier.popIn(rangePop),
             confirmButton = {
                 TextButton(
                     enabled = rangeState.selectedStartDateMillis != null &&
@@ -517,14 +526,17 @@ private fun BudgetEditorDialog(
                             TimeSlice.utcDay(rangeState.selectedStartDateMillis!!),
                             TimeSlice.utcDay(rangeState.selectedEndDateMillis!!),
                         )
-                        onSetPeriod(rangeTitle, slice.start, slice.endExclusive)
-                        label = rangeTitle
-                        showRange = false
+                        val title = rangeTitle
+                        rangePop.leave {
+                            onSetPeriod(title, slice.start, slice.endExclusive)
+                            label = title
+                            showRange = false
+                        }
                     },
                 ) { Text(stringResource(R.string.action_apply)) }
             },
             dismissButton = {
-                TextButton(onClick = { showRange = false }) {
+                TextButton(onClick = { rangePop.leave { showRange = false } }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },

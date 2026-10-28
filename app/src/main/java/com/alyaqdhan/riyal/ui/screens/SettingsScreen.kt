@@ -54,6 +54,8 @@ import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Language
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.popIn
+import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
 import com.alyaqdhan.riyal.ui.compose.CurrencyPickerSheet
 import com.alyaqdhan.riyal.ui.compose.ExchangeRatesSheet
 import com.alyaqdhan.riyal.ui.compose.ScanBar
@@ -344,6 +346,7 @@ fun SettingsScreen(
     // The scan sheet is hosted here, on the screen whose rows start a scan.
     ScanSheetHost(vm)
 
+    val close = { dialog = SettingsDialog.NONE }
     when (dialog) {
         SettingsDialog.NONE -> Unit
         SettingsDialog.LANGUAGE -> {
@@ -414,76 +417,98 @@ fun SettingsScreen(
                 onDismiss = { dialog = SettingsDialog.NONE },
             )
         }
-        SettingsDialog.LOG -> AlertDialog(
-            onDismissRequest = { dialog = SettingsDialog.NONE },
-            title = { Text(stringResource(R.string.set_verbose_log)) },
-            text = { Text(stringResource(R.string.set_help_verbose)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    scope.launch { clipboard.setClipEntry(plainText(Verbose.dump())) }
-                    note(R.string.log_note_log_copied)
-                    dialog = SettingsDialog.NONE
-                }) { Text(stringResource(R.string.action_copy)) }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    Verbose.clear()
-                    Verbose.info(R.string.log_note_log_cleared)
-                    Verbose.flush()
-                    dialog = SettingsDialog.NONE
-                }) { Text(stringResource(R.string.action_clear)) }
-            },
-        )
-        SettingsDialog.WIPE -> AlertDialog(
-            onDismissRequest = { dialog = SettingsDialog.NONE },
-            title = { Text(stringResource(R.string.set_wipe_title)) },
-            text = { Text(stringResource(R.string.set_wipe_body)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        vm.wipeAll()
-                        dialog = SettingsDialog.NONE
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                ) { Text(stringResource(R.string.action_delete)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { dialog = SettingsDialog.NONE }) { Text(stringResource(R.string.action_cancel)) }
-            },
-        )
-        SettingsDialog.RESTORE -> AlertDialog(
-            onDismissRequest = { dialog = SettingsDialog.NONE },
-            title = { Text(stringResource(R.string.set_restore_title)) },
-            text = { Text(stringResource(R.string.set_restore_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    dialog = SettingsDialog.NONE
-                    onRestore()
-                }) { Text(stringResource(R.string.action_restore)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { dialog = SettingsDialog.NONE }) { Text(stringResource(R.string.action_cancel)) }
-            },
-        )
-        SettingsDialog.EXPORT -> AlertDialog(
-            onDismissRequest = { dialog = SettingsDialog.NONE },
-            title = { Text(stringResource(R.string.set_export_title, counted(R.plurals.count_records, txns.size))) },
-            text = {
-                Text(stringResource(if (txns.isEmpty()) R.string.set_export_empty else R.string.set_export_body))
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = txns.isNotEmpty(),
-                    onClick = {
-                        dialog = SettingsDialog.NONE
-                        onExport()
-                    },
-                ) { Text(stringResource(R.string.action_export)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { dialog = SettingsDialog.NONE }) { Text(stringResource(R.string.action_cancel)) }
-            },
-        )
+        SettingsDialog.LOG -> {
+            val pop = rememberDialogPop()
+            AlertDialog(
+                onDismissRequest = { pop.leave(close) },
+                modifier = Modifier.popIn(pop),
+                title = { Text(stringResource(R.string.set_verbose_log)) },
+                text = { Text(stringResource(R.string.set_help_verbose)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        scope.launch { clipboard.setClipEntry(plainText(Verbose.dump())) }
+                        note(R.string.log_note_log_copied)
+                        pop.leave(close)
+                    }) { Text(stringResource(R.string.action_copy)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        Verbose.clear()
+                        Verbose.info(R.string.log_note_log_cleared)
+                        Verbose.flush()
+                        pop.leave(close)
+                    }) { Text(stringResource(R.string.action_clear)) }
+                },
+            )
+        }
+        SettingsDialog.WIPE -> {
+            val pop = rememberDialogPop()
+            AlertDialog(
+                onDismissRequest = { pop.leave(close) },
+                modifier = Modifier.popIn(pop),
+                title = { Text(stringResource(R.string.set_wipe_title)) },
+                text = { Text(stringResource(R.string.set_wipe_body)) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            pop.leave {
+                                vm.wipeAll()
+                                close()
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    ) { Text(stringResource(R.string.action_delete)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pop.leave(close) }) { Text(stringResource(R.string.action_cancel)) }
+                },
+            )
+        }
+        SettingsDialog.RESTORE -> {
+            val pop = rememberDialogPop()
+            AlertDialog(
+                onDismissRequest = { pop.leave(close) },
+                modifier = Modifier.popIn(pop),
+                title = { Text(stringResource(R.string.set_restore_title)) },
+                text = { Text(stringResource(R.string.set_restore_body)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        pop.leave {
+                            close()
+                            onRestore()
+                        }
+                    }) { Text(stringResource(R.string.action_restore)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pop.leave(close) }) { Text(stringResource(R.string.action_cancel)) }
+                },
+            )
+        }
+        SettingsDialog.EXPORT -> {
+            val pop = rememberDialogPop()
+            AlertDialog(
+                onDismissRequest = { pop.leave(close) },
+                modifier = Modifier.popIn(pop),
+                title = { Text(stringResource(R.string.set_export_title, counted(R.plurals.count_records, txns.size))) },
+                text = {
+                    Text(stringResource(if (txns.isEmpty()) R.string.set_export_empty else R.string.set_export_body))
+                },
+                confirmButton = {
+                    TextButton(
+                        enabled = txns.isNotEmpty(),
+                        onClick = {
+                            pop.leave {
+                                close()
+                                onExport()
+                            }
+                        },
+                    ) { Text(stringResource(R.string.action_export)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pop.leave(close) }) { Text(stringResource(R.string.action_cancel)) }
+                },
+            )
+        }
     }
 }
 
@@ -568,8 +593,10 @@ private fun <T> ChoiceDialog(
     onPick: (T) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val pop = rememberDialogPop()
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { pop.leave(onDismiss) },
+        modifier = Modifier.popIn(pop),
         title = { Text(title) },
         text = {
             Column {
@@ -577,7 +604,7 @@ private fun <T> ChoiceDialog(
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .selectable(selected = value == selected, role = Role.RadioButton) { onPick(value) }
+                            .selectable(selected = value == selected, role = Role.RadioButton) { pop.leave { onPick(value) } }
                             .padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -589,7 +616,7 @@ private fun <T> ChoiceDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

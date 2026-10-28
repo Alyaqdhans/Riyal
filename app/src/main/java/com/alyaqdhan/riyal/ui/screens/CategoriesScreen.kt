@@ -60,6 +60,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.ui.compose.popIn
+import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
 import com.alyaqdhan.riyal.ui.compose.bidi
 import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.core.Money
@@ -313,8 +315,10 @@ fun CategoriesScreen(
     }
 
     confirmDelete?.let { cat ->
+        val pop = rememberDialogPop()
         AlertDialog(
-            onDismissRequest = { confirmDelete = null },
+            onDismissRequest = { pop.leave { confirmDelete = null } },
+            modifier = Modifier.popIn(pop),
             title = { Text(stringResource(R.string.delete_title, cat.name)) },
             text = {
                 Text(
@@ -327,12 +331,14 @@ fun CategoriesScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    vm.deleteCategory(cat.id)
-                    confirmDelete = null
+                    pop.leave {
+                        vm.deleteCategory(cat.id)
+                        confirmDelete = null
+                    }
                 }) { Text(stringResource(R.string.action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDelete = null }) {
+                TextButton(onClick = { pop.leave { confirmDelete = null } }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -482,9 +488,11 @@ private fun KeywordRuleDialog(
     val blocked = pattern.isNotBlank() && pattern in askEachTime
     // Matching mirrors Categorizer.contains: short ASCII words match whole only.
     val wholeWord = pattern.length <= 4 && pattern.all { it in 'a'..'z' }
+    val pop = rememberDialogPop()
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { pop.leave(onDismiss) },
+        modifier = Modifier.popIn(pop),
         title = { Text(stringResource(R.string.cats_add_keyword)) },
         text = {
             Column(
@@ -566,11 +574,15 @@ private fun KeywordRuleDialog(
         confirmButton = {
             TextButton(
                 enabled = pattern.isNotBlank() && !blocked,
-                onClick = { onSave(pattern, categoryId) },
+                onClick = {
+                    val word = pattern
+                    val category = categoryId
+                    pop.leave { onSave(word, category) }
+                },
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }
@@ -590,9 +602,11 @@ private fun CategoryEditorDialog(
         mutableStateOf(if (category.color != 0) category.color else Categories.PALETTE.first())
     }
     var icon by remember { mutableStateOf(category.icon.ifBlank { CategoryVisuals.KEYS.first() }) }
+    val pop = rememberDialogPop()
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { pop.leave(onDismiss) },
+        modifier = Modifier.popIn(pop),
         title = {
             Text(
                 stringResource(if (isNew) R.string.cats_new_title else R.string.cats_edit_title)
@@ -711,15 +725,21 @@ private fun CategoryEditorDialog(
         confirmButton = {
             TextButton(
                 enabled = name.isNotBlank(),
-                onClick = { onSave(name.trim(), income, color, icon) },
+                onClick = {
+                    val chosen = name.trim()
+                    val isIncome = income
+                    val tint = color
+                    val glyph = icon
+                    pop.leave { onSave(chosen, isIncome, tint, glyph) }
+                },
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
             Row {
                 if (onDelete != null) {
-                    TextButton(onClick = onDelete) { Text(stringResource(R.string.action_delete)) }
+                    TextButton(onClick = { pop.leave(onDelete) }) { Text(stringResource(R.string.action_delete)) }
                 }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
             }
         },
     )

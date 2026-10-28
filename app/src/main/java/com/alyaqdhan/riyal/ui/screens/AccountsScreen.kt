@@ -3,6 +3,8 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import com.alyaqdhan.riyal.ui.compose.popIn
+import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
 import com.alyaqdhan.riyal.ui.compose.toolbarSpace
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ListItem
@@ -205,20 +207,24 @@ fun AccountsScreen(vm: MainViewModel, onBack: (() -> Unit)?) {
     }
 
     confirmDelete?.let { account ->
+        val pop = rememberDialogPop()
         AlertDialog(
-            onDismissRequest = { confirmDelete = null },
+            onDismissRequest = { pop.leave { confirmDelete = null } },
+            modifier = Modifier.popIn(pop),
             title = {
                 Text(stringResource(R.string.delete_title, account.displayName))
             },
             text = { Text(stringResource(R.string.acct_delete_body)) },
             confirmButton = {
                 TextButton(onClick = {
-                    vm.deleteAccount(account.id)
-                    confirmDelete = null
+                    pop.leave {
+                        vm.deleteAccount(account.id)
+                        confirmDelete = null
+                    }
                 }) { Text(stringResource(R.string.action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDelete = null }) {
+                TextButton(onClick = { pop.leave { confirmDelete = null } }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -360,9 +366,11 @@ internal fun AccountEditorDialog(
         )
     }
     val parsedBalance = Numerals.decimal(balance)
+    val pop = rememberDialogPop()
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { pop.leave(onDismiss) },
+        modifier = Modifier.popIn(pop),
         title = {
             Text(
                 stringResource(
@@ -497,26 +505,25 @@ internal fun AccountEditorDialog(
                 enabled = name.isNotBlank() || bankName.isNotBlank() || last4.isNotBlank(),
                 onClick = {
                     val minor = parsedBalance?.let { Money.toMinor(it, currency) } ?: 0L
-                    onSave(
-                        account.copy(
-                            name = name.trim(),
-                            bankName = bankName.trim(),
-                            last4 = last4.trim().ifBlank { null },
-                            currency = currency,
-                            openingBalanceMinor = minor,
-                            // A hand-entered figure is true as of now, so the opening
-                            // moment moves with it and older records stop double-counting.
-                            openingAtMillis = if (minor != account.openingBalanceMinor) {
-                                System.currentTimeMillis()
-                            } else {
-                                account.openingAtMillis
-                            },
-                            senderIds = senders.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet(),
-                            archived = archived,
-                            needsBalance = false,
-                            kind = kind,
-                        )
+                    val edited = account.copy(
+                        name = name.trim(),
+                        bankName = bankName.trim(),
+                        last4 = last4.trim().ifBlank { null },
+                        currency = currency,
+                        openingBalanceMinor = minor,
+                        // A hand-entered figure is true as of now, so the opening
+                        // moment moves with it and older records stop double-counting.
+                        openingAtMillis = if (minor != account.openingBalanceMinor) {
+                            System.currentTimeMillis()
+                        } else {
+                            account.openingAtMillis
+                        },
+                        senderIds = senders.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet(),
+                        archived = archived,
+                        needsBalance = false,
+                        kind = kind,
                     )
+                    pop.leave { onSave(edited) }
                 },
             ) { Text(stringResource(R.string.action_save)) }
         },
@@ -524,30 +531,35 @@ internal fun AccountEditorDialog(
             Row {
                 if (!isNew) {
                     TextButton(
-                        onClick = onDelete,
+                        onClick = { pop.leave(onDelete) },
                         colors = ButtonDefaults.textButtonColors(
                             contentColor = MaterialTheme.colorScheme.error,
                         ),
                     ) { Text(stringResource(R.string.action_delete)) }
                 }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
             }
         },
     )
 
     merging?.let { target ->
+        val confirmPop = rememberDialogPop()
         AlertDialog(
-            onDismissRequest = { merging = null },
+            onDismissRequest = { confirmPop.leave { merging = null } },
+            modifier = Modifier.popIn(confirmPop),
             title = { Text(stringResource(R.string.acct_merge_title, target.displayName)) },
             text = { Text(stringResource(R.string.acct_merge_body, account.displayName, target.displayName)) },
             confirmButton = {
                 TextButton(onClick = {
-                    merging = null
-                    onMerge(target)
+                    // The question goes, then the editor it was asked over.
+                    confirmPop.leave {
+                        merging = null
+                        pop.leave { onMerge(target) }
+                    }
                 }) { Text(stringResource(R.string.acct_merge)) }
             },
             dismissButton = {
-                TextButton(onClick = { merging = null }) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(onClick = { confirmPop.leave { merging = null } }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }

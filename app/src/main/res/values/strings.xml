@@ -129,7 +129,7 @@
     <string name="setup_read_as">Riyal read it as</string>
     <string name="setup_what_was_it">What was it?</string>
     <string name="setup_save_answer">Save answer</string>
-    <string name="setup_finish_later">Finish later</string>
+    <string name="setup_skip">Skip</string>
     <string name="setup_no">No</string>
     <string name="setup_yes">Yes</string>
     <string name="setup_kind_transfer">Between my accounts</string>

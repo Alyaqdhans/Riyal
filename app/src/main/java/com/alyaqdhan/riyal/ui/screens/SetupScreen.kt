@@ -4,6 +4,8 @@ package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.animateFloatingActionButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -33,7 +35,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -64,6 +65,8 @@ import com.alyaqdhan.riyal.data.MessageKind
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.MainViewModel.SetupStep
+import com.alyaqdhan.riyal.ui.compose.popIn
+import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
 import com.alyaqdhan.riyal.ui.compose.CategoryChips
 import com.alyaqdhan.riyal.ui.compose.CategoryIcon
 import com.alyaqdhan.riyal.ui.compose.FlatBar
@@ -102,20 +105,19 @@ fun SetupScreen(vm: MainViewModel, onFinished: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.setup_title)) },
-                actions = {
+                subtitle = {
                     val index = when (step) {
                         SetupStep.READING, SetupStep.ACCOUNTS -> 1
                         SetupStep.QUESTIONS -> 2
                         SetupStep.DONE -> 3
                     }
-                    Text(
-                        stringResource(R.string.setup_step_of, index, 3),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = if (step == SetupStep.QUESTIONS) 4.dp else 16.dp),
-                    )
+                    Text(stringResource(R.string.setup_step_of, index, 3))
+                },
+                // Skipping is about the whole step, so it sits with the step's name, out of
+                // the way of the answers at the bottom.
+                actions = {
                     if (step == SetupStep.QUESTIONS) {
-                        TextButton(onClick = { vm.finishSetup() }) { Text(stringResource(R.string.setup_finish_later)) }
+                        TextButton(onClick = { vm.finishSetup() }) { Text(stringResource(R.string.setup_skip)) }
                     }
                 },
             )
@@ -322,18 +324,22 @@ private fun AccountsStep(vm: MainViewModel) {
     }
 
     dropping?.let { sender ->
+        val pop = rememberDialogPop()
         AlertDialog(
-            onDismissRequest = { dropping = null },
+            onDismissRequest = { pop.leave { dropping = null } },
+            modifier = Modifier.popIn(pop),
             title = { Text(stringResource(R.string.setup_not_my_bank_title, sender)) },
             text = { Text(stringResource(R.string.setup_not_my_bank_body)) },
             confirmButton = {
                 TextButton(onClick = {
-                    vm.excludeSender(sender)
-                    dropping = null
+                    pop.leave {
+                        vm.excludeSender(sender)
+                        dropping = null
+                    }
                 }) { Text(stringResource(R.string.setup_not_my_bank)) }
             },
             dismissButton = {
-                TextButton(onClick = { dropping = null }) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(onClick = { pop.leave { dropping = null } }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }
@@ -370,19 +376,11 @@ private fun QuestionsStep(vm: MainViewModel) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             FlatBar(progress = { progress }, modifier = Modifier.fillMaxWidth())
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { vm.stepBackSetup() }, enabled = canStepBack) {
-                    Icon(
-                        painterResource(R.drawable.ic_sym_arrow_back),
-                        contentDescription = stringResource(R.string.setup_previous),
-                    )
-                }
-                Text(
-                    stringResource(R.string.setup_question_count, asked + 1, left.coerceAtLeast(1)),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            Text(
+                stringResource(R.string.setup_question_count, asked + 1, left.coerceAtLeast(1)),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Text(stringResource(R.string.setup_question_title), style = MaterialTheme.typography.headlineSmall)
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -449,7 +447,7 @@ private fun QuestionsStep(vm: MainViewModel) {
                         )
                         if (details.isNotEmpty()) {
                             Text(
-                                details.joinToString(" · "),
+                                details.joinToString(" Â· "),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -482,7 +480,7 @@ private fun QuestionsStep(vm: MainViewModel) {
                                 listOfNotNull(
                                     stringResource(labelFor(answer.kind)),
                                     answer.categoryId?.let { Categories.byId(it).name },
-                                ).joinToString(" · "),
+                                ).joinToString(" Â· "),
                             )
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -501,6 +499,22 @@ private fun QuestionsStep(vm: MainViewModel) {
             }
         }
         if (!correcting) {
+            // The way back sits opposite the answers, so it is never hit by mistake for
+            // one, and only once there is an answer to go back to.
+            FloatingActionButton(
+                onClick = { vm.stepBackSetup() },
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp)
+                    .animateFloatingActionButton(visible = canStepBack, alignment = Alignment.Center),
+            ) {
+                Icon(
+                    painterResource(R.drawable.ic_sym_arrow_back),
+                    contentDescription = stringResource(R.string.setup_previous),
+                )
+            }
             Row(
                 Modifier.align(Alignment.BottomEnd).padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -618,7 +632,7 @@ private fun DoneStep(vm: MainViewModel, onFinished: () -> Unit) {
                 counted(R.plurals.count_accounts, accounts.count { !it.archived }),
                 counted(R.plurals.count_records, txns.size),
                 counted(R.plurals.setup_kinds_taught, taught),
-            ).joinToString(" · "),
+            ).joinToString(" Â· "),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,

@@ -25,9 +25,11 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   sideways in the toolbar's order (`TabSlide`).
 - **No decorative motion.** No pop-in or bounce on content, and `MotionScheme.standard()`.
   Charts use `animationSpec = null, animateIn = false`. The owner's exceptions: the tab
-  slide, and the Add form's pop-in (quick close).
+  slide, and every dialog's pop-in with a quick close (`ui/compose/DialogPop.kt`: put
+  `Modifier.popIn(pop)` on the dialog and send every way of closing it through
+  `pop.leave { … }`). Bottom sheets keep their own slide.
 - **Choices of dates are tiles** (`ui/compose/Presets.kt`: `PresetSheet`/`PresetGrid`),
-  never a plain list of words. Each tile says what it covers.
+  never a plain list of words. Each tile says what it covers, and all tiles are one size.
 - **Exact versions.** `androidx.compose.material3:material3:1.5.0-alpha23` with
   `@OptIn(ExperimentalMaterial3Api / ExperimentalMaterial3ExpressiveApi)`. Use its
   current APIs: `ListItem(onClick | checked/onCheckedChange, …) { headline }`, and

@@ -130,25 +130,28 @@ fun PeriodBar(
 
     if (showRange) {
         val rangeState = rememberDateRangePickerState()
+        val pop = rememberDialogPop()
         DatePickerDialog(
-            onDismissRequest = { showRange = false },
+            onDismissRequest = { pop.leave { showRange = false } },
+            modifier = Modifier.popIn(pop),
             confirmButton = {
                 TextButton(
                     enabled = rangeState.selectedStartDateMillis != null &&
                         rangeState.selectedEndDateMillis != null,
                     onClick = {
-                        onChange(
-                            TimeSlice.ofDays(
-                                TimeSlice.utcDay(rangeState.selectedStartDateMillis!!),
-                                TimeSlice.utcDay(rangeState.selectedEndDateMillis!!),
-                            )
+                        val picked = TimeSlice.ofDays(
+                            TimeSlice.utcDay(rangeState.selectedStartDateMillis!!),
+                            TimeSlice.utcDay(rangeState.selectedEndDateMillis!!),
                         )
-                        showRange = false
+                        pop.leave {
+                            onChange(picked)
+                            showRange = false
+                        }
                     },
                 ) { Text(stringResource(R.string.action_apply)) }
             },
             dismissButton = {
-                TextButton(onClick = { showRange = false }) {
+                TextButton(onClick = { pop.leave { showRange = false } }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },

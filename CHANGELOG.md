@@ -39,8 +39,8 @@ is attached there.
     that is what is usually wrong; the other kinds are a tap away. Every answer decides
     every message written the same way. Answering correctly ends the questions sooner,
     while getting money in or out wrong makes Riyal check its other readings of that
-    bank. The back arrow, or the back gesture, steps through earlier answers to change
-    them.
+    bank. The back arrow at the bottom, or the back gesture, steps through earlier
+    answers to change them. **Skip**, at the top, ends the questions there.
 - Run the setup again any time from Settings › Teach Riyal.
 
 ### One account is one account
@@ -95,14 +95,14 @@ is attached there.
   under it; one "needs your attention" list; top spending; and the period's latest
   records, which change with the dates above them.
 - **Dates are tiles.** Every period choice - Home, Analysis, How far back, the welcome
-  screen - is a sheet of tiles, each with an icon and the dates it covers.
+  screen - is a sheet of equal tiles, each with an icon and the dates it covers.
 - Records are standard list rows with circular category icons. Swipe one open and tap
   the action it shows: Archive one way, with undo, Remove the other.
 - Settings is grouped rows with icons. Switches no longer fill their row in when on.
 - The currency picker's signs sit in matching round slots.
 - The welcome screen shows the app's mark instead of the coin face, and its buttons,
   like setup's, float over the page.
-- The Add form pops in, and leaves quickly.
+- Dialogs pop in, and leave quickly.
 - **No more motion for its own sake.** Cards no longer pop in, buttons no longer
   bounce, charts draw in place, and the coin mascot no longer blinks. What moves is
   movement between places - tabs, pages - and the Add form. The category wheel is back

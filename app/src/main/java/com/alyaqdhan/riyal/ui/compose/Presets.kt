@@ -88,6 +88,9 @@ private fun PresetTile(preset: Preset, modifier: Modifier) {
                 preset.detail,
                 style = MaterialTheme.typography.bodySmall,
                 color = if (preset.selected) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+                // Two lines kept whether or not they are filled, so every tile is the
+                // same size and the grid reads as a grid.
+                minLines = 2,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )

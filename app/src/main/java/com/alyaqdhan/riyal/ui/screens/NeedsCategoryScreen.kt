@@ -53,6 +53,8 @@ import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.data.UserRule
+import com.alyaqdhan.riyal.ui.compose.popIn
+import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
 import com.alyaqdhan.riyal.ui.compose.MoneySign
 import com.alyaqdhan.riyal.ui.compose.MoneyText
 import com.alyaqdhan.riyal.ui.MainViewModel
@@ -250,8 +252,10 @@ private fun LeaveAsOtherDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
+    val pop = rememberDialogPop()
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { pop.leave(onDismiss) },
+        modifier = Modifier.popIn(pop),
         title = { Text(stringResource(R.string.needs_leave_title)) },
         text = {
             Text(
@@ -262,10 +266,10 @@ private fun LeaveAsOtherDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.needs_leave_confirm)) }
+            TextButton(onClick = { pop.leave(onConfirm) }) { Text(stringResource(R.string.needs_leave_confirm)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

@@ -348,12 +348,14 @@ fun HelpAction(title: String, help: String) {
         )
     }
     if (open) {
+        val pop = rememberDialogPop()
         AlertDialog(
-            onDismissRequest = { open = false },
+            onDismissRequest = { pop.leave { open = false } },
+            modifier = Modifier.popIn(pop),
             title = { Text(title) },
             text = { Text(help) },
             confirmButton = {
-                TextButton(onClick = { open = false }) {
+                TextButton(onClick = { pop.leave { open = false } }) {
                     Text(stringResource(R.string.action_got_it))
                 }
             },

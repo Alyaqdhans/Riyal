@@ -129,7 +129,7 @@
     <string name="setup_read_as">قرأها ريال على أنها</string>
     <string name="setup_what_was_it">ماذا كانت؟</string>
     <string name="setup_save_answer">حفظ الإجابة</string>
-    <string name="setup_finish_later">أكمل لاحقًا</string>
+    <string name="setup_skip">تخطَّ</string>
     <string name="setup_no">لا</string>
     <string name="setup_yes">نعم</string>
     <string name="setup_kind_transfer">بين حساباتي</string>
