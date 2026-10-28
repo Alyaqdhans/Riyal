@@ -29,8 +29,9 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   `Modifier.popIn(pop)` on the dialog and send every way of closing it through
   `pop.leave { … }`). Bottom sheets keep their own slide. And headline figures roll their
   digits (`MoneyText(roll = true)`: odometer wheels after firePOS's NumberFlow with its
-  `continuous` plugin, places paired from the right so a figure grows leftwards): in from zero when they
-  appear, again when a scan lands (`Rolls.replay()`), and on every change. Home's net and
+  `continuous` plugin, places paired from the right so a figure grows leftwards): in from zero only
+  on app start and when a scan or refresh lands (`Rolls`), never on a tab switch or scroll;
+  and to every new value while on screen. Home's net and
   pills, Analysis totals, Accounts balances. List rows never roll.
 - **Choices of dates are tiles** (`ui/compose/Presets.kt`: `PresetSheet`/`PresetGrid`),
   never a plain list of words. Each tile says what it covers, and all tiles are one size.

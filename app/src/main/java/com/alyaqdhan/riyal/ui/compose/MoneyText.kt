@@ -261,8 +261,9 @@ private val spinEasing = CubicBezierEasing(0.25f, 1f, 0.5f, 1f)
  * The digits of [number], rolling to it the way firePOS's NumberFlow (with its
  * `continuous` plugin) does.
  *
- * Every figure arrives from zero ([zero], "0.000") - when its screen opens, a tab switch
- * included, and again when a scan lands - and then rolls to each new value. Places are
+ * A figure rolls in from zero ([zero], "0.000") only when the app starts and when a scan
+ * or refresh lands ([Rolls]); one that comes into view any other time - a tab switch, a
+ * scroll - is simply there. From then on it rolls to each new value it is given. Places are
  * paired from the right, so the decimals stay put and a figure that gains digits grows
  * leftwards, the new places opening out of the decimal point's side; one that loses them
  * closes the same way. Each digit is a wheel that turns through the digits between, up
@@ -271,12 +272,17 @@ private val spinEasing = CubicBezierEasing(0.25f, 1f, 0.5f, 1f)
  */
 @Composable
 private fun RollingDigits(minor: Long, number: String, zero: String, style: TextStyle) {
-    var shown by remember { mutableStateOf(zero) }
-    var before by remember { mutableStateOf(zero) }
+    val fromZero = remember { Rolls.armed() }
+    val start = if (fromZero) zero else number
+    var shown by remember { mutableStateOf(start) }
+    var before by remember { mutableStateOf(start) }
     var rising by remember { mutableStateOf(true) }
-    var was by remember { mutableLongStateOf(0L) }
+    var was by remember { mutableLongStateOf(if (fromZero) 0L else minor) }
     var turn by remember { mutableIntStateOf(0) }
-    var widest by remember { mutableIntStateOf(zero.length) }
+    var widest by remember { mutableIntStateOf(start.length) }
+    // Places that arrive after the first frame - a figure gaining digits - always open.
+    var settled by remember { mutableStateOf(false) }
+    SideEffect { settled = true }
     LaunchedEffect(number, minor) {
         if (number == shown) return@LaunchedEffect
         rising = kotlin.math.abs(minor) >= kotlin.math.abs(was)
@@ -295,6 +301,7 @@ private fun RollingDigits(minor: Long, number: String, zero: String, style: Text
             key(place) {
                 RollingPlace(
                     c = shown.getOrNull(shown.length - 1 - place),
+                    arrive = fromZero || settled,
                     turn = turn,
                     rising = rising,
                     lap = higherPlaces(before, place) != higherPlaces(shown, place),
@@ -313,10 +320,12 @@ private fun higherPlaces(s: String, place: Int): String =
 
 /** One place: opens when the figure gains it, closes when it loses it. */
 @Composable
-private fun RollingPlace(c: Char?, turn: Int, rising: Boolean, lap: Boolean, style: TextStyle, width: Dp, height: Dp) {
+private fun RollingPlace(c: Char?, arrive: Boolean, turn: Int, rising: Boolean, lap: Boolean, style: TextStyle, width: Dp, height: Dp) {
     val held = remember { mutableStateOf(c ?: '0') }
     SideEffect { if (c != null) held.value = c }
-    val visible = remember { MutableTransitionState(false) }
+    // A place that is simply there starts open and its wheel at its digit.
+    val spinIn = remember { arrive }
+    val visible = remember { MutableTransitionState(!spinIn && c != null) }
     visible.targetState = c != null
     AnimatedVisibility(
         visibleState = visible,
@@ -327,7 +336,7 @@ private fun RollingPlace(c: Char?, turn: Int, rising: Boolean, lap: Boolean, sty
     ) {
         val ch = c ?: held.value
         if (ch.isDigit()) {
-            DigitWheel(ch.digitToInt(), turn, rising, lap, style, width, height)
+            DigitWheel(ch.digitToInt(), spinIn, turn, rising, lap, style, width, height)
         } else {
             Text(ch.toString(), style = style, maxLines = 1, softWrap = false)
         }
@@ -336,8 +345,8 @@ private fun RollingPlace(c: Char?, turn: Int, rising: Boolean, lap: Boolean, sty
 
 /** A wheel of 0-9 behind a one-digit window, turned to [digit]. */
 @Composable
-private fun DigitWheel(digit: Int, turn: Int, rising: Boolean, lap: Boolean, style: TextStyle, width: Dp, height: Dp) {
-    val wheel = remember { Animatable(0f) }
+private fun DigitWheel(digit: Int, spinIn: Boolean, turn: Int, rising: Boolean, lap: Boolean, style: TextStyle, width: Dp, height: Dp) {
+    val wheel = remember { Animatable(if (spinIn) 0f else digit.toFloat()) }
     LaunchedEffect(turn) {
         val from = wheel.value
         val at = ((from % 10f) + 10f) % 10f
@@ -362,12 +371,24 @@ private fun DigitWheel(digit: Int, turn: Int, rising: Boolean, lap: Boolean, sty
     }
 }
 
-/** Bumped when a scan lands, so every rolling figure on screen rolls in again. */
+/**
+ * When figures roll in from zero: for a moment after the app starts, and after each scan
+ * or refresh lands, when [replay] also rebuilds every rolling figure on screen. A figure
+ * that appears outside those moments shows its value at once.
+ */
 object Rolls {
+    /** How long after a start or a refresh a figure that appears still rolls in. */
+    private const val WINDOW_MS = 1_500L
+
     var generation by mutableIntStateOf(0)
         private set
 
+    private var armedUntil = android.os.SystemClock.uptimeMillis() + WINDOW_MS
+
+    fun armed(): Boolean = android.os.SystemClock.uptimeMillis() < armedUntil
+
     fun replay() {
+        armedUntil = android.os.SystemClock.uptimeMillis() + WINDOW_MS
         generation++
     }
 }
