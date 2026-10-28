@@ -101,7 +101,7 @@ object AccountDiscovery {
      * Bumped when the rules that tidy existing accounts change: it is in the scan's
      * fingerprint, so the next scan reads everything and the new rules see every message.
      */
-    const val VERSION = 3
+    const val VERSION = 4
 
     /** A sender as one bank, however it is spelled: case, spaces and dots set aside. */
     fun senderKey(sender: String): String = sender.lowercase().filter { it.isLetterOrDigit() }
@@ -286,11 +286,15 @@ object AccountDiscovery {
     }
 
     /**
-     * Within one bank, an account quoted by under a tenth as many messages as the bank's
-     * most quoted account, with no balance line of its own, is a stray reading of a few
-     * odd messages - a refund that repeats the branch, a reference where the account goes
-     * - and is folded into the account the bulk of the bank's messages name. A second
-     * real account, however rarely used, has a balance of its own to show for it.
+     * The majority decides. Within one bank, the account most messages name is the main
+     * one, and any other is folded into it unless it is plainly a second account in use
+     * beside it: a balance of its own - a line it tops that the main account never
+     * appears on - over the same months the main account was in use.
+     *
+     * So a few odd messages (a refund repeating the branch, the other party's number on a
+     * transfer, a reference) fold even when they happen to top a short stretch of
+     * balances, and so does a number whose messages all come before or after the main
+     * account's - the same account under an older numbering.
      */
     fun minorityFolds(accounts: List<Account>, observations: List<Observation>): Map<String, String> {
         val tops = lineTails(observations)
@@ -304,10 +308,24 @@ object AccountDiscovery {
             fun quotes(a: Account) = mine.count { o -> o.accountNumberTail?.let { a.answersTo(it) } == true }
             val counts = group.associateWith { quotes(it) }
             val main = counts.maxByOrNull { it.value }?.takeIf { it.value > 0 } ?: continue
+            val mainAccount = main.key
+            val mainTimes = mine.filter { o -> o.accountNumberTail?.let { mainAccount.answersTo(it) } == true }
+                .map { it.atMillis }
+            val mainFrom = mainTimes.min()
+            val mainUntil = mainTimes.max()
+            val linesWithMain = mine.filter { o -> o.line != null && o.accountNumberTail?.let { mainAccount.answersTo(it) } == true }
+                .mapTo(HashSet()) { it.line!! }
             for ((account, q) in counts) {
-                if (account.id == main.key.id || q == 0 || q * 10 > main.value) continue
-                val ownLine = tops.values.any { account.answersTo(it) }
-                if (!ownLine) out[account.id] = main.key.id
+                if (account.id == mainAccount.id || q == 0 || q > main.value) continue
+                // Its own balance: lines it tops that the main account is never quoted on,
+                // with messages from while the main account was in use too.
+                val own = mine.filter { o ->
+                    o.line != null && o.line !in linesWithMain &&
+                        o.accountNumberTail?.let { account.answersTo(it) } == true &&
+                        tops[o.line]?.let { account.answersTo(it) } == true
+                }
+                val alongside = own.any { it.atMillis in mainFrom..mainUntil }
+                if (!alongside) out[account.id] = mainAccount.id
             }
         }
         return out

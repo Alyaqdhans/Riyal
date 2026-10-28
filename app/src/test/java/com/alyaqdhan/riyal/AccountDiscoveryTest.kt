@@ -335,9 +335,10 @@ class AccountDiscoveryTest {
     fun `an account made from a reference is folded back into the real one`() {
         val main = AccountDiscovery.propose(oneLine).single()
         val phantom = main.copy(id = "acc_phantom", last4 = "4410")
+        // Named or not: the bank's messages, by majority, say it was never an account.
         val named = main.copy(id = "acc_named", last4 = "7716", name = "Mum's")
         val folded = AccountDiscovery.foreignAccounts(listOf(main, phantom, named), oneLine)
-        assertEquals(mapOf("acc_phantom" to main.id), folded)
+        assertEquals(mapOf("acc_phantom" to main.id, "acc_named" to main.id), folded)
     }
 
     @Test
@@ -355,9 +356,16 @@ class AccountDiscoveryTest {
         val few = List(2) { seen("0350", 300_000L + it, 10L + it, 1_000, line = 1) }
         val many = oneLine + List(30) { seen("005", 200_000L + it, 20L + it, -100, line = 1) }
         assertEquals(mapOf("acc_stray" to main.id), AccountDiscovery.minorityFolds(listOf(main, stray), many + few))
-        // A rarely used account with a balance line of its own stays.
-        val ownLine = List(3) { seen("0350", 50_000L - it, 40L + it, -10, line = 9) }
+        // A rarely used account with a balance line of its own, in use alongside, stays.
+        val ownLine = List(3) { seen("0350", 50_000L - it, 25L + it, -10, line = 9) }
         assertTrue(AccountDiscovery.minorityFolds(listOf(main, stray), many + ownLine).isEmpty())
+        // Many transfers to someone's "0350", on the main account's balance line, fold.
+        val transfers = List(12) { seen("0350", 210_000L + it, 21L + it, -500, line = 1) }
+        assertEquals(mapOf("acc_stray" to main.id), AccountDiscovery.minorityFolds(listOf(main, stray), many + transfers))
+        // A line of its own, but all before the main account's first message: the same
+        // account under an older number.
+        val older = List(3) { seen("0350", 50_000L - it, -200L + it, -10, line = 9) }
+        assertEquals(mapOf("acc_stray" to main.id), AccountDiscovery.minorityFolds(listOf(main, stray), many + older))
     }
 
     @Test
@@ -386,7 +394,9 @@ class AccountDiscoveryTest {
         val phantom = main.copy(id = "acc_phantom", last4 = "0350", name = "Savings", openingAtMillis = base - hours(100))
         assertEquals(mapOf("acc_phantom" to main.id), AccountDiscovery.foreignAccounts(listOf(main, phantom), withHead))
         // A number some message does end with is an account of its own.
-        val quoted = withHead + seen("0350", 50_000, 7, -1_000, line = 2)
+        // A number some message does end with, with a balance of its own while the main
+        // account is in use, is an account of its own.
+        val quoted = withHead + seen("0350", 50_000, 3, -1_000, line = 2)
         assertTrue(AccountDiscovery.foreignAccounts(listOf(main, phantom), quoted).isEmpty())
     }
 

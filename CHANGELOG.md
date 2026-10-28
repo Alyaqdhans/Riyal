@@ -59,9 +59,11 @@ is attached there.
   was sent: Bank Nizwa sends "001 ###### 00210" so the screen shows "00210 ###### 001".
   Riyal now runs each masked number through the same Unicode rules, invisible direction
   marks included, and takes the account from the end you see.
-- **The majority decides.** Within one bank, an account only a few odd messages quote -
-  under a tenth of the bank's main account, with no balance of its own - is folded into
-  the main account.
+- **The majority decides.** Within one bank, the account most messages name is the main
+  one. Any other is folded into it - named or not - unless it shows a balance of its own,
+  never shared with the main account, over the same months: the other party's number on
+  transfers, a refund repeating the branch and an old numbering of the same account all
+  fold.
 - **Refunds no longer make an account.** Bank Nizwa's refunds write the account as
   "00210 ###### 00210", the branch twice and the account's digits nowhere, so every
   refund said "0210" - and enough of them made it an account. A masked number whose end

@@ -109,8 +109,8 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
    algorithm, marks included) before anything else - Bank Nizwa sends "001 ###### 00210"
    to show "00210 ###### 001". A number whose end repeats its start (refunds:
    "00210 ###### 00210") names no account, and within one bank an account quoted by under
-   a tenth of the main account's messages, with no balance line of its own, folds into it
-   (`minorityFolds`). The account is always the end of a masked number; the digits
+   the main account folds into it unless it tops a balance line the main account never
+   appears on, over the same months (`minorityFolds`). The account is always the end of a masked number; the digits
    before the mask (`accountHead`, "00210" of "00210 ###### 001") are the branch, and an
    account made from them folds into the one the end names.
 6. Records are converted into the account's currency when the bank charged another, and
