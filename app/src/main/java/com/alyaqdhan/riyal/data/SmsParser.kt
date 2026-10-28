@@ -568,7 +568,7 @@ class SmsParser(
          * is out of date and the inbox must be read again. Forgetting to bump it after a
          * parser fix means the fix only reaches messages that arrive afterwards.
          */
-        const val VERSION = 4
+        const val VERSION = 5
 
         const val NUM = """\d{1,3}(?:,\d{3})+(?:\.\d{1,3})?|\d+(?:\.\d{1,3})?"""
 
@@ -620,14 +620,18 @@ class SmsParser(
          * trailing letters and the captured token simply stops at the first character
          * that cannot belong to an account number.
          */
+        /** Digits, a run of mask, more digits, with a space allowed around the mask. */
+        private const val MASKED_SPACED = "\\d*\\s?[Xx*#\\u2022]{2,}\\s?\\d{2,}"
+
         val accountTailPattern = Regex(
             "(?i)(?:\\ba/c|\\bacc(?:t|ount)?\\b|\\bcard\\b|حساب\\p{L}*)" +
                 "[\\s:]*" +
                 "(?:(?:no\\.?|number|#|ending(?:\\s+in)?|رقم|المنتهية?)\\s*(?:ب|في|in)?[\\s:]*)?" +
-                // "#" masks too: Bank Nizwa writes "00210######001". Left out, the token
-                // stopped at the first "#" and the account read as "0210", which is a
-                // branch, not an account.
-                "([0-9Xx*#\\u2022.\\u2026-]{3,32})"
+                // "#" masks too, and the mask can stand apart from the digits: Bank Nizwa
+                // writes "00210 ###### 001". Read as one token up to the first space or
+                // "#", that account was "0210" - the branch, not the account - and became
+                // an account of its own beside the real one.
+                "($MASKED_SPACED|[0-9Xx*#\\u2022.\\u2026-]{3,32})"
         )
 
         /** What a bank writes in place of the digits it hides. */
@@ -648,7 +652,7 @@ class SmsParser(
      */
     private val SELF_TRANSFER = Regex(
         "(?i)(?:debited|خصم).{0,80}?(?:credited to (?:your )?a/?c|إلى حساب\\p{L}*)" +
-            "[\\s:.]*(?:no\\.?|number|#|رقم)?[\\s:.]*([0-9Xx*#\\u2022.-]{3,32})",
+            "[\\s:.]*(?:no\\.?|number|#|رقم)?[\\s:.]*($MASKED_SPACED|[0-9Xx*#\\u2022.-]{3,32})",
         RegexOption.DOT_MATCHES_ALL,
     )
 

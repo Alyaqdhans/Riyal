@@ -237,19 +237,33 @@ object AccountDiscovery {
      */
     fun foreignAccounts(accounts: List<Account>, observations: List<Observation>): Map<String, String> {
         val tops = lineTails(observations)
+        val lines = lineAccounts(accounts, observations)
         val out = HashMap<String, String>()
         for (account in accounts) {
             val tail = account.last4 ?: continue
             if (account.name.isNotBlank()) continue
-            val quoting = observations.filter {
-                it.accountNumberTail == tail &&
-                    account.senderIds.any { s -> s.trim().lowercase() == it.sender.trim().lowercase() }
+            val senders = account.senderIds.mapTo(HashSet()) { it.trim().lowercase() }
+            val mine = observations.filter { it.sender.trim().lowercase() in senders }
+            val quoting = mine.filter { it.accountNumberTail == tail }
+            val owner = if (quoting.isEmpty()) {
+                // Nothing quotes its number any more: an earlier reading took it from a
+                // message that is now read better ("00210 ###### 001" was "0210"). The
+                // message the account was opened from - the one whose balance it started
+                // with - says which account that really was.
+                if (account.needsBalance) continue
+                val founding = mine.firstOrNull {
+                    it.atMillis + 1 == account.openingAtMillis && it.balanceMinor == account.openingBalanceMinor
+                } ?: continue
+                founding.accountNumberTail?.let { ownerOf(accounts, founding.sender, it) }
+                    ?: founding.line?.let { lines[it] }
+                    ?: continue
+            } else {
+                if (quoting.any { it.line == null }) continue
+                val owners = quoting.map { o ->
+                    tops[o.line]?.takeIf { it != tail }?.let { ownerOf(accounts, o.sender, it) }
+                }
+                owners.distinct().singleOrNull() ?: continue
             }
-            if (quoting.isEmpty() || quoting.any { it.line == null }) continue
-            val owners = quoting.map { o ->
-                tops[o.line]?.takeIf { it != tail }?.let { ownerOf(accounts, o.sender, it) }
-            }
-            val owner = owners.distinct().singleOrNull() ?: continue
             if (owner != account.id) out[account.id] = owner
         }
         return out

@@ -66,6 +66,18 @@ class BankNizwaFormatTest {
     }
 
     @Test
+    fun `a mask standing apart from the digits still reads as the last digits`() {
+        // The real messages space the mask out. Read up to the first space, the account
+        // was "0350", which is the branch.
+        val r = parsed(
+            "تم سحب 6.000 ر.ع من حساب رقم 00350 ###### 005 الى SALI####AHMD. " +
+                "الرصيد المتوفر هو 304.420 ر.ع"
+        )
+        assertEquals("005", r.accountTail)
+        assertEquals("1234", parsed("Withdrawal of RO 1.000 from a/c XXXX 1234 at X").accountTail)
+    }
+
+    @Test
     fun `of two accounts in one message, the one written as yours is the one it is about`() {
         val r = parsed(
             "تم خصم 10.000 ر.ع للتحويل إلى حساب رقم 0123456784410 من حسابك رقم 00350######005 " +

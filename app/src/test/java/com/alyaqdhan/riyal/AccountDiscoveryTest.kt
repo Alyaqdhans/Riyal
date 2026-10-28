@@ -341,6 +341,22 @@ class AccountDiscoveryTest {
     }
 
     @Test
+    fun `an account read from a number no message quotes any more goes back to the real one`() {
+        // An earlier reading made "0350" out of "00350 ###### 005". Read properly, the
+        // message it was opened from belongs to 005, and nothing quotes 0350 at all.
+        val main = AccountDiscovery.propose(oneLine).single()
+        val founding = oneLine[1]
+        val misread = main.copy(
+            id = "acc_misread", last4 = "0350",
+            openingBalanceMinor = founding.balanceMinor!!, openingAtMillis = founding.atMillis + 1,
+        )
+        assertEquals(mapOf("acc_misread" to main.id), AccountDiscovery.foreignAccounts(listOf(main, misread), oneLine))
+        // An account with no such message, or one the user named, is left alone.
+        val other = misread.copy(id = "acc_other", openingAtMillis = base - hours(100))
+        assertTrue(AccountDiscovery.foreignAccounts(listOf(main, other), oneLine).isEmpty())
+    }
+
+    @Test
     fun `digits folded into an account route to it from then on`() {
         val account = account("a", "005", sender = "BANK NIZWA").copy(aliases = setOf("4410"))
         assertEquals("a", AccountDiscovery.routeTo(listOf(account, account("b", "0038", "BANK NIZWA")), "BANK NIZWA", "4410"))
