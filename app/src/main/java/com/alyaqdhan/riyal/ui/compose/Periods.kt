@@ -115,6 +115,16 @@ data class TimeSlice(
     }
 }
 
+/** The days a slice covers, first to last: "1 Oct to 31 Oct 2026". */
+@Composable
+fun TimeSlice.span(): String {
+    val zone = ZoneId.systemDefault()
+    val first = Instant.ofEpochMilli(start).atZone(zone).toLocalDate()
+    val last = Instant.ofEpochMilli(endExclusive - 1).atZone(zone).toLocalDate()
+    val firstFmt = Dates.pattern(if (first.year == last.year) "d MMM" else "d MMM uuuu")
+    return stringResource(R.string.period_range, firstFmt.format(first), Dates.pattern("d MMM uuuu").format(last))
+}
+
 @Composable
 fun TimeSlice.title(): String = when {
     labelRes != null -> stringResource(labelRes, *labelArgs.toTypedArray())

@@ -57,6 +57,9 @@ import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CurrencyPickerSheet
 import com.alyaqdhan.riyal.ui.compose.ExchangeRatesSheet
 import com.alyaqdhan.riyal.ui.compose.ScanBar
+import java.time.LocalDate
+import com.alyaqdhan.riyal.ui.compose.PresetSheet
+import com.alyaqdhan.riyal.ui.compose.Preset
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.appVersion
 import com.alyaqdhan.riyal.ui.compose.counted
@@ -364,22 +367,32 @@ fun SettingsScreen(
             )
         }
         SettingsDialog.RANGE -> {
+            val since = Dates.pattern("d MMM uuuu")
             val options = listOf(
-                1 to stringResource(R.string.set_range_one_month),
-                3 to stringResource(R.string.set_range_months, 3),
-                6 to stringResource(R.string.set_range_months, 6),
-                12 to stringResource(R.string.set_range_one_year),
-                0 to stringResource(R.string.set_range_everything),
+                Triple(1, R.drawable.ic_sym_calendar_today, stringResource(R.string.set_range_one_month)),
+                Triple(3, R.drawable.ic_sym_date_range, stringResource(R.string.set_range_months, 3)),
+                Triple(6, R.drawable.ic_sym_date_range, stringResource(R.string.set_range_months, 6)),
+                Triple(12, R.drawable.ic_sym_event, stringResource(R.string.set_range_one_year)),
+                Triple(0, R.drawable.ic_sym_all_inclusive, stringResource(R.string.set_range_everything)),
             )
-            ChoiceDialog(
+            PresetSheet(
                 title = stringResource(R.string.set_how_far_back),
-                options = options,
-                selected = rangeMonths,
-                onPick = { months ->
-                    dialog = SettingsDialog.NONE
-                    rangeMonths = months
-                    prefs.scanRangeMonths = months
-                    note(R.string.log_note_scan_range, options.first { it.first == months }.second)
+                presets = options.map { (months, icon, label) ->
+                    Preset(
+                        icon = icon,
+                        title = label.replaceFirstChar { it.titlecase() },
+                        detail = if (months == 0) {
+                            stringResource(R.string.range_everything_detail)
+                        } else {
+                            stringResource(R.string.range_since, since.format(LocalDate.now().minusMonths(months.toLong())))
+                        },
+                        selected = months == rangeMonths,
+                    ) {
+                        dialog = SettingsDialog.NONE
+                        rangeMonths = months
+                        prefs.scanRangeMonths = months
+                        note(R.string.log_note_scan_range, label)
+                    }
                 },
                 onDismiss = { dialog = SettingsDialog.NONE },
             )

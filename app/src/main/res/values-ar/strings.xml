@@ -298,6 +298,8 @@
 
 
     <string name="home_empty_title">لا شيء مُسجَّل بعد</string>
+    <string name="home_period_empty">لا شيء في %1$s</string>
+    <string name="home_period_empty_hint">اختر تواريخ أخرى في الأعلى لعرض المزيد.</string>
     <string name="home_empty_with_permission">الإعدادات › فحص الآن يقرأ رسائلك، ويشرح كل خطوة يقوم بها.</string>
     <string name="home_empty_without_permission">اسمح بقراءة الرسائل، ثم افحص متى شئت.</string>
 
@@ -351,6 +353,10 @@
     <string name="period_all_time">منذ البداية</string>
     <string name="period_custom">مدة مخصصة…</string>
     <string name="period_range">من %1$s إلى %2$s</string>
+    <string name="period_custom_detail">اختر أول يوم وآخر يوم</string>
+    <string name="range_since">منذ %1$s</string>
+    <string name="range_everything_detail">كل رسالة على هذا الهاتف</string>
+    <string name="history_from_now_detail">ما يصل من اليوم فقط</string>
 
     <string name="cat_detail_in_period">%1$s في %2$s</string>
     <string name="cat_detail_where">أين ذهبت</string>

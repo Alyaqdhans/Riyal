@@ -254,6 +254,8 @@
 
 
     <string name="home_empty_title">Nothing recorded yet</string>
+    <string name="home_period_empty">Nothing in %1$s</string>
+    <string name="home_period_empty_hint">Pick other dates above to see more.</string>
     <string name="home_empty_with_permission">Settings › Scan now reads your inbox, narrating everything it does.</string>
     <string name="home_empty_without_permission">Allow SMS reading, then scan whenever you choose.</string>
 
@@ -307,6 +309,10 @@
     <string name="period_all_time">All time</string>
     <string name="period_custom">Custom range…</string>
     <string name="period_range">%1$s to %2$s</string>
+    <string name="period_custom_detail">Pick the first and last day</string>
+    <string name="range_since">Since %1$s</string>
+    <string name="range_everything_detail">Every message on this phone</string>
+    <string name="history_from_now_detail">Only what arrives from today</string>
 
     <string name="cat_detail_in_period">%1$s in %2$s</string>
     <string name="cat_detail_where">Where it went</string>

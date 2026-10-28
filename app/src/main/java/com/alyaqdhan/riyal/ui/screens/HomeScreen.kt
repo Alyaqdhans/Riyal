@@ -2,6 +2,13 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import com.alyaqdhan.riyal.ui.compose.title
+import androidx.compose.foundation.layout.size
+import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
+import com.alyaqdhan.riyal.ui.theme.successContainer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.shape.CircleShape
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -108,8 +115,9 @@ fun HomeScreen(
         Stats.breakdownIn(txns, slice.start, slice.endExclusive, currency).take(4)
     }
     val pending = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_PENDING } }
-    val recent = remember(txns, archivedIds) {
-        txns.asSequence().filter { it.id !in archivedIds }.take(8).toList()
+    // The newest records of the period chosen above, so the dates switch the list too.
+    val recent = remember(txns, archivedIds, slice) {
+        txns.asSequence().filter { it.id !in archivedIds && slice.contains(it.atMillis) }.take(8).toList()
             .groupBy { localDateOf(it.atMillis) }
     }
     var picker by remember { mutableStateOf<Txn?>(null) }
@@ -213,14 +221,23 @@ fun HomeScreen(
                 }
                 if (recent.isEmpty()) {
                     item(key = "empty") {
-                        EmptyState(
-                            title = stringResource(R.string.home_empty_title),
-                            subtitle = stringResource(
-                                if (hasPerm) R.string.home_empty_with_permission
-                                else R.string.home_empty_without_permission
-                            ),
-                            icon = R.drawable.ic_nav_records,
-                        )
+                        if (txns.isEmpty()) {
+                            EmptyState(
+                                title = stringResource(R.string.home_empty_title),
+                                subtitle = stringResource(
+                                    if (hasPerm) R.string.home_empty_with_permission
+                                    else R.string.home_empty_without_permission
+                                ),
+                                icon = R.drawable.ic_nav_records,
+                            )
+                        } else {
+                            // Records exist, just none in these dates.
+                            EmptyState(
+                                title = stringResource(R.string.home_period_empty, slice.title()),
+                                subtitle = stringResource(R.string.home_period_empty_hint),
+                                icon = R.drawable.ic_sym_calendar_month,
+                            )
+                        }
                     }
                 } else {
                     recent.forEach { (date, dayTxns) ->
@@ -290,64 +307,100 @@ private fun SectionHeader(title: String, action: String? = null, onAction: () ->
     }
 }
 
-/** Expense, income and what is left, side by side, for the period above them. */
+/**
+ * What the period came to: what is left, large, with what went out and what came in as
+ * two pills under it. Net is the one figure people open a money app to read, so it is
+ * the one shown big; the two that make it up stay a glance away.
+ */
 @Composable
 private fun SummaryCard(totals: Stats.MonthTotals, currency: String) {
     Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        Row(Modifier.padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            SummaryCell(
-                stringResource(R.string.label_expense), totals.spent, currency,
-                MaterialTheme.colorScheme.error, MoneySign.NONE, Modifier.weight(1f),
-            )
-            VerticalDivider(Modifier.height(36.dp))
-            SummaryCell(
-                stringResource(R.string.label_income), totals.received, currency,
-                successColor(), MoneySign.NONE, Modifier.weight(1f),
-            )
-            VerticalDivider(Modifier.height(36.dp))
-            SummaryCell(
-                stringResource(R.string.home_net), totals.net, currency,
-                if (totals.net < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                MoneySign.NEGATIVE, Modifier.weight(1f),
-            )
-        }
-        if (totals.otherCurrencyCount > 0) {
+        Column(Modifier.padding(20.dp)) {
             Text(
-                stringResource(
-                    R.string.home_other_currencies,
-                    counted(R.plurals.count_transactions, totals.otherCurrencyCount),
-                ),
-                style = MaterialTheme.typography.labelSmall,
+                stringResource(R.string.home_net),
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
             )
+            MoneyText(
+                totals.net,
+                currency,
+                sign = MoneySign.NEGATIVE,
+                style = MaterialTheme.typography.displaySmall,
+                color = if (totals.net < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 20.sp,
+                    maxFontSize = MaterialTheme.typography.displaySmall.fontSize,
+                ),
+            )
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TotalPill(
+                    R.drawable.ic_sym_arrow_up,
+                    stringResource(R.string.label_expense),
+                    totals.spent,
+                    currency,
+                    MaterialTheme.colorScheme.errorContainer,
+                    MaterialTheme.colorScheme.onErrorContainer,
+                    Modifier.weight(1f),
+                )
+                TotalPill(
+                    R.drawable.ic_sym_arrow_down,
+                    stringResource(R.string.label_income),
+                    totals.received,
+                    currency,
+                    successContainer(),
+                    onSuccessContainer(),
+                    Modifier.weight(1f),
+                )
+            }
+            if (totals.otherCurrencyCount > 0) {
+                Text(
+                    stringResource(
+                        R.string.home_other_currencies,
+                        counted(R.plurals.count_transactions, totals.otherCurrencyCount),
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
         }
     }
 }
 
+/** One side of the net: an arrow, its name and its total, in a pill of its own colour. */
 @Composable
-private fun SummaryCell(
+private fun TotalPill(
+    @DrawableRes icon: Int,
     label: String,
     minor: Long,
     currency: String,
-    color: Color,
-    sign: MoneySign,
+    container: Color,
+    content: Color,
     modifier: Modifier,
 ) {
-    Column(modifier.padding(horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        MoneyText(
-            minor,
-            currency,
-            sign = sign,
-            style = MaterialTheme.typography.titleMedium,
-            color = color,
-            // Large totals shrink to fit their third of the card rather than wrapping.
-            autoSize = TextAutoSize.StepBased(
-                minFontSize = 11.sp,
-                maxFontSize = MaterialTheme.typography.titleMedium.fontSize,
-            ),
-        )
+    Surface(shape = CircleShape, color = container, contentColor = content, modifier = modifier) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(16.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+            MoneyText(
+                minor,
+                currency,
+                sign = MoneySign.NONE,
+                style = MaterialTheme.typography.labelLarge,
+                color = content,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f),
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 9.sp,
+                    maxFontSize = MaterialTheme.typography.labelLarge.fontSize,
+                ),
+            )
+        }
     }
 }
 
