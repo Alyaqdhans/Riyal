@@ -32,6 +32,17 @@ abstract class ScreenFragment(@LayoutRes layout: Int) : Fragment(layout) {
 
     protected val vm: MainViewModel get() = requireContext().riyalViewModel
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Tabs slide sideways into one another, in the toolbar's order (TabSlide).
+        TabSlide().let {
+            enterTransition = it
+            exitTransition = it
+            reenterTransition = it
+            returnTransition = it
+        }
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         view.findViewById<ComposeView>(R.id.compose_view).apply {

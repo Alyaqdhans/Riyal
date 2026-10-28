@@ -49,6 +49,7 @@ import com.alyaqdhan.riyal.ui.Words
 import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
 import com.alyaqdhan.riyal.ui.compose.UpdateDialogHost
 import com.alyaqdhan.riyal.ui.nav.OnboardingActivity
+import com.alyaqdhan.riyal.ui.nav.TabMotion
 import com.alyaqdhan.riyal.ui.theme.RiyalTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -86,7 +87,16 @@ class MainActivity : AppCompatActivity() {
 
         val navHost = supportFragmentManager.findFragmentById(R.id.nav_host) as NavHostFragment
         val navController = navHost.navController
+        // Called as a switch begins and before its fragments move, so this is where the
+        // slide learns which way to go. The first call is the tab the screen opens on, which
+        // does not slide in from anywhere.
+        var lastTab: Int? = null
         navController.addOnDestinationChangedListener { _, destination, _ ->
+            val from = Tab.entries.indexOfFirst { it.destination == lastTab }
+            val to = Tab.entries.indexOfFirst { it.destination == destination.id }
+            TabMotion.armed = from >= 0 && to >= 0 && from != to
+            TabMotion.forward = to > from
+            lastTab = destination.id
             currentDestination.value = destination.id
         }
         vm.autoScanOnLaunch(fresh = savedInstanceState == null)
