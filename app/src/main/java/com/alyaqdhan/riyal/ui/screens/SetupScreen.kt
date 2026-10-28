@@ -2,6 +2,19 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.Path
+import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
@@ -610,29 +623,41 @@ private fun Correction(
     }
 }
 
+/**
+ * Done: a tick draws itself, what was learned is said once, and the app opens by itself
+ * two seconds on. A button here only asked for a tap that meant nothing.
+ */
 @Composable
 private fun DoneStep(vm: MainViewModel, onFinished: () -> Unit) {
     val accounts by vm.accounts.collectAsState()
     val txns by vm.txns.collectAsState()
     val taught by vm.taughtCount.collectAsState()
+    val ring = remember { Animatable(0f) }
+    val tick = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        launch {
+            ring.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow))
+        }
+        launch {
+            delay(220)
+            tick.animateTo(1f, tween(durationMillis = 420, easing = FastOutSlowInEasing))
+        }
+        delay(2_000)
+        onFinished()
+    }
     Column(
         Modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(
-            painterResource(R.drawable.ic_sym_check_circle),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(64.dp),
-        )
+        DoneMark(ring = { ring.value }, tick = { tick.value }, modifier = Modifier.size(96.dp))
         Text(stringResource(R.string.setup_done_title), style = MaterialTheme.typography.headlineSmall)
         Text(
             listOf(
                 counted(R.plurals.count_accounts, accounts.count { !it.archived }),
                 counted(R.plurals.count_records, txns.size),
                 counted(R.plurals.setup_kinds_taught, taught),
-            ).joinToString(" Â· "),
+            ).joinToString(" · "),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -643,9 +668,31 @@ private fun DoneStep(vm: MainViewModel, onFinished: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(8.dp))
-        Button(onClick = onFinished, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.setup_start))
+    }
+}
+
+/** A filled circle that springs in, and a tick drawn along its stroke over it. */
+@Composable
+private fun DoneMark(ring: () -> Float, tick: () -> Float, modifier: Modifier) {
+    val fill = MaterialTheme.colorScheme.primary
+    val ink = MaterialTheme.colorScheme.onPrimary
+    val measure = remember { PathMeasure() }
+    val part = remember { Path() }
+    Canvas(modifier) {
+        val r = size.minDimension / 2 * ring().coerceAtLeast(0f)
+        drawCircle(fill, radius = r)
+        val t = tick()
+        if (t <= 0f) return@Canvas
+        val w = size.width
+        val h = size.height
+        val path = Path().apply {
+            moveTo(w * 0.29f, h * 0.52f)
+            lineTo(w * 0.44f, h * 0.67f)
+            lineTo(w * 0.72f, h * 0.37f)
         }
+        measure.setPath(path, false)
+        part.reset()
+        measure.getSegment(0f, measure.length * t, part, true)
+        drawPath(part, ink, style = Stroke(width = w * 0.075f, cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
 }

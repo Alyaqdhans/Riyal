@@ -139,7 +139,6 @@
     <string name="setup_you_said">إجابتك: %1$s</string>
     <string name="setup_done_title">ريال يعرف بنوكك الآن</string>
     <string name="setup_done_body">الرسائل المكتوبة مثل التي أجبت عنها تُقرأ بطريقتك من الآن. يمكنك إعادة هذا من الإعدادات.</string>
-    <string name="setup_start">ابدأ استخدام ريال</string>
     <string name="review_taught">ستُقرأ الرسائل المشابهة بهذه الطريقة من الآن</string>
     <string name="acct_kind">النوع</string>
     <string name="acct_kind_current">جاري</string>

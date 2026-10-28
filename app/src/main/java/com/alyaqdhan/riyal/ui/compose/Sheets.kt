@@ -6,6 +6,9 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.DropdownMenuPopup
+import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.semantics
@@ -684,6 +687,8 @@ fun ManualTxnDialog(
                             options = live,
                             display = { it.displayName },
                             onSelect = { fromAccount = it },
+                            selected = fromAccount,
+                            icon = { iconFor(it.kind) },
                         )
 
                         TxnType.INCOME -> DropdownField(
@@ -692,6 +697,8 @@ fun ManualTxnDialog(
                             options = live,
                             display = { it.displayName },
                             onSelect = { toAccount = it },
+                            selected = toAccount,
+                            icon = { iconFor(it.kind) },
                         )
 
                         TxnType.TRANSFER -> {
@@ -888,6 +895,41 @@ fun CategoryRows(
     }
 }
 
+/**
+ * One choice in a menu, as Material 3 Expressive draws it: its icon, its name, the shape
+ * its place in the list gives it, and the current one filled and ticked.
+ */
+@Composable
+fun MenuChoice(
+    text: String,
+    selected: Boolean,
+    index: Int,
+    count: Int,
+    @DrawableRes icon: Int?,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        selected = selected,
+        onClick = onClick,
+        text = { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        shapes = MenuDefaults.itemShape(index, count),
+        leadingIcon = icon?.let { res -> { Icon(painterResource(res), contentDescription = null, modifier = Modifier.size(20.dp)) } },
+        trailingIcon = if (selected) {
+            { Icon(painterResource(R.drawable.ic_sym_check), contentDescription = null, modifier = Modifier.size(20.dp)) }
+        } else {
+            null
+        },
+    )
+}
+
+/** A menu of [MenuChoice]s, grouped, opening from whatever it sits in. */
+@Composable
+fun ChoiceMenu(expanded: Boolean, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    DropdownMenuPopup(expanded = expanded, onDismissRequest = onDismiss) {
+        DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) { content() }
+    }
+}
+
 @Composable
 fun <T> DropdownField(
     label: String,
@@ -895,6 +937,8 @@ fun <T> DropdownField(
     options: List<T>,
     display: (T) -> String,
     onSelect: (T) -> Unit,
+    selected: T? = null,
+    icon: ((T) -> Int)? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
@@ -904,20 +948,28 @@ fun <T> DropdownField(
             readOnly = true,
             singleLine = true,
             label = { Text(label) },
+            leadingIcon = if (icon != null && selected != null) {
+                { Icon(painterResource(icon(selected)), contentDescription = null) }
+            } else {
+                null
+            },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(display(option)) },
-                    onClick = {
-                        onSelect(option)
-                        expanded = false
-                    },
-                )
+            options.forEachIndexed { index, option ->
+                MenuChoice(
+                    text = display(option),
+                    selected = option == selected,
+                    index = index,
+                    count = options.size,
+                    icon = icon?.invoke(option),
+                ) {
+                    onSelect(option)
+                    expanded = false
+                }
             }
         }
     }

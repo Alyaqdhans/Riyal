@@ -59,7 +59,11 @@ is attached there.
   "001 ###### 00210" so the phone shows "00210 ###### 001". Read in the order it was
   sent, that account was "0210", beside the "001" its unspaced messages give.
 - Merging two accounts keeps the balance quoted last, instead of adding every record
-  on top of an older or missing one. An account an earlier build made from
+  on top of an older or missing one.
+- An account made from where a masked number starts is put right on every scan, not
+  only on a full read: folded into the account its number ends with, or, when it is the
+  bank's only one, renumbered to that end. A bank's sender is one sender however it is
+  spelled ("BANK NIZWA", "BankNizwa"). An account an earlier build made from
   where the number starts ("0210") is folded into the one its end names on the next
   full read, even if it was given a name since.
 - Bank Nizwa purchases read the shop, not the date after it.
@@ -136,8 +140,13 @@ is attached there.
   button (export is in Settings). The filter sheet shows accounts with their icons and
   categories in the same level rows as everywhere else.
 - Analysis opens on its net, large, with Expense and Income under it in Home's colours,
-  each with a coloured pill comparing it to the period before. Its switches are
-  Material 3 Expressive's connected buttons.
+  each figure tinted red or green on the same card colour as net, with a coloured pill
+  comparing it to the period before. Its switches are Material 3 Expressive's connected
+  buttons.
+- Menus - sorting, accounts in the Add form, "Same account as…", bank names - are
+  Material 3 Expressive's menus, each choice with its icon and the current one ticked.
+- Setup ends on a tick that draws itself, and the app opens two seconds later; there is
+  no button to press.
 - An account a merge left under the digits its messages never end with (merging "001"
   into "0210") takes the digits they do end with on the next full read.
 - **No more motion for its own sake.** Cards no longer pop in, buttons no longer

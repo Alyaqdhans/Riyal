@@ -2,6 +2,8 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import com.alyaqdhan.riyal.ui.compose.MenuChoice
+import com.alyaqdhan.riyal.ui.compose.ChoiceMenu
 import androidx.compose.foundation.layout.Arrangement
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
@@ -470,15 +472,18 @@ internal fun AccountEditorDialog(
                                 modifier = Modifier.padding(start = 8.dp),
                             )
                         }
-                        DropdownMenu(expanded = pickingMerge, onDismissRequest = { pickingMerge = false }) {
-                            mergeTargets.forEach { target ->
-                                DropdownMenuItem(
-                                    text = { Text(target.displayName) },
-                                    onClick = {
-                                        pickingMerge = false
-                                        merging = target
-                                    },
-                                )
+                        ChoiceMenu(expanded = pickingMerge, onDismiss = { pickingMerge = false }) {
+                            mergeTargets.forEachIndexed { index, target ->
+                                MenuChoice(
+                                    text = target.displayName,
+                                    selected = false,
+                                    index = index,
+                                    count = mergeTargets.size,
+                                    icon = iconFor(target.kind),
+                                ) {
+                                    pickingMerge = false
+                                    merging = target
+                                }
                             }
                         }
                     }
@@ -623,14 +628,17 @@ private fun BankField(value: String, onValueChange: (String) -> Unit) {
             expanded = expanded && suggestions.isNotEmpty(),
             onDismissRequest = { expanded = false },
         ) {
-            suggestions.forEach { bank ->
-                DropdownMenuItem(
-                    text = { Text(Account.bankLabel(bank)) },
-                    onClick = {
-                        onValueChange(bank)
-                        expanded = false
-                    },
-                )
+            suggestions.forEachIndexed { index, bank ->
+                MenuChoice(
+                    text = Account.bankLabel(bank),
+                    selected = bank == value,
+                    index = index,
+                    count = suggestions.size,
+                    icon = R.drawable.ic_sym_account_balance,
+                ) {
+                    onValueChange(bank)
+                    expanded = false
+                }
             }
         }
     }

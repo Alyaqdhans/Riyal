@@ -139,7 +139,6 @@
     <string name="setup_you_said">You said: %1$s</string>
     <string name="setup_done_title">Riyal knows your banks</string>
     <string name="setup_done_body">Messages written like the ones you answered are read your way from now on. You can run this again from Settings.</string>
-    <string name="setup_start">Start using Riyal</string>
     <string name="review_taught">Messages like this will be read that way from now on</string>
     <string name="acct_kind">Type</string>
     <string name="acct_kind_current">Current</string>

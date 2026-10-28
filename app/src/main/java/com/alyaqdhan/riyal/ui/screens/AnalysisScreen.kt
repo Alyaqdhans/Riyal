@@ -782,15 +782,23 @@ private fun NetCard(net: Long, previous: Long, currency: String) {
     }
 }
 
-/** What went out, or came in, in Home's colour and arrow for it. */
+/**
+ * What went out, or came in: on the same card as net, with only the figure and its arrow
+ * in the side's colour - red out, green in - and the trend in its pill.
+ */
 @Composable
 private fun KindTile(type: TxnType, amount: Long, previous: Long, currency: String, modifier: Modifier) {
-    val (tone, onTone) = typeTone(type)
-    Surface(shape = RoundedCornerShape(20.dp), color = tone, contentColor = onTone, modifier = modifier) {
+    val ink = if (type == TxnType.EXPENSE) MaterialTheme.colorScheme.error else successColor()
+    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainer, modifier = modifier) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(painterResource(typeIcon(type)), contentDescription = null, modifier = Modifier.size(16.dp))
-                Text(stringResource(typeLabel(type)), style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                Icon(painterResource(typeIcon(type)), contentDescription = null, tint = ink, modifier = Modifier.size(16.dp))
+                Text(
+                    stringResource(typeLabel(type)),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
             }
             MoneyText(
                 amount,
@@ -798,7 +806,7 @@ private fun KindTile(type: TxnType, amount: Long, previous: Long, currency: Stri
                 sign = MoneySign.NONE,
                 roll = true,
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                color = onTone,
+                color = ink,
                 autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = MaterialTheme.typography.titleLarge.fontSize),
             )
             DeltaPill(amount, previous, upIsGood = type == TxnType.INCOME)
