@@ -2,6 +2,8 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -110,8 +112,11 @@ fun SetupScreen(vm: MainViewModel, onFinished: () -> Unit) {
                         stringResource(R.string.setup_step_of, index, 3),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 16.dp),
+                        modifier = Modifier.padding(end = if (step == SetupStep.QUESTIONS) 4.dp else 16.dp),
                     )
+                    if (step == SetupStep.QUESTIONS) {
+                        TextButton(onClick = { vm.finishSetup() }) { Text(stringResource(R.string.setup_finish_later)) }
+                    }
                 },
             )
         },
@@ -126,6 +131,9 @@ fun SetupScreen(vm: MainViewModel, onFinished: () -> Unit) {
         }
     }
 }
+
+/** Room at the end of a step for the buttons floating over it. */
+private val FLOATING_CLEARANCE = 96.dp
 
 @Composable
 private fun ReadingStep(vm: MainViewModel) {
@@ -188,10 +196,10 @@ private fun AccountsStep(vm: MainViewModel) {
         }.sorted().take(16)
     }
 
-    Column(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize()) {
         LazyColumn(
-            Modifier.weight(1f),
-            contentPadding = PaddingValues(bottom = 16.dp),
+            Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = FLOATING_CLEARANCE),
         ) {
             item(key = "intro") {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -284,16 +292,12 @@ private fun AccountsStep(vm: MainViewModel) {
                 }
             }
         }
-        Surface(tonalElevation = 3.dp) {
-            Row(
-                Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                Button(onClick = { vm.confirmSetupAccounts() }) {
-                    Text(stringResource(if (live.isEmpty()) R.string.setup_continue else R.string.setup_accounts_right))
-                }
-            }
-        }
+        ExtendedFloatingActionButton(
+            onClick = { vm.confirmSetupAccounts() },
+            icon = { Icon(painterResource(R.drawable.ic_sym_check), contentDescription = null) },
+            text = { Text(stringResource(if (live.isEmpty()) R.string.setup_continue else R.string.setup_accounts_right)) },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+        )
     }
 
     editing?.let { account ->
@@ -356,12 +360,13 @@ private fun QuestionsStep(vm: MainViewModel) {
     var correcting by remember(q.key, asked) { mutableStateOf(false) }
     BackHandler(enabled = canStepBack) { vm.stepBackSetup() }
 
-    Column(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize()) {
         Column(
             Modifier
-                .weight(1f)
+                .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(16.dp)
+                .padding(bottom = FLOATING_CLEARANCE),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             FlatBar(progress = { progress }, modifier = Modifier.fillMaxWidth())
@@ -495,18 +500,23 @@ private fun QuestionsStep(vm: MainViewModel) {
                 )
             }
         }
-        Surface(tonalElevation = 3.dp) {
+        if (!correcting) {
             Row(
-                Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                Modifier.align(Alignment.BottomEnd).padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                TextButton(onClick = { vm.finishSetup() }) { Text(stringResource(R.string.setup_finish_later)) }
-                Spacer(Modifier.weight(1f))
-                if (!correcting) {
-                    OutlinedButton(onClick = { correcting = true }) { Text(stringResource(R.string.setup_no)) }
-                    Button(onClick = { vm.answerSetup(right = true) }) { Text(stringResource(R.string.setup_yes)) }
-                }
+                ExtendedFloatingActionButton(
+                    onClick = { correcting = true },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    icon = { Icon(painterResource(R.drawable.ic_sym_close), contentDescription = null) },
+                    text = { Text(stringResource(R.string.setup_no)) },
+                )
+                ExtendedFloatingActionButton(
+                    onClick = { vm.answerSetup(right = true) },
+                    icon = { Icon(painterResource(R.drawable.ic_sym_check), contentDescription = null) },
+                    text = { Text(stringResource(R.string.setup_yes)) },
+                )
             }
         }
     }
