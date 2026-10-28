@@ -331,8 +331,8 @@ private fun MerchantCard(
                             R.string.needs_group_line,
                             counted(R.plurals.count_records, group.count),
                             stringResource(
-                                if (group.type == TxnType.INCOME) R.string.label_money_in
-                                else R.string.label_money_out
+                                if (group.type == TxnType.INCOME) R.string.label_income
+                                else R.string.label_expense
                             ),
                         ),
                         style = MaterialTheme.typography.labelSmall,

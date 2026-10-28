@@ -66,11 +66,11 @@ class BankNizwaFormatTest {
     }
 
     @Test
-    fun `a mask standing apart from the digits still reads as the last digits`() {
-        // The real messages space the mask out. Read up to the first space, the account
-        // was "0350", which is the branch.
+    fun `a spaced number reads in the order the phone shows it`() {
+        // Sent as "005 ###### 00350" so that, right to left, the phone shows
+        // "00350 ###### 005". Read in the order it was sent, the account was "0350".
         val r = parsed(
-            "تم سحب 6.000 ر.ع من حساب رقم 00350 ###### 005 الى SALI####AHMD. " +
+            "تم سحب 6.000 ر.ع من حساب رقم 005 ###### 00350 الى SALI####AHMD. " +
                 "الرصيد المتوفر هو 304.420 ر.ع"
         )
         assertEquals("005", r.accountTail)
@@ -80,7 +80,7 @@ class BankNizwaFormatTest {
 
     @Test
     fun `invisible marks and full-width masks still read the end, and a hidden end names nothing`() {
-        listOf("00350‎ ###### ‎005", "⁦00350######005⁩", "00350＃＃＃＃005").forEach { number ->
+        listOf("005‎ ###### ‎00350", "⁦00350######005⁩", "00350＃＃＃＃005").forEach { number ->
             val r = parsed("تم سحب 6.000 ر.ع من حساب رقم $number الى SALI####AHMD. الرصيد المتوفر هو 304.420 ر.ع")
             assertEquals(number, "005", r.accountTail)
         }
@@ -90,7 +90,7 @@ class BankNizwaFormatTest {
 
     @Test
     fun `wider or unbroken spacing around the mask still reads the end`() {
-        listOf("00350  ###### 005", "00350 ###### 005", "00350 ### ### 005", "00350######005").forEach { number ->
+        listOf("005  ###### 00350", "005 ###### 00350", "005 ### ### 00350", "00350######005").forEach { number ->
             val r = parsed("تم سحب 6.000 ر.ع من حساب رقم $number الى SALI####AHMD. الرصيد المتوفر هو 304.420 ر.ع")
             assertEquals(number, "005", r.accountTail)
             assertEquals(number, "00350", r.accountHead)

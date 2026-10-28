@@ -517,7 +517,7 @@ private fun KeywordRuleDialog(
                         modifier = Modifier.weight(1f),
                     ) {
                         Text(
-                            stringResource(R.string.label_money_out),
+                            stringResource(R.string.label_expense),
                             softWrap = false,
                             maxLines = 1,
                         )
@@ -532,7 +532,7 @@ private fun KeywordRuleDialog(
                         modifier = Modifier.weight(1f),
                     ) {
                         Text(
-                            stringResource(R.string.label_money_in),
+                            stringResource(R.string.label_income),
                             softWrap = false,
                             maxLines = 1,
                         )

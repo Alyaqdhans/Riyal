@@ -287,6 +287,7 @@ class SmsParser(
         // of your own accounts. Judged on its first keyword alone this reads as a plain
         // debit, which counts your own transfer as spending.
         val selfTransferTo = SELF_TRANSFER.find(body)?.groupValues?.get(1)
+            ?.let { asDisplayed(it.trim(), readsRightToLeft(body)) }
             ?.takeLastWhile { it.isDigit() }?.takeIf { it.length >= 3 }?.takeLast(4)
         if (selfTransferTo != null) {
             trace += ParseNote(R.string.trace_self_transfer, listOf(selfTransferTo))
@@ -447,14 +448,16 @@ class SmsParser(
         var card: Tail? = null
         var best: Tail? = null
         var bestScore = -1
+        val rtl = readsRightToLeft(body)
         for (m in accountTailPattern.findAll(body)) {
-            val token = m.groupValues[1].trimEnd { !it.isDigit() && !it.isLetter() }
+            val written = m.groupValues[1].trimEnd { !it.isDigit() && !it.isLetter() }
             // "رصيدك في الحساب 12.500" would otherwise read the balance as an account.
-            if (amountLike.matches(token)) continue
-            val digits = token.takeLastWhile { it.isDigit() }
+            if (amountLike.matches(written)) continue
             // "00210######": the end is hidden, and what is left is the branch.
-            val rest = body.substring(m.groups[1]!!.range.first + token.length)
-            if (digits.length == token.length && hiddenEnd.containsMatchIn(rest)) continue
+            val rest = body.substring(m.groups[1]!!.range.first + written.length)
+            if (written.all { it.isDigit() } && hiddenEnd.containsMatchIn(rest)) continue
+            val token = asDisplayed(written, rtl)
+            val digits = token.takeLastWhile { it.isDigit() }
             if (digits.length < 3) continue
             val keyword = m.groupValues[0].trimStart().lowercase()
             // A message that quotes both ("purchase on card *4321 from a/c ...0019")
@@ -476,6 +479,34 @@ class SmsParser(
             }
         }
         return best ?: card
+    }
+
+    /**
+     * Whether the phone lays the message out right to left: its first letter is Arabic,
+     * which is how Android picks a paragraph's direction.
+     */
+    private fun readsRightToLeft(body: String): Boolean {
+        for (c in body) {
+            when (Character.getDirectionality(c)) {
+                Character.DIRECTIONALITY_RIGHT_TO_LEFT, Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC -> return true
+                Character.DIRECTIONALITY_LEFT_TO_RIGHT -> return false
+            }
+        }
+        return false
+    }
+
+    /**
+     * An account number in the order the customer sees it.
+     *
+     * In a right-to-left message, groups of digits separated by spaces are laid out right
+     * to left, one group after another. Bank Nizwa sends "001 ###### 00210" so that the
+     * phone shows "00210 ###### 001", which is the number the customer knows. Read in the
+     * order it was sent, its end was "00210", and that became the account "0210". A number
+     * with no spaces ("00210######001") is one run, shown as sent.
+     */
+    private fun asDisplayed(token: String, rtl: Boolean): String {
+        if (!rtl || token.none { it.isWhitespace() }) return token
+        return token.split(Regex("[\\s\\u00A0]+")).filter { it.isNotEmpty() }.reversed().joinToString(" ")
     }
 
     /** "your a/c", "ur account", "حسابك", "حسابكم": the customer's own account. */
@@ -589,7 +620,7 @@ class SmsParser(
          * is out of date and the inbox must be read again. Forgetting to bump it after a
          * parser fix means the fix only reaches messages that arrive afterwards.
          */
-        const val VERSION = 7
+        const val VERSION = 8
 
         /** A mask straight after the digits, with nothing after it: an account's hidden end. */
         private val hiddenEnd = Regex("^\\s*[Xx*#\\u2022]{2,}(?!\\s*\\d)")

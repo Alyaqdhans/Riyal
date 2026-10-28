@@ -12,7 +12,7 @@ is attached there.
   Android's installer on an update you chose to download. Android still shows its own
   install screen and asks you to confirm.
 - **The first scan after updating reads your whole inbox again.** How messages are read
-  changed (parser version 7), so records are rebuilt. Your categories, rules, accounts
+  changed (parser version 8), so records are rebuilt. Your categories, rules, accounts
   and budgets are kept; nothing is wiped.
 - **What you taught a test build is asked again.** Templates are recognised differently
   now (skeleton version 2), so answers given to an earlier 1.8.0 build no longer apply.
@@ -53,7 +53,13 @@ is attached there.
   is folded back into the real one on the next full read.
 - Accounts masked with "#", with or without spaces ("00210 ###### 001"), read their
   real last digits, however the spaces fall and whatever invisible marks the message
-  carries around them; a number whose end is hidden names no account. An account an earlier build made from
+  carries around them; a number whose end is hidden names no account.
+- **A spaced number reads the way the phone shows it.** In an Arabic message, groups
+  of digits separated by spaces are laid out right to left: Bank Nizwa sends
+  "001 ###### 00210" so the phone shows "00210 ###### 001". Read in the order it was
+  sent, that account was "0210", beside the "001" its unspaced messages give.
+- Merging two accounts keeps the balance quoted last, instead of adding every record
+  on top of an older or missing one. An account an earlier build made from
   where the number starts ("0210") is folded into the one its end names on the next
   full read, even if it was given a name since.
 - Bank Nizwa purchases read the shop, not the date after it.
@@ -119,7 +125,12 @@ is attached there.
 - A record's sheet asks one question about the name's other records - just this one,
   same category, or ask each time - instead of a switch and a button that overlapped.
   An account's "closed" is a plain switch row.
-- Currency signs are drawn as heavy as the figures beside them, and Home's net is bold.
+- Currency signs are drawn as heavy as the text beside them, whatever font the phone
+  uses: the font's strokes and the sign's are measured, and the sign thinned or
+  thickened to match. Home's net is bold.
+- Expense, Income and Transfer are named the same everywhere - the Transactions filter
+  (with Home's arrows and colours), Review, setup, keywords - instead of "Out", "Money
+  out" and the like. The Add form's kinds wrap to two rows on a narrow phone.
 - An account a merge left under the digits its messages never end with (merging "001"
   into "0210") takes the digits they do end with on the next full read.
 - **No more motion for its own sake.** Cards no longer pop in, buttons no longer

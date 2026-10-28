@@ -6,6 +6,7 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.role
@@ -125,6 +126,14 @@ fun typeIcon(type: TxnType): Int = when (type) {
     TxnType.TRANSFER -> R.drawable.ic_sym_swap
 }
 
+/** And Home's colours for it: spending red, income green, a transfer neither. */
+@Composable
+fun typeTone(type: TxnType): Pair<Color, Color> = when (type) {
+    TxnType.EXPENSE -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+    TxnType.INCOME -> successContainer() to onSuccessContainer()
+    TxnType.TRANSFER -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+}
+
 /**
  * One of a few, as Material 3 Expressive's connected button group: the chosen one fills
  * in [tone] and rounds fully, the others stay quiet. Replaces segmented buttons, which
@@ -142,32 +151,53 @@ fun <T> ConnectedChoice(
         MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
     },
 ) {
-    Row(
-        modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-    ) {
-        options.forEachIndexed { index, option ->
-            val (on, onOn) = tone(option)
-            ToggleButton(
-                checked = option == selected,
-                onCheckedChange = { onSelect(option) },
-                modifier = Modifier.weight(1f).semantics { role = Role.RadioButton },
-                shapes = when (index) {
-                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                },
-                colors = ToggleButtonDefaults.toggleButtonColors(
-                    checkedContainerColor = on,
-                    checkedContentColor = onOn,
-                ),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-            ) {
-                if (icon != null) {
-                    Icon(painterResource(icon(option)), contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
+    val labels = options.map { label(it) }
+    val measurer = rememberTextMeasurer()
+    val textStyle = MaterialTheme.typography.labelLarge
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        // One row when every label fits whole; otherwise two to a row, so a narrow phone
+        // gets "Expense | Income" and "Transfer" under them rather than three squeezed
+        // to ellipses.
+        val density = LocalDensity.current
+        val needed = with(density) {
+            labels.sumOf { measurer.measure(it, textStyle).size.width } +
+                options.size * (16.dp + if (icon != null) 24.dp else 0.dp).roundToPx() +
+                (options.size - 1) * ButtonGroupDefaults.ConnectedSpaceBetween.roundToPx()
+        }
+        val perRow = if (needed <= constraints.maxWidth) options.size else 2
+        Column(verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
+            options.indices.chunked(perRow).forEach { row ->
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                ) {
+                    row.forEachIndexed { at, index ->
+                        val option = options[index]
+                        val (on, onOn) = tone(option)
+                        ToggleButton(
+                            checked = option == selected,
+                            onCheckedChange = { onSelect(option) },
+                            modifier = Modifier.weight(1f).semantics { role = Role.RadioButton },
+                            shapes = when {
+                                row.size == 1 -> ToggleButtonDefaults.shapes()
+                                at == 0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                at == row.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            },
+                            colors = ToggleButtonDefaults.toggleButtonColors(
+                                checkedContainerColor = on,
+                                checkedContentColor = onOn,
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                        ) {
+                            if (icon != null) {
+                                Icon(painterResource(icon(option)), contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                            }
+                            Text(labels[index], maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
                 }
-                Text(label(option), maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -621,23 +651,13 @@ fun ManualTxnDialog(
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // Home's colours: spending red, income green, a transfer neither.
-                val expenseTone = MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
-                val incomeTone = successContainer() to onSuccessContainer()
-                val transferTone = MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
                 ConnectedChoice(
                     options = TxnType.entries,
                     selected = type,
                     onSelect = { type = it },
                     label = { stringResource(typeLabel(it)) },
                     icon = ::typeIcon,
-                    tone = {
-                        when (it) {
-                            TxnType.EXPENSE -> expenseTone
-                            TxnType.INCOME -> incomeTone
-                            TxnType.TRANSFER -> transferTone
-                        }
-                    },
+                    tone = { typeTone(it) },
                 )
                 // The amount is what the form is for, so it is written large.
                 OutlinedTextField(

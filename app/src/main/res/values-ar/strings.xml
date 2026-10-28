@@ -34,8 +34,6 @@
     <string name="label_expense">مصروف</string>
     <string name="label_income">دخل</string>
     <string name="label_transfer">تحويل</string>
-    <string name="label_money_in">مبلغ وارد</string>
-    <string name="label_money_out">مبلغ صادر</string>
 
     <string name="cur_omr">ريال عماني</string>
     <string name="cur_usd">دولار أمريكي</string>
@@ -309,9 +307,6 @@
     <string name="txn_filters">تصفية</string>
     <string name="txn_filters_count">تصفية (%d)</string>
     <string name="txn_export_csv">تصدير CSV</string>
-    <string name="txn_type_out">صادر</string>
-    <string name="txn_type_in">وارد</string>
-    <string name="txn_type_transfers">تحويلات</string>
     <string name="txn_back_to_yours">العودة إلى معاملاتك</string>
     <string name="txn_archived_count">المؤرشفة (%d)</string>
     <string name="txn_swipe_hint">اسحب السجل في أي اتجاه لأرشفته. اضغط عليه لتعديله أو إزالته.</string>

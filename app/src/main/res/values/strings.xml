@@ -34,8 +34,6 @@
     <string name="label_expense">Expense</string>
     <string name="label_income">Income</string>
     <string name="label_transfer">Transfer</string>
-    <string name="label_money_in">Money in</string>
-    <string name="label_money_out">Money out</string>
 
     <string name="cur_omr">Omani rial</string>
     <string name="cur_usd">US dollar</string>
@@ -265,9 +263,6 @@
     <string name="txn_filters">Filters</string>
     <string name="txn_filters_count">Filters (%d)</string>
     <string name="txn_export_csv">Export CSV</string>
-    <string name="txn_type_out">Out</string>
-    <string name="txn_type_in">In</string>
-    <string name="txn_type_transfers">Transfers</string>
     <string name="txn_back_to_yours">Back to your transactions</string>
     <string name="txn_archived_count">Archived (%d)</string>
     <string name="txn_swipe_hint">Swipe a record either way to archive it. Tap it to change or remove it.</string>

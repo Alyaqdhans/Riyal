@@ -538,9 +538,16 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         val from = _accounts.value.firstOrNull { it.id == fromId } ?: return@withLock
         val into = _accounts.value.firstOrNull { it.id == intoId } ?: return@withLock
         val digits = (from.aliases + listOfNotNull(from.last4)) - listOfNotNull(into.last4).toSet()
+        // The balance starts from whichever of the two was quoted last. That figure
+        // already counts everything before it; keeping the other's older or missing one
+        // added every record since on top, and the merged balance came out as their sum.
+        val opening = listOf(into, from).filter { !it.needsBalance }.maxByOrNull { it.openingAtMillis } ?: into
         val merged = into.copy(
             aliases = into.aliases + digits,
             senderIds = into.senderIds + from.senderIds,
+            openingBalanceMinor = opening.openingBalanceMinor,
+            openingAtMillis = opening.openingAtMillis,
+            needsBalance = opening.needsBalance,
         )
         _accounts.value = _accounts.value.mapNotNull {
             when (it.id) {

@@ -512,11 +512,11 @@ private fun ReviewCard(
                     FilledTonalButton(
                         onClick = { onTeach(MessageKind.OUT) },
                         modifier = Modifier.weight(1f),
-                    ) { Text(stringResource(R.string.label_money_out)) }
+                    ) { Text(stringResource(R.string.label_expense)) }
                     FilledTonalButton(
                         onClick = { onTeach(MessageKind.IN) },
                         modifier = Modifier.weight(1f),
-                    ) { Text(stringResource(R.string.label_money_in)) }
+                    ) { Text(stringResource(R.string.label_income)) }
                 }
                 TextButton(onClick = { onTeach(MessageKind.NONE) }) {
                     Text(stringResource(R.string.setup_kind_none))

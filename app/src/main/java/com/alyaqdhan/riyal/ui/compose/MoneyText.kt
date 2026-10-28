@@ -1,15 +1,6 @@
 package com.alyaqdhan.riyal.ui.compose
 
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.graphics.vector.VectorPath
-import androidx.compose.ui.graphics.vector.VectorGroup
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.semantics
 import androidx.annotation.DrawableRes
 import kotlin.math.roundToInt
 import androidx.compose.runtime.mutableLongStateOf
@@ -124,7 +115,7 @@ private fun AnnotatedString.Builder.appendSign(code: String, hasVector: Boolean,
 }
 
 /** The vector signs a piece of text needs, sized to the text they sit in. */
-private fun signContent(codes: Collection<String>, tint: Color, weight: FontWeight?): Map<String, InlineTextContent> =
+private fun signContent(codes: Collection<String>, tint: Color, style: TextStyle): Map<String, InlineTextContent> =
     codes.mapNotNull { code ->
         val info = Currencies.of(code) ?: return@mapNotNull null
         val res = info.symbol ?: return@mapNotNull null
@@ -135,12 +126,7 @@ private fun signContent(codes: Collection<String>, tint: Color, weight: FontWeig
                 placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter,
             ),
         ) {
-            Icon(
-                signPainter(res, weight),
-                contentDescription = null,
-                tint = tint,
-                modifier = Modifier.fillMaxSize(),
-            )
+            SignGlyph(res, tint, style, Modifier.fillMaxSize())
         }
     }.toMap()
 
@@ -190,7 +176,7 @@ fun MoneyText(
         maxLines = 1,
         softWrap = false,
         autoSize = autoSize,
-        inlineContent = signContent(listOf(currency), tint, style.fontWeight),
+        inlineContent = signContent(listOf(currency), tint, style),
     )
 }
 
@@ -443,80 +429,8 @@ fun MoneyAwareText(
         textAlign = textAlign,
         maxLines = maxLines,
         overflow = overflow,
-        inlineContent = signContent(codes, tint, style.fontWeight),
+        inlineContent = signContent(codes, tint, style),
     )
-}
-
-/**
- * A sign drawn as heavy as the text beside it. The signs are filled outlines cut for
- * regular text; set beside medium or bold figures they looked faint, so above regular
- * each shape is also traced with an outline of its own colour, thicker the heavier the
- * text, and drawn a touch smaller so the thickening stays inside its box.
- */
-@Composable
-private fun signPainter(@DrawableRes res: Int, weight: FontWeight?): Painter {
-    val vector = ImageVector.vectorResource(res)
-    val extra = ((weight ?: FontWeight.Normal).weight - 400).coerceAtLeast(0)
-    val heavy = remember(vector, extra) {
-        if (extra == 0) vector else embolden(vector, extra / 300f * 0.045f * vector.viewportHeight)
-    }
-    return rememberVectorPainter(heavy)
-}
-
-private fun embolden(vector: ImageVector, stroke: Float): ImageVector {
-    val builder = ImageVector.Builder(
-        name = vector.name,
-        defaultWidth = vector.defaultWidth,
-        defaultHeight = vector.defaultHeight,
-        viewportWidth = vector.viewportWidth,
-        viewportHeight = vector.viewportHeight,
-        tintColor = vector.tintColor,
-        tintBlendMode = vector.tintBlendMode,
-        autoMirror = vector.autoMirror,
-    )
-    val fit = 1f - stroke / minOf(vector.viewportWidth, vector.viewportHeight)
-    builder.addGroup(
-        scaleX = fit,
-        scaleY = fit,
-        pivotX = vector.viewportWidth / 2,
-        pivotY = vector.viewportHeight / 2,
-    )
-    fun copy(group: VectorGroup) {
-        for (node in group) {
-            when (node) {
-                is VectorPath -> builder.addPath(
-                    pathData = node.pathData,
-                    pathFillType = node.pathFillType,
-                    name = node.name,
-                    fill = node.fill,
-                    fillAlpha = node.fillAlpha,
-                    stroke = node.stroke ?: node.fill ?: SolidColor(Color.Black),
-                    strokeAlpha = if (node.stroke != null) node.strokeAlpha else node.fillAlpha,
-                    strokeLineWidth = node.strokeLineWidth + stroke,
-                    strokeLineCap = StrokeCap.Round,
-                    strokeLineJoin = StrokeJoin.Round,
-                )
-                is VectorGroup -> {
-                    builder.addGroup(
-                        name = node.name,
-                        rotate = node.rotation,
-                        pivotX = node.pivotX,
-                        pivotY = node.pivotY,
-                        scaleX = node.scaleX,
-                        scaleY = node.scaleY,
-                        translationX = node.translationX,
-                        translationY = node.translationY,
-                        clipPathData = node.clipPathData,
-                    )
-                    copy(node)
-                    builder.clearGroup()
-                }
-            }
-        }
-    }
-    copy(vector.root)
-    builder.clearGroup()
-    return builder.build()
 }
 
 /**
@@ -534,11 +448,13 @@ fun CurrencySign(
     val info = Currencies.of(code)
     val res = info?.symbol
     if (info != null && res != null) {
-        Icon(
-            signPainter(res, style.fontWeight),
-            contentDescription = code,
-            tint = tint,
-            modifier = modifier.size(width = height * info.symbolAspect, height = height),
+        SignGlyph(
+            res,
+            tint,
+            style,
+            modifier
+                .size(width = height * info.symbolAspect, height = height)
+                .semantics { contentDescription = code },
         )
     } else {
         Text(info?.glyph ?: code, modifier = modifier, color = tint, style = style)

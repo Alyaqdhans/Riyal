@@ -2,6 +2,11 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.FilterChipDefaults
+import com.alyaqdhan.riyal.ui.compose.typeIcon
+import com.alyaqdhan.riyal.ui.compose.typeLabel
+import com.alyaqdhan.riyal.ui.compose.typeTone
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.res.painterResource
@@ -168,10 +173,20 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     label = { Text(stringResource(R.string.label_all)) },
                 )
                 TxnType.entries.forEach { type ->
+                    // Named, marked and coloured as Home's totals are.
+                    val (tone, onTone) = typeTone(type)
                     FilterChip(
                         selected = typeFilter == type.name,
                         onClick = { typeFilter = if (typeFilter == type.name) null else type.name },
-                        label = { Text(stringResource(shortTypeLabel(type))) },
+                        label = { Text(stringResource(typeLabel(type))) },
+                        leadingIcon = {
+                            Icon(painterResource(typeIcon(type)), contentDescription = null, modifier = Modifier.size(18.dp))
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = tone,
+                            selectedLabelColor = onTone,
+                            selectedLeadingIconColor = onTone,
+                        ),
                     )
                 }
             }
@@ -328,13 +343,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             },
         )
     }
-}
-
-@StringRes
-private fun shortTypeLabel(type: TxnType): Int = when (type) {
-    TxnType.EXPENSE -> R.string.txn_type_out
-    TxnType.INCOME -> R.string.txn_type_in
-    TxnType.TRANSFER -> R.string.txn_type_transfers
 }
 
 @Composable

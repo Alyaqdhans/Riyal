@@ -83,7 +83,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `ui/nav/TabSlide.kt` | The tabs' sideways slide; `MainActivity`'s destination listener sets its direction (`TabMotion`) |
 | `MainActivity.kt` | The tabs, the floating toolbar (`HorizontalFloatingToolbar` + Add FAB), global dialogs (update prompt, manual add); sends a first run to `OnboardingActivity` |
 | `ui/screens/*` | Home, Transactions, Analysis, Accounts, Settings (tabs); Setup, Review, Updates, Changelog, Categories… (pages) |
-| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `SwipeRow` (swipe to reveal Archive/Remove, on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips) |
+| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `SignGlyph` (currency signs at the text's measured stroke weight), `SwipeRow` (swipe to reveal Archive/Remove, on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips) |
 
 ## How a message is read (1.8.0+)
 
@@ -102,7 +102,9 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
    An incremental scan reads back the newest stored records (`ANCHORS_PER_SENDER`) so a
    new message still finds its line. A full scan folds accounts proven to be such
    numbers into the real one (`AccountDiscovery.foreignAccounts`), and their digits stay
-   as `Account.aliases`. The account is always the end of a masked number; the digits
+   as `Account.aliases`. In a right-to-left message a spaced number is read in the
+   order the phone shows it (`asDisplayed`): Bank Nizwa sends "001 ###### 00210" to show
+   "00210 ###### 001". The account is always the end of a masked number; the digits
    before the mask (`accountHead`, "00210" of "00210 ###### 001") are the branch, and an
    account made from them folds into the one the end names.
 6. Records are converted into the account's currency when the bank charged another, and

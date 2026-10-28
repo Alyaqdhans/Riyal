@@ -34,8 +34,8 @@ fun iconFor(kind: MessageKind): Int = when (kind) {
 
 @StringRes
 fun labelFor(kind: MessageKind): Int = when (kind) {
-    MessageKind.OUT -> R.string.label_money_out
-    MessageKind.IN -> R.string.label_money_in
+    MessageKind.OUT -> R.string.label_expense
+    MessageKind.IN -> R.string.label_income
     MessageKind.TRANSFER -> R.string.setup_kind_transfer
     MessageKind.NONE -> R.string.setup_kind_none
 }
