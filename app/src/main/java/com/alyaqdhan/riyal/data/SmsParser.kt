@@ -1,5 +1,6 @@
 package com.alyaqdhan.riyal.data
 
+import java.text.Bidi
 import androidx.annotation.StringRes
 import com.alyaqdhan.riyal.R
 
@@ -287,7 +288,6 @@ class SmsParser(
         // of your own accounts. Judged on its first keyword alone this reads as a plain
         // debit, which counts your own transfer as spending.
         val selfTransferTo = SELF_TRANSFER.find(body)?.groupValues?.get(1)
-            ?.let { asDisplayed(it.trim(), readsRightToLeft(body)) }
             ?.takeLastWhile { it.isDigit() }?.takeIf { it.length >= 3 }?.takeLast(4)
         if (selfTransferTo != null) {
             trace += ParseNote(R.string.trace_self_transfer, listOf(selfTransferTo))
@@ -448,7 +448,6 @@ class SmsParser(
         var card: Tail? = null
         var best: Tail? = null
         var bestScore = -1
-        val rtl = readsRightToLeft(body)
         for (m in accountTailPattern.findAll(body)) {
             val written = m.groupValues[1].trimEnd { !it.isDigit() && !it.isLetter() }
             // "رصيدك في الحساب 12.500" would otherwise read the balance as an account.
@@ -456,7 +455,7 @@ class SmsParser(
             // "00210######": the end is hidden, and what is left is the branch.
             val rest = body.substring(m.groups[1]!!.range.first + written.length)
             if (written.all { it.isDigit() } && hiddenEnd.containsMatchIn(rest)) continue
-            val token = asDisplayed(written, rtl)
+            val token = written
             val digits = token.takeLastWhile { it.isDigit() }
             // "00210 ###### 00210": Bank Nizwa's refunds repeat the branch where the last
             // digits go. That names no account - read as one, every refund was "0210" -
@@ -484,34 +483,6 @@ class SmsParser(
             }
         }
         return best ?: card
-    }
-
-    /**
-     * Whether the phone lays the message out right to left: its first letter is Arabic,
-     * which is how Android picks a paragraph's direction.
-     */
-    private fun readsRightToLeft(body: String): Boolean {
-        for (c in body) {
-            when (Character.getDirectionality(c)) {
-                Character.DIRECTIONALITY_RIGHT_TO_LEFT, Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC -> return true
-                Character.DIRECTIONALITY_LEFT_TO_RIGHT -> return false
-            }
-        }
-        return false
-    }
-
-    /**
-     * An account number in the order the customer sees it.
-     *
-     * In a right-to-left message, groups of digits separated by spaces are laid out right
-     * to left, one group after another. Bank Nizwa sends "001 ###### 00210" so that the
-     * phone shows "00210 ###### 001", which is the number the customer knows. Read in the
-     * order it was sent, its end was "00210", and that became the account "0210". A number
-     * with no spaces ("00210######001") is one run, shown as sent.
-     */
-    private fun asDisplayed(token: String, rtl: Boolean): String {
-        if (!rtl || token.none { it.isWhitespace() }) return token
-        return token.split(Regex("[\\s\\u00A0]+")).filter { it.isNotEmpty() }.reversed().joinToString(" ")
     }
 
     /** "your a/c", "ur account", "حسابك", "حسابكم": the customer's own account. */
@@ -598,11 +569,40 @@ class SmsParser(
      * and its mask was enough to end the account number at "00210", and its account
      * became "0210".
      */
-    private fun normalize(s: String): String = Numerals.latin(s)
+    private fun normalize(s: String): String = Numerals.latin(asShown(s))
         .replace(invisibleMarks, "")
         .replace('＃', '#')
         .replace('＊', '*')
         .replace('●', '•')
+
+    /**
+     * [raw] with every masked account number put in the order the phone shows it.
+     *
+     * The customer knows their account as it appears on screen, and in an Arabic message
+     * that is not always the order it was sent in: the phone lays text out with the
+     * Unicode bidirectional algorithm, which runs groups of digits separated by spaces
+     * right to left, unless direction marks around them say otherwise. Bank Nizwa's
+     * "00210 ###### 001" on screen can arrive either way round, so the number is put
+     * through the same algorithm - marks and all, before they are cleaned away - and read
+     * left to right as shown. Its end is then the account.
+     */
+    private fun asShown(raw: String): String = raw.split('\n').joinToString("\n") { line ->
+        val runs = maskedRun.findAll(line).filter { r -> r.value.count { it in "Xx*#\u2022＃＊●" } >= 2 }.toList()
+        if (runs.isEmpty()) return@joinToString line
+        val bidi = Bidi(line, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT)
+        if (bidi.isLeftToRight) return@joinToString line
+        val out = StringBuilder(line)
+        for (run in runs.asReversed()) {
+            val from = run.range.first
+            val until = run.range.last + 1
+            val levels = ByteArray(until - from) { bidi.getLevelAt(from + it).toByte() }
+            val chars: Array<Any> = Array(until - from) { line[from + it] }
+            Bidi.reorderVisually(levels, 0, chars, 0, chars.size)
+            val shown = chars.joinToString("") { it.toString() }.filterNot { invisibleMarks.matches(it.toString()) }
+            out.replace(from, until, shown)
+        }
+        out.toString()
+    }
 
     private fun wordIn(hay: String, phrase: String): Boolean {
         if (phrase.firstOrNull() !in 'a'..'z') return phrase in hay
@@ -625,10 +625,18 @@ class SmsParser(
          * is out of date and the inbox must be read again. Forgetting to bump it after a
          * parser fix means the fix only reaches messages that arrive afterwards.
          */
-        const val VERSION = 9
+        const val VERSION = 10
 
         /** A mask straight after the digits, with nothing after it: an account's hidden end. */
         private val hiddenEnd = Regex("^\\s*[Xx*#\\u2022]{2,}(?!\\s*\\d)")
+
+        /**
+         * A masked account number as written, marks and spacing included: digits and
+         * masks with nothing else between, holding at least two masks.
+         */
+        private val maskedRun = Regex(
+            "[0-9\\u0660-\\u0669\\u06F0-\\u06F9][0-9\\u0660-\\u0669\\u06F0-\\u06F9Xx*#\\u2022＃＊●\\s\\u00A0\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069]*[0-9\\u0660-\\u0669\\u06F0-\\u06F9]"
+        )
 
         /** Direction marks, isolates, zero-width spaces and joiners: format, not text. */
         private val invisibleMarks = Regex("[\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069\\u061C\\uFEFF]")

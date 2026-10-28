@@ -101,7 +101,7 @@ object AccountDiscovery {
      * Bumped when the rules that tidy existing accounts change: it is in the scan's
      * fingerprint, so the next scan reads everything and the new rules see every message.
      */
-    const val VERSION = 2
+    const val VERSION = 3
 
     /** A sender as one bank, however it is spelled: case, spaces and dots set aside. */
     fun senderKey(sender: String): String = sender.lowercase().filter { it.isLetterOrDigit() }
@@ -249,8 +249,9 @@ object AccountDiscovery {
     fun foreignAccounts(accounts: List<Account>, observations: List<Observation>): Map<String, String> {
         val tops = lineTails(observations)
         val lines = lineAccounts(accounts, observations)
-        val out = HashMap<String, String>()
+        val out = HashMap<String, String>(minorityFolds(accounts, observations))
         for (account in accounts) {
+            if (account.id in out) continue
             val tail = account.last4 ?: continue
             val senders = account.senderIds.mapTo(HashSet()) { senderKey(it) }
             val mine = observations.filter { senderKey(it.sender) in senders }
@@ -280,6 +281,34 @@ object AccountDiscovery {
                 owners.distinct().singleOrNull() ?: continue
             }
             if (owner != account.id) out[account.id] = owner
+        }
+        return out
+    }
+
+    /**
+     * Within one bank, an account quoted by under a tenth as many messages as the bank's
+     * most quoted account, with no balance line of its own, is a stray reading of a few
+     * odd messages - a refund that repeats the branch, a reference where the account goes
+     * - and is folded into the account the bulk of the bank's messages name. A second
+     * real account, however rarely used, has a balance of its own to show for it.
+     */
+    fun minorityFolds(accounts: List<Account>, observations: List<Observation>): Map<String, String> {
+        val tops = lineTails(observations)
+        val out = HashMap<String, String>()
+        val byBank = accounts.filter { it.last4 != null && !it.archived }
+            .groupBy { a -> a.senderIds.map { senderKey(it) }.minOrNull() ?: senderKey(a.bankName) }
+        for ((_, group) in byBank) {
+            if (group.size < 2) continue
+            val senders = group.flatMap { it.senderIds }.mapTo(HashSet()) { senderKey(it) }
+            val mine = observations.filter { senderKey(it.sender) in senders }
+            fun quotes(a: Account) = mine.count { o -> o.accountNumberTail?.let { a.answersTo(it) } == true }
+            val counts = group.associateWith { quotes(it) }
+            val main = counts.maxByOrNull { it.value }?.takeIf { it.value > 0 } ?: continue
+            for ((account, q) in counts) {
+                if (account.id == main.key.id || q == 0 || q * 10 > main.value) continue
+                val ownLine = tops.values.any { account.answersTo(it) }
+                if (!ownLine) out[account.id] = main.key.id
+            }
         }
         return out
     }

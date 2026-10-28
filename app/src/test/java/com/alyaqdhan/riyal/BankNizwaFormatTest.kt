@@ -23,7 +23,7 @@ class BankNizwaFormatTest {
     private val purchase = "تم خصم 2.750 ر.ع من حسابك رقم CAFE NOVA\\AL MAABELA\\OM\\778812omaOMN " +
         "في 14-OCT , 09:12:40 الرصيد المتوفر هو 310.420 ر.ع"
 
-    private val withdrawal = "تم سحب 6.000 ر.ع من حساب رقم 00350######005 الى SALI####AHMD. " +
+    private val withdrawal = "تم سحب 6.000 ر.ع من حساب رقم 005######00350 الى SALI####AHMD. " +
         "الرصيد المتوفر هو 304.420 ر.ع"
 
     @Test
@@ -58,7 +58,8 @@ class BankNizwaFormatTest {
 
     @Test
     fun `a hash-masked account number reads as its last digits`() {
-        // The token used to stop at the first "#", and "00350" became the account "0350".
+        // Sent as "005######00350" so that, laid out right to left, the phone shows
+        // "00350######005". The token used to stop at the first "#" and read "0350".
         val r = parsed(withdrawal)
         assertEquals("005", r.accountTail)
         assertEquals(6_000L, r.amountMinor)
@@ -80,7 +81,7 @@ class BankNizwaFormatTest {
 
     @Test
     fun `invisible marks and full-width masks still read the end, and a hidden end names nothing`() {
-        listOf("005‎ ###### ‎00350", "⁦00350######005⁩", "00350＃＃＃＃005").forEach { number ->
+        listOf("00350‎ ###### ‎005", "⁦00350######005⁩", "005＃＃＃＃00350").forEach { number ->
             val r = parsed("تم سحب 6.000 ر.ع من حساب رقم $number الى SALI####AHMD. الرصيد المتوفر هو 304.420 ر.ع")
             assertEquals(number, "005", r.accountTail)
         }
@@ -104,7 +105,7 @@ class BankNizwaFormatTest {
 
     @Test
     fun `wider or unbroken spacing around the mask still reads the end`() {
-        listOf("005  ###### 00350", "005 ###### 00350", "005 ### ### 00350", "00350######005").forEach { number ->
+        listOf("005  ###### 00350", "005 ###### 00350", "005 ### ### 00350", "005######00350").forEach { number ->
             val r = parsed("تم سحب 6.000 ر.ع من حساب رقم $number الى SALI####AHMD. الرصيد المتوفر هو 304.420 ر.ع")
             assertEquals(number, "005", r.accountTail)
             assertEquals(number, "00350", r.accountHead)
@@ -114,7 +115,7 @@ class BankNizwaFormatTest {
     @Test
     fun `of two accounts in one message, the one written as yours is the one it is about`() {
         val r = parsed(
-            "تم خصم 10.000 ر.ع للتحويل إلى حساب رقم 0123456784410 من حسابك رقم 00350######005 " +
+            "تم خصم 10.000 ر.ع للتحويل إلى حساب رقم 0123456784410 من حسابك رقم 005######00350 " +
                 "الرصيد المتوفر هو 294.420 ر.ع"
         )
         assertEquals("005", r.accountTail)

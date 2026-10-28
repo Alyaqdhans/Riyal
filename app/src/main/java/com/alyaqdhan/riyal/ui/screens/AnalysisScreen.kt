@@ -8,7 +8,6 @@ package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.VerticalDivider
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.TextAutoSize
@@ -766,7 +765,9 @@ private fun KpiCard(
     val scheme = MaterialTheme.colorScheme
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainer)) {
         Column(Modifier.padding(vertical = 12.dp)) {
-            Row(Modifier.height(IntrinsicSize.Min)) {
+            // No intrinsic sizing here: a rolling figure is laid out by measuring its room,
+            // which cannot answer an intrinsic question - asking crashed the screen.
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Kpi(
                     label = stringResource(R.string.home_net),
                     icon = null,
@@ -778,7 +779,7 @@ private fun KpiCard(
                     signed = true,
                     modifier = Modifier.weight(1f),
                 )
-                VerticalDivider(color = scheme.outlineVariant)
+                VerticalDivider(Modifier.height(56.dp), color = scheme.outlineVariant)
                 Kpi(
                     label = stringResource(typeLabel(TxnType.EXPENSE)),
                     icon = typeIcon(TxnType.EXPENSE),
@@ -789,7 +790,7 @@ private fun KpiCard(
                     upIsGood = false,
                     modifier = Modifier.weight(1f),
                 )
-                VerticalDivider(color = scheme.outlineVariant)
+                VerticalDivider(Modifier.height(56.dp), color = scheme.outlineVariant)
                 Kpi(
                     label = stringResource(typeLabel(TxnType.INCOME)),
                     icon = typeIcon(TxnType.INCOME),

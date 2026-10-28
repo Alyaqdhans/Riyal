@@ -12,7 +12,7 @@ is attached there.
   Android's installer on an update you chose to download. Android still shows its own
   install screen and asks you to confirm.
 - **The first scan after updating reads your whole inbox again.** How messages are read
-  changed (parser version 9), so records are rebuilt. Your categories, rules, accounts
+  changed (parser version 10), so records are rebuilt. Your categories, rules, accounts
   and budgets are kept; nothing is wiped.
 - **What you taught a test build is asked again.** Templates are recognised differently
   now (skeleton version 2), so answers given to an earlier 1.8.0 build no longer apply.
@@ -54,10 +54,14 @@ is attached there.
 - Accounts masked with "#", with or without spaces ("00210 ###### 001"), read their
   real last digits, however the spaces fall and whatever invisible marks the message
   carries around them; a number whose end is hidden names no account.
-- **A spaced number reads the way the phone shows it.** In an Arabic message, groups
-  of digits separated by spaces are laid out right to left: Bank Nizwa sends
-  "001 ###### 00210" so the phone shows "00210 ###### 001". Read in the order it was
-  sent, that account was "0210", beside the "001" its unspaced messages give.
+- **Account numbers read the way the phone shows them.** An Arabic message is laid out
+  right to left, and the phone's text engine can show a number in another order than it
+  was sent: Bank Nizwa sends "001 ###### 00210" so the screen shows "00210 ###### 001".
+  Riyal now runs each masked number through the same Unicode rules, invisible direction
+  marks included, and takes the account from the end you see.
+- **The majority decides.** Within one bank, an account only a few odd messages quote -
+  under a tenth of the bank's main account, with no balance of its own - is folded into
+  the main account.
 - **Refunds no longer make an account.** Bank Nizwa's refunds write the account as
   "00210 ###### 00210", the branch twice and the account's digits nowhere, so every
   refund said "0210" - and enough of them made it an account. A masked number whose end

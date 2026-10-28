@@ -348,6 +348,19 @@ class AccountDiscoveryTest {
     }
 
     @Test
+    fun `a number a few messages quote beside the bank's main one folds into it`() {
+        // Two refunds said "0350" on the main account's own balance line.
+        val main = AccountDiscovery.propose(oneLine).single()
+        val stray = main.copy(id = "acc_stray", last4 = "0350", name = "Named")
+        val few = List(2) { seen("0350", 300_000L + it, 10L + it, 1_000, line = 1) }
+        val many = oneLine + List(30) { seen("005", 200_000L + it, 20L + it, -100, line = 1) }
+        assertEquals(mapOf("acc_stray" to main.id), AccountDiscovery.minorityFolds(listOf(main, stray), many + few))
+        // A rarely used account with a balance line of its own stays.
+        val ownLine = List(3) { seen("0350", 50_000L - it, 40L + it, -10, line = 9) }
+        assertTrue(AccountDiscovery.minorityFolds(listOf(main, stray), many + ownLine).isEmpty())
+    }
+
+    @Test
     fun `a sender is one bank however it is spelled`() {
         val main = AccountDiscovery.propose(oneLine).single()
         val spelled = main.copy(senderIds = setOf("BankNizwa"))

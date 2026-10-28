@@ -104,9 +104,13 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
    An incremental scan reads back the newest stored records (`ANCHORS_PER_SENDER`) so a
    new message still finds its line. A full scan folds accounts proven to be such
    numbers into the real one (`AccountDiscovery.foreignAccounts`), and their digits stay
-   as `Account.aliases`. In a right-to-left message a spaced number is read in the
-   order the phone shows it (`asDisplayed`): Bank Nizwa sends "001 ###### 00210" to show
-   "00210 ###### 001". The account is always the end of a masked number; the digits
+   as `Account.aliases`. A masked number is read in the order the phone shows it:
+   `SmsParser.asShown` runs it through `java.text.Bidi` (the Unicode bidirectional
+   algorithm, marks included) before anything else - Bank Nizwa sends "001 ###### 00210"
+   to show "00210 ###### 001". A number whose end repeats its start (refunds:
+   "00210 ###### 00210") names no account, and within one bank an account quoted by under
+   a tenth of the main account's messages, with no balance line of its own, folds into it
+   (`minorityFolds`). The account is always the end of a masked number; the digits
    before the mask (`accountHead`, "00210" of "00210 ###### 001") are the branch, and an
    account made from them folds into the one the end names.
 6. Records are converted into the account's currency when the bank charged another, and
