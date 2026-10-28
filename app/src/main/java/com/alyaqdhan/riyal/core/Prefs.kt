@@ -176,6 +176,29 @@ class Prefs(context: Context) {
         get() = sp.getString("last_release_notes", "") ?: ""
         set(v) = sp.edit().putString("last_release_notes", v).apply()
 
+    /** Whether opening the app looks for a new release at all (still at most once a day). */
+    var checkUpdatesOnStart: Boolean
+        get() = sp.getBoolean("check_updates_on_start", true)
+        set(v) = sp.edit().putBoolean("check_updates_on_start", v).apply()
+
+    /** Offer GitHub pre-releases too. Off: a beta is something you opt into. */
+    var updateIncludeBeta: Boolean
+        get() = sp.getBoolean("update_include_beta", false)
+        set(v) = sp.edit().putBoolean("update_include_beta", v).apply()
+
+    /** Versions the user said not to be offered. Only that version: a later one is offered. */
+    var skippedUpdates: Set<String>
+        get() = sp.getStringSet("skipped_updates", emptySet())!!.toSet()
+        set(v) = sp.edit().putStringSet("skipped_updates", v.toSet()).apply()
+
+    /**
+     * The version the start-up prompt was last shown for. It appears once per release,
+     * then the update waits quietly in Settings until the user goes to it.
+     */
+    var updatePromptedTag: String?
+        get() = sp.getString("update_prompted_tag", null)
+        set(v) = sp.edit().putString("update_prompted_tag", v).apply()
+
     /**
      * The date of the newest message the last successful scan read.
      *

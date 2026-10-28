@@ -2,10 +2,6 @@ package com.alyaqdhan.riyal.ui
 
 import android.Manifest
 import android.app.Application
-import android.app.DownloadManager
-import android.content.Intent
-import android.os.Environment
-import androidx.core.net.toUri
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.content.ContextCompat
@@ -18,6 +14,7 @@ import com.alyaqdhan.riyal.core.Currencies
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Account
+import com.alyaqdhan.riyal.data.ApkInstaller
 import com.alyaqdhan.riyal.data.reasonText
 import com.alyaqdhan.riyal.data.AccountDiscovery
 import com.alyaqdhan.riyal.data.BudgetPlan
@@ -34,6 +31,7 @@ import com.alyaqdhan.riyal.data.UpdateApi
 import com.alyaqdhan.riyal.data.Updates
 import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
+import java.io.File
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDateTime
@@ -41,6 +39,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -348,157 +347,237 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * What the last look at GitHub found.
      *
-     * The first version of this kept only a release that was newer and threw away every
-     * other answer, which made the row look broken in the two cases that are not rare at
-     * all: tapping Check now while already on the latest did nothing visible, and the
-     * release notes were unreachable unless an update happened to be waiting. The answer
-     * is worth keeping whichever way it came out.
+     * Every answer is kept, not only a newer release: tapping Check now while already on
+     * the latest has to say so, and the notes of the version you have are worth reading
+     * whether or not anything is waiting.
      */
     sealed interface UpdateState {
-        /** Nothing has been asked yet in this session, and nothing was remembered. */
+        /** Nothing has been asked yet, and nothing was remembered. */
         data object Unknown : UpdateState
-        /** A request is in flight. Only ever true because someone tapped. */
+        /** A request is in flight. Only ever shown because someone tapped. */
         data object Checking : UpdateState
-        /** GitHub has a newer one. [release] is what Download acts on. */
+        /** A newer release on the chosen channel, not skipped. */
         data class Available(val release: Updates.Release) : UpdateState
-        /** GitHub answered, and what it has is not newer. Kept for its notes. */
-        data class UpToDate(val release: Updates.Release) : UpdateState
-        /** Offline, rate-limited, no releases published, a body that would not parse. */
+        /** GitHub answered, and nothing on the channel is newer. */
+        data class UpToDate(val release: Updates.Release?) : UpdateState
+        /** Offline, rate-limited, nothing published, a body that would not parse. */
         data object Unreachable : UpdateState
     }
 
     private val _updateState = MutableStateFlow<UpdateState>(
-        // A remembered answer means the notes are on the (i) the moment Settings opens,
-        // rather than only after a check the user has no reason to know they must run.
+        // A remembered answer means the notes are there the moment Settings opens.
         prefs.lastReleaseTag?.let { tag ->
-            UpdateState.UpToDate(
-                Updates.Release(
-                    tag = tag,
-                    notes = prefs.lastReleaseNotes,
-                    apkUrl = null, apkName = null, apkBytes = 0L,
-                )
-            )
+            UpdateState.UpToDate(Updates.Release(tag = tag, notes = prefs.lastReleaseNotes))
         } ?: UpdateState.Unknown
     )
     val updateState: StateFlow<UpdateState> = _updateState
 
-    /** The release to download, which is only ever one that is actually newer. */
-    val update: StateFlow<Updates.Release?> =
-        _updateState.map { (it as? UpdateState.Available)?.release }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    private val _lastUpdateCheck = MutableStateFlow(prefs.lastUpdateCheckAt)
+    val lastUpdateCheck: StateFlow<Long> = _lastUpdateCheck
+
+    /** Every release GitHub listed on its last answer: the changelog. Null until asked. */
+    private val _releases = MutableStateFlow<List<Updates.Release>?>(null)
+    val releases: StateFlow<List<Updates.Release>?> = _releases
+
+    private val _releasesFailed = MutableStateFlow(false)
+    val releasesFailed: StateFlow<Boolean> = _releasesFailed
 
     /**
-     * Asks GitHub whether there is a newer release, at most once a day.
-     *
-     * A check that fails - offline, no releases yet, a rate limit - writes a line in the
-     * verbose log and changes nothing on screen, because an update check nobody asked
-     * for is not something to interrupt anyone about. [force] is the user tapping "Check
-     * now", which skips the throttle and is the only path that a person is waiting on.
-     *
-     * A check that finds a newer release does say so: Home shows a card once
-     * [updateState] becomes [UpdateState.Available]. Until that existed the answer lived
-     * only in Settings, so the way to find out a release was out was to go looking for
-     * one. It is still only ever a card - nothing is downloaded, and nothing installs.
+     * The release the update dialog is open on. A check finds a new version and opens it
+     * once for that version; after that the update waits in Settings until it is wanted.
      */
-    fun checkForUpdate(currentVersion: String, force: Boolean = false) =
+    private val _updatePrompt = MutableStateFlow<Updates.Release?>(null)
+    val updatePrompt: StateFlow<Updates.Release?> = _updatePrompt
+
+    fun openUpdatePrompt(release: Updates.Release) {
+        _updatePrompt.value = release
+    }
+
+    fun dismissUpdatePrompt() {
+        _updatePrompt.value = null
+    }
+
+    private val _checkOnStart = MutableStateFlow(prefs.checkUpdatesOnStart)
+    val checkOnStart: StateFlow<Boolean> = _checkOnStart
+
+    fun setCheckOnStart(on: Boolean) {
+        prefs.checkUpdatesOnStart = on
+        _checkOnStart.value = on
+        Verbose.info(
+            Verbose.str(
+                R.string.log_setting_changed,
+                Verbose.str(if (on) R.string.log_note_update_check_on else R.string.log_note_update_check_off),
+            )
+        )
+        Verbose.flush()
+    }
+
+    private val _includeBeta = MutableStateFlow(prefs.updateIncludeBeta)
+    val includeBeta: StateFlow<Boolean> = _includeBeta
+
+    private val _skipped = MutableStateFlow(prefs.skippedUpdates)
+    val skippedUpdates: StateFlow<Set<String>> = _skipped
+
+    /** Switching channels re-decides from the answer already in hand; no new request. */
+    fun setIncludeBeta(on: Boolean, currentVersion: String) {
+        prefs.updateIncludeBeta = on
+        _includeBeta.value = on
+        Verbose.info(
+            Verbose.str(
+                R.string.log_setting_changed,
+                Verbose.str(if (on) R.string.log_note_beta_on else R.string.log_note_beta_off),
+            )
+        )
+        _releases.value?.let { decide(it, currentVersion, prompt = false) }
+        Verbose.flush()
+    }
+
+    /**
+     * Asks GitHub for its releases, at most once a day unless [force]d by a tap.
+     *
+     * A failed check that nobody asked for changes nothing on screen: it is a line in the
+     * log, and the next launch tries again. [onStart] is the launch's own check, which
+     * the "check on start" switch can turn off entirely.
+     */
+    fun checkForUpdate(currentVersion: String, force: Boolean = false, onStart: Boolean = false) =
         viewModelScope.launch(Dispatchers.IO) {
+            if (onStart && !prefs.checkUpdatesOnStart) return@launch
             if (!Updates.shouldCheck(System.currentTimeMillis(), prefs.lastUpdateCheckAt, force)) {
                 return@launch
             }
             if (force) _updateState.value = UpdateState.Checking
 
-            val release = UpdateApi.latestRelease()
-            if (release == null) {
-                // Nothing is stamped here on purpose, so the next launch tries again.
-                // A background check that failed stays invisible, as before. One the
-                // user asked for has someone waiting on it, and silence reads as a
-                // broken button, so that one says it could not ask.
+            val list = UpdateApi.releases()
+            if (list == null) {
+                // Nothing is stamped on purpose, so the next launch tries again.
                 if (force) _updateState.value = UpdateState.Unreachable
                 Verbose.flush()
                 return@launch
             }
-            // The day starts from an answer, not from an attempt. Stamping it above
-            // meant a launch with no signal - on a plane, on the way in to work - spent
-            // the day's one check on nothing, and a release published that morning went
-            // unnoticed until the next day.
-            prefs.lastUpdateCheckAt = System.currentTimeMillis()
-            prefs.lastReleaseTag = release.tag
-            prefs.lastReleaseNotes = release.notes
-            if (Updates.isNewer(release.tag, currentVersion)) {
-                _updateState.value = UpdateState.Available(release)
-                Verbose.ok(
-                    if (release.hasApk) R.string.log_update_newer_apk
-                    else R.string.log_update_newer_no_apk,
-                    release.tag,
-                    currentVersion,
-                )
-            } else {
-                _updateState.value = UpdateState.UpToDate(release)
-                Verbose.info(R.string.log_update_latest, currentVersion, release.tag)
-            }
+            // The day starts from an answer, not from an attempt.
+            val now = System.currentTimeMillis()
+            prefs.lastUpdateCheckAt = now
+            _lastUpdateCheck.value = now
+            _releases.value = list
+            _releasesFailed.value = false
+            decide(list, currentVersion, prompt = true, asked = force)
             Verbose.flush()
         }
+
+    private fun decide(
+        list: List<Updates.Release>,
+        currentVersion: String,
+        prompt: Boolean,
+        asked: Boolean = false,
+    ) {
+        val newest = Updates.newest(list, prefs.updateIncludeBeta)
+        newest?.let {
+            prefs.lastReleaseTag = it.tag
+            prefs.lastReleaseNotes = it.notes
+        }
+        val offer = Updates.pick(list, currentVersion, prefs.updateIncludeBeta, prefs.skippedUpdates)
+        if (offer == null) {
+            _updateState.value = UpdateState.UpToDate(newest)
+            Verbose.info(R.string.log_update_latest, currentVersion, newest?.tag ?: "-")
+            return
+        }
+        _updateState.value = UpdateState.Available(offer)
+        Verbose.ok(
+            if (offer.hasApk) R.string.log_update_newer_apk else R.string.log_update_newer_no_apk,
+            offer.tag,
+            currentVersion,
+        )
+        // The dialog opens once per version on its own, and every time someone asks.
+        val seen = prefs.updatePromptedTag?.let { Updates.sameVersion(it, offer.tag) } == true
+        if (prompt && (asked || !seen)) {
+            prefs.updatePromptedTag = offer.tag
+            _updatePrompt.value = offer
+        }
+    }
+
+    /** The changelog page asking for the list when no check has fetched it yet. */
+    fun loadReleases() = viewModelScope.launch(Dispatchers.IO) {
+        _releasesFailed.value = false
+        val list = UpdateApi.releases()
+        if (list == null) _releasesFailed.value = true else _releases.value = list
+        Verbose.flush()
+    }
+
+    /** "Not this version." A later release is still offered. */
+    fun skipUpdate(release: Updates.Release) {
+        prefs.skippedUpdates = prefs.skippedUpdates + release.tag
+        _skipped.value = prefs.skippedUpdates
+        cancelDownload()
+        _updatePrompt.value = null
+        _updateState.value = UpdateState.UpToDate(release)
+        Verbose.info(R.string.log_update_skipped, release.tag)
+        Verbose.flush()
+    }
+
+    fun clearSkippedUpdates() {
+        prefs.skippedUpdates = emptySet()
+        _skipped.value = emptySet()
+    }
+
+    sealed interface DownloadState {
+        data object Idle : DownloadState
+        data class Downloading(val tag: String, val fraction: Float) : DownloadState
+        data class Ready(val tag: String, val file: File) : DownloadState
+        data class Failed(val tag: String) : DownloadState
+    }
+
+    private val _download = MutableStateFlow<DownloadState>(DownloadState.Idle)
+    val download: StateFlow<DownloadState> = _download
+    private var downloadJob: Job? = null
 
     /**
-     * Puts the release's APK in the phone's public Downloads folder and opens the
-     * Downloads screen so the user can tap it themselves.
-     *
-     * DownloadManager does the work: progress, retries, its own notification, and no
-     * storage permission at all for this destination. What it deliberately does not do
-     * is install anything. The app asks for neither REQUEST_INSTALL_PACKAGES nor a
-     * FileProvider, so the last step is a person choosing to install a file they can
-     * see - which is also the step where they will be told, by Android, if the APK is
-     * signed with a different key than the copy they already have.
-     *
-     * Returns false when there is nothing to download, so the caller can say so rather
-     * than opening an empty Downloads screen.
+     * Fetches the release's APK into the app's own cache, with the progress on screen.
+     * Nothing installs at the end of it: [install] hands the file to Android, which asks.
      */
-    fun downloadUpdate(): Boolean {
-        val release = update.value ?: return false
-        val url = release.apkUrl ?: run {
+    fun startDownload(release: Updates.Release) {
+        if (_download.value is DownloadState.Downloading) return
+        val asset = release.apk ?: run {
             Verbose.fail(R.string.log_update_no_apk, release.tag)
             Verbose.flush()
-            return false
+            _download.value = DownloadState.Failed(release.tag)
+            return
         }
-        val context = getApplication<Application>()
-        return try {
-            val name = release.apkName ?: "Riyal-${release.tag}.apk"
-            val request = DownloadManager.Request(url.toUri())
-                .setTitle(name)
-                .setDescription("Riyal ${release.tag}")
-                .setMimeType("application/vnd.android.package-archive")
-                .setNotificationVisibility(
-                    DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
-                )
-                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
-            val manager = context.getSystemService(DownloadManager::class.java)
-            manager.enqueue(request)
-            Verbose.ok(R.string.log_download_started, name)
-            Verbose.flush()
-            openDownloads(context)
-            true
-        } catch (e: Exception) {
-            Verbose.fail(R.string.log_download_failed, e.javaClass.simpleName)
-            Verbose.flush()
-            false
+        downloadJob = viewModelScope.launch(Dispatchers.IO) {
+            _download.value = DownloadState.Downloading(release.tag, 0f)
+            val context = getApplication<Application>()
+            ApkInstaller.clearOld(context)
+            val name = asset.name.replace(UNSAFE_FILE_CHARS, "_").ifBlank { "Riyal.apk" }
+            val dest = File(ApkInstaller.updatesDir(context), name)
+            val ok = UpdateApi.download(asset, dest) { fraction ->
+                _download.value = DownloadState.Downloading(release.tag, fraction)
+            }
+            _download.value = if (ok) DownloadState.Ready(release.tag, dest) else DownloadState.Failed(release.tag)
         }
     }
 
-    /** The system Downloads screen, where the file will appear. */
-    private fun openDownloads(context: Application) {
-        try {
-            context.startActivity(
-                Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-            )
-        } catch (e: Exception) {
-            // A phone with no Downloads UI. The file still arrives; the notification
-            // DownloadManager posts is another way to reach it.
-            Verbose.info(R.string.log_no_downloads_screen)
-            Verbose.flush()
-        }
+    fun cancelDownload() {
+        downloadJob?.cancel()
+        downloadJob = null
+        if (_download.value is DownloadState.Downloading) _download.value = DownloadState.Idle
     }
+
+    enum class InstallResult { STARTED, NEEDS_PERMISSION, FAILED }
+
+    /**
+     * Opens Android's installer on a finished download. Without the "install unknown
+     * apps" permission it opens nothing and says so, so the caller can take the user to
+     * the switch and back.
+     */
+    fun install(file: File): InstallResult {
+        val context = getApplication<Application>()
+        if (!ApkInstaller.canInstall(context)) return InstallResult.NEEDS_PERMISSION
+        val started = ApkInstaller.install(context, file)
+        Verbose.info(if (started) R.string.log_install_opened else R.string.log_install_failed)
+        Verbose.flush()
+        return if (started) InstallResult.STARTED else InstallResult.FAILED
+    }
+
+    fun openInstallPermission() = ApkInstaller.openInstallPermission(getApplication())
 
     fun addBudget(label: String, startMillis: Long, endExclusiveMillis: Long) =
         viewModelScope.launch(Dispatchers.IO) {
@@ -1073,4 +1152,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun csv(s: String) = "\"" + s.replace("\"", "\"\"") + "\""
 
+    private companion object {
+        val UNSAFE_FILE_CHARS = Regex("[^A-Za-z0-9._-]")
+    }
 }

@@ -54,6 +54,16 @@
     </fragment>
 
     <fragment
+        android:id="@+id/updatesFragment"
+        android:name="com.alyaqdhan.riyal.ui.nav.UpdatesFragment"
+        android:label="@string/upd_title" />
+
+    <fragment
+        android:id="@+id/changelogFragment"
+        android:name="com.alyaqdhan.riyal.ui.nav.ChangelogFragment"
+        android:label="@string/upd_changelog" />
+
+    <fragment
         android:id="@+id/settingsFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.SettingsFragment"
         android:label="@string/tab_settings" />

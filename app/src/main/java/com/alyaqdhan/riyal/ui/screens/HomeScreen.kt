@@ -40,12 +40,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
-import com.alyaqdhan.riyal.ui.compose.appVersion
 import com.alyaqdhan.riyal.ui.compose.bidi
 import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.R
@@ -79,8 +77,6 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
 ) {
     val txns by vm.txns.collectAsState()
-    val updateState by vm.updateState.collectAsState()
-    val appVersion = appVersion(LocalContext.current)
     val hasPerm by vm.hasSmsPermission.collectAsState()
     val reviews by vm.reviews.collectAsState()
     val accounts by vm.accounts.collectAsState()
@@ -299,24 +295,6 @@ fun HomeScreen(
                     container = MaterialTheme.colorScheme.secondaryContainer,
                     content = MaterialTheme.colorScheme.onSecondaryContainer,
                     onClick = onOpenNeedsCategory,
-                )
-            }
-
-            // ── a newer release exists. Last of the cards on purpose: the ones above are
-            // things waiting on the user, and this is news. The check itself has run on
-            // launch since it was written, but its answer only ever appeared in Settings,
-            // so the way to learn a release was out was to go and look for one.
-            (updateState as? MainViewModel.UpdateState.Available)?.let { available ->
-                ActionCard(
-                    face = FaceStyle.NORMAL,
-                    mood = 0.8f,
-                    title = stringResource(R.string.home_update_title, available.release.tag),
-                    // Settings is where Download lives and where the notes are; saying
-                    // so means the tap is not a surprise.
-                    subtitle = stringResource(R.string.home_update_subtitle, appVersion),
-                    container = MaterialTheme.colorScheme.primaryContainer,
-                    content = MaterialTheme.colorScheme.onPrimaryContainer,
-                    onClick = onOpenSettings,
                 )
             }
 

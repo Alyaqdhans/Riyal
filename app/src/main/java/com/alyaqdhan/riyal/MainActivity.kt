@@ -46,6 +46,7 @@ import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.Words
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
+import com.alyaqdhan.riyal.ui.compose.UpdateDialogHost
 import com.alyaqdhan.riyal.ui.theme.RiyalTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -88,15 +89,17 @@ class MainActivity : AppCompatActivity() {
             bottomBar.isVisible = destination.id !in CHROMELESS_DESTINATIONS
         }
         vm.autoScanOnLaunch()
-        // Once a day at most, and silent unless it finds something. An empty version
-        // string parses to nothing, which is never newer than anything, so a phone that
-        // cannot report its own version is simply never offered an update.
+        // Once a day at most, only when "check on start" is on, and silent unless it
+        // finds something. An empty version string parses to nothing, which is never
+        // newer than anything, so a phone that cannot report its own version is simply
+        // never offered an update.
         vm.checkForUpdate(
             try {
                 packageManager.getPackageInfo(packageName, 0).versionName ?: ""
             } catch (e: Exception) {
                 ""
-            }
+            },
+            onStart = true,
         )
 
         bottomBar.setContent {
@@ -109,6 +112,9 @@ class MainActivity : AppCompatActivity() {
                     onSelect = { destId -> switchTab(navController, destId) },
                     onAdd = { vm.requestManualAdd() },
                 )
+
+                // A new release opens its dialog over whatever screen is showing.
+                UpdateDialogHost(vm)
 
                 // The Add FAB opens this from any tab, so the dialog is hosted globally
                 // beside the toolbar rather than inside one screen.
@@ -167,6 +173,8 @@ class MainActivity : AppCompatActivity() {
             R.id.needsCategoryFragment,
             R.id.categoriesFragment,
             R.id.categoryDetailFragment,
+            R.id.updatesFragment,
+            R.id.changelogFragment,
         )
     }
 }

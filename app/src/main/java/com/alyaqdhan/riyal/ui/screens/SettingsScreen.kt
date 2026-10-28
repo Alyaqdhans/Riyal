@@ -80,6 +80,7 @@ import com.alyaqdhan.riyal.ui.compose.FlatBar
 import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
 import com.alyaqdhan.riyal.ui.compose.appVersion
+import com.alyaqdhan.riyal.ui.compose.relativeTime
 import com.alyaqdhan.riyal.ui.compose.plainText
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -107,6 +108,7 @@ fun SettingsScreen(
     onExport: () -> Unit,
     onBackup: () -> Unit,
     onRestore: () -> Unit,
+    onOpenUpdates: () -> Unit,
 ) {
     val context = LocalContext.current
     val prefs = vm.prefs
@@ -566,82 +568,21 @@ fun SettingsScreen(
             }
 
             SettingsCard(stringResource(R.string.set_card_about)) {
-                // One row, every state. Normally it is the version you are on; when
-                // GitHub is offering a later one it becomes the way to get it. The
-                // release notes sit behind the (i) whichever way the check came out,
-                // because "what changed" is worth reading on the version you already
-                // have and not only on one you are about to install.
+                // The version and how updates stand, in one row: the status card, the
+                // channel and the changelog are a page of their own now.
                 val updateState by vm.updateState.collectAsState()
                 val version = appVersion(context)
-                val known = when (val u = updateState) {
-                    is MainViewModel.UpdateState.Available -> u.release
-                    is MainViewModel.UpdateState.UpToDate -> u.release
-                    else -> null
-                }
-                val offered = (updateState as? MainViewModel.UpdateState.Available)?.release
-                val checking = updateState is MainViewModel.UpdateState.Checking
-                val notes = known?.let { plainNotes(it.notes) }?.takeIf { it.isNotBlank() }
-                // Only a check the user tapped gets an answer said out loud. The daily
-                // one in the background must stay silent.
-                var asked by remember { mutableStateOf(false) }
-                ActionLine(
-                    title = stringResource(R.string.app_name),
-                    value = when {
-                        checking -> stringResource(R.string.set_checking)
-                        offered != null ->
-                            stringResource(R.string.set_update_available, offered.tag)
-                        updateState is MainViewModel.UpdateState.UpToDate ->
-                            stringResource(R.string.set_latest, version)
-                        updateState is MainViewModel.UpdateState.Unreachable ->
-                            stringResource(R.string.set_could_not_check, version)
+                NavLine(
+                    title = stringResource(R.string.upd_title),
+                    value = when (val u = updateState) {
+                        MainViewModel.UpdateState.Checking -> stringResource(R.string.set_checking)
+                        is MainViewModel.UpdateState.Available ->
+                            stringResource(R.string.set_update_available, u.release.tag)
                         else -> version
                     },
-                    valueIsWarning = offered != null,
-                    detail = when {
-                        offered != null -> stringResource(
-                            R.string.set_about_update_header, version, offered.tag
-                        ) + stringResource(R.string.set_about_download)
-                        updateState is MainViewModel.UpdateState.UpToDate ->
-                            stringResource(R.string.set_about_uptodate, version)
-                        updateState is MainViewModel.UpdateState.Unreachable ->
-                            stringResource(R.string.set_about_unreachable)
-                        else -> stringResource(R.string.set_about_default)
-                    } + if (notes != null) {
-                        stringResource(R.string.set_about_whats_in, known!!.tag) + notes
-                    } else {
-                        ""
-                    },
-                    actionLabel = when {
-                        checking -> stringResource(R.string.set_checking_action)
-                        offered != null -> stringResource(R.string.set_download)
-                        else -> stringResource(R.string.set_check_now)
-                    },
-                    enabled = !checking,
-                    onAction = {
-                        if (offered == null) {
-                            asked = true
-                            note(R.string.log_note_checking)
-                            vm.checkForUpdate(version, force = true)
-                        } else if (!offered.hasApk) {
-                            note(R.string.log_note_no_apk, offered.tag)
-                        } else if (vm.downloadUpdate()) {
-                            note(R.string.log_note_downloading, offered.tag)
-                        }
-                    },
+                    detail = stringResource(R.string.set_about_default),
+                    onClick = onOpenUpdates,
                 )
-                // A check the user asked for has someone waiting on it, so it says how
-                // it came out instead of leaving the row to be re-read.
-                LaunchedEffect(updateState) {
-                    when (val u = updateState) {
-                        is MainViewModel.UpdateState.UpToDate ->
-                            if (asked) { asked = false; note(R.string.log_note_latest, version) }
-                        is MainViewModel.UpdateState.Available ->
-                            if (asked) { asked = false; note(R.string.log_note_available, u.release.tag) }
-                        is MainViewModel.UpdateState.Unreachable ->
-                            if (asked) { asked = false; note(R.string.log_note_unreachable) }
-                        else -> Unit
-                    }
-                }
             }
 
             // Kept away from the switches on purpose: this is the one control on the
@@ -813,31 +754,6 @@ private fun StatusCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-/** "2 hours ago", or the date once that stops being a useful way to say it. */
-@Composable
-private fun relativeTime(millis: Long): String {
-    val minutes = (System.currentTimeMillis() - millis) / 60_000
-    return when {
-        minutes < 1 -> stringResource(R.string.set_just_now)
-        minutes < 60 -> stringResource(
-            R.string.set_ago,
-            counted(R.plurals.count_minutes, minutes.toInt()),
-        )
-        minutes < 60 * 24 -> stringResource(
-            R.string.set_ago,
-            counted(R.plurals.count_hours, (minutes / 60).toInt()),
-        )
-        minutes < 60 * 24 * 7 -> stringResource(
-            R.string.set_ago,
-            counted(R.plurals.count_days, (minutes / (60 * 24)).toInt()),
-        )
-        else -> stringResource(
-            R.string.set_on_date,
-            settingsDayFmt.format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())),
-        )
     }
 }
 
@@ -1200,22 +1116,3 @@ private fun AddKeywordRow(
         }
     }
 }
-
-/**
- * A GitHub release body as something to read in a dialog.
- *
- * The body is markdown, and this dialog is a Text: "**Upgrading clears your data.**"
- * arrives with its asterisks showing and "### Accounts" with its hashes. Nothing here
- * renders markdown, so the markers are taken off rather than displayed. Emphasis is
- * lost, which is a smaller cost than a screen of punctuation.
- */
-private fun plainNotes(body: String): String = body.trim().lines().joinToString("\n") { line ->
-    line.trimEnd()
-        .replace(headingMark, "")
-        .replace(boldMark, "")
-        .replace(bulletMark, "• ")
-}
-
-private val headingMark = Regex("^#{1,6}\\s*")
-private val bulletMark = Regex("^\\s*[-*]\\s+")
-private val boldMark = Regex("\\*\\*|__")

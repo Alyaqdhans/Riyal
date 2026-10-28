@@ -387,3 +387,30 @@ fun appVersion(context: android.content.Context): String = try {
 } catch (e: Exception) {
     "1.0"
 }
+
+private val relativeDayFmt: DateTimeFormatter get() = Dates.pattern("d MMM uuuu")
+
+/** "2 hours ago", or the date once that stops being a useful way to say it. */
+@Composable
+fun relativeTime(millis: Long): String {
+    val minutes = (System.currentTimeMillis() - millis) / 60_000
+    return when {
+        minutes < 1 -> stringResource(R.string.set_just_now)
+        minutes < 60 -> stringResource(
+            R.string.set_ago,
+            counted(R.plurals.count_minutes, minutes.toInt()),
+        )
+        minutes < 60 * 24 -> stringResource(
+            R.string.set_ago,
+            counted(R.plurals.count_hours, (minutes / 60).toInt()),
+        )
+        minutes < 60 * 24 * 7 -> stringResource(
+            R.string.set_ago,
+            counted(R.plurals.count_days, (minutes / (60 * 24)).toInt()),
+        )
+        else -> stringResource(
+            R.string.set_on_date,
+            relativeDayFmt.format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())),
+        )
+    }
+}

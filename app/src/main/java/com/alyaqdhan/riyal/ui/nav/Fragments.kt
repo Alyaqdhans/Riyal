@@ -23,6 +23,7 @@ import androidx.core.os.bundleOf
 import com.alyaqdhan.riyal.ui.screens.AccountsScreen
 import com.alyaqdhan.riyal.ui.screens.AnalysisScreen
 import com.alyaqdhan.riyal.ui.screens.CategoriesScreen
+import com.alyaqdhan.riyal.ui.screens.ChangelogScreen
 import com.alyaqdhan.riyal.ui.screens.CategoryDetailScreen
 import com.alyaqdhan.riyal.ui.screens.HomeScreen
 import com.alyaqdhan.riyal.ui.screens.NeedsCategoryScreen
@@ -30,6 +31,7 @@ import com.alyaqdhan.riyal.ui.screens.OnboardingScreen
 import com.alyaqdhan.riyal.ui.screens.ReviewScreen
 import com.alyaqdhan.riyal.ui.screens.SettingsScreen
 import com.alyaqdhan.riyal.ui.screens.TransactionsScreen
+import com.alyaqdhan.riyal.ui.screens.UpdatesScreen
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.theme.RiyalTheme
 import java.time.LocalDate
@@ -134,6 +136,27 @@ class NeedsCategoryFragment : InnerFragment() {
     @Composable
     override fun Screen() {
         NeedsCategoryScreen(vm, onBack = { back() })
+    }
+}
+
+/** Settings › Updates: the status card, the channel and the changelog's way in. */
+class UpdatesFragment : InnerFragment() {
+
+    @Composable
+    override fun Screen() {
+        UpdatesScreen(
+            vm,
+            onBack = { back() },
+            onOpenChangelog = { findNavController().navigate(R.id.changelogFragment) },
+        )
+    }
+}
+
+class ChangelogFragment : InnerFragment() {
+
+    @Composable
+    override fun Screen() {
+        ChangelogScreen(vm, onBack = { back() })
     }
 }
 
@@ -278,6 +301,7 @@ class SettingsFragment : ScreenFragment() {
             vm,
             onOpenAccounts = { findNavController().navigate(R.id.accountsFragment) },
             onOpenCategories = { findNavController().navigate(R.id.categoriesFragment) },
+            onOpenUpdates = { findNavController().navigate(R.id.updatesFragment) },
             onExport = { exportCsv.launch("riyal-transactions.csv") },
             onBackup = { saveBackup.launch("riyal-backup-" + LocalDate.now() + ".json") },
             onRestore = { openBackup.launch(BACKUP_TYPES) },

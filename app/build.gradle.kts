@@ -91,6 +91,9 @@ dependencies {
     implementation(libs.compose.icons.core)
     // Vico: proper chart library (Analysis 6-month columns), Compose + Material 3.
     implementation(libs.vico.compose.m3)
+    // Release notes in the update dialog and the changelog, rendered with Material 3
+    // typography instead of having their markdown stripped by hand.
+    implementation(libs.markdown.renderer.m3)
     testImplementation(libs.junit)
     testImplementation(libs.json)
 }
