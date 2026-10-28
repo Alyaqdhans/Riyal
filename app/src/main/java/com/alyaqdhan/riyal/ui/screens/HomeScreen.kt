@@ -89,7 +89,6 @@ fun HomeScreen(
     val hasPerm by vm.hasSmsPermission.collectAsState()
     val reviews by vm.reviews.collectAsState()
     val accounts by vm.accounts.collectAsState()
-    val balances by vm.balances.collectAsState()
     val categoryUse by vm.categoryUse.collectAsState()
     val budgets by vm.budgets.collectAsState()
     val budgetsOn by vm.budgetsOn.collectAsState()
@@ -186,9 +185,6 @@ fun HomeScreen(
                 if (attention.isNotEmpty()) {
                     item(key = "attention") { AttentionCard(attention) }
                 }
-                if (accounts.any { !it.archived }) {
-                    item(key = "accounts") { AccountsCard(accounts, balances, onOpenAccounts) }
-                }
                 if (budgetsOn) {
                     item(key = "budget") {
                         BudgetSection(
@@ -268,10 +264,6 @@ fun HomeScreen(
             },
             onSplitTransfer = {
                 vm.splitTransfer(txn)
-                picker = null
-            },
-            onRemove = {
-                vm.ignoreTxn(txn)
                 picker = null
             },
         )
@@ -396,49 +388,6 @@ private fun AttentionCard(items: List<Attention>) {
                 trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             ) { Text(a.title) }
-        }
-    }
-}
-
-/** Where the money is: the total, and each account with what is in it. */
-@Composable
-private fun AccountsCard(accounts: List<Account>, balances: Map<String, Long>, onOpenAccounts: () -> Unit) {
-    val live = accounts.filter { !it.archived }
-    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(stringResource(R.string.acct_title), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-            TextButton(onClick = onOpenAccounts) { Text(stringResource(R.string.home_see_all)) }
-        }
-        // Accounts in different currencies cannot be added up without inventing a rate.
-        live.groupBy { it.currency }.forEach { (currency, group) ->
-            val total = group.sumOf { balances[it.id] ?: it.openingBalanceMinor }
-            MoneyText(
-                total,
-                currency,
-                style = MaterialTheme.typography.headlineSmall,
-                color = if (total < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
-        }
-        Spacer(Modifier.height(4.dp))
-        live.take(4).forEach { account ->
-            val balance = balances[account.id] ?: account.openingBalanceMinor
-            ListItem(
-                onClick = onOpenAccounts,
-                leadingContent = { Icon(painterResource(iconFor(account.kind)), contentDescription = null) },
-                trailingContent = {
-                    MoneyText(
-                        balance,
-                        account.currency,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = if (balance < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                    )
-                },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            ) { Text(account.displayName) }
         }
     }
 }

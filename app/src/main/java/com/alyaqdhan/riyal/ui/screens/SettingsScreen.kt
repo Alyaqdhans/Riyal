@@ -24,6 +24,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -525,9 +526,20 @@ private fun SwitchRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
+    val plain = ListItemDefaults.colors()
     ListItem(
         checked = checked,
         onCheckedChange = onCheckedChange,
+        // Saying a setting is on is the switch's job. Left to the list item, every row that
+        // was on got filled in, and three in a row ran together into one block.
+        colors = ListItemDefaults.colors(
+            selectedContainerColor = plain.containerColor,
+            selectedContentColor = plain.contentColor,
+            selectedLeadingContentColor = plain.leadingContentColor,
+            selectedTrailingContentColor = plain.trailingContentColor,
+            selectedSupportingContentColor = plain.supportingContentColor,
+            selectedOverlineContentColor = plain.overlineContentColor,
+        ),
         leadingContent = { Icon(painterResource(icon), contentDescription = null) },
         supportingContent = { Text(detail) },
         trailingContent = { Switch(checked = checked, onCheckedChange = null) },

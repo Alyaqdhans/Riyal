@@ -249,6 +249,8 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                                 SwipeableTxnRow(
                                     archived = txn.id in archivedIds,
                                     onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
+                                    onRemove = { removeForGood(vm, snackbar, scope, txn) },
+                                    removeLabel = removeLabelOf(txn),
                                 ) {
                                     TxnRow(
                                         txn,
@@ -265,6 +267,8 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                             SwipeableTxnRow(
                                 archived = txn.id in archivedIds,
                                 onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
+                                onRemove = { removeForGood(vm, snackbar, scope, txn) },
+                                    removeLabel = removeLabelOf(txn),
                             ) {
                                 TxnRow(
                                     txn,
@@ -320,10 +324,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
             },
             onSplitTransfer = {
                 vm.splitTransfer(txn)
-                picker = null
-            },
-            onRemove = {
-                removeForGood(vm, snackbar, scope, txn)
                 picker = null
             },
         )

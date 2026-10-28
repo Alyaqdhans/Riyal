@@ -106,12 +106,12 @@ class MainActivity : AppCompatActivity() {
         findViewById<ComposeView>(R.id.bottom_bar).setContent {
             RiyalTheme {
                 val selected by currentDestination.collectAsState()
-                val reviewCount by vm.pendingReviewCount.collectAsState()
                 val update by vm.updateState.collectAsState()
                 RiyalToolbar(
                     selected = selected,
+                    // Only an update earns a dot. Home is where anything needing an answer
+                    // is listed anyway, and it is the tab the app opens on.
                     badges = buildSet {
-                        if (reviewCount > 0) add(Tab.HOME)
                         if (update is MainViewModel.UpdateState.Available) add(Tab.SETTINGS)
                     },
                     onSelect = { destId -> switchTab(navController, destId) },
@@ -186,8 +186,7 @@ private enum class Tab(
  * Material 3 Expressive's floating toolbar with its paired button, as the component's
  * own guidance places it: a vibrant pill centred over the content, the Add button
  * attached at its end. Each tab is a toggle - filled where you are - with its name on a
- * long press, and a dot where something is waiting: a review on Home, an update in
- * Settings.
+ * long press, and a dot on Settings when an update is waiting.
  */
 @Composable
 private fun RiyalToolbar(

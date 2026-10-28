@@ -1,6 +1,7 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import android.app.Application
+import androidx.annotation.StringRes
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import com.alyaqdhan.riyal.R
@@ -51,4 +52,12 @@ internal fun removeForGood(
             ),
         )
     }
+}
+
+/** What removing a record is called: a record you added is deleted; a transfer goes with its other half. */
+@StringRes
+internal fun removeLabelOf(txn: Txn): Int = when {
+    txn.manual -> R.string.action_delete
+    txn.isTransfer -> R.string.row_remove_both
+    else -> R.string.row_remove
 }

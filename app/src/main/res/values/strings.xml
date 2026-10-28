@@ -153,9 +153,6 @@
     <string name="home_see_all">See all</string>
     <string name="home_attention">Needs your attention</string>
     <string name="home_top_spending">Top spending</string>
-    <string name="sheet_remove_title">Remove this record?</string>
-    <string name="sheet_remove_body">It is removed from every list and total, and the message it came from is not read again. This cannot be undone; archiving it instead keeps it in its account\'s balance.</string>
-    <string name="sheet_remove_manual_body">The record you added is deleted. This cannot be undone.</string>
     <string name="set_teach">Teach Riyal</string>
     <string name="set_section_general">General</string>
     <string name="cur_rates_short">Fixed for the Gulf and the dollar</string>

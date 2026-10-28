@@ -203,6 +203,8 @@ fun CategoryDetailScreen(
                     SwipeableTxnRow(
                         archived = txn.id in archivedIds,
                         onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
+                        onRemove = { removeForGood(vm, snackbar, scope, txn) },
+                                    removeLabel = removeLabelOf(txn),
                     ) {
                         TxnRow(txn, onClick = { editing = txn }, accounts = accounts)
                     }
@@ -235,10 +237,6 @@ fun CategoryDetailScreen(
             },
             onSplitTransfer = {
                 vm.splitTransfer(txn)
-                editing = null
-            },
-            onRemove = {
-                removeForGood(vm, snackbar, scope, txn)
                 editing = null
             },
         )

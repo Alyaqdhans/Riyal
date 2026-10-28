@@ -153,9 +153,6 @@
     <string name="home_see_all">عرض الكل</string>
     <string name="home_attention">بحاجة إلى انتباهك</string>
     <string name="home_top_spending">أعلى الإنفاق</string>
-    <string name="sheet_remove_title">إزالة هذا السجل؟</string>
-    <string name="sheet_remove_body">سيُزال من كل القوائم والمجاميع، ولن تُقرأ الرسالة التي جاء منها مجددًا. لا يمكن التراجع عن ذلك؛ أما الأرشفة فتُبقيه ضمن رصيد حسابه.</string>
-    <string name="sheet_remove_manual_body">سيُحذف السجل الذي أضفته. لا يمكن التراجع عن ذلك.</string>
     <string name="set_teach">علّم ريال</string>
     <string name="set_section_general">عام</string>
     <string name="cur_rates_short">ثابتة للخليج والدولار</string>

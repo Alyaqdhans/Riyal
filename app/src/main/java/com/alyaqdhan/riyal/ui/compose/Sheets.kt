@@ -6,6 +6,12 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Icon
 import androidx.annotation.StringRes
@@ -309,9 +315,7 @@ fun TxnEditSheet(
     onSetAccount: ((String) -> Unit)? = null,
     onMarkTransfer: ((fromAccountId: String?, toAccountId: String?) -> Unit)? = null,
     onSplitTransfer: (() -> Unit)? = null,
-    onRemove: (() -> Unit)? = null,
 ) {
-    var confirmRemove by remember { mutableStateOf(false) }
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     // Frozen for this sheet session: applying a category updates the counts at once,
     // and the chips must not rearrange behind the sheet that is doing the applying.
@@ -488,52 +492,7 @@ fun TxnEditSheet(
                     }
                 }
             }
-            // Removing is here rather than on a swipe: it cannot be undone - the message
-            // it came from is kept out of every future scan - so it is asked about first.
-            if (onRemove != null) {
-                HorizontalDivider()
-                TextButton(
-                    onClick = { confirmRemove = true },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                ) {
-                    Text(
-                        stringResource(
-                            when {
-                                txn.manual -> R.string.action_delete
-                                txn.isTransfer -> R.string.row_remove_both
-                                else -> R.string.row_remove
-                            }
-                        )
-                    )
-                }
-            }
         }
-    }
-
-    if (confirmRemove && onRemove != null) {
-        AlertDialog(
-            onDismissRequest = { confirmRemove = false },
-            title = { Text(stringResource(R.string.sheet_remove_title)) },
-            text = {
-                Text(
-                    stringResource(
-                        if (txn.manual) R.string.sheet_remove_manual_body else R.string.sheet_remove_body
-                    )
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirmRemove = false
-                        onRemove()
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                ) { Text(stringResource(R.string.row_remove)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmRemove = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
-        )
     }
 }
 
@@ -588,8 +547,31 @@ fun ManualTxnDialog(
     val transferValid = type != TxnType.TRANSFER ||
         (fromAccount != null && toAccount != null && fromAccount?.id != toAccount?.id)
 
+    // The form pops in - it is what the Add button is for, and a little life on arrival
+    // says so - and leaves faster than it came, because by then the user is done with it.
+    val pop = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    var leaving by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        pop.animateTo(1f, spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow))
+    }
+    fun leave(then: () -> Unit) {
+        if (leaving) return
+        leaving = true
+        scope.launch {
+            pop.animateTo(0f, tween(durationMillis = 120, easing = FastOutLinearInEasing))
+            then()
+        }
+    }
+
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { leave(onDismiss) },
+        modifier = Modifier.graphicsLayer {
+            val p = pop.value
+            scaleX = 0.85f + 0.15f * p
+            scaleY = 0.85f + 0.15f * p
+            alpha = p.coerceIn(0f, 1f)
+        },
         title = { Text(title) },
         text = {
             Column(
@@ -711,20 +693,19 @@ fun ManualTxnDialog(
             TextButton(
                 enabled = parsed != null && parsed.signum() > 0 && transferValid,
                 onClick = {
-                    onSave(
-                        Money.toMinor(parsed!!, currency),
-                        currency,
-                        type,
-                        merchant.trim().ifBlank { null },
-                        categoryId,
-                        if (type == TxnType.INCOME) null else fromAccount?.id,
-                        if (type == TxnType.EXPENSE) null else toAccount?.id,
-                    )
+                    val minor = Money.toMinor(parsed!!, currency)
+                    val chosenCurrency = currency
+                    val chosenType = type
+                    val name = merchant.trim().ifBlank { null }
+                    val category = categoryId
+                    val from = if (type == TxnType.INCOME) null else fromAccount?.id
+                    val to = if (type == TxnType.EXPENSE) null else toAccount?.id
+                    leave { onSave(minor, chosenCurrency, chosenType, name, category, from, to) }
                 },
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

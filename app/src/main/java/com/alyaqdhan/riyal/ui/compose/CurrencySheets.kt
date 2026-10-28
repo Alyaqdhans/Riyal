@@ -2,8 +2,15 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -116,7 +123,7 @@ fun CurrencyPickerSheet(
                                     tint = MaterialTheme.colorScheme.primary,
                                 )
                             } else {
-                                CurrencySign(info.code, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                SignToken(info)
                             }
                         },
                     ) { Text(stringResource(info.name)) }
@@ -125,6 +132,43 @@ fun CurrencyPickerSheet(
         }
     }
 }
+
+/**
+ * A currency's sign in a round slot that is the same for every currency. The drawn signs
+ * are as wide as their shapes need - the rial's is twice the euro's - and the written
+ * ones run from one character to three, so drawn at one height they came out every size
+ * down the list. Here each is fitted inside the same box, and the column lines up.
+ */
+@Composable
+private fun SignToken(info: CurrencyInfo) {
+    val tint = MaterialTheme.colorScheme.onSurfaceVariant
+    Box(
+        Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (info.symbol != null) {
+            // As tall as fits, but never wider than the box allows.
+            val height = minOf(SIGN_BOX_HEIGHT.value, SIGN_BOX_WIDTH.value / info.symbolAspect).dp
+            CurrencySign(info.code, height = height, tint = tint)
+        } else {
+            Text(
+                info.glyph,
+                color = tint,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 15.sp),
+                modifier = Modifier.width(SIGN_BOX_WIDTH),
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+private val SIGN_BOX_WIDTH = 24.dp
+private val SIGN_BOX_HEIGHT = 15.dp
 
 /**
  * A form field that shows a currency and opens [CurrencyPickerSheet] when tapped: the
