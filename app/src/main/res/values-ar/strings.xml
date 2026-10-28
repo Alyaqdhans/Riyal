@@ -145,8 +145,28 @@
     <string name="acct_kind_wallet">محفظة</string>
     <string name="home_setup_title">علّم ريال بنوكك</string>
     <string name="home_setup_subtitle">بضعة أسئلة، نحو دقيقتين</string>
+    <string name="home_see_all">عرض الكل</string>
+    <string name="home_attention">بحاجة إلى انتباهك</string>
+    <string name="home_top_spending">أعلى الإنفاق</string>
+    <string name="sheet_remove_title">إزالة هذا السجل؟</string>
+    <string name="sheet_remove_body">سيُزال من كل القوائم والمجاميع، ولن تُقرأ الرسالة التي جاء منها مجددًا. لا يمكن التراجع عن ذلك؛ أما الأرشفة فتُبقيه ضمن رصيد حسابه.</string>
+    <string name="sheet_remove_manual_body">سيُحذف السجل الذي أضفته. لا يمكن التراجع عن ذلك.</string>
     <string name="set_teach">علّم ريال</string>
-    <string name="set_teach_detail">راجع البنوك والحسابات التي وجدها ريال، ثم أكّد أو صحّح بضع رسائل. كل إجابة تحسم كل رسالة مكتوبة بالطريقة نفسها، وتتوقف الأسئلة حالما تُظهر إجاباتك أن ريال يقرأ بنوكك بشكل صحيح.</string>
+    <string name="set_section_general">عام</string>
+    <string name="cur_rates_short">ثابتة للخليج والدولار</string>
+    <string name="set_teach_short">راجع بنوكك وأجب عن بضعة أسئلة</string>
+    <string name="set_scan_on_open_detail">البحث عن رسائل جديدة كلما فُتح ريال</string>
+    <string name="set_scan_now_detail">قراءة الرسائل التي وصلت منذ آخر فحص</string>
+    <string name="set_rescan_detail">قراءة صندوق الوارد كاملًا من جديد وإعادة بناء سجلاتك</string>
+    <string name="set_categories_detail">تصنيفاتك، وما تعلّمه ريال</string>
+    <string name="set_budget_detail">خطط إنفاقك لكل تصنيف، وتظهر في الرئيسية</string>
+    <string name="set_confirm_transfers_detail">احتساب الزوج المتطابق تحويلًا دون سؤال</string>
+    <string name="set_learn_detail">تذكّر تصنيف المتجر عندما تغيّره</string>
+    <string name="set_export_detail">ملف CSV بكل السجلات</string>
+    <string name="set_backup_detail">كل ما يعرفه ريال، في ملف تختاره</string>
+    <string name="set_backup_messages_detail">عند الإيقاف: تحتفظ السجلات بأرقامها دون نص الرسائل</string>
+    <string name="set_restore_detail">استبدال كل شيء بملف نسخة احتياطية</string>
+    <string name="set_log_detail">كل خطوة قام بها ريال أثناء القراءة</string>
     <string name="log_taught">%1$s · الرسائل المكتوبة بهذا الشكل %2$s (و%3$d مثلها)</string>
     <string name="log_sender_excluded">%1$s ليس بنكك · لن تُقرأ رسائله بعد الآن</string>
     <string name="log_sender_included">سيُقرأ %1$s كبنك</string>
@@ -231,12 +251,10 @@
         <item quantity="other">%d تصنيف</item>
     </plurals>
 
-    <string name="settings_card_app">التطبيق</string>
     <string name="settings_language">اللغة</string>
     <string name="settings_language_system">حسب لغة الهاتف</string>
     <string name="settings_language_english">English</string>
     <string name="settings_language_arabic">العربية</string>
-    <string name="settings_language_help">يقرأ ريال رسائل البنوك العربية مهما كانت هذه اللغة. هذا الإعداد يغيّر كلمات التطبيق نفسه، لا ما يستطيع فهمه.</string>
 
     <string name="home_net">الصافي</string>
     <string name="home_recent_transactions">آخر المعاملات</string>
@@ -276,22 +294,12 @@
     </plurals>
     <string name="home_needs_category_subtitle">ضغطة واحدة تُصنّف متجراً بكامله</string>
 
-    <string name="home_update_title">صدر ريال %1$s</string>
-    <string name="home_update_subtitle">لديك %1$s · اضغط لمعرفة الجديد</string>
 
     <string name="home_empty_title">لا شيء مُسجَّل بعد</string>
     <string name="home_empty_with_permission">الإعدادات › فحص الآن يقرأ رسائلك، ويشرح كل خطوة يقوم بها.</string>
     <string name="home_empty_without_permission">اسمح بقراءة الرسائل، ثم افحص متى شئت.</string>
 
-    <string name="mood_quiet">شهر هادئ حتى الآن</string>
-    <string name="mood_no_income_yet">تتبُّع المصروفات، لم يظهر دخل بعد</string>
-    <string name="mood_well_under">الوضع مريح، أقل بكثير من دخلك</string>
-    <string name="mood_fine">الوضع جيد، ابقَ منتبهاً</string>
-    <string name="mood_close">الوضع على الحافة هذا الشهر</string>
-    <string name="mood_over">المصروفات تجاوزت الدخل هذا الشهر</string>
 
-    <string name="home_out">%s صادر</string>
-    <string name="home_in">%s وارد</string>
     <string name="home_other_currencies">+%1$s في عملات أخرى</string>
 
     <string name="txn_filters">تصفية</string>
@@ -302,7 +310,7 @@
     <string name="txn_type_transfers">تحويلات</string>
     <string name="txn_back_to_yours">العودة إلى معاملاتك</string>
     <string name="txn_archived_count">المؤرشفة (%d)</string>
-    <string name="txn_swipe_hint">اسحب الصف، ثم اضغط أرشفة أو إزالة.</string>
+    <string name="txn_swipe_hint">اسحب السجل في أي اتجاه لأرشفته. اضغط عليه لتعديله أو إزالته.</string>
     <string name="txn_empty_title">لا معاملات هنا</string>
     <string name="txn_empty_archived">الأرشيف فارغ. اسحب الصف يميناً لوضعه فيه.</string>
     <string name="txn_empty_filtered">لا شيء يطابق هذه التصفية.</string>
@@ -324,7 +332,6 @@
     <string name="row_unassigned">غير محدَّد</string>
     <string name="row_transfer_route">%1$s ← %2$s · %3$s</string>
     <string name="row_account_time">%1$s · %2$s</string>
-    <string name="row_low_confidence">المحلِّل واثق بنسبة %d%%، اضغط للتصحيح</string>
     <string name="row_not_counted">غير محتسبة</string>
     <string name="day_today">اليوم</string>
     <string name="day_yesterday">أمس</string>
@@ -408,8 +415,6 @@
     <string name="review_arrived_account">%1$s وصلت إلى %2$s</string>
     <string name="review_keep_both">لا، أبقِ الاثنتين</string>
     <string name="review_yes_transfer">نعم، إنه تحويل</string>
-    <string name="review_learn_word">اقرأ الرسائل المشابهة تلقائياً من الآن فصاعداً</string>
-    <string name="review_learn_word_chip">«%1$s»</string>
     <string name="review_remember_similar">تذكَّر هذا للرسائل المشابهة</string>
     <string name="review_add_manually">إضافة يدوية</string>
     <string name="action_show">إظهار</string>
@@ -695,49 +700,24 @@
     <string name="set_sms_permission">إذن قراءة الرسائل</string>
     <string name="set_allowed">مسموح</string>
     <string name="set_off">متوقف</string>
-    <string name="set_manage">إدارة</string>
     <string name="set_scan_on_open">افحص عند فتح التطبيق</string>
     <string name="set_how_far_back">إلى أي مدى في الماضي</string>
-    <string name="set_range_1mo">شهر</string>
-    <string name="set_range_3mo">3 أشهر</string>
-    <string name="set_range_6mo">6 أشهر</string>
-    <string name="set_range_1yr">سنة</string>
-    <string name="set_range_all">الكل</string>
     <string name="set_range_everything">كل شيء</string>
     <string name="set_range_one_month">شهر واحد</string>
     <string name="set_range_one_year">سنة واحدة</string>
     <string name="set_range_months">%d أشهر</string>
     <string name="set_fresh_start">لا يُقرأ شيء قبل %1$s، مهما كان المدى المختار.</string>
     <string name="set_read_older">اقرأ الرسائل الأقدم أيضاً</string>
-    <string name="set_gate_keywords">الكلمات البوابة</string>
-    <string name="set_keyword_counts">%1$d للصادر · %2$d للوارد</string>
-    <string name="set_reset_defaults">إعادة الضبط الافتراضي</string>
-    <string name="set_who_is_read">مَن تُقرأ رسائله</string>
-    <string name="set_senders_nobody">لا أحد</string>
 
-    <string name="set_senders_banks_plus">البنوك + %d</string>
-    <string name="set_senders_banks_only">البنوك فقط</string>
-    <string name="set_senders_any">أي مُرسِل</string>
-    <string name="set_bank_only">مُرسِلو البنوك فقط</string>
-    <string name="set_only_approved">مَن أعتمدهم أنا فقط</string>
-    <string name="set_no_approved">لا مُرسِلين معتمَدين بعد، فلن يطابق الفحص شيئاً.</string>
-    <string name="set_no_extra_approved">لا مُرسِلين معتمَدين إضافيين، تُقرأ أسماء البنوك وحدها.</string>
-    <string name="set_sender_name">اسم المُرسِل</string>
-    <string name="set_seen_in_inbox">ظهروا في صندوق واردك، اضغط للاعتماد:</string>
     <string name="set_scan_now">افحص الآن</string>
     <string name="set_scan_progress">%1$d من %2$d</string>
     <string name="set_scan_starting">يبدأ…</string>
-    <string name="set_scanning">جارٍ الفحص</string>
-    <string name="set_scan">فحص</string>
     <string name="set_rescan_all">إعادة فحص كل شيء</string>
-    <string name="set_rescan">إعادة الفحص</string>
-    <string name="set_card_automation">الأتمتة</string>
     <string name="set_learn_corrections">تعلَّم من تصحيحاتي</string>
     <string name="set_confirm_transfers">أكِّد التحويلات نيابةً عني</string>
     <string name="set_card_data">بياناتك</string>
     <string name="set_export_txns">تصدير المعاملات</string>
     <string name="set_verbose_log">السجل التفصيلي</string>
-    <string name="set_verbose_value">كل خطوة، بكلمات واضحة</string>
     <string name="set_where_it_lives">أين تُحفظ</string>
     <string name="set_backup">النسخ الاحتياطي</string>
     <string name="set_restore">الاستعادة من نسخة</string>
@@ -748,11 +728,6 @@
     <string name="set_card_about">عن التطبيق</string>
     <string name="set_checking">جارٍ التحقق…</string>
     <string name="set_update_available">%1$s متاح</string>
-    <string name="set_latest">%1$s · الأحدث</string>
-    <string name="set_could_not_check">%1$s · تعذّر التحقق</string>
-    <string name="set_checking_action">جارٍ التحقق</string>
-    <string name="set_download">تنزيل</string>
-    <string name="set_check_now">تحقق الآن</string>
     <string name="set_wipe_title">حذف كل شيء؟</string>
     <string name="set_wipe_body">ستُمحى كل المعاملات المسجَّلة والقواعد وعناصر المراجعة والإعدادات. أما صندوق رسائلك فلا يُمس، فهذا التطبيق لا يعدّل الرسائل أبداً.</string>
     <string name="set_export_title">تصدير %1$s؟</string>
@@ -764,10 +739,6 @@
     <string name="set_just_now">الآن</string>
     <string name="set_ago">قبل %1$s</string>
     <string name="set_on_date">في %1$s</string>
-    <string name="set_collapse">طيّ %s</string>
-    <string name="set_expand">فتح %s</string>
-    <string name="set_remove_item">إزالة %s</string>
-    <string name="set_add_keyword">أضف كلمة</string>
     <string name="set_danger_title">حذف كل بيانات التطبيق</string>
     <string name="set_danger_body">السجلات والقواعد والإعدادات. وصندوق رسائلك لا يُمس.</string>
     <plurals name="count_minutes">
@@ -800,14 +771,6 @@
     <string name="scan_unknown_error">خطأ غير معروف</string>
     <string name="manual_entry_sender">إدخال يدوي</string>
     <string name="manual_entry_body">أضفتها بنفسك</string>
-    <plurals name="count_approved">
-        <item quantity="zero">لا أحد معتمَد</item>
-        <item quantity="one">واحد معتمَد</item>
-        <item quantity="two">اثنان معتمَدان</item>
-        <item quantity="few">%d معتمَدين</item>
-        <item quantity="many">%d معتمَداً</item>
-        <item quantity="other">%d معتمَد</item>
-    </plurals>
     <plurals name="count_learned">
         <item quantity="zero">لا قواعد</item>
         <item quantity="one">قاعدة واحدة</item>
@@ -822,34 +785,8 @@
     <string name="help_categories">كل تصنيف وما بلغه في الفترة المعروضة، والمصروفات والدخل كلٌّ على حدة. افتح تصنيفاً لترى سجلاته، وأنشئ تصنيفك بالزر، وعدِّل أو احذف ما أنشأته أنت.\n\nوتحتها الأسماء التي تعلَّمها ريال: ما يصنّفه دون سؤال، وما طلبت أن تُسأل عنه في كل مرة.</string>
     <string name="help_accounts">الحسابات التي وجدها ريال في رسائل بنكك نفسها، وآخر رصيد ذكرته كل واحدة منها. والرصيد المقروء من رسالة تخمينٌ أول جيد لا أكثر، فافتح أي حساب لضبط الرقم الحقيقي والتاريخ الذي كان صحيحاً فيه.\n\nويحمل الحساب أيضاً أسماء المرسلين التابعين له، وبها تُوجَّه الرسالة إلى الرصيد الصحيح. وأرشفة حساب تُبقي سجلاته، لأن المال قد تحرّك فعلاً.</string>
 
-    <string name="set_help_currency">تُستخدم حين لا تذكر الرسالة عملة. ومبالغ الريال العماني تحتفظ بثلاث خانات عشرية (البيسة).</string>
-    <string name="set_help_accounts">الحسابات المقروءة من رسائل بنكك نفسها، وأرصدتها، وأي مُرسِل يتبع أيّها.</string>
-    <string name="set_help_categories">كل تصنيف وما كلَّفه، وحيث تُنشئ تصنيفاتك، والأسماء التي تعلَّمها ريال: ما يصنّفه دون سؤال، وما طلبت أن تُسأل عنه في كل مرة.</string>
-    <string name="set_help_budget">تكتسب الشاشة الرئيسية قسم ميزانية للشهر المعروض: حدٌّ لكل تصنيف، وشريط لكل حد، وعلامة تبيّن إن كان المال يمضي أسرع من التقويم. ويمكن لأي خطة أن تغطي أي فترة، تُضبط من محرِّرها.</string>
-    <string name="set_help_permission">READ_SMS هو الإذن الوحيد الذي يمسّ بياناتك. و INTERNET هو الإذن الآخر الوحيد، ويُستخدم لأمر واحد: سؤال GitHub إن كان هناك إصدار أحدث. ولا مستقبِلات تعمل في الخلفية، ولا إشعارات.</string>
-    <string name="set_help_scan_on_open">يقرأ ريال صندوق الوارد مرة واحدة عند تشغيله. وإذا أوقفت هذا، لا يحدث الفحص إلا حين تسحب للأسفل للتحديث.</string>
-    <string name="set_help_how_far_back">إلى أي مدى ينظر الفحص في الماضي. والرسائل خارج المدى لا يُستعلَم عنها من صندوق الوارد أصلاً.</string>
-    <string name="set_help_keywords">لا تُعالَج الرسالة إلا إذا احتوت إحدى هذه الكلمات. وما عداها يُتخطّى، فلا يُقرأ ولا يُخزَّن.</string>
-    <string name="set_help_who_is_read">مرشِّحان على اسم المُرسِل، فوق الكلمات البوابة. أما البنوك التي لا تحمل أسماؤها كلمة بنك (NBO، Sohar Intl، ميثاق) فتُعتمَد بالاسم في القائمة.</string>
-    <string name="set_help_bank_only">لا تُقرأ إلا رسائل المرسلين الذين تحتوي أسماؤهم “bank” أو “بنك” أو “مصرف”. وما عدا ذلك يجب اعتماده بالاسم أدناه.</string>
-    <string name="set_help_only_approved">إذا أوقفت هذا، يُنظر في كل مُرسِل، ويبقى على نص الرسالة أن يحتوي إحدى الكلمات البوابة لتُقرأ أصلاً.</string>
-    <string name="set_help_scan_now">يقرأ الرسائل التي وصلت منذ آخر فحص، فيكلّف بقدر الجديد لا بقدر ما يحويه صندوق واردك. وليس لريال مستقبِل يعمل في الخلفية: فهو لا يقرأ إلا حين تطلب منه، أو عند فتحه إن كان ذلك مُفعَّلاً أعلاه.\n\nولإعادة بناء كل شيء من الصفر، استخدم \"إعادة فحص كل شيء\" أدناه.</string>
-    <string name="set_help_rescan">الفحص المعتاد لا يقرأ إلا الرسائل التي وصلت منذ المرة الماضية، ولهذا هو سريع. أما هذا فيقرأ المدى كله من جديد، ويعيد بناء كل سجل من الرسائل الباقية في صندوق واردك.\n\nأمران لا يفعلهما غيره: أن ينتبه إلى رسالة بنكية حذفتها بعد قراءتها وكان سجلها سيبقى، وأن يعيد قراءة الرسائل القديمة وفق قواعد غيَّرتها. والثاني يفعله ريال نيابةً عنك كلما غيَّرت كلمة مفتاحية؛ أما الأول فطلبه بيدك.\n\nوعلى صندوق وارد كبير يستغرق هذا وقتاً. ولا يضيع به شيء صنَّفته أو أدخلته بنفسك.</string>
-    <string name="set_help_learn">حين تصحّح تصنيف معاملة لها متجر، يُحفظ ذلك المتجر ويُطبَّق على الرسائل السابقة واللاحقة. ويظل بإمكانك رفض ذلك لتعديل واحد من مُنتقي التصنيف، والاسم المعلَّم بـ“اسألني في كل مرة” لا يُحفظ أبداً.</string>
-    <string name="set_help_confirm_transfers">الزوج المتطابق هو المبلغ نفسه والعملة نفسها، ينتقل بين حسابين من حساباتك، تفصل بينهما دقائق. وبتفعيل هذا يصير تحويلاً واحداً فوراً ويتوقف عن الاحتساب مصروفاً أو دخلاً؛ ويمكن فصل أيٍّ منها من جديد من صفّه في المعاملات. وبإيقافه ينتظر كل زوج في المراجعة قبولك أو رفضك.</string>
-    <string name="set_help_export">يكتب كل سجل في ملف CSV تختاره أنت: التاريخ والنوع والمبلغ والحسابات والمتجر والتصنيف والرسالة التي قُرئ منها.</string>
-    <string name="set_help_backup">يكتب كل ما يعرفه ريال في ملف واحد تختاره أنت: الحسابات والسجلات والتصنيفات والقواعد والميزانيات وكل إجابة أعطيتها له. ويكتبه ريال حيث تشير، ولا يرسله إلى أي مكان.</string>
-    <string name="set_help_restore">يقرأ ملف نسخة احتياطية ويستبدل به ما في التطبيق. وتُرفض النسخة القادمة من إصدار أقدم بدل أن تُقرأ نصف قراءة.</string>
-    <string name="set_help_backup_messages">النسخة تحمل رسائل البنك نفسها. وإن تركتها، يبقى للسجل مبلغه وتاريخه وحسابه ومتجره وتصنيفه، ويعود النص من تلقاء نفسه في الفحص التالي ما دامت الرسائل في صندوق هذا الهاتف. اتركها إن كان الملف ذاهباً إلى مكان لا تضع فيه رسالة.</string>
     <string name="set_help_verbose">كل ما فعله الفاحص ولماذا، يُكتب لحظة حدوثه. ولا يغادر الهاتف أبداً إلا إذا نسخته بنفسك.</string>
-    <string name="set_help_where_it_lives">كل شيء يعيش في ملف JSON واحد داخل التخزين الخاص بهذا التطبيق، والنسخ الاحتياطي معطَّل. ويتصل التطبيق بالشبكة لأمر واحد: أن يسأل GitHub إن كان هناك إصدار أحدث، وأن ينزّل ملف APK إن طلبت ذلك. ولا يذهب شيء في الاتجاه الآخر. فلا يُوضَع في أي طلب سجل ولا رسالة ولا حساب ولا رقم، ولا يوجد تتبّع ولا خادم.</string>
 
-    <string name="set_about_update_header">لديك %1$s. وصدر %2$s.\n\n</string>
-    <string name="set_about_download">التنزيل يضع ملف APK في مجلد التنزيلات ويفتحه هناك. ولا يستطيع ريال تثبيته نيابةً عنك، بل تضغط الملف بنفسك. وإذا رفض أندرويد التثبيت، فتلك النسخة موقَّعة بمفتاح غير مفتاح هذه: احذف ريال أولاً، وهذا يمسح سجلاته المخزَّنة. وتُبنى السجلات من جديد من صندوق واردك في الفحص التالي، أما التصنيفات التي وضعتها بيدك فلا.</string>
-    <string name="set_about_uptodate">لديك %1$s، وهو أحدث إصدار منشور.</string>
-    <string name="set_about_unreachable">لم يصل التحقق الأخير إلى GitHub. وانقطاع الاتصال، وحدّ الطلبات، وإصدار لم يُنشر قط، كلها تبدو من هنا سواء. ولا خطب في النسخة التي لديك؛ اضغط \"تحقق الآن\" للمحاولة مجدداً.</string>
-    <string name="set_about_default">صُنع لعُمان 🇴🇲 · الريال العماني أولاً، مع دعم الرسائل العربية. ويتحقق من GitHub مرة في اليوم بحثاً عن إصدار أحدث.</string>
-    <string name="set_about_whats_in">\n\nما في %1$s\n\n</string>
 
     <string name="log_perm_granted">إذن READ_SMS: مُنح، ويمكنك سحبه متى شئت من إعدادات النظام</string>
     <string name="log_perm_denied">إذن READ_SMS: لم يُمنح، ولا يستطيع التطبيق قراءة شيء ولن يقرأ</string>
@@ -874,7 +811,6 @@
     <string name="log_update_no_apk">%1$s لا يحمل ملف APK، فلا شيء لتنزيله من هنا - صفحة الإصدار في GitHub ستحمله</string>
     <string name="log_download_started">جارٍ تنزيل %1$s إلى مساحة ريال الخاصة · لا يُثبَّت شيء من تلقاء نفسه</string>
     <string name="log_download_failed">توقف التنزيل (%1$s)</string>
-    <string name="log_no_downloads_screen">لا توجد شاشة تنزيلات في هذا الهاتف، استخدم إشعار التنزيل</string>
     <string name="log_budget_created">أنشأت خطة ميزانية: \"%1$s\"</string>
     <string name="log_budget_set">ضبطت الميزانية: %1$s بحد %2$d (وحدة صغرى)</string>
     <string name="log_budget_removed">أزلت الميزانية: %1$s</string>
@@ -905,7 +841,6 @@
     <string name="log_review_dismissed_smart"> · وحُفظ ذلك: %1$s تُجوهلت معه، وسيُتجاهل ما يشبهها تلقائياً (يمكن استعادتها متى شئت من المراجعة)</string>
     <string name="log_review_restored">استعدت عنصر مراجعة</string>
     <string name="log_review_restored_extra"> ومعه %1$s، ولم يعد هذا النوع يُتجاهل تلقائياً</string>
-    <string name="log_keyword_added">أضفت \"%1$s\" ككلمة %2$s · وسيقرأ الفحص القادم الرسائل المشابهة وحده (الإعدادات › الكلمات لسحبها)</string>
     <string name="log_word_out">صادر</string>
     <string name="log_word_in">وارد</string>
     <string name="log_review_resolved">عالجت عنصر مراجعة: سُجِّل %1$s (%2$s)</string>
@@ -956,8 +891,6 @@
     <string name="log_github_rate_limited">أجاب GitHub بالرمز %1$d: طلبات كثيرة من هذه الشبكة، وسيسأل مجدداً غداً</string>
     <string name="log_github_other_code">أجاب GitHub بالرمز %1$d، فلا شيء للمقارنة به هذه المرة</string>
     <string name="log_github_no_tag">لم يحمل جواب GitHub اسم وسم، فتُجوهل</string>
-    <string name="log_github_latest_apk">أحدث إصدار في GitHub هو %1$s، ويحمل %2$s</string>
-    <string name="log_github_latest_no_apk">أحدث إصدار في GitHub هو %1$s، وبلا ملف APK</string>
     <string name="log_store_manual_kept">رسالة أجبت عنها بيدك صارت تُقرأ وحدها · يُحتفظ بسجل واحد قدره %1$s، ما زال تحت %2$s</string>
     <string name="log_store_deferred_back">%1$s تركتها تحت \"أخرى\" عادت إلى قائمة الانتظار، كما وُعدت حين تركتها</string>
     <string name="log_store_nothing_changed">لم يتغير شيء، فلم يُكتب شيء</string>
@@ -1018,30 +951,12 @@
     <string name="log_note_scan_open_off">الفحص عند فتح التطبيق مُعطَّل</string>
     <string name="log_note_scan_range">مدى الفحص ← %1$s</string>
     <string name="log_note_fresh_start_lifted">رُفعت البداية الجديدة، ويمكن قراءة الرسائل الأقدم من جديد</string>
-    <string name="log_note_kw_removed_out">أُزيلت كلمة الصادر \"%1$s\"</string>
-    <string name="log_note_kw_added_out">أُضيفت كلمة الصادر \"%1$s\"</string>
-    <string name="log_note_kw_removed_in">أُزيلت كلمة الوارد \"%1$s\"</string>
-    <string name="log_note_kw_added_in">أُضيفت كلمة الوارد \"%1$s\"</string>
-    <string name="log_note_kw_reset">أُعيدت الكلمات إلى الوضع الافتراضي (سحب/خصم/شراء… + إيداع/إضافة/راتب… بالعربية والإنجليزية)</string>
-    <string name="log_note_bank_only_on">قصر القراءة على مرسلي البنوك مُفعَّل</string>
-    <string name="log_note_bank_only_off">قصر القراءة على مرسلي البنوك مُعطَّل</string>
-    <string name="log_note_allowlist_on">قائمة المرسلين المعتمَدين مُفعَّلة</string>
-    <string name="log_note_allowlist_off">قائمة المرسلين المعتمَدين مُعطَّلة</string>
-    <string name="log_note_sender_removed">أُزيل المُرسِل \"%1$s\" من القائمة</string>
-    <string name="log_note_sender_added_by_name">اعتُمد المُرسِل \"%1$s\" (أُضيف بالاسم)</string>
-    <string name="log_note_sender_approved">اعتُمد المُرسِل \"%1$s\"</string>
     <string name="log_note_smart_on">التعلُّم الذكي للتصنيفات مُفعَّل</string>
     <string name="log_note_smart_off">التعلُّم الذكي للتصنيفات مُعطَّل</string>
     <string name="log_note_autoconfirm_on">تأكيد التحويلات تلقائياً مُفعَّل</string>
     <string name="log_note_autoconfirm_off">تأكيد التحويلات تلقائياً مُعطَّل</string>
     <string name="log_note_log_copied">نُسخ السجل التفصيلي إلى الحافظة</string>
     <string name="log_note_log_cleared">مسحت السجل</string>
-    <string name="log_note_checking">جارٍ سؤال GitHub عن إصدار أحدث</string>
-    <string name="log_note_no_apk">%1$s لا يحمل ملف APK</string>
-    <string name="log_note_downloading">جارٍ تنزيل %1$s إلى مجلد التنزيلات</string>
-    <string name="log_note_latest">%1$s هو الأحدث، فلا شيء لتثبيته</string>
-    <string name="log_note_available">%1$s متاح</string>
-    <string name="log_note_unreachable">تعذّر الوصول إلى GitHub، حاول مرة أخرى لاحقاً</string>
     <string name="log_note_currency">العملة الافتراضية ← %1$s</string>
     <string name="log_rate_changed">تم ضبط سعر صرف %1$s على %2$s ريال (السعر المدمج عند "-")؛ سيعيد الفحص القادم قراءة الرسائل بالسعر الجديد</string>
     <string name="log_note_language">اللغة ← %1$s</string>

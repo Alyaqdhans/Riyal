@@ -33,7 +33,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -41,7 +40,6 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,7 +55,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.graphics.shapes.RoundedPolygon
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
@@ -181,7 +178,6 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
             if (txns.isEmpty()) {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                     EmptyState(
-                        style = FaceStyle.SLEEPY,
                         title = stringResource(R.string.an_empty_title),
                         subtitle = stringResource(R.string.an_empty_subtitle),
                     )
@@ -531,7 +527,6 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         )
                         InsightRow(
                             R.drawable.ic_insight_bolt,
-                            MaterialShapes.SoftBurst,
                             stringResource(R.string.an_biggest_expense),
                             biggest?.let {
                                 stringResource(
@@ -543,7 +538,6 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         )
                         InsightRow(
                             R.drawable.ic_insight_calendar,
-                            MaterialShapes.Clover4Leaf,
                             stringResource(R.string.an_heaviest_day),
                             spread.busiestDayMillis?.let {
                                 stringResource(
@@ -557,7 +551,6 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         )
                         InsightRow(
                             R.drawable.ic_insight_store,
-                            MaterialShapes.Cookie9Sided,
                             stringResource(R.string.an_normal_payment),
                             if (spread.payments == 0) {
                                 stringResource(R.string.an_none_yet)
@@ -911,16 +904,14 @@ private fun StatLine(label: String, value: String, color: Color = Color.Unspecif
 @Composable
 private fun InsightRow(
     @DrawableRes iconRes: Int,
-    shape: RoundedPolygon,
     label: String,
     value: String,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        // Each insight sits on its own imperfect M3 shape, like the category badges.
         Box(
             Modifier
                 .size(38.dp)
-                .clip(shape.toShape())
+                .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.tertiaryContainer),
             contentAlignment = Alignment.Center,
         ) {

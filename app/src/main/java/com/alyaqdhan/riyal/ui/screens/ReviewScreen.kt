@@ -2,6 +2,7 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.verticalScroll
@@ -159,8 +160,6 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
             if (pending.isEmpty() && dismissed.isEmpty() && transfers.isEmpty()) {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                     EmptyState(
-                        style = FaceStyle.NORMAL,
-                        mood = 0.9f,
                         title = stringResource(R.string.review_all_clear_title),
                         subtitle = stringResource(R.string.review_all_clear_subtitle) +
                             (autoNote?.let { "\n\n$it" } ?: ""),
@@ -365,7 +364,11 @@ private fun TransferCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("⇄", style = MaterialTheme.typography.headlineSmall)
+                Icon(
+                    painterResource(R.drawable.ic_sym_swap),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
                 Column(Modifier.weight(1f)) {
                     MoneyText(proposal.amountMinor, proposal.currency,
                         style = MaterialTheme.typography.titleMedium,
@@ -428,10 +431,11 @@ private fun ReviewCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Face(
-                    mood = if (item.directionOnly) 0.2f else -0.2f,
-                    style = FaceStyle.CONFUSED,
-                    modifier = Modifier.size(44.dp),
+                Icon(
+                    painterResource(R.drawable.ic_sym_mail_read),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp),
                 )
                 Column(Modifier.weight(1f)) {
                     if (item.directionOnly) {

@@ -160,7 +160,6 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                     // the exact confusion the dialog was written to prevent, so the
                     // title has to know the difference too.
                     EmptyState(
-                        style = if (waiting > 0) FaceStyle.SLEEPY else FaceStyle.NORMAL,
                         title = stringResource(
                             if (waiting > 0) R.string.needs_left_title
                             else R.string.needs_all_filed_title
@@ -173,7 +172,7 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                         } else {
                             stringResource(R.string.needs_nothing_waiting)
                         },
-                        mood = if (waiting > 0) 0f else 0.2f,
+                        icon = R.drawable.ic_sym_category,
                     )
                 }
                 return@LazyColumn

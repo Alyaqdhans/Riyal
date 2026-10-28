@@ -145,8 +145,28 @@
     <string name="acct_kind_wallet">Wallet</string>
     <string name="home_setup_title">Teach Riyal your banks</string>
     <string name="home_setup_subtitle">A few questions, about two minutes</string>
+    <string name="home_see_all">See all</string>
+    <string name="home_attention">Needs your attention</string>
+    <string name="home_top_spending">Top spending</string>
+    <string name="sheet_remove_title">Remove this record?</string>
+    <string name="sheet_remove_body">It is removed from every list and total, and the message it came from is not read again. This cannot be undone; archiving it instead keeps it in its account\'s balance.</string>
+    <string name="sheet_remove_manual_body">The record you added is deleted. This cannot be undone.</string>
     <string name="set_teach">Teach Riyal</string>
-    <string name="set_teach_detail">Check the banks and accounts Riyal found, then confirm or correct a few messages. Each answer decides every message written the same way, and the questions stop as soon as the answers show Riyal reads your banks correctly.</string>
+    <string name="set_section_general">General</string>
+    <string name="cur_rates_short">Fixed for the Gulf and the dollar</string>
+    <string name="set_teach_short">Check your banks, answer a few questions</string>
+    <string name="set_scan_on_open_detail">Look for new messages each time Riyal opens</string>
+    <string name="set_scan_now_detail">Read messages that arrived since the last scan</string>
+    <string name="set_rescan_detail">Read the whole inbox again and rebuild your records</string>
+    <string name="set_categories_detail">Your categories, and what Riyal has learned</string>
+    <string name="set_budget_detail">Plan spending per category, shown on Home</string>
+    <string name="set_confirm_transfers_detail">Count a matched pair as a transfer without asking</string>
+    <string name="set_learn_detail">Remember a shop\'s category when you change it</string>
+    <string name="set_export_detail">A CSV file of every record</string>
+    <string name="set_backup_detail">Everything Riyal knows, in one file you choose</string>
+    <string name="set_backup_messages_detail">Off: records keep their figures, not the message text</string>
+    <string name="set_restore_detail">Replace everything with a backup file</string>
+    <string name="set_log_detail">Every step Riyal took while reading</string>
     <string name="log_taught">%1$s · messages written like this are %2$s (%3$d more like it)</string>
     <string name="log_sender_excluded">%1$s is not your bank · its messages are no longer read</string>
     <string name="log_sender_included">%1$s will be read as a bank</string>
@@ -199,12 +219,10 @@
         <item quantity="other">%d categories</item>
     </plurals>
 
-    <string name="settings_card_app">App</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_system">Follow the phone</string>
     <string name="settings_language_english">English</string>
     <string name="settings_language_arabic">العربية</string>
-    <string name="settings_language_help">Riyal reads Arabic bank messages whichever language this is set to. This changes the app\'s own words, not what it can understand.</string>
 
     <string name="home_net">Net</string>
     <string name="home_recent_transactions">Recent transactions</string>
@@ -232,22 +250,12 @@
     </plurals>
     <string name="home_needs_category_subtitle">One tap files a whole shop</string>
 
-    <string name="home_update_title">Riyal %1$s is out</string>
-    <string name="home_update_subtitle">You have %1$s · tap for what changed</string>
 
     <string name="home_empty_title">Nothing recorded yet</string>
     <string name="home_empty_with_permission">Settings › Scan now reads your inbox, narrating everything it does.</string>
     <string name="home_empty_without_permission">Allow SMS reading, then scan whenever you choose.</string>
 
-    <string name="mood_quiet">Quiet month so far</string>
-    <string name="mood_no_income_yet">Tracking spending, no income seen yet</string>
-    <string name="mood_well_under">Smooth sailing, well under your income</string>
-    <string name="mood_fine">Doing fine, keep an eye on it</string>
-    <string name="mood_close">Cutting it close this month</string>
-    <string name="mood_over">Spending is above income this month</string>
 
-    <string name="home_out">%s out</string>
-    <string name="home_in">%s in</string>
     <string name="home_other_currencies">+%1$s in other currencies</string>
 
     <string name="txn_filters">Filters</string>
@@ -258,7 +266,7 @@
     <string name="txn_type_transfers">Transfers</string>
     <string name="txn_back_to_yours">Back to your transactions</string>
     <string name="txn_archived_count">Archived (%d)</string>
-    <string name="txn_swipe_hint">Swipe a row, then tap Archive or Remove.</string>
+    <string name="txn_swipe_hint">Swipe a record either way to archive it. Tap it to change or remove it.</string>
     <string name="txn_empty_title">No transactions here</string>
     <string name="txn_empty_archived">Nothing archived. Swipe a row right to put it here.</string>
     <string name="txn_empty_filtered">Nothing matches these filters.</string>
@@ -280,7 +288,6 @@
     <string name="row_unassigned">unassigned</string>
     <string name="row_transfer_route">%1$s → %2$s · %3$s</string>
     <string name="row_account_time">%1$s · %2$s</string>
-    <string name="row_low_confidence">parser was %d%% sure, tap to fix</string>
     <string name="row_not_counted">not counted</string>
     <string name="day_today">Today</string>
     <string name="day_yesterday">Yesterday</string>
@@ -360,8 +367,6 @@
     <string name="review_arrived_account">%1$s arrived in %2$s</string>
     <string name="review_keep_both">No, keep both</string>
     <string name="review_yes_transfer">Yes, it\'s a transfer</string>
-    <string name="review_learn_word">Read messages like this automatically from now on</string>
-    <string name="review_learn_word_chip">\"%1$s\"</string>
     <string name="review_remember_similar">Remember for similar messages</string>
     <string name="review_add_manually">Add manually</string>
     <string name="action_show">Show</string>
@@ -639,49 +644,24 @@
     <string name="set_sms_permission">SMS permission</string>
     <string name="set_allowed">allowed</string>
     <string name="set_off">off</string>
-    <string name="set_manage">Manage</string>
     <string name="set_scan_on_open">Scan when the app opens</string>
     <string name="set_how_far_back">How far back</string>
-    <string name="set_range_1mo">1 mo</string>
-    <string name="set_range_3mo">3 mo</string>
-    <string name="set_range_6mo">6 mo</string>
-    <string name="set_range_1yr">1 yr</string>
-    <string name="set_range_all">All</string>
     <string name="set_range_everything">everything</string>
     <string name="set_range_one_month">1 month</string>
     <string name="set_range_one_year">1 year</string>
     <string name="set_range_months">%d months</string>
     <string name="set_fresh_start">Nothing before %1$s is read, whichever range is picked.</string>
     <string name="set_read_older">Read older messages too</string>
-    <string name="set_gate_keywords">Gate keywords</string>
-    <string name="set_keyword_counts">%1$d out · %2$d in</string>
-    <string name="set_reset_defaults">Reset to defaults</string>
-    <string name="set_who_is_read">Who is read</string>
-    <string name="set_senders_nobody">nobody</string>
 
-    <string name="set_senders_banks_plus">banks + %d</string>
-    <string name="set_senders_banks_only">banks only</string>
-    <string name="set_senders_any">any sender</string>
-    <string name="set_bank_only">Bank senders only</string>
-    <string name="set_only_approved">Only senders I approve</string>
-    <string name="set_no_approved">No approved senders yet, a scan will match nothing.</string>
-    <string name="set_no_extra_approved">No extra approved senders, only bank-named senders are read.</string>
-    <string name="set_sender_name">Sender name</string>
-    <string name="set_seen_in_inbox">Seen in your inbox, tap to approve:</string>
     <string name="set_scan_now">Scan now</string>
     <string name="set_scan_progress">%1$d of %2$d</string>
     <string name="set_scan_starting">starting…</string>
-    <string name="set_scanning">Scanning</string>
-    <string name="set_scan">Scan</string>
     <string name="set_rescan_all">Rescan everything</string>
-    <string name="set_rescan">Rescan</string>
-    <string name="set_card_automation">Automation</string>
     <string name="set_learn_corrections">Learn from my corrections</string>
     <string name="set_confirm_transfers">Confirm transfers for me</string>
     <string name="set_card_data">Your data</string>
     <string name="set_export_txns">Export transactions</string>
     <string name="set_verbose_log">Verbose log</string>
-    <string name="set_verbose_value">every step, in plain words</string>
     <string name="set_where_it_lives">Where it lives</string>
     <string name="set_backup">Backup</string>
     <string name="set_restore">Restore from a backup</string>
@@ -692,11 +672,6 @@
     <string name="set_card_about">About</string>
     <string name="set_checking">checking…</string>
     <string name="set_update_available">%1$s available</string>
-    <string name="set_latest">%1$s · latest</string>
-    <string name="set_could_not_check">%1$s · could not check</string>
-    <string name="set_checking_action">Checking</string>
-    <string name="set_download">Download</string>
-    <string name="set_check_now">Check now</string>
     <string name="set_wipe_title">Delete everything?</string>
     <string name="set_wipe_body">All recorded transactions, rules, review items and settings will be erased. Your SMS inbox itself is untouched, this app never modifies messages.</string>
     <string name="set_export_title">Export %1$s?</string>
@@ -708,10 +683,6 @@
     <string name="set_just_now">just now</string>
     <string name="set_ago">%1$s ago</string>
     <string name="set_on_date">on %1$s</string>
-    <string name="set_collapse">Collapse %s</string>
-    <string name="set_expand">Expand %s</string>
-    <string name="set_remove_item">Remove %s</string>
-    <string name="set_add_keyword">Add keyword</string>
     <string name="set_danger_title">Delete all app data</string>
     <string name="set_danger_body">Records, rules and settings. Your inbox is untouched.</string>
     <plurals name="count_minutes">
@@ -732,10 +703,6 @@
     <string name="scan_unknown_error">Unknown error</string>
     <string name="manual_entry_sender">manual entry</string>
     <string name="manual_entry_body">Added by you</string>
-    <plurals name="count_approved">
-        <item quantity="one">%d approved</item>
-        <item quantity="other">%d approved</item>
-    </plurals>
     <plurals name="count_learned">
         <item quantity="one">%d learned</item>
         <item quantity="other">%d learned</item>
@@ -746,34 +713,8 @@
     <string name="help_categories">Every category and what it came to in the period shown, spending and income kept apart. Open one to see its records; make your own with the button, and edit or delete the ones you made.\n\nBelow them are the names Riyal has learned: the ones it files without asking, and the ones you asked to be asked about every time.</string>
     <string name="help_accounts">The accounts Riyal found in your bank\'s own messages, and the balance each one last quoted. A balance read out of a text is a good first guess and nothing more, so open any account to set the real figure and the date it was true.\n\nAn account also carries the sender names that belong to it, which is how a message gets routed to the right balance. Archiving one keeps its records, because the money still moved.</string>
 
-    <string name="set_help_currency">Used when a message doesn\'t name a currency. OMR amounts keep 3 decimals (baisa).</string>
-    <string name="set_help_accounts">The accounts read out of your bank\'s own messages, their balances and which sender belongs to which.</string>
-    <string name="set_help_categories">Every category and what it cost, where your own are made - and the names Riyal has learned: the ones it files without asking, and the ones you asked to be asked about every time.</string>
-    <string name="set_help_budget">Home gains a budget section for the month it is showing: a cap per category, a bar for each, and a marker for whether the money is going faster than the calendar. A plan can cover any period, set from its editor.</string>
-    <string name="set_help_permission">READ_SMS is the one permission that touches your data. INTERNET is the only other one, and it is used for a single thing: asking GitHub whether a newer release exists. No background receivers, no notifications.</string>
-    <string name="set_help_scan_on_open">Riyal reads the inbox once when it starts. With this off, a scan only happens when you pull down to refresh.</string>
-    <string name="set_help_how_far_back">How far back a scan looks. Messages outside the range are not even queried from the inbox.</string>
-    <string name="set_help_keywords">A message is processed only if it contains one of these words. Everything else is skipped, unread and unstored.</string>
-    <string name="set_help_who_is_read">Two filters over the sender name, on top of the gate keywords. Banks that don\'t brand themselves as banks (NBO, Sohar Intl, Meethaq) are approved by name in the list instead.</string>
-    <string name="set_help_bank_only">Only senders whose name contains “bank”, “بنك” or “مصرف” are read. Anything else has to be approved by name below.</string>
-    <string name="set_help_only_approved">With this off, every sender is considered and the message body still has to contain one of the gate keywords to be read at all.</string>
-    <string name="set_help_scan_now">Reads the messages that arrived since the last scan, so it costs what is new rather than what your inbox holds. Riyal has no background receiver: it reads only when you ask it to, or when it opens if that is switched on above.\n\nTo rebuild everything from scratch, use Rescan everything below.</string>
-    <string name="set_help_rescan">Scanning normally reads only the messages that arrived since last time, which is why it is quick. This reads the whole range again and rebuilds every record from the messages still in your inbox.\n\nTwo things only this can do: notice a bank message you have since deleted, whose record would otherwise stay, and re-read old messages under rules you have changed. Riyal does the second for you whenever you change a keyword; the first is yours to ask for.\n\nOn a large inbox this takes a while. Nothing you have filed or entered by hand is lost by it.</string>
-    <string name="set_help_learn">When you fix a category on a transaction with a merchant, that merchant is remembered and applied to past and future messages. The category picker still lets you opt out for a single edit, and a name marked “ask every time” is never remembered at all.</string>
-    <string name="set_help_confirm_transfers">A matching pair is the same amount and currency, moving between two of your own accounts, minutes apart. With this on it becomes one transfer straight away and stops counting as spending or income; any of them can be split back apart from its row in Transactions. With it off, every pair waits in Review for your yes or no.</string>
-    <string name="set_help_export">Writes every record to a CSV file you choose: date, type, amount, accounts, merchant, category and the message it was read from.</string>
-    <string name="set_help_backup">Writes everything Riyal knows to one file you choose: accounts, records, categories, rules, budgets and every answer you have given it. Riyal writes it where you point and sends it nowhere.</string>
-    <string name="set_help_restore">Reads a backup file back in and replaces what is in the app with it. A backup from an older version is refused rather than half-read.</string>
-    <string name="set_help_backup_messages">The backup carries the bank messages themselves. Left out, a record still keeps its amount, date, account, shop and category, and the text fills itself back in on the next scan as long as the messages are still in this phone\'s inbox. Leave it out if the file is going somewhere you would not put a message.</string>
     <string name="set_help_verbose">Everything the scanner did and why, written as it happens. It never leaves the phone unless you copy it out yourself.</string>
-    <string name="set_help_where_it_lives">Everything lives in one JSON file inside this app\'s private storage, and backups are disabled. The app does reach the network, for one thing: it asks GitHub whether a newer release exists, and downloads that APK if you ask it to. Nothing goes the other way. No record, message, account or figure is ever put in a request, and there is no analytics and no backend.</string>
 
-    <string name="set_about_update_header">You have %1$s. %2$s is out.\n\n</string>
-    <string name="set_about_download">Downloading puts the APK in your Downloads folder and opens it there. Riyal cannot install it for you - you tap the file yourself. If Android refuses the install, that build is signed with a different key than this one: uninstall Riyal first, which clears its stored records. They rebuild from your inbox on the next scan, but hand-filed categories do not.</string>
-    <string name="set_about_uptodate">You have %1$s, which is the latest published release.</string>
-    <string name="set_about_unreachable">The last check could not reach GitHub. Being offline, a rate limit and a release that was never published all look the same from here. Nothing is wrong with the copy you have; tap Check now to try again.</string>
-    <string name="set_about_default">Made for Oman 🇴🇲 · OMR-first, with Arabic SMS support. Checks GitHub once a day for a newer release.</string>
-    <string name="set_about_whats_in">\n\nWhat is in %1$s\n\n</string>
 
     <string name="log_perm_granted">READ_SMS permission: granted, you can revoke it anytime in system settings</string>
     <string name="log_perm_denied">READ_SMS permission: not granted, the app cannot and will not read anything</string>
@@ -798,7 +739,6 @@
     <string name="log_update_no_apk">%1$s has no APK attached to it, so there is nothing to download here - the release page on GitHub will have it</string>
     <string name="log_download_started">downloading %1$s into Riyal\'s own storage · nothing installs on its own</string>
     <string name="log_download_failed">the download stopped (%1$s)</string>
-    <string name="log_no_downloads_screen">no Downloads screen on this phone, use the download notification</string>
     <string name="log_budget_created">budget plan created by you: \"%1$s\"</string>
     <string name="log_budget_set">budget set by you: %1$s capped at %2$d (minor units)</string>
     <string name="log_budget_removed">budget removed by you: %1$s</string>
@@ -829,7 +769,6 @@
     <string name="log_review_dismissed_smart"> · remembered: %1$s dismissed with it, future ones will be auto-dismissed (restore any time in Review)</string>
     <string name="log_review_restored">review item restored by you</string>
     <string name="log_review_restored_extra"> together with %1$s, that kind is no longer auto-dismissed</string>
-    <string name="log_keyword_added">added \"%1$s\" as a %2$s word · the next scan reads messages like that one on its own (Settings › Keywords to take it back)</string>
     <string name="log_word_out">money out</string>
     <string name="log_word_in">money in</string>
     <string name="log_review_resolved">review resolved by you: recorded %1$s (%2$s)</string>
@@ -872,8 +811,6 @@
     <string name="log_github_rate_limited">GitHub answered %1$d: too many requests from this network, it will ask again tomorrow</string>
     <string name="log_github_other_code">GitHub answered %1$d, so there is nothing to compare against this time</string>
     <string name="log_github_no_tag">GitHub\'s answer carried no tag name, ignoring it</string>
-    <string name="log_github_latest_apk">GitHub\'s latest release is %1$s, carrying %2$s</string>
-    <string name="log_github_latest_no_apk">GitHub\'s latest release is %1$s, with no APK attached</string>
     <string name="log_store_manual_kept">a message you answered by hand reads on its own now · keeping one record of %1$s, still under %2$s</string>
     <string name="log_store_deferred_back">%1$s you left under Other are back in the backlog, as promised when you left them</string>
     <string name="log_store_nothing_changed">nothing changed, so nothing was written</string>
@@ -914,30 +851,12 @@
     <string name="log_note_scan_open_off">scan on app open disabled</string>
     <string name="log_note_scan_range">scan range → %1$s</string>
     <string name="log_note_fresh_start_lifted">fresh start lifted, older messages can be read again</string>
-    <string name="log_note_kw_removed_out">removed expense keyword \"%1$s\"</string>
-    <string name="log_note_kw_added_out">added expense keyword \"%1$s\"</string>
-    <string name="log_note_kw_removed_in">removed income keyword \"%1$s\"</string>
-    <string name="log_note_kw_added_in">added income keyword \"%1$s\"</string>
-    <string name="log_note_kw_reset">keywords reset to defaults (withdraw/debited/purchase… + deposit/credited/salary… incl. Arabic)</string>
-    <string name="log_note_bank_only_on">bank-senders-only enabled</string>
-    <string name="log_note_bank_only_off">bank-senders-only disabled</string>
-    <string name="log_note_allowlist_on">sender allowlist enabled</string>
-    <string name="log_note_allowlist_off">sender allowlist disabled</string>
-    <string name="log_note_sender_removed">removed sender \"%1$s\" from allowlist</string>
-    <string name="log_note_sender_added_by_name">approved sender \"%1$s\" (added by name)</string>
-    <string name="log_note_sender_approved">approved sender \"%1$s\"</string>
     <string name="log_note_smart_on">smart category learning enabled</string>
     <string name="log_note_smart_off">smart category learning disabled</string>
     <string name="log_note_autoconfirm_on">auto-confirm transfers enabled</string>
     <string name="log_note_autoconfirm_off">auto-confirm transfers disabled</string>
     <string name="log_note_log_copied">verbose log copied to clipboard</string>
     <string name="log_note_log_cleared">log cleared by you</string>
-    <string name="log_note_checking">checking GitHub for a newer release</string>
-    <string name="log_note_no_apk">%1$s has no APK attached to it</string>
-    <string name="log_note_downloading">downloading %1$s to your Downloads folder</string>
-    <string name="log_note_latest">%1$s is the latest, nothing to install</string>
-    <string name="log_note_available">%1$s is available</string>
-    <string name="log_note_unreachable">could not reach GitHub, try again later</string>
     <string name="log_note_currency">default currency → %1$s</string>
     <string name="log_rate_changed">exchange rate for %1$s set to %2$s rials (built-in when "-"); the next scan re-reads the inbox at the new rate</string>
     <string name="log_note_language">language → %1$s</string>

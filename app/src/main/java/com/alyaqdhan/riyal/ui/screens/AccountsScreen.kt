@@ -3,6 +3,10 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import com.alyaqdhan.riyal.ui.compose.toolbarSpace
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.Card
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.material3.DropdownMenuItem
@@ -94,7 +98,7 @@ private val asOfFmt: DateTimeFormatter get() = Dates.pattern("dd MMM uuuu, h:mm 
  * that and asking the user to vouch for the numbers before anything relies on them.
  */
 @Composable
-fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
+fun AccountsScreen(vm: MainViewModel, onBack: (() -> Unit)?) {
     val accounts by vm.accounts.collectAsState()
     val balances by vm.balances.collectAsState()
     val needsConfirming by vm.accountsNeedConfirming.collectAsState()
@@ -105,12 +109,15 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.acct_title)) },
+                // A tab has no way back; reached from somewhere, it does.
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                        )
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.action_back),
+                            )
+                        }
                     }
                 },
                 actions = { HelpAction(
@@ -125,7 +132,6 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
             if (accounts.isEmpty()) {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     EmptyState(
-                        style = FaceStyle.SLEEPY,
                         title = stringResource(R.string.acct_empty_title),
                         subtitle = stringResource(R.string.acct_empty_subtitle),
                     )
@@ -142,7 +148,7 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
             }
 
             LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = toolbarSpace + 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (needsConfirming) {
@@ -225,7 +231,7 @@ private fun ConfirmBanner(count: Int, anyMissingBalance: Boolean, onConfirm: () 
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Face(mood = 0.4f, style = FaceStyle.CONFUSED, modifier = Modifier.size(48.dp))
+                Icon(painterResource(R.drawable.ic_sym_account_balance), contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(32.dp))
                 Column {
                     Text(
                         stringResource(R.string.acct_confirm_title),
@@ -281,44 +287,37 @@ private fun AccountCard(
     balance: Long,
     onEdit: () -> Unit,
 ) {
-    // Two lines: which account, and what is in it. Everything else the card used to
-    // recite - the opening figure, the senders it reads, Edit and Delete - is in the
-    // editor this row opens, which is where it can actually be changed.
-    Surface(
-        onClick = onEdit,
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier
-            .fillMaxWidth(),
-    ) {
-        Row(
-            Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier
-                    .size(12.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Color(if (account.color != 0) account.color else Categories.colorFor("other"))
-                    ),
-            )
-            Column(Modifier.weight(1f)) {
-                Text(account.displayName, style = MaterialTheme.typography.titleMedium)
-                if (account.needsBalance) {
-                    Text(
-                        stringResource(R.string.acct_needs_balance),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary,
-                    )
-                }
-            }
-            MoneyText(balance, account.currency,
-                style = MaterialTheme.typography.titleMedium,
-                color = if (balance < 0) MaterialTheme.colorScheme.error else successColor(),
-            )
-        }
+    // Two lines: which account, and what is in it. Everything else - the opening figure,
+    // the senders it reads, Edit and Delete - is in the editor this row opens, which is
+    // where it can actually be changed.
+    Card(Modifier.fillMaxWidth()) {
+        ListItem(
+            onClick = onEdit,
+            leadingContent = {
+                Icon(
+                    painterResource(iconFor(account.kind)),
+                    contentDescription = null,
+                    tint = Color(if (account.color != 0) account.color else Categories.colorFor("other")),
+                )
+            },
+            supportingContent = {
+                Text(
+                    if (account.needsBalance) stringResource(R.string.acct_needs_balance)
+                    else stringResource(labelFor(account.kind)),
+                    color = if (account.needsBalance) MaterialTheme.colorScheme.tertiary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            trailingContent = {
+                MoneyText(
+                    balance,
+                    account.currency,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (balance < 0) MaterialTheme.colorScheme.error else successColor(),
+                )
+            },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        ) { Text(account.displayName, style = MaterialTheme.typography.titleMedium) }
     }
 }
 

@@ -11,12 +11,13 @@
         android:layout_height="match_parent"
         app:defaultNavHost="true" />
 
-    <!-- M3 Expressive floating toolbar: a pill hovering over the content,
-         not a docked bar taking up a full row. -->
+    <!-- The Material 3 navigation bar, docked along the bottom across the full width.
+         It draws over the content, so the five top-level screens leave room for it at
+         the end of their lists (toolbarSpace). -->
     <androidx.compose.ui.platform.ComposeView
         android:id="@+id/bottom_bar"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal" />
+        android:layout_gravity="bottom" />
 
 </FrameLayout>

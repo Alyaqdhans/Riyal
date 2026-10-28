@@ -3,6 +3,13 @@
 package com.alyaqdhan.riyal.ui.compose
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.ListItem
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -78,30 +85,19 @@ fun dayLabel(date: LocalDate): String {
 fun localDateOf(millis: Long): LocalDate =
     Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
 
-/**
- * The pill itself: its height, the gap it floats above the system bar by, and enough
- * clearance that the last row is readable rather than touching it.
- *
- * This is only half the answer - see [toolbarSpace].
- */
-private val ToolbarPill = 96.dp
+/** The height of Material's short navigation bar, without the system bar under it. */
+val BottomBarHeight = 64.dp
 
 /**
- * The room a scrolling page must leave at its end so its last row can be read rather
- * than sitting under the floating toolbar, which hovers over the content instead of
- * taking a row of its own.
+ * The room a scrolling page must leave at its end so its last row is not under the
+ * navigation bar, which is drawn over the content rather than taking a row of its own.
  *
- * The toolbar sits above the navigation bar, so the space it occupies is the pill plus
- * whatever the system bar takes - which is 24dp of gesture pill on one phone and three
- * times that with button navigation. A fixed number was right for exactly one of those
- * and cut the last row off on the other, so it is measured rather than assumed.
- *
- * For the four tab screens only - a pushed page hides the toolbar, so it needs nothing
- * more than ordinary padding at its end.
+ * Only the bar's own height: the system's navigation bar under it is already in the
+ * padding every Scaffold gives its content. For the five top-level screens only - a
+ * pushed page has no bar.
  */
 val toolbarSpace: Dp
-    @Composable get() = ToolbarPill +
-        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    @Composable get() = BottomBarHeight + 8.dp
 
 @Composable
 fun ToolbarSpacer() {
@@ -169,56 +165,34 @@ fun TxnRow(
         accounts.firstOrNull { it.id == wanted }?.let { if (oneBank) it.shortName else it.displayName }
     }
 
-    Surface(
+    val time = (if (showDate) rowTimeFmt else rowClockFmt)
+        .format(Instant.ofEpochMilli(txn.atMillis).atZone(ZoneId.systemDefault()))
+    val detail = if (transfer) {
+        val unassigned = stringResource(R.string.row_unassigned)
+        stringResource(
+            R.string.row_transfer_route,
+            accountName(txn.fromAccountId) ?: unassigned,
+            accountName(txn.toAccountId) ?: unassigned,
+            time,
+        )
+    } else {
+        // The category is said in words only when the headline is a shop: when there is
+        // no shop the headline already is the category.
+        listOfNotNull(
+            category.name.takeIf { txn.merchant != null },
+            (accountName(txn.accountId) ?: txn.sender).takeIf { showAccount },
+            time,
+        ).joinToString(" · ")
+    }
+
+    ListItem(
         onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = modifier
-            .fillMaxWidth(),
-    ) {
-        Row(
-            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            CategoryBadge(category.id)
-            Column(Modifier.weight(1f)) {
-                Text(
-                    if (transfer) stringResource(R.string.label_transfer)
-                    else txn.merchant?.let(::unmasked) ?: category.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val time = (if (showDate) rowTimeFmt else rowClockFmt)
-                    .format(Instant.ofEpochMilli(txn.atMillis).atZone(ZoneId.systemDefault()))
-                Text(
-                    if (transfer) {
-                        val unassigned = stringResource(R.string.row_unassigned)
-                        stringResource(
-                            R.string.row_transfer_route,
-                            accountName(txn.fromAccountId) ?: unassigned,
-                            accountName(txn.toAccountId) ?: unassigned,
-                            time,
-                        )
-                    } else {
-                        val account = accountName(txn.accountId) ?: txn.sender
-                        if (showAccount) stringResource(R.string.row_account_time, account, time)
-                        else time
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (!transfer && txn.categorySource == "auto" && txn.confidence < 70) {
-                    Text(
-                        stringResource(R.string.row_low_confidence, txn.confidence),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiary,
-                    )
-                }
-            }
+        modifier = modifier,
+        leadingContent = { CategoryBadge(category.id, size = 40.dp) },
+        supportingContent = {
+            Text(detail, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+        trailingContent = {
             Column(horizontalAlignment = Alignment.End) {
                 MoneyText(
                     txn.amountMinor,
@@ -247,12 +221,7 @@ fun TxnRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                // Only the transfer note. The category was already stated by the badge
-                // at the head of the row, and saying it again in words cost about a
-                // third of the width - which is why the merchant and the account line
-                // were both ellipsed at once, leaving two Oman Oil stations looking
-                // identical. "not counted" is not a repeat of anything: it is why a
-                // transfer's amount is neither red nor green.
+                // "not counted" is why a transfer's amount is neither red nor green.
                 if (transfer) {
                     Text(
                         stringResource(R.string.row_not_counted),
@@ -261,18 +230,24 @@ fun TxnRow(
                     )
                 }
             }
-        }
+        },
+    ) {
+        Text(
+            if (transfer) stringResource(R.string.label_transfer)
+            else txn.merchant?.let(::unmasked) ?: category.name,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
-/** Friendly empty state with a mascot face. */
+/** Nothing to show yet: an icon on a tonal circle, what is missing, and why. */
 @Composable
 fun EmptyState(
-    style: FaceStyle,
     title: String,
     subtitle: String? = null,
-    mood: Float = 0.2f,
     modifier: Modifier = Modifier,
+    @DrawableRes icon: Int = R.drawable.ic_sym_inbox,
 ) {
     Column(
         modifier
@@ -281,12 +256,20 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Face(
-            mood = mood,
-            style = style,
-            modifier = Modifier
-                .size(108.dp),
-        )
+        Box(
+            Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(icon),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(32.dp),
+            )
+        }
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         if (subtitle != null) {
             Text(

@@ -192,7 +192,6 @@ fun CategoryDetailScreen(
             if (inCategory.isEmpty()) {
                 item(key = "empty") {
                     EmptyState(
-                        style = FaceStyle.SLEEPY,
                         title = stringResource(R.string.cat_detail_empty_title, slice.title()),
                         subtitle = stringResource(R.string.cat_detail_empty_subtitle),
                     )
@@ -204,8 +203,6 @@ fun CategoryDetailScreen(
                     SwipeableTxnRow(
                         archived = txn.id in archivedIds,
                         onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
-                        onDelete = { removeForGood(vm, snackbar, scope, txn) },
-                        deleteLabel = deleteLabelFor(txn),
                     ) {
                         TxnRow(txn, onClick = { editing = txn }, accounts = accounts)
                     }
@@ -238,6 +235,10 @@ fun CategoryDetailScreen(
             },
             onSplitTransfer = {
                 vm.splitTransfer(txn)
+                editing = null
+            },
+            onRemove = {
+                removeForGood(vm, snackbar, scope, txn)
                 editing = null
             },
         )

@@ -6,6 +6,8 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material3.Icon
 import androidx.annotation.StringRes
 import com.alyaqdhan.riyal.R
 
@@ -31,6 +33,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -172,7 +175,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Face(mood = 1f, modifier = Modifier.size(64.dp))
+                        Icon(painterResource(R.drawable.ic_sym_check_circle), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
                         Column {
                             Text(
                                 stringResource(R.string.scan_done),
@@ -228,7 +231,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Face(mood = -1f, style = FaceStyle.DIZZY, modifier = Modifier.size(64.dp))
+                    Icon(painterResource(R.drawable.ic_sym_error), contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
                     Column {
                         Text(
                             stringResource(R.string.scan_failed),
@@ -311,7 +314,9 @@ fun TxnEditSheet(
     onSetAccount: ((String) -> Unit)? = null,
     onMarkTransfer: ((fromAccountId: String?, toAccountId: String?) -> Unit)? = null,
     onSplitTransfer: (() -> Unit)? = null,
+    onRemove: (() -> Unit)? = null,
 ) {
+    var confirmRemove by remember { mutableStateOf(false) }
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     // Frozen for this sheet session: applying a category updates the counts at once,
     // and the chips must not rearrange behind the sheet that is doing the applying.
@@ -347,6 +352,18 @@ fun TxnEditSheet(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
+                // Bought abroad: what the bank charged, and what it counts as here.
+                if (txn.isConverted) {
+                    MoneyAwareText(
+                        stringResource(
+                            R.string.cur_counted_as,
+                            Money.format(txn.originalAmountMinor!!, txn.originalCurrency!!),
+                            Money.format(txn.amountMinor, txn.currency),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
 
             if (txn.isTransfer) {
@@ -476,7 +493,52 @@ fun TxnEditSheet(
                     }
                 }
             }
+            // Removing is here rather than on a swipe: it cannot be undone - the message
+            // it came from is kept out of every future scan - so it is asked about first.
+            if (onRemove != null) {
+                HorizontalDivider()
+                TextButton(
+                    onClick = { confirmRemove = true },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) {
+                    Text(
+                        stringResource(
+                            when {
+                                txn.manual -> R.string.action_delete
+                                txn.isTransfer -> R.string.row_remove_both
+                                else -> R.string.row_remove
+                            }
+                        )
+                    )
+                }
+            }
         }
+    }
+
+    if (confirmRemove && onRemove != null) {
+        AlertDialog(
+            onDismissRequest = { confirmRemove = false },
+            title = { Text(stringResource(R.string.sheet_remove_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        if (txn.manual) R.string.sheet_remove_manual_body else R.string.sheet_remove_body
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmRemove = false
+                        onRemove()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) { Text(stringResource(R.string.row_remove)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRemove = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
     }
 }
 

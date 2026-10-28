@@ -4,6 +4,9 @@ package com.alyaqdhan.riyal.ui.screens
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import com.alyaqdhan.riyal.ui.compose.BottomBarHeight
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -122,6 +125,14 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
         snackbarHost = {
             SnackbarHost(snackbar, modifier = Modifier.padding(bottom = toolbarSpace))
         },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { vm.requestManualAdd() },
+                modifier = Modifier.padding(bottom = BottomBarHeight),
+            ) {
+                Icon(painterResource(R.drawable.ic_sym_add), contentDescription = stringResource(R.string.action_add_transaction))
+            }
+        },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.tab_transactions)) },
@@ -224,7 +235,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                         .verticalScroll(rememberScrollState()),
                 ) {
                     EmptyState(
-                        style = FaceStyle.SLEEPY,
                         title = stringResource(R.string.txn_empty_title),
                         subtitle = stringResource(
                             when {
@@ -237,11 +247,10 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     )
                 }
             } else {
+                // Rows are list items with their own inset, so the list adds none at the
+                // sides; the end leaves room for the bar and the Add button over it.
                 LazyColumn(
-                    contentPadding = PaddingValues(
-                        start = 16.dp, end = 16.dp, top = 10.dp, bottom = toolbarSpace,
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = toolbarSpace + 80.dp),
                 ) {
                     if (order.byDate) {
                         grouped.forEach { (date, dayTxns) ->
@@ -250,8 +259,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                                 SwipeableTxnRow(
                                     archived = txn.id in archivedIds,
                                     onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
-                                    onDelete = { removeForGood(vm, snackbar, scope, txn) },
-                                    deleteLabel = deleteLabelFor(txn),
                                 ) {
                                     TxnRow(
                                         txn,
@@ -268,8 +275,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                             SwipeableTxnRow(
                                 archived = txn.id in archivedIds,
                                 onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
-                                onDelete = { removeForGood(vm, snackbar, scope, txn) },
-                                deleteLabel = deleteLabelFor(txn),
                             ) {
                                 TxnRow(
                                     txn,
@@ -327,6 +332,10 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                 vm.splitTransfer(txn)
                 picker = null
             },
+            onRemove = {
+                removeForGood(vm, snackbar, scope, txn)
+                picker = null
+            },
         )
     }
 }
@@ -347,7 +356,7 @@ private fun DayHeader(date: LocalDate, dayTxns: List<Txn>) {
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(top = 20.dp, bottom = 4.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(

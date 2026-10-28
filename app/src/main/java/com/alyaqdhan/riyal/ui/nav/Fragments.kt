@@ -70,6 +70,11 @@ abstract class ScreenFragment : Fragment() {
 
     @Composable
     protected abstract fun Screen()
+
+    /** Switches to a top-level screen the way the navigation bar does. */
+    protected fun openTab(destination: Int) {
+        (activity as? MainActivity)?.openTab(destination)
+    }
 }
 
 class HomeFragment : ScreenFragment() {
@@ -91,13 +96,14 @@ class HomeFragment : ScreenFragment() {
             vm,
             onRequestPermission = { requestSms.launch(Manifest.permission.READ_SMS) },
             onOpenReview = { findNavController().navigate(R.id.reviewFragment) },
-            onOpenAccounts = { findNavController().navigate(R.id.accountsFragment) },
             onOpenNeedsCategory = { findNavController().navigate(R.id.needsCategoryFragment) },
             onOpenSetup = { findNavController().navigate(R.id.setupFragment) },
-            // Settings is a tab rather than a pushed page, so this goes through the same
-            // switch the toolbar uses: navigating to it directly would stack a second
-            // copy on top of Home and leave Back going nowhere sensible.
-            onOpenSettings = { (activity as? MainActivity)?.openSettingsTab() },
+            // Accounts, Transactions and Analysis are tabs rather than pushed pages, so
+            // these go through the same switch the bar uses: navigating to one directly
+            // would stack a second copy on top of Home and leave Back going nowhere.
+            onOpenAccounts = { openTab(R.id.accountsFragment) },
+            onOpenTransactions = { openTab(R.id.transactionsFragment) },
+            onOpenAnalysis = { openTab(R.id.analysisFragment) },
         )
     }
 }
@@ -123,12 +129,12 @@ class ReviewFragment : InnerFragment() {
     }
 }
 
-/** The bank account manager, reached from Settings and from Home's setup prompt. */
-class AccountsFragment : InnerFragment() {
+/** The bank accounts: one of the five tabs. */
+class AccountsFragment : ScreenFragment() {
 
     @Composable
     override fun Screen() {
-        AccountsScreen(vm, onBack = { back() })
+        AccountsScreen(vm, onBack = null)
     }
 }
 
@@ -321,7 +327,7 @@ class SettingsFragment : ScreenFragment() {
     override fun Screen() {
         SettingsScreen(
             vm,
-            onOpenAccounts = { findNavController().navigate(R.id.accountsFragment) },
+            onOpenAccounts = { openTab(R.id.accountsFragment) },
             onOpenCategories = { findNavController().navigate(R.id.categoriesFragment) },
             onOpenUpdates = { findNavController().navigate(R.id.updatesFragment) },
             onOpenSetup = { findNavController().navigate(R.id.setupFragment) },
