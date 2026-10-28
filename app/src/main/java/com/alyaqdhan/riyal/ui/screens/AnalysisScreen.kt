@@ -29,7 +29,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
@@ -54,9 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -68,6 +65,7 @@ import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.CategoryWheel
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.bidi
 import com.alyaqdhan.riyal.ui.compose.counted
@@ -293,32 +291,8 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                 )
                             }
                         }
-                        Box(contentAlignment = Alignment.Center) {
-                            // The empty track, then each category as its own arc on top
-                            // of it. The ring underneath is what draws the circle when
-                            // there is nothing to show.
-                            DonutRing(
-                                progress = { 0f },
-                                color = Color.Transparent,
-                                trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            )
-                            var startFraction = 0f
-                            slices.forEach { s ->
-                                val from = startFraction
-                                startFraction += s.fraction
-                                DonutRing(
-                                    // Each arc is turned to where its share begins and
-                                    // sweeps only its own width, so the colours sit side
-                                    // by side instead of being stacked and masked.
-                                    rotationDegrees = from * 360f + DonutGapDegrees / 2f,
-                                    progress = {
-                                        val sweep = s.fraction * 360f - DonutGapDegrees
-                                        sweep.coerceAtLeast(1f) / 360f
-                                    },
-                                    color = Color(Categories.colorFor(s.categoryId)),
-                                    trackColor = Color.Transparent,
-                                )
-                            }
+                        // Restored to M3's own wavy indicator, held flat: one arc per category.
+                        CategoryWheel(slices = slices) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     stringResource(
@@ -823,34 +797,6 @@ private fun amountAxisFormatter(currency: String) = CartesianValueFormatter { _,
 
 private fun labelAxisFormatter() = CartesianValueFormatter { context, x, _ ->
     context.model.extraStore[ChartLabelsKey].getOrNull(x.toInt()) ?: ""
-}
-
-/**
- * The gap between two neighbouring arcs, in degrees. Butt caps and a hairline of
- * background between the colours read as separate slices; rounded caps would have to
- * be pushed several times this far apart before they stopped overlapping each other.
- */
-private const val DonutGapDegrees = 2f
-
-/** One arc of the donut: a stock determinate ring, turned to where its share starts. */
-@Composable
-private fun DonutRing(
-    progress: () -> Float,
-    color: Color,
-    trackColor: Color,
-    rotationDegrees: Float = 0f,
-) {
-    CircularProgressIndicator(
-        progress = progress,
-        modifier = Modifier
-            .size(210.dp)
-            .rotate(rotationDegrees),
-        color = color,
-        strokeWidth = 16.dp,
-        trackColor = trackColor,
-        strokeCap = StrokeCap.Butt,
-        gapSize = 0.dp,
-    )
 }
 
 /**

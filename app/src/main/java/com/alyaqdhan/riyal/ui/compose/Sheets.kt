@@ -39,8 +39,6 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -135,7 +133,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        CircularProgressIndicator(Modifier.size(40.dp))
+                        FlatWheel(Modifier.size(48.dp))
                         Column {
                             Text(
                                 stringResource(
@@ -162,12 +160,12 @@ fun ScanSheetHost(vm: MainViewModel) {
                     }
                     // Determinate once the total is known.
                     if (s.total > 0) {
-                        LinearProgressIndicator(
+                        FlatBar(
                             progress = { s.processed / s.total.toFloat() },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     } else {
-                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                        FlatBar(Modifier.fillMaxWidth())
                     }
                 }
 

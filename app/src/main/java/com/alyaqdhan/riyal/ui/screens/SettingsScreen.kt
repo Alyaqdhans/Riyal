@@ -41,7 +41,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -75,6 +74,7 @@ import com.alyaqdhan.riyal.core.Language
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CURRENCIES
+import com.alyaqdhan.riyal.ui.compose.FlatBar
 import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
 import com.alyaqdhan.riyal.ui.compose.appVersion
@@ -454,7 +454,7 @@ fun SettingsScreen(
                     onAction = { vm.startScan(full = true) },
                 )
                 if (running != null) {
-                    LinearProgressIndicator(
+                    FlatBar(
                         progress = {
                             if (running.total > 0) running.processed.toFloat() / running.total else 0f
                         },

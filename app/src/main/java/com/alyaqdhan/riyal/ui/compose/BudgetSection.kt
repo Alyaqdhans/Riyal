@@ -22,8 +22,6 @@ import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.rememberDateRangePickerState
@@ -284,11 +282,10 @@ private fun BudgetTotal(
                 color = color,
             )
         }
-        LinearProgressIndicator(
+        FlatBar(
             progress = { used.coerceIn(0f, 1f) },
             color = color,
             trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            drawStopIndicator = {},
             modifier = Modifier.fillMaxWidth(),
         )
         val elapsedPct = (progress.elapsedFraction * 100).roundToInt()
@@ -365,21 +362,16 @@ fun BudgetBar(
                 color = if (over) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Box(Modifier.fillMaxWidth()) {
-            LinearProgressIndicator(
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+            FlatBar(
                 progress = { fraction.coerceIn(0f, 1f) },
                 color = barColor,
                 trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(CircleShape),
+                modifier = Modifier.fillMaxWidth(),
             )
             if (paceFraction != null && paceFraction > 0.02f && paceFraction < 0.98f) {
                 Box(
-                    Modifier
-                        .fillMaxWidth(paceFraction)
-                        .height(8.dp),
+                    Modifier.fillMaxWidth(paceFraction),
                     contentAlignment = Alignment.CenterEnd,
                 ) {
                     Box(

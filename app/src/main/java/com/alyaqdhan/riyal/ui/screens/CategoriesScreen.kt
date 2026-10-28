@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,7 +35,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -71,6 +69,7 @@ import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.FlatBar
 import com.alyaqdhan.riyal.ui.compose.HelpAction
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.CategoryChips
@@ -389,11 +388,11 @@ private fun CategoryRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (used) {
-                    LinearProgressIndicator(
+                    FlatBar(
                         progress = { fraction.coerceIn(0f, 1f) },
                         color = Color(Categories.colorFor(category.id)),
                         trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
