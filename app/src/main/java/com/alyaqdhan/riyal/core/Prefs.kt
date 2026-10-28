@@ -146,6 +146,31 @@ class Prefs(context: Context) {
         get() = sp.getStringSet("sender_allowlist", emptySet())!!.toSet()
         set(v) = sp.edit().putStringSet("sender_allowlist", v.toSet()).apply()
 
+    /**
+     * Senders the user said are not their bank - a telecom that quotes a balance, a shop
+     * that texts receipts. Never read, whatever their messages look like.
+     */
+    var excludedSenders: Set<String>
+        get() = sp.getStringSet("excluded_senders", emptySet())!!.toSet()
+        set(v) = sp.edit().putStringSet("excluded_senders", v.toSet()).apply()
+
+    /**
+     * Whether the setup - accounts checked, a few messages confirmed - has been gone
+     * through once. Until then Home offers it; it can be run again from Settings.
+     */
+    var setupDone: Boolean
+        get() = sp.getBoolean("setup_done", false)
+        set(v) = sp.edit().putBoolean("setup_done", v).apply()
+
+    /** Setup answers so far: how often the app's reading was right, and wrong. */
+    var teachRight: Int
+        get() = sp.getInt("teach_right", 0)
+        set(v) = sp.edit().putInt("teach_right", v).apply()
+
+    var teachWrong: Int
+        get() = sp.getInt("teach_wrong", 0)
+        set(v) = sp.edit().putInt("teach_wrong", v).apply()
+
     var expenseKeywords: Set<String>
         get() = sp.getStringSet("kw_expense", null)?.toSet() ?: DEFAULT_EXPENSE_KEYWORDS
         set(v) = sp.edit().putStringSet("kw_expense", v.toSet()).apply()

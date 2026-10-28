@@ -1022,6 +1022,16 @@
     <string name="scanlog_not_your_bank">    ← ليس من بنوكك، فلا يمكن أن يكون حرَّك مالك؛ ولم تُسجَّل</string>
     <string name="scanlog_category">    · التصنيف: %1$s (%2$s)</string>
     <string name="scanlog_converted">    · %1$s مدفوعة بعملة أجنبية، وحُسبت بقيمة %2$s</string>
+    <string name="scanlog_skip_excluded">%1$s · قلت إن هذا المرسل ليس بنكك</string>
+    <string name="scanlog_proven">أثبتت الأرصدة اتجاه المال في %1$s</string>
+    <string name="scanlog_proven_kinds">%1$d أنواع من الرسائل أثبتت الأرصدة اتجاهها</string>
+    <string name="scanlog_taught_kinds">%1$d أنواع من الرسائل تُقرأ كما علّمتها</string>
+    <string name="scanlog_overruled">%1$s · كلماتها توحي بأنها %2$s، لكن ما علّمته أو ما أثبته الرصيد يأتي أولًا</string>
+    <string name="skip_taught_none">قلت إن الرسائل المشابهة ليست معاملات</string>
+    <string name="trace_taught">علّمت ريال أن الرسائل المشابهة %1$s</string>
+    <string name="trace_proven">تغيّر الرصيد بهذا المبلغ تمامًا، إذن كانت %1$s</string>
+    <string name="trace_kind_proven">أرصدة الرسائل المكتوبة بهذا الشكل تثبت أنها %1$s</string>
+    <string name="kind_none">ليست معاملة</string>
     <string name="scanlog_cat_rule">قاعدتك طابقت \"%1$s\"</string>
     <string name="scanlog_cat_builtin">مطابقة مدمجة \"%1$s\"</string>
     <string name="scanlog_cat_default">الافتراضي</string>

@@ -152,6 +152,8 @@ class ScanEngine(
             )
         }
         val parsedMsgs = LinkedHashMap<String, ParsedMsg>()
+        // Messages of a kind the user taught are moves between their own accounts.
+        val taughtTransfers = HashSet<String>()
         val reviews = ArrayList<ReviewItem>()
         var skipped = 0
         var matched = 0
@@ -224,6 +226,8 @@ class ScanEngine(
         // keep its own. Left null for a full pass, which is the truth about everything.
         val examined = if (readEverything) null else HashSet<String>()
         val tParse0 = System.currentTimeMillis()
+        val excluded = prefs.excludedSenders.mapTo(HashSet()) { it.trim().lowercase() }
+        val reads = ArrayList<Read>()
         messages.forEachIndexed { index, msg ->
             if (index % 25 == 0) onProgress(Progress(index, messages.size))
             // Hashed once, here, rather than at each of the three places that used to
@@ -232,9 +236,14 @@ class ScanEngine(
             val msgId = hashOf(msg)
             examined?.add(msgId)
 
+            // The user said this sender is not their bank. Nothing it says is read.
+            if (msg.sender.trim().lowercase() in excluded) {
+                skipped++
+                logSkip(Verbose.str(R.string.scanlog_skip_excluded, msg.sender))
+                return@forEachIndexed
+            }
             // Banks send from named sender IDs ("BankMuscat"), people send from phone
-            // numbers. Numeric senders are never read unless explicitly approved in
-            // Settings → Senders (that's where a bank texting from a number is added).
+            // numbers. Numeric senders are never read unless explicitly approved.
             if (isPhoneNumber(msg.sender) && msg.sender.lowercase() !in allowlist) {
                 skipped++
                 logSkip(Verbose.str(R.string.scanlog_skip_numeric, msg.sender))
@@ -253,7 +262,7 @@ class ScanEngine(
             // in the history, and how Review filled with 218 items nobody wants.
             //
             // "Is it a bank" means: a bank-like name, a sender that already holds one
-            // of the user's accounts, or one they approved by hand in Settings.
+            // of the user's accounts, or one they approved during setup.
             val bankSender = Banks.looksLikeBank(msg.sender) ||
                 msg.sender.lowercase() in allowlist ||
                 AccountDiscovery.isKnownSender(existingAccounts, msg.sender)
@@ -262,9 +271,65 @@ class ScanEngine(
                 logSkip(Verbose.str(R.string.scanlog_skip_not_bank, msg.sender))
                 return@forEachIndexed
             }
-            val trustedSender = !bankOnly || bankSender
+            val result = parser.parse(msg.body)
+            // Facts that do not depend on the direction - the amount, the balance, the
+            // account - for a message whose words named no direction. They are what the
+            // balance chain below needs, and what a taught or proven kind is applied to.
+            val facts = when (result) {
+                is SmsParser.Result.Parsed -> result
+                is SmsParser.Result.NeedsReview ->
+                    if (result.amountMinor != null) parser.parseAs(msg.body, Direction.EXPENSE) else null
+                is SmsParser.Result.Skipped -> null
+            }
+            reads += Read(
+                id = msgId,
+                msg = msg,
+                result = result,
+                facts = facts,
+                key = Skeleton.of(msg.sender, msg.body),
+                trusted = !bankOnly || bankSender,
+            )
+        }
 
-            when (val result = parser.parse(msg.body)) {
+        // ── stage 1b: what the user taught, and what the inbox proves ─────
+        //
+        // The words a message uses are the weakest evidence there is, and they are what
+        // every fixed rule was made of. Three stronger things come first: the user's own
+        // answer about a kind of message, a balance that moved by exactly the amount,
+        // and a kind of message whose balances have proven its direction several times.
+        val labels = store.labels.value
+        val proven = BalanceChain.directions(reads.mapNotNull { it.point() })
+        val templates = TemplateInference.infer(
+            reads.map { r ->
+                TemplateInference.Observation(
+                    key = r.key,
+                    sender = r.msg.sender,
+                    messageId = r.id,
+                    atMillis = r.msg.atMillis,
+                    body = r.msg.body,
+                    read = (r.result as? SmsParser.Result.Parsed)?.direction,
+                    proven = proven[r.id],
+                    selfTransfer = (r.result as? SmsParser.Result.Parsed)?.selfTransferTo != null,
+                    skipped = r.result is SmsParser.Result.Skipped,
+                    hasAmount = r.facts != null,
+                )
+            }
+        )
+        if (proven.isNotEmpty()) {
+            Verbose.scan(R.string.scanlog_proven, Verbose.count(R.plurals.count_messages, proven.size))
+        }
+        val provenTemplates = templates.values.count { TemplateInference.isProven(it) }
+        if (provenTemplates > 0) Verbose.scan(R.string.scanlog_proven_kinds, provenTemplates)
+        if (labels.isNotEmpty()) Verbose.scan(R.string.scanlog_taught_kinds, labels.size)
+
+        for (r in reads) {
+            val msg = r.msg
+            val msgId = r.id
+            val result = decide(r, labels[r.key], proven[r.id], templates[r.key], parser)
+            if (labels[r.key]?.kind == MessageKind.TRANSFER && result is SmsParser.Result.Parsed) {
+                taughtTransfers += msgId
+            }
+            when (result) {
                 is SmsParser.Result.Skipped -> {
                     skipped++
                     logSkip(Verbose.str(R.string.scanlog_skip_reason, msg.sender, result.reason.text()))
@@ -272,10 +337,10 @@ class ScanEngine(
 
                 is SmsParser.Result.NeedsReview -> {
                     val template = MsgTemplate.of(msg.sender, msg.body)
-                    if (!trustedSender && template !in neededTemplates) {
+                    if (!r.trusted && template !in neededTemplates) {
                         skipped++
                         logSkip(Verbose.str(R.string.scanlog_skip_unparsable, msg.sender))
-                        return@forEachIndexed
+                        continue
                     }
                     matched++
                     if (template in mutedTemplates) {
@@ -288,7 +353,7 @@ class ScanEngine(
                             currency = result.currency,
                             suggestedWords = result.suggestedWords,
                         )
-                        return@forEachIndexed
+                        continue
                     }
                     needsReview++
                     Verbose.fail(
@@ -298,7 +363,7 @@ class ScanEngine(
                         reasonText(result.reason),
                     )
                     result.trace.forEach { Verbose.fail(R.string.scanlog_trace, it.text()) }
-                    if (!trustedSender) Verbose.fail(R.string.scanlog_kept_by_history)
+                    if (!r.trusted) Verbose.fail(R.string.scanlog_kept_by_history)
                     Verbose.fail(R.string.scanlog_added_to_review)
                     reviews += ReviewItem(
                         msgId, msg.atMillis, msg.sender, msg.body, result.reason,
@@ -310,13 +375,12 @@ class ScanEngine(
 
                 is SmsParser.Result.Parsed -> {
                     matched++
-                    val id = msgId
-                    if (parsedMsgs.containsKey(id)) {
+                    if (parsedMsgs.containsKey(msgId)) {
                         duplicates++
                         logSkip(Verbose.str(R.string.scanlog_skip_duplicate, msg.sender))
-                        return@forEachIndexed
+                        continue
                     }
-                    parsedMsgs[id] = ParsedMsg(id, msg, result)
+                    parsedMsgs[msgId] = ParsedMsg(msgId, msg, result)
                 }
             }
         }
@@ -439,7 +503,11 @@ class ScanEngine(
                 AccountDiscovery.routeTo(accounts, pm.msg.sender, tail)
             }?.takeIf { it != accountId }
             val cat = Categorizer.categorize(result.direction, result.merchant, pm.msg.body, rules, pm.msg.sender)
-            val type = if (selfTo != null) TxnType.TRANSFER else TxnType.of(result.direction)
+            val taughtTransfer = pm.id in taughtTransfers
+            val type = if (selfTo != null || taughtTransfer) TxnType.TRANSFER else TxnType.of(result.direction)
+            // A taught transfer names only the account that texted; money arriving puts it
+            // at the receiving end, money leaving at the sending one.
+            val arriving = taughtTransfer && selfTo == null && result.direction == Direction.INCOME
             // Money spent abroad is counted in the currency the account holds, so it is
             // in the month's totals and moves the balance. What the bank charged stays on
             // the record beside it.
@@ -508,12 +576,12 @@ class ScanEngine(
                 amountMinor = converted ?: result.amountMinor,
                 currency = if (converted != null) homeCurrency else result.currency,
                 type = type,
-                fromAccountId = when (type) {
-                    TxnType.INCOME -> null
+                fromAccountId = when {
+                    type == TxnType.INCOME || arriving -> null
                     else -> accountId
                 },
                 toAccountId = when (type) {
-                    TxnType.TRANSFER -> selfTo
+                    TxnType.TRANSFER -> selfTo ?: accountId.takeIf { arriving }
                     TxnType.INCOME -> accountId
                     else -> null
                 },
@@ -585,6 +653,7 @@ class ScanEngine(
             txns, proposals, reviews, seenSenders,
             summary.copy(tookMs = System.currentTimeMillis() - startedAt),
             examinedIds = examined,
+            templates = templates.values.toList(),
         )
         val storeMs = System.currentTimeMillis() - tStore0
         val took = System.currentTimeMillis() - startedAt
@@ -666,7 +735,95 @@ class ScanEngine(
         prefs.senderAllowlist.map { it.lowercase() }.sorted().joinToString(","),
         // A corrected exchange rate changes what every converted record is worth.
         "fx=" + Currencies.fingerprint(),
+        "skeleton=${Skeleton.VERSION}",
+        "excluded=" + prefs.excludedSenders.map { it.lowercase() }.sorted().joinToString(","),
+        // What the user taught. Hashed, because there can be hundreds of templates.
+        "taught=" + store.labels.value.entries.sortedBy { it.key }
+            .joinToString(",") { it.key + "=" + it.value.kind }.hashCode().toString(16),
     ).joinToString("|")
+
+    /** One message the reader got to, with what is needed to decide what it was. */
+    private data class Read(
+        val id: String,
+        val msg: RawSms,
+        val result: SmsParser.Result,
+        /** Amount, balance and account, whichever way the money went; null with no amount. */
+        val facts: SmsParser.Result.Parsed?,
+        val key: String,
+        val trusted: Boolean,
+    ) {
+        /** This message as a point on its account's balance line, if it quotes a balance. */
+        fun point(): BalanceChain.Point? {
+            val f = facts ?: return null
+            val balance = f.balanceMinor ?: return null
+            return BalanceChain.Point(
+                id = id,
+                account = msg.sender.trim().lowercase() + "|" + (f.accountTail ?: ""),
+                atMillis = msg.atMillis,
+                amountMinor = f.amountMinor,
+                currency = f.currency,
+                balanceMinor = balance,
+                balanceCurrency = f.balanceCurrency ?: f.currency,
+            )
+        }
+    }
+
+    /**
+     * What one message was, strongest evidence first: what the user taught about its
+     * kind, then what its own balance proves, then what its kind's balances have proven,
+     * and only then what its words say.
+     */
+    private fun decide(
+        r: Read,
+        label: TemplateLabel?,
+        proven: Direction?,
+        template: TemplateStat?,
+        parser: SmsParser,
+    ): SmsParser.Result {
+        val read = r.result
+        if (label != null) {
+            val direction = when (label.kind) {
+                MessageKind.NONE -> return SmsParser.Result.Skipped(ParseNote(R.string.skip_taught_none))
+                MessageKind.OUT -> Direction.EXPENSE
+                MessageKind.IN -> Direction.INCOME
+                // A transfer has no direction of its own: which end of it this account
+                // is comes from the balance, or the words, or failing both a debit.
+                MessageKind.TRANSFER ->
+                    proven ?: (read as? SmsParser.Result.Parsed)?.direction ?: Direction.EXPENSE
+            }
+            return reread(r, direction, parser, ParseNote(R.string.trace_taught, listOf(ParseNote(kindWord(label.kind)))))
+        }
+        if (proven != null) {
+            return reread(r, proven, parser, ParseNote(R.string.trace_proven, listOf(ParseNote(kindWord(MessageKind.of(proven))))))
+        }
+        val spread = template?.takeIf { TemplateInference.isProven(it) }?.guess?.direction
+        if (spread != null) {
+            return reread(r, spread, parser, ParseNote(R.string.trace_kind_proven, listOf(ParseNote(kindWord(MessageKind.of(spread))))))
+        }
+        return read
+    }
+
+    /** [r] read as [direction], with [why] at the end of its trace. */
+    private fun reread(r: Read, direction: Direction, parser: SmsParser, why: ParseNote): SmsParser.Result {
+        val read = r.result
+        if (read is SmsParser.Result.Parsed && read.direction == direction) {
+            return read.copy(trace = read.trace + why, confidence = 100)
+        }
+        // A message with no amount stays what it was: knowing which way money went does
+        // not say how much.
+        val again = parser.parseAs(r.msg.body, direction) ?: return read
+        if (read is SmsParser.Result.Parsed) {
+            Verbose.info(R.string.scanlog_overruled, r.msg.sender, Verbose.str(kindWord(MessageKind.of(read.direction))))
+        }
+        return again.copy(trace = again.trace + why, confidence = 100)
+    }
+
+    private fun kindWord(kind: MessageKind): Int = when (kind) {
+        MessageKind.OUT -> R.string.log_word_out
+        MessageKind.IN -> R.string.log_word_in
+        MessageKind.TRANSFER -> R.string.label_transfer
+        MessageKind.NONE -> R.string.kind_none
+    }
 
     private fun accountName(accounts: List<Account>, id: String?): String =
         accounts.firstOrNull { it.id == id }?.displayName

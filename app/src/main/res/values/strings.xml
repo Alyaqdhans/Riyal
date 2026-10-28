@@ -930,6 +930,16 @@
     <string name="scanlog_not_your_bank">    → not one of your banks, so it cannot have moved your money; not recorded</string>
     <string name="scanlog_category">    · category: %1$s (%2$s)</string>
     <string name="scanlog_converted">    · %1$s charged abroad, counted as %2$s</string>
+    <string name="scanlog_skip_excluded">%1$s · you said this sender is not your bank</string>
+    <string name="scanlog_proven">balances proved which way the money went in %1$s</string>
+    <string name="scanlog_proven_kinds">%1$d kinds of message have their direction proven by balances</string>
+    <string name="scanlog_taught_kinds">%1$d kinds of message are read the way you taught</string>
+    <string name="scanlog_overruled">%1$s · its words read as %2$s, but what you taught or the balance proved comes first</string>
+    <string name="skip_taught_none">you said messages like this are not transactions</string>
+    <string name="trace_taught">you taught Riyal that messages like this are %1$s</string>
+    <string name="trace_proven">the balance moved by exactly this amount, so it was %1$s</string>
+    <string name="trace_kind_proven">the balances of messages written like this prove they are %1$s</string>
+    <string name="kind_none">not a transaction</string>
     <string name="scanlog_cat_rule">your rule match \"%1$s\"</string>
     <string name="scanlog_cat_builtin">built-in match \"%1$s\"</string>
     <string name="scanlog_cat_default">default</string>

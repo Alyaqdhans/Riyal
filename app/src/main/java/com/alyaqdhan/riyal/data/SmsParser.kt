@@ -165,6 +165,40 @@ class SmsParser(
             confidence -= 20
             trace += ParseNote(R.string.trace_both_directions)
         }
+        return read(body, lower, hit, trace, confidence)
+    }
+
+    /**
+     * Reads [rawBody] as money moving in [direction], whatever its words say or whether
+     * it has any. For a message whose kind is already known some other way - the user
+     * taught its template, or the account's balances proved it - so the amount, the
+     * counterparty and the account are read exactly as they would be for a message the
+     * keywords had decided.
+     *
+     * Null when there is no usable amount, which no amount of knowing the direction can
+     * fix.
+     */
+    fun parseAs(rawBody: String, direction: Direction): Result.Parsed? {
+        val body = normalize(rawBody)
+        val lower = body.lowercase()
+        val usable = findAmounts(body, lower).filter { !it.nearBalance }
+        val anchor = usable.firstOrNull { c -> c.currencyToken?.let { tokenToIso(it) } == defaultCurrency }
+            ?: usable.firstOrNull()
+            ?: return null
+        val trace = mutableListOf<ParseNote>()
+        if (body != rawBody) trace += ParseNote(R.string.trace_normalized)
+        return read(body, lower, KeywordHit("", anchor.pos, direction), trace, 90) as? Result.Parsed
+    }
+
+    /** Everything after the direction is settled: amount, counterparty, account. */
+    private fun read(
+        body: String,
+        lower: String,
+        hit: KeywordHit,
+        trace: MutableList<ParseNote>,
+        startConfidence: Int,
+    ): Result {
+        var confidence = startConfidence
 
         // 2 ── amount
         val candidates = findAmounts(body, lower)
