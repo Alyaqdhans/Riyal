@@ -55,7 +55,7 @@ import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CurrencyPickerSheet
 import com.alyaqdhan.riyal.ui.compose.ExchangeRatesSheet
-import com.alyaqdhan.riyal.ui.compose.FlatBar
+import com.alyaqdhan.riyal.ui.compose.ScanBar
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.ui.compose.appVersion
 import com.alyaqdhan.riyal.ui.compose.counted
@@ -215,8 +215,8 @@ fun SettingsScreen(
                 chevron = false,
             ) { vm.startScan() }
             if (running != null) {
-                FlatBar(
-                    progress = { if (running.total > 0) running.processed.toFloat() / running.total else 0f },
+                ScanBar(
+                    progress = if (running.total > 0) ({ running.processed.toFloat() / running.total }) else null,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                 )
             }

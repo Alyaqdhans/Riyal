@@ -245,6 +245,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
     }
 
+    /** The two were one account all along: [from] and its records fold into [into]. */
+    fun mergeAccount(from: Account, into: Account) = viewModelScope.launch(Dispatchers.IO) {
+        store.mergeAccount(from.id, into.id)
+        Verbose.ok(R.string.log_account_merged, from.displayName, into.displayName)
+        Verbose.flush()
+    }
+
     fun deleteAccount(id: String) = viewModelScope.launch(Dispatchers.IO) {
         val name = accounts.value.firstOrNull { it.id == id }?.displayName ?: id
         store.deleteAccount(id)
@@ -999,6 +1006,34 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private var tutor: Tutor? = null
     private var setupJob: Job? = null
 
+    /** One answered question, kept so the user can step back to it and change it. */
+    data class SetupAnswer(
+        val question: SetupQuestion,
+        val kind: MessageKind,
+        /** The category the record was filed under, for money in or out. */
+        val categoryId: String?,
+        /** "Yes", as asked. */
+        val confirmed: Boolean,
+    )
+
+    // The tutor is rebuilt from these whenever an earlier answer changes: replaying the
+    // answers in order gives exactly the state they would have produced.
+    private var tutorCandidates: List<Tutor.Candidate> = emptyList()
+    private var tutorRight = 0
+    private var tutorWrong = 0
+    private val setupAnswers = ArrayList<SetupAnswer>()
+
+    /** Which answer is on screen; [setupAnswers]' size when it is a question not yet asked. */
+    private var setupCursor = 0
+
+    private val _setupAnswer = MutableStateFlow<SetupAnswer?>(null)
+
+    /** What was answered for the question on screen, when the user stepped back to it. */
+    val setupAnswer: StateFlow<SetupAnswer?> = _setupAnswer
+
+    private val _canStepBack = MutableStateFlow(false)
+    val canStepBack: StateFlow<Boolean> = _canStepBack
+
     /** Whether the setup should be offered on Home: never finished, and messages can be read. */
     private val _setupDone = MutableStateFlow(prefs.setupDone)
     val setupDone: StateFlow<Boolean> = _setupDone
@@ -1010,6 +1045,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun startSetup() {
         setupJob?.cancel()
         tutor = null
+        setupAnswers.clear()
+        setupCursor = 0
+        _setupAnswer.value = null
         _setupQuestion.value = null
         _taughtCount.value = 0
         _setupStep.value = SetupStep.READING
@@ -1034,15 +1072,36 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val weight = if (it.guess == MessageKind.NONE) (it.count / 4).coerceAtLeast(1) else it.count
                 Tutor.Candidate(it.key, it.sender, weight, it.confidence)
             }
-        tutor = Tutor(candidates, prefs.teachRight, prefs.teachWrong)
+        tutorCandidates = candidates
+        tutorRight = prefs.teachRight
+        tutorWrong = prefs.teachWrong
+        setupAnswers.clear()
+        setupCursor = 0
+        tutor = Tutor(candidates, tutorRight, tutorWrong)
         _setupStep.value = SetupStep.QUESTIONS
-        nextQuestion()
+        showSetupQuestion()
     }
 
-    private fun nextQuestion() {
+    /** Back to the question before the one on screen, with its answer, to change it. */
+    fun stepBackSetup() {
+        if (setupCursor == 0) return
+        setupCursor--
+        showSetupQuestion()
+    }
+
+    private fun showSetupQuestion() {
         val t = tutor ?: return
         _setupProgress.value = t.progress
-        _questionsAsked.value = t.asked
+        _questionsAsked.value = setupCursor
+        _canStepBack.value = setupCursor > 0
+        if (setupCursor < setupAnswers.size) {
+            val earlier = setupAnswers[setupCursor]
+            _setupAnswer.value = earlier
+            _setupQuestion.value = earlier.question
+            _questionsLeft.value = t.questionsLeft() + (setupAnswers.size - setupCursor)
+            return
+        }
+        _setupAnswer.value = null
         val next = t.next()
         if (next == null) {
             finishSetup()
@@ -1067,18 +1126,36 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * An answer. "Right" confirms the reading - and the category, which is then
-     * remembered for the shop. "Wrong" carries what it actually was: the kind, and for
-     * money in or out the category. Either way the answer is about the whole template,
-     * so every message written like this one is read that way from now on.
+     * remembered for the shop. "Wrong" carries what it actually was: usually the same
+     * kind in another category, sometimes another kind altogether. Either way the answer
+     * is about the whole template, so every message written like this one is read that
+     * way from now on.
+     *
+     * Only a wrong kind counts against the reading. A category is about the shop, not
+     * about how the bank's message was read, so fixing one confirms the reading as much
+     * as a "yes" does - and shouldn't buy more questions.
+     *
+     * Answering a question the user stepped back to replaces its answer and moves on to
+     * the one after it.
      */
     fun answerSetup(right: Boolean, kind: MessageKind? = null, categoryId: String? = null) {
         val q = _setupQuestion.value ?: return
-        val t = tutor ?: return
-        t.answer(q.key, right)
+        if (tutor == null) return
+        val taught = if (right) q.guess else kind ?: q.guess
+        val answer = SetupAnswer(
+            question = q,
+            kind = taught,
+            categoryId = if (right) q.txn?.categoryId else categoryId,
+            confirmed = right,
+        )
+        if (setupCursor < setupAnswers.size) setupAnswers[setupCursor] = answer else setupAnswers += answer
+        setupCursor++
+        val t = Tutor(tutorCandidates, tutorRight, tutorWrong)
+        setupAnswers.forEach { t.answer(it.question.key, wasRight = it.kind == it.question.guess) }
+        tutor = t
         prefs.teachRight = t.right
         prefs.teachWrong = t.wrong
-        val taught = if (right) q.guess else kind ?: q.guess
-        _taughtCount.value = _taughtCount.value + 1
+        _taughtCount.value = setupAnswers.size
         viewModelScope.launch(Dispatchers.IO) {
             store.setLabel(q.key, taught)
             Verbose.ok(
@@ -1096,7 +1173,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
             val txn = q.txn
             val merchant = txn?.merchant?.takeIf { it.isNotBlank() }
-            val confirmed = if (right) txn?.categoryId else categoryId
+            val confirmed = answer.categoryId
             if (txn != null && confirmed != null && taught.direction != null &&
                 !(right && confirmed == Categories.defaultFor(txn.type))
             ) {
@@ -1105,7 +1182,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             Verbose.flush()
         }
-        nextQuestion()
+        showSetupQuestion()
     }
 
     /**
@@ -1116,6 +1193,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.setupDone = true
         _setupDone.value = true
         _setupQuestion.value = null
+        _setupAnswer.value = null
+        _canStepBack.value = false
         _setupStep.value = SetupStep.DONE
         if (_taughtCount.value > 0) startScan(showSheet = false, full = true)
     }

@@ -134,6 +134,11 @@
     <string name="setup_yes">نعم</string>
     <string name="setup_kind_transfer">بين حساباتي</string>
     <string name="setup_kind_none">ليست معاملة</string>
+    <string name="setup_which_category">ما فئتها؟</string>
+    <string name="setup_kind_wrong">لم تكن «%1$s»</string>
+    <string name="setup_previous">السؤال السابق</string>
+    <string name="setup_you_said_yes">أجبت بأنها صحيحة</string>
+    <string name="setup_you_said">إجابتك: %1$s</string>
     <string name="setup_done_title">ريال يعرف بنوكك الآن</string>
     <string name="setup_done_body">الرسائل المكتوبة مثل التي أجبت عنها تُقرأ بطريقتك من الآن. يمكنك إعادة هذا من الإعدادات.</string>
     <string name="setup_start">ابدأ استخدام ريال</string>
@@ -483,6 +488,10 @@
     <string name="acct_needs_balance">لا رصيد في أي رسالة، اضغط لضبطه</string>
     <string name="acct_add_title">إضافة حساب</string>
     <string name="acct_edit_title">تعديل الحساب</string>
+    <string name="acct_same_as">نفس حساب…</string>
+    <string name="acct_merge_title">دمج في %1$s؟</string>
+    <string name="acct_merge_body">ينتقل %1$s وسجلاته إلى %2$s، وتذهب الرسائل التي تذكر رقمه إليه من الآن.</string>
+    <string name="acct_merge">دمج</string>
     <string name="acct_nickname">اسم مختصر (اختياري)</string>
     <string name="acct_nickname_help">اتركه فارغاً فيُسمّى الحساب باسم بنكه وآخر أرقامه.</string>
     <string name="acct_balance_now">الرصيد الآن</string>
@@ -797,6 +806,7 @@
     <string name="log_account_added">أضفت حساباً: %1$s · الرصيد الافتتاحي %2$s</string>
     <string name="log_account_updated">عدَّلت حساباً: %1$s · الرصيد الافتتاحي %2$s</string>
     <string name="log_account_deleted">حذفت حساب \"%1$s\" · سجلاته محفوظة، وصارت بلا حساب</string>
+    <string name="log_account_merged">دمجت حساب \"%1$s\" في \"%2$s\" · سجلاته ورقمه تذهب إليه الآن</string>
     <string name="log_accounts_confirmed">أكَّدت حساباتك: %1$s صارت مصدر أرصدتك</string>
     <string name="log_account_set">حدَّدت الحساب: %1$s ← %2$s</string>
     <string name="log_transfer_confirmed">أكَّدت التحويل: %1$s انتقلت بين حساباتك · ولم تعد تُحتسب مصروفاً ولا دخلاً</string>

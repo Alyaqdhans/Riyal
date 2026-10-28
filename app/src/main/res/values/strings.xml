@@ -134,6 +134,11 @@
     <string name="setup_yes">Yes</string>
     <string name="setup_kind_transfer">Between my accounts</string>
     <string name="setup_kind_none">Not a transaction</string>
+    <string name="setup_which_category">Which category is it?</string>
+    <string name="setup_kind_wrong">It wasn\'t “%1$s”</string>
+    <string name="setup_previous">Previous question</string>
+    <string name="setup_you_said_yes">You said this is right</string>
+    <string name="setup_you_said">You said: %1$s</string>
     <string name="setup_done_title">Riyal knows your banks</string>
     <string name="setup_done_body">Messages written like the ones you answered are read your way from now on. You can run this again from Settings.</string>
     <string name="setup_start">Start using Riyal</string>
@@ -431,6 +436,10 @@
     <string name="acct_needs_balance">No balance in any message, tap to set it</string>
     <string name="acct_add_title">Add account</string>
     <string name="acct_edit_title">Edit account</string>
+    <string name="acct_same_as">Same account as…</string>
+    <string name="acct_merge_title">Merge into %1$s?</string>
+    <string name="acct_merge_body">%1$s and its records move into %2$s, and messages quoting its number go there from now on.</string>
+    <string name="acct_merge">Merge</string>
     <string name="acct_nickname">Nickname (optional)</string>
     <string name="acct_nickname_help">Leave it empty and the account is named after its bank and last digits.</string>
     <string name="acct_balance_now">Balance now</string>
@@ -725,6 +734,7 @@
     <string name="log_account_added">account added by you: %1$s · opening %2$s</string>
     <string name="log_account_updated">account updated by you: %1$s · opening %2$s</string>
     <string name="log_account_deleted">account deleted by you: \"%1$s\" · its records kept, now unassigned</string>
+    <string name="log_account_merged">account merged by you: \"%1$s\" into \"%2$s\" · its records and its number go there now</string>
     <string name="log_accounts_confirmed">accounts confirmed by you: %1$s are now the source of your balances</string>
     <string name="log_account_set">account set by you: %1$s → %2$s</string>
     <string name="log_transfer_confirmed">transfer confirmed by you: %1$s moved between your accounts · it no longer counts as spending or income</string>

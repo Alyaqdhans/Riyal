@@ -159,15 +159,10 @@ fun ScanSheetHost(vm: MainViewModel) {
                             )
                         }
                     }
-                    // Determinate once the total is known.
-                    if (s.total > 0) {
-                        FlatBar(
-                            progress = { s.processed / s.total.toFloat() },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    } else {
-                        FlatBar(Modifier.fillMaxWidth())
-                    }
+                    ScanBar(
+                        progress = if (s.total > 0) ({ s.processed / s.total.toFloat() }) else null,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
 
                 is MainViewModel.ScanState.Done -> Column {

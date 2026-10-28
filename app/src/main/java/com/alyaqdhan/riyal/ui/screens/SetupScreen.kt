@@ -2,6 +2,7 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +31,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -63,6 +65,7 @@ import com.alyaqdhan.riyal.ui.MainViewModel.SetupStep
 import com.alyaqdhan.riyal.ui.compose.CategoryChips
 import com.alyaqdhan.riyal.ui.compose.CategoryIcon
 import com.alyaqdhan.riyal.ui.compose.FlatBar
+import com.alyaqdhan.riyal.ui.compose.ScanBar
 import com.alyaqdhan.riyal.ui.compose.FlatWheel
 import com.alyaqdhan.riyal.ui.compose.MoneySign
 import com.alyaqdhan.riyal.ui.compose.MoneyText
@@ -149,12 +152,10 @@ private fun ReadingStep(vm: MainViewModel) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (running != null && running.total > 0) {
-            FlatBar(
-                progress = { running.processed / running.total.toFloat() },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
+        ScanBar(
+            progress = if (running != null && running.total > 0) ({ running.processed / running.total.toFloat() }) else null,
+            modifier = Modifier.fillMaxWidth(),
+        )
         Text(
             stringResource(R.string.setup_reading_note),
             style = MaterialTheme.typography.bodySmall,
@@ -308,6 +309,11 @@ private fun AccountsStep(vm: MainViewModel) {
                 editing = null
             },
             onDismiss = { editing = null },
+            mergeTargets = mergeTargetsFor(account, accounts),
+            onMerge = { target ->
+                vm.mergeAccount(account, target)
+                editing = null
+            },
         )
     }
 
@@ -331,18 +337,24 @@ private fun AccountsStep(vm: MainViewModel) {
 
 /**
  * One message at a time: what the bank wrote, what Riyal made of it, yes or no. "No"
- * opens the answer - which kind it really was and, for money in or out, which category.
+ * opens the answer, category first - a bank's message is far more often read the right
+ * way round and filed under the wrong category than the other way about. Every answer
+ * stays in a history the user can step back through, by the arrow or the back gesture,
+ * to change one.
  */
 @Composable
 private fun QuestionsStep(vm: MainViewModel) {
     val question by vm.setupQuestion.collectAsState()
+    val previous by vm.setupAnswer.collectAsState()
+    val canStepBack by vm.canStepBack.collectAsState()
     val progress by vm.setupProgress.collectAsState()
     val left by vm.questionsLeft.collectAsState()
     val asked by vm.questionsAsked.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val categoryUse by vm.categoryUse.collectAsState()
     val q = question ?: return
-    var correcting by remember(q.key) { mutableStateOf(false) }
+    var correcting by remember(q.key, asked) { mutableStateOf(false) }
+    BackHandler(enabled = canStepBack) { vm.stepBackSetup() }
 
     Column(Modifier.fillMaxSize()) {
         Column(
@@ -353,11 +365,19 @@ private fun QuestionsStep(vm: MainViewModel) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             FlatBar(progress = { progress }, modifier = Modifier.fillMaxWidth())
-            Text(
-                stringResource(R.string.setup_question_count, asked + 1, left.coerceAtLeast(1)),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { vm.stepBackSetup() }, enabled = canStepBack) {
+                    Icon(
+                        painterResource(R.drawable.ic_sym_arrow_back),
+                        contentDescription = stringResource(R.string.setup_previous),
+                    )
+                }
+                Text(
+                    stringResource(R.string.setup_question_count, asked + 1, left.coerceAtLeast(1)),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Text(stringResource(R.string.setup_question_title), style = MaterialTheme.typography.headlineSmall)
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -439,9 +459,36 @@ private fun QuestionsStep(vm: MainViewModel) {
                     }
                 }
             }
+            // Stepped back to: what was answered, so the user can see what they are changing.
+            previous?.let { answer ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(
+                        painterResource(R.drawable.ic_sym_history),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        if (answer.confirmed) {
+                            stringResource(R.string.setup_you_said_yes)
+                        } else {
+                            stringResource(
+                                R.string.setup_you_said,
+                                listOfNotNull(
+                                    stringResource(labelFor(answer.kind)),
+                                    answer.categoryId?.let { Categories.byId(it).name },
+                                ).joinToString(" · "),
+                            )
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             if (correcting) {
                 Correction(
                     question = q,
+                    previous = previous?.takeUnless { it.confirmed },
                     categoryUse = categoryUse,
                     onSave = { kind, category -> vm.answerSetup(right = false, kind = kind, categoryId = category) },
                     onCancel = { correcting = false },
@@ -465,16 +512,24 @@ private fun QuestionsStep(vm: MainViewModel) {
     }
 }
 
-/** What the message really was: its kind, and for money in or out its category. */
+/**
+ * What the message really was. The reading stays as it was unless the user changes it:
+ * a "no" is usually about the category, so the categories come first, and the other
+ * kinds are a tap away for the time the money went the other way, or never moved.
+ * A reading with no category of its own - a transfer, not a transaction - can only be
+ * wrong in its kind, so that opens on the kinds.
+ */
 @Composable
 private fun Correction(
     question: MainViewModel.SetupQuestion,
+    previous: MainViewModel.SetupAnswer?,
     categoryUse: Map<String, Int>,
     onSave: (MessageKind, String?) -> Unit,
     onCancel: () -> Unit,
 ) {
-    var kind by remember(question.key) {
-        mutableStateOf(if (question.guess == MessageKind.OUT) MessageKind.IN else MessageKind.OUT)
+    var kind by remember(question.key) { mutableStateOf(previous?.kind ?: question.guess) }
+    var choosingKind by remember(question.key) {
+        mutableStateOf(question.guess.direction == null || (previous != null && previous.kind != question.guess))
     }
     val type = when (kind) {
         MessageKind.OUT -> TxnType.EXPENSE
@@ -482,35 +537,43 @@ private fun Correction(
         else -> null
     }
     var category by remember(question.key, kind) {
+        val fits = { id: String -> type != null && Categories.byId(id).income == (type == TxnType.INCOME) }
         mutableStateOf(
-            question.txn?.categoryId?.takeIf { id -> type != null && Categories.byId(id).income == (type == TxnType.INCOME) }
+            previous?.categoryId?.takeIf(fits)
+                ?: question.txn?.categoryId?.takeIf(fits)
                 ?: type?.let { Categories.defaultFor(it) }
         )
     }
     val order = rememberCategoryOrder(categoryUse)
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(stringResource(R.string.setup_what_was_it), style = MaterialTheme.typography.titleMedium)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MessageKind.entries.forEach { option ->
-                    FilterChip(
-                        selected = kind == option,
-                        onClick = { kind = option },
-                        label = { Text(stringResource(labelFor(option))) },
-                        leadingIcon = {
-                            Icon(painterResource(iconFor(option)), contentDescription = null, modifier = Modifier.size(18.dp))
-                        },
-                    )
-                }
-            }
             if (type != null) {
-                Text(stringResource(R.string.label_category), style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.setup_which_category), style = MaterialTheme.typography.titleMedium)
                 CategoryChips(
                     type = type,
                     selectedId = category ?: Categories.defaultFor(type),
                     onSelect = { category = it },
                     order = order,
                 )
+            }
+            if (choosingKind) {
+                Text(stringResource(R.string.setup_what_was_it), style = MaterialTheme.typography.titleMedium)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MessageKind.entries.forEach { option ->
+                        FilterChip(
+                            selected = kind == option,
+                            onClick = { kind = option },
+                            label = { Text(stringResource(labelFor(option))) },
+                            leadingIcon = {
+                                Icon(painterResource(iconFor(option)), contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
+                        )
+                    }
+                }
+            } else {
+                TextButton(onClick = { choosingKind = true }) {
+                    Text(stringResource(R.string.setup_kind_wrong, stringResource(labelFor(question.guess))))
+                }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Spacer(Modifier.weight(1f))

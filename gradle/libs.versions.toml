@@ -11,6 +11,9 @@ lifecycle = "2.10.0"
 appcompat = "1.7.1"
 material = "1.14.0"
 navigation = "2.9.8"
+# The version the rest of the graph already resolves (appcompat 1.7 and the chart and
+# markdown libraries pull it in); declared so screens can use BackHandler directly.
+activityCompose = "1.8.2"
 splashscreen = "1.0.1"
 composeMaterial3 = "1.5.0-alpha23"
 composeIconsCore = "1.7.8"
@@ -24,6 +27,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment-ktx", version.ref = "navigation" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }

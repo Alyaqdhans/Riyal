@@ -82,6 +82,7 @@ dependencies {
     // fragment transitions for the XML nav-graph routing.
     implementation(libs.material)
     implementation(libs.androidx.navigation.fragment)
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.core.splashscreen)

@@ -9,7 +9,9 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.Card
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -194,6 +196,11 @@ fun AccountsScreen(vm: MainViewModel, onBack: (() -> Unit)?) {
                 editing = null
             },
             onDismiss = { editing = null },
+            mergeTargets = mergeTargetsFor(account, accounts),
+            onMerge = { target ->
+                vm.mergeAccount(account, target)
+                editing = null
+            },
         )
     }
 
@@ -333,7 +340,12 @@ internal fun AccountEditorDialog(
     onSave: (Account) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
+    /** The bank's other accounts, any of which this one may turn out to be. */
+    mergeTargets: List<Account> = emptyList(),
+    onMerge: (Account) -> Unit = {},
 ) {
+    var merging by remember { mutableStateOf<Account?>(null) }
+    var pickingMerge by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(account.name) }
     var bankName by remember { mutableStateOf(account.bankName) }
     var last4 by remember { mutableStateOf(account.last4.orEmpty()) }
@@ -433,6 +445,34 @@ internal fun AccountEditorDialog(
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 )
+                // A bank can quote other digits where the account usually goes; when one
+                // of those became an account, this is how it is put back.
+                if (!isNew && mergeTargets.isNotEmpty()) {
+                    Box {
+                        OutlinedButton(onClick = { pickingMerge = true }) {
+                            Icon(
+                                painterResource(R.drawable.ic_sym_merge),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text(
+                                stringResource(R.string.acct_same_as),
+                                modifier = Modifier.padding(start = 8.dp),
+                            )
+                        }
+                        DropdownMenu(expanded = pickingMerge, onDismissRequest = { pickingMerge = false }) {
+                            mergeTargets.forEach { target ->
+                                DropdownMenuItem(
+                                    text = { Text(target.displayName) },
+                                    onClick = {
+                                        pickingMerge = false
+                                        merging = target
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
                 OutlinedTextField(
                     value = senders,
                     onValueChange = { senders = it },
@@ -494,6 +534,33 @@ internal fun AccountEditorDialog(
             }
         },
     )
+
+    merging?.let { target ->
+        AlertDialog(
+            onDismissRequest = { merging = null },
+            title = { Text(stringResource(R.string.acct_merge_title, target.displayName)) },
+            text = { Text(stringResource(R.string.acct_merge_body, account.displayName, target.displayName)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    merging = null
+                    onMerge(target)
+                }) { Text(stringResource(R.string.acct_merge)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { merging = null }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+}
+
+/** The accounts [account] could be the same as: the others its bank texts about. */
+internal fun mergeTargetsFor(account: Account, accounts: List<Account>): List<Account> {
+    val senders = account.senderIds.mapTo(HashSet()) { it.trim().lowercase() }
+    return accounts.filter { other ->
+        other.id != account.id && !other.archived &&
+            (other.senderIds.any { it.trim().lowercase() in senders } ||
+                other.bankName.isNotBlank() && other.bankName == account.bankName)
+    }
 }
 
 private fun blankAccount(currency: String) = Account(

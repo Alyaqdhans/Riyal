@@ -73,6 +73,21 @@ fun FlatBar(modifier: Modifier = Modifier) {
 }
 
 /**
+ * The bar a scan shows while it reads the inbox: Material's wavy indicator with its wave
+ * left on, the one bar that keeps it. A scan is the app at work, and the moving wave
+ * says so; every other bar stands for an amount and stays flat. Determinate once the
+ * number of messages is known.
+ */
+@Composable
+fun ScanBar(progress: (() -> Float)?, modifier: Modifier = Modifier) {
+    if (progress != null) {
+        LinearWavyProgressIndicator(progress = progress, modifier = modifier)
+    } else {
+        LinearWavyProgressIndicator(modifier = modifier)
+    }
+}
+
+/**
  * Where each slice of the wheel goes: its share of the circle, except that no slice is
  * narrower than [minDegrees]. A round-ended arc is drawn [minDegrees] wide however small
  * its share, so without this a run of small categories would be dots drawn on top of
