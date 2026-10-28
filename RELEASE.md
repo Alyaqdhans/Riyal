@@ -39,18 +39,18 @@ will keep offering an update to the release it is already running.
 
 ### 2. Merge what is going out
 
-Feature branches live off `development`. Merge the ones that are finished:
+Each version is built on a branch named after it, cut from `master`: `1.8.0`, then
+`1.8.1`, and so on. Its commits stay there until the release is judged done, and then
+the branch is merged into `master`.
+
+Check first that the merge is clean, before committing to it:
 
 ```bash
-git checkout development
-git merge --no-ff feature/<name>
+git merge-tree --write-tree master 1.8.0 >/dev/null && echo clean
 ```
 
-Check first that a merge is clean, before committing to it:
-
-```bash
-git merge-tree --write-tree development feature/<name> >/dev/null && echo clean
-```
+Then move that version's entry in [CHANGELOG.md](CHANGELOG.md) from "unreleased" to
+its date. The release notes in step 7 are cut down from it.
 
 ### 3. Prove it still works
 
@@ -93,11 +93,12 @@ Name the file `Riyal-v<version>.apk`. That is what every previous release used.
 
 ### 6. Get the code onto master and tag it
 
-Releases are tagged on `master`, and nothing goes to `master` directly:
+Releases are tagged on `master`, and nothing goes to `master` except through its
+version branch:
 
 ```bash
-git push origin development
-gh pr create --base master --head development --title "Release 1.6.0"
+git push origin 1.8.0
+gh pr create --base master --head 1.8.0 --title "Release 1.8.0"
 gh pr merge --merge
 ```
 
