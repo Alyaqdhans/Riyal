@@ -21,10 +21,13 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   its wave.
 - **Pages are activities, each with its own `res/layout`.** The phone's own transition
   plays between them (the owner's MyBattery app is the reference). Never set a window
-  animation or `overridePendingTransition`. The five tabs are fragments that switch in
-  place, with no transition.
-- **No decorative motion.** No pop-in or bounce, and `MotionScheme.standard()`. Charts
-  use `animationSpec = null, animateIn = false`.
+  animation or `overridePendingTransition`. The five tabs are fragments that slide
+  sideways in the toolbar's order (`TabSlide`).
+- **No decorative motion.** No pop-in or bounce on content, and `MotionScheme.standard()`.
+  Charts use `animationSpec = null, animateIn = false`. The owner's exceptions: the tab
+  slide, and the Add form's pop-in (quick close).
+- **Choices of dates are tiles** (`ui/compose/Presets.kt`: `PresetSheet`/`PresetGrid`),
+  never a plain list of words. Each tile says what it covers.
 - **Exact versions.** `androidx.compose.material3:material3:1.5.0-alpha23` with
   `@OptIn(ExperimentalMaterial3Api / ExperimentalMaterial3ExpressiveApi)`. Use its
   current APIs: `ListItem(onClick | checked/onCheckedChange, …) { headline }`, and
@@ -71,9 +74,10 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `ui/MainViewModel.kt` | One VM for every screen, owned by `RiyalApp` (`Context.riyalViewModel`): scanning, setup flow, updates, edits |
 | `ui/nav/Fragments.kt` + `res/navigation/nav_graph.xml` | The five tabs: fragments of the nav graph, each with its `fragment_*.xml` layout |
 | `ui/nav/Pages.kt` | `PageActivity` and every page opened from a tab (onboarding, setup, review, categories, updates, changelog), each with its `activity_*.xml` layout |
+| `ui/nav/TabSlide.kt` | The tabs' sideways slide; `MainActivity`'s destination listener sets its direction (`TabMotion`) |
 | `MainActivity.kt` | The tabs, the floating toolbar (`HorizontalFloatingToolbar` + Add FAB), global dialogs (update prompt, manual add); sends a first run to `OnboardingActivity` |
 | `ui/screens/*` | Home, Transactions, Analysis, Accounts, Settings (tabs); Setup, Review, Updates, Changelog, Categories… (pages) |
-| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips) |
+| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `SwipeRow` (swipe to reveal Archive/Remove, on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips) |
 
 ## How a message is read (1.8.0+)
 

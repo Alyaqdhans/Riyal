@@ -12,7 +12,7 @@ is attached there.
   Android's installer on an update you chose to download. Android still shows its own
   install screen and asks you to confirm.
 - **The first scan after updating reads your whole inbox again.** How messages are read
-  changed (parser version 4), so records are rebuilt. Your categories, rules, accounts
+  changed (parser version 5), so records are rebuilt. Your categories, rules, accounts
   and budgets are kept; nothing is wiped.
 - **What you taught a test build is asked again.** Templates are recognised differently
   now (skeleton version 2), so answers given to an earlier 1.8.0 build no longer apply.
@@ -51,7 +51,9 @@ is attached there.
   seven. Riyal now follows the balance. Messages whose balances continue one another
   are one account, whatever digits they quote, and an account made from such a number
   is folded back into the real one on the next full read.
-- Accounts masked with "#" ("00210######001") read their real last digits.
+- Accounts masked with "#", with or without spaces ("00210 ###### 001"), read their
+  real last digits, and an account an earlier build made from the masked number
+  ("0210") is folded into the real one on the next full read.
 - Bank Nizwa purchases read the shop, not the date after it.
 - **Same account as…** in an account's editor merges it into another account of the same
   bank. Its records move across, and its number keeps routing there.
@@ -83,19 +85,28 @@ is attached there.
 
 - Material 3 Expressive's floating toolbar: five tabs (Home, Transactions, Analysis,
   Accounts and Settings, named on a long press) and the Add button attached at its end.
+  Tabs slide sideways into one another in the toolbar's order.
 - **Pages open the way your phone opens screens.** Setup, Review, categories, updates
   and the rest are screens of their own, so your phone's own transition plays going in
   and coming back.
-- A new icon: the Omani rial sign on teal.
-- **Home is a dashboard:** expense, income and net for the period; one "needs your
-  attention" list; your accounts and their balances; top spending; recent records.
-- Records are standard list rows with circular category icons. Swiping archives, with
-  undo. Removing for good is in the record's sheet, behind a question.
-- Settings is grouped rows with icons; choices open radio-button dialogs.
+- A new icon: the Omani rial sign. On Android 12 and later it takes the wallpaper's
+  colours, as the app does; on older phones it is teal.
+- **Home is a dashboard:** net for the period, large, with expense and income as pills
+  under it; one "needs your attention" list; top spending; and the period's latest
+  records, which change with the dates above them.
+- **Dates are tiles.** Every period choice - Home, Analysis, How far back, the welcome
+  screen - is a sheet of tiles, each with an icon and the dates it covers.
+- Records are standard list rows with circular category icons. Swipe one open and tap
+  the action it shows: Archive one way, with undo, Remove the other.
+- Settings is grouped rows with icons. Switches no longer fill their row in when on.
+- The currency picker's signs sit in matching round slots.
+- The welcome screen shows the app's mark instead of the coin face, and its buttons,
+  like setup's, float over the page.
+- The Add form pops in, and leaves quickly.
 - **No more motion for its own sake.** Cards no longer pop in, buttons no longer
-  bounce, charts draw in place, and the coin mascot no longer blinks. The category wheel
-  is back on Material's own wavy indicator, held flat; the bar a scan shows keeps its
-  wave.
+  bounce, charts draw in place, and the coin mascot no longer blinks. What moves is
+  movement between places - tabs, pages - and the Add form. The category wheel is back
+  on Material's own wavy indicator, held flat; the bar a scan shows keeps its wave.
 
 ## 1.7.1 — 2026-10-27
 
