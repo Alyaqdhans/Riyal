@@ -458,6 +458,11 @@ class SmsParser(
             if (written.all { it.isDigit() } && hiddenEnd.containsMatchIn(rest)) continue
             val token = asDisplayed(written, rtl)
             val digits = token.takeLastWhile { it.isDigit() }
+            // "00210 ###### 00210": Bank Nizwa's refunds repeat the branch where the last
+            // digits go. That names no account - read as one, every refund was "0210" -
+            // so the message goes where its balance line says.
+            val lead = token.takeWhile { it.isDigit() }
+            if (lead.isNotEmpty() && lead == digits && token.any { it in MASK_CHARS }) continue
             if (digits.length < 3) continue
             val keyword = m.groupValues[0].trimStart().lowercase()
             // A message that quotes both ("purchase on card *4321 from a/c ...0019")
@@ -620,7 +625,7 @@ class SmsParser(
          * is out of date and the inbox must be read again. Forgetting to bump it after a
          * parser fix means the fix only reaches messages that arrive afterwards.
          */
-        const val VERSION = 8
+        const val VERSION = 9
 
         /** A mask straight after the digits, with nothing after it: an account's hidden end. */
         private val hiddenEnd = Regex("^\\s*[Xx*#\\u2022]{2,}(?!\\s*\\d)")

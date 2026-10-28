@@ -12,7 +12,7 @@ is attached there.
   Android's installer on an update you chose to download. Android still shows its own
   install screen and asks you to confirm.
 - **The first scan after updating reads your whole inbox again.** How messages are read
-  changed (parser version 8), so records are rebuilt. Your categories, rules, accounts
+  changed (parser version 9), so records are rebuilt. Your categories, rules, accounts
   and budgets are kept; nothing is wiped.
 - **What you taught a test build is asked again.** Templates are recognised differently
   now (skeleton version 2), so answers given to an earlier 1.8.0 build no longer apply.
@@ -58,6 +58,10 @@ is attached there.
   of digits separated by spaces are laid out right to left: Bank Nizwa sends
   "001 ###### 00210" so the phone shows "00210 ###### 001". Read in the order it was
   sent, that account was "0210", beside the "001" its unspaced messages give.
+- **Refunds no longer make an account.** Bank Nizwa's refunds write the account as
+  "00210 ###### 00210", the branch twice and the account's digits nowhere, so every
+  refund said "0210" - and enough of them made it an account. A masked number whose end
+  repeats its start names no account; the refund goes where its balance says.
 - Merging two accounts keeps the balance quoted last, instead of adding every record
   on top of an older or missing one.
 - An account made from where a masked number starts is put right on every scan, not
@@ -139,9 +143,9 @@ is attached there.
 - Transactions' bar is a filter icon that counts the filters on, without the export
   button (export is in Settings). The filter sheet shows accounts with their icons and
   categories in the same level rows as everywhere else.
-- Analysis opens on its net, large, with Expense and Income under it in Home's colours,
-  each figure tinted red or green on the same card colour as net, with a coloured pill
-  comparing it to the period before. Its switches are Material 3 Expressive's connected
+- Analysis puts net, expense and income on one compact card - each tinted, each with a
+  pill comparing it to the period before - so the category wheel leads the screen. What
+  moved between your own accounts has a line of its own, marked "not counted". Its switches are Material 3 Expressive's connected
   buttons.
 - Menus - sorting, accounts in the Add form, "Same account as…", bank names - are
   Material 3 Expressive's menus, each choice with its icon and the current one ticked.

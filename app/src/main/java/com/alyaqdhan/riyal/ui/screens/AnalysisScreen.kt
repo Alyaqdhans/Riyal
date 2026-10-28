@@ -6,6 +6,9 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.TextAutoSize
@@ -229,23 +232,15 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
             ) {
                 PeriodBar(slice = slice, onChange = { vm.setAnalysisSlice(it) }, txns = txns)
 
-                // ── the headline numbers, each against the period before: net large, as
-                // Home has it, and what went out and came in under it in Home's colours.
-                NetCard(totals.net, previous.net, currency)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    KindTile(TxnType.EXPENSE, totals.spent, previous.spent, currency, Modifier.weight(1f))
-                    KindTile(TxnType.INCOME, totals.received, previous.received, currency, Modifier.weight(1f))
-                }
-                if (moved > 0) {
-                    MoneyAwareText(
-                        stringResource(
-                            R.string.an_moved_note,
-                            bidi(Money.format(moved, currency)),
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                // ── the headline numbers, compact: Home already makes them large, and the
+                // wheel below is what this screen is for.
+                KpiCard(
+                    net = totals.net to previous.net,
+                    spent = totals.spent to previous.spent,
+                    received = totals.received to previous.received,
+                    moved = moved,
+                    currency = currency,
+                )
 
                 // ── donut + legend, either side of the ledger
                 Card(Modifier.fillMaxWidth()) {
@@ -755,62 +750,137 @@ private fun labelAxisFormatter() = CartesianValueFormatter { context, x, _ ->
  * side leave each one about a third of the screen, and "OMR " ahead of the digits was
  * spending that width on a word that is the same on all three.
  */
-/** The period's net, large and bold, with how it compares to the period before. */
+/**
+ * The period's three figures on one card, side by side, each with its trend pill, and
+ * what moved between the user's own accounts on a line of its own - neither spending nor
+ * income, so shown apart from both rather than as a footnote under them.
+ */
 @Composable
-private fun NetCard(net: Long, previous: Long, currency: String) {
-    Card(
-        Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                stringResource(R.string.home_net),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            MoneyText(
-                net,
-                currency,
-                sign = MoneySign.NEGATIVE,
-                roll = true,
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                color = if (net < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                autoSize = TextAutoSize.StepBased(minFontSize = 18.sp, maxFontSize = MaterialTheme.typography.headlineMedium.fontSize),
-            )
-            DeltaPill(net, previous, upIsGood = true)
+private fun KpiCard(
+    net: Pair<Long, Long>,
+    spent: Pair<Long, Long>,
+    received: Pair<Long, Long>,
+    moved: Long,
+    currency: String,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainer)) {
+        Column(Modifier.padding(vertical = 12.dp)) {
+            Row(Modifier.height(IntrinsicSize.Min)) {
+                Kpi(
+                    label = stringResource(R.string.home_net),
+                    icon = null,
+                    amount = net.first,
+                    previous = net.second,
+                    currency = currency,
+                    ink = if (net.first < 0) scheme.error else scheme.onSurface,
+                    upIsGood = true,
+                    signed = true,
+                    modifier = Modifier.weight(1f),
+                )
+                VerticalDivider(color = scheme.outlineVariant)
+                Kpi(
+                    label = stringResource(typeLabel(TxnType.EXPENSE)),
+                    icon = typeIcon(TxnType.EXPENSE),
+                    amount = spent.first,
+                    previous = spent.second,
+                    currency = currency,
+                    ink = scheme.error,
+                    upIsGood = false,
+                    modifier = Modifier.weight(1f),
+                )
+                VerticalDivider(color = scheme.outlineVariant)
+                Kpi(
+                    label = stringResource(typeLabel(TxnType.INCOME)),
+                    icon = typeIcon(TxnType.INCOME),
+                    amount = received.first,
+                    previous = received.second,
+                    currency = currency,
+                    ink = successColor(),
+                    upIsGood = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (moved > 0) {
+                HorizontalDivider(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), color = scheme.outlineVariant)
+                Row(
+                    Modifier.padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        painterResource(typeIcon(TxnType.TRANSFER)),
+                        contentDescription = null,
+                        tint = scheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        stringResource(R.string.an_moved_label),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    MoneyText(
+                        moved,
+                        currency,
+                        sign = MoneySign.NONE,
+                        roll = true,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = scheme.onSurface,
+                    )
+                    Surface(shape = CircleShape, color = scheme.secondaryContainer, contentColor = scheme.onSecondaryContainer) {
+                        Text(
+                            stringResource(R.string.row_not_counted),
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        )
+                    }
+                }
+            }
         }
     }
 }
 
-/**
- * What went out, or came in: on the same card as net, with only the figure and its arrow
- * in the side's colour - red out, green in - and the trend in its pill.
- */
+/** One figure: its name, the amount in its colour, and its trend pill. */
 @Composable
-private fun KindTile(type: TxnType, amount: Long, previous: Long, currency: String, modifier: Modifier) {
-    val ink = if (type == TxnType.EXPENSE) MaterialTheme.colorScheme.error else successColor()
-    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainer, modifier = modifier) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(painterResource(typeIcon(type)), contentDescription = null, tint = ink, modifier = Modifier.size(16.dp))
-                Text(
-                    stringResource(typeLabel(type)),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
+private fun Kpi(
+    label: String,
+    @DrawableRes icon: Int?,
+    amount: Long,
+    previous: Long,
+    currency: String,
+    ink: Color,
+    upIsGood: Boolean,
+    modifier: Modifier,
+    signed: Boolean = false,
+) {
+    Column(
+        modifier.padding(horizontal = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (icon != null) {
+                Icon(painterResource(icon), contentDescription = null, tint = ink, modifier = Modifier.size(14.dp))
             }
-            MoneyText(
-                amount,
-                currency,
-                sign = MoneySign.NONE,
-                roll = true,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                color = ink,
-                autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = MaterialTheme.typography.titleLarge.fontSize),
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
             )
-            DeltaPill(amount, previous, upIsGood = type == TxnType.INCOME)
         }
+        MoneyText(
+            amount,
+            currency,
+            sign = if (signed) MoneySign.NEGATIVE else MoneySign.NONE,
+            roll = true,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = ink,
+            textAlign = TextAlign.Center,
+            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = MaterialTheme.typography.titleMedium.fontSize),
+        )
+        DeltaPill(amount, previous, upIsGood = upIsGood)
     }
 }
 
@@ -837,9 +907,9 @@ private fun DeltaPill(now: Long, previous: Long, upIsGood: Boolean) {
                 pct > 0 -> stringResource(R.string.an_delta_up, (abs(pct) * 100).roundToInt())
                 else -> stringResource(R.string.an_delta_down, (abs(pct) * 100).roundToInt())
             },
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
         )
     }
 }

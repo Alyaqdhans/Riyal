@@ -89,6 +89,20 @@ class BankNizwaFormatTest {
     }
 
     @Test
+    fun `a refund that repeats the branch where the last digits go names no account`() {
+        // The refund writes "00350 ###### 00350": read as an account, every refund was
+        // "0350", and the refunds kept that account alive beside the real one.
+        listOf("00350 ###### 00350", "00350######00350").forEach { number ->
+            val r = parser.parseAs(
+                "تم إسترجاع 2.600 ر.ع في حساب رقم $number من ANAS####SAIF. الرصيد المتوفر هو 542.006 ر.ع",
+                Direction.INCOME,
+            )!!
+            assertNull(number, r.accountTail)
+            assertEquals(542_006L, r.balanceMinor)
+        }
+    }
+
+    @Test
     fun `wider or unbroken spacing around the mask still reads the end`() {
         listOf("005  ###### 00350", "005 ###### 00350", "005 ### ### 00350", "00350######005").forEach { number ->
             val r = parsed("تم سحب 6.000 ر.ع من حساب رقم $number الى SALI####AHMD. الرصيد المتوفر هو 304.420 ر.ع")

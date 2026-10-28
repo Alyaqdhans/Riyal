@@ -581,7 +581,7 @@
     <string name="an_empty_title">Nothing to analyze yet</string>
     <string name="an_empty_subtitle">Once you scan your messages, the charts light up here.</string>
     <string name="an_all_accounts">All accounts</string>
-    <string name="an_moved_note">%1$s moved between your own accounts and is counted in neither figure.</string>
+    <string name="an_moved_label">Between your accounts</string>
     <string name="an_donut_spent">spent</string>
     <string name="an_donut_received">received</string>
     <string name="an_donut_nothing">Nothing recorded</string>
