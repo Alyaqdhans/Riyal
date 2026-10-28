@@ -341,6 +341,20 @@ class AccountDiscoveryTest {
     }
 
     @Test
+    fun `a bank's only account made from where its number starts takes the number's end`() {
+        val withHead = oneLine.map { if (it.accountTail == "005") it.copy(head = "00350") else it }
+        val lone = AccountDiscovery.propose(withHead).single().copy(last4 = "0350")
+        assertEquals(mapOf(lone.id to "005"), AccountDiscovery.renumbered(listOf(lone), withHead))
+    }
+
+    @Test
+    fun `a sender is one bank however it is spelled`() {
+        val main = AccountDiscovery.propose(oneLine).single()
+        val spelled = main.copy(senderIds = setOf("BankNizwa"))
+        assertEquals(main.id, AccountDiscovery.ownerOf(listOf(spelled), "BANK NIZWA", "005"))
+    }
+
+    @Test
     fun `an account kept under the wrong digits by a merge takes the ones its messages end with`() {
         // "001" merged into "0210" the wrong way round: one account, known by the branch.
         val main = AccountDiscovery.propose(oneLine).single()

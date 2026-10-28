@@ -420,8 +420,15 @@ class ScanEngine(
         // Accounts an earlier reading made out of a reference or the other party's
         // number. A pass over everything is the one that can see every message quoting
         // them sit on another account's balance line, and fold them back into it.
-        if (readEverything && accounts.isNotEmpty() && observations.isNotEmpty()) {
-            val foreign = AccountDiscovery.foreignAccounts(accounts, observations)
+        // A pass over everything runs every rule. Any pass, one of only what is new
+        // included, runs the ones a single message can prove - so a number read from
+        // where a masked account starts is put right on the next scan, whichever it is.
+        if (accounts.isNotEmpty() && observations.isNotEmpty()) {
+            val foreign = if (readEverything) {
+                AccountDiscovery.foreignAccounts(accounts, observations)
+            } else {
+                AccountDiscovery.headFolds(accounts, observations)
+            }
             for ((fromId, intoId) in foreign) {
                 val from = accounts.first { it.id == fromId }
                 val into = accounts.first { it.id == intoId }
@@ -429,7 +436,7 @@ class ScanEngine(
                 Verbose.ok(R.string.scanlog_account_folded, from.displayName, into.displayName)
             }
             if (foreign.isNotEmpty()) accounts = store.accounts.value
-            val renumbered = AccountDiscovery.renumbered(accounts, observations)
+            val renumbered = AccountDiscovery.renumbered(accounts, observations, full = readEverything)
             for ((id, last4) in renumbered) {
                 val account = accounts.first { it.id == id }
                 store.renumberAccount(id, last4)

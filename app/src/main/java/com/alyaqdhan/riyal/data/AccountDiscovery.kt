@@ -101,7 +101,10 @@ object AccountDiscovery {
      * Bumped when the rules that tidy existing accounts change: it is in the scan's
      * fingerprint, so the next scan reads everything and the new rules see every message.
      */
-    const val VERSION = 1
+    const val VERSION = 2
+
+    /** A sender as one bank, however it is spelled: case, spaces and dots set aside. */
+    fun senderKey(sender: String): String = sender.lowercase().filter { it.isLetterOrDigit() }
 
     data class Observation(
         val sender: String,
@@ -168,7 +171,7 @@ object AccountDiscovery {
         // came back as six - and since the id below is built from the lowercased sender,
         // those extra accounts all claimed the same id. Two rows sharing a key is what
         // brought the accounts screen down.
-        val bySender = observations.groupBy { it.sender.trim().lowercase() }
+        val bySender = observations.groupBy { senderKey(it.sender) }
             .filterKeys { it.isNotBlank() }
         val tops = lineTails(observations)
         val out = ArrayList<Account>()
@@ -230,9 +233,9 @@ object AccountDiscovery {
 
     /** The account of [sender] that answers to [tail], by its own number or an alias. */
     fun ownerOf(accounts: List<Account>, sender: String, tail: String): String? {
-        val s = sender.trim().lowercase()
+        val s = senderKey(sender)
         return accounts.firstOrNull { a ->
-            a.answersTo(tail) && a.senderIds.any { it.trim().lowercase() == s }
+            a.answersTo(tail) && a.senderIds.any { senderKey(it) == s }
         }?.id
     }
 
@@ -249,23 +252,12 @@ object AccountDiscovery {
         val out = HashMap<String, String>()
         for (account in accounts) {
             val tail = account.last4 ?: continue
-            val senders = account.senderIds.mapTo(HashSet()) { it.trim().lowercase() }
-            val mine = observations.filter { it.sender.trim().lowercase() in senders }
+            val senders = account.senderIds.mapTo(HashSet()) { senderKey(it) }
+            val mine = observations.filter { senderKey(it.sender) in senders }
             val quoting = mine.filter { it.accountNumberTail == tail }
-            // Its digits are where a masked number starts, not where it ends: "0210" from
-            // "00210 ###### 001". That is the branch, so the account is whichever the
-            // number's end names - even one the user has named since, because it never
-            // was an account. Nothing may quote it as an end of its own.
-            if (quoting.isEmpty()) {
-                val real = mine.firstNotNullOfOrNull { o ->
-                    o.accountNumberTail?.takeIf { o.head?.endsWith(tail) == true }
-                        ?.let { ownerOf(accounts, o.sender, it) }
-                        ?.takeIf { it != account.id }
-                }
-                if (real != null) {
-                    out[account.id] = real
-                    continue
-                }
+            headFoldOf(account, accounts, mine)?.let {
+                out[account.id] = it
+                continue
             }
             if (account.name.isNotBlank()) continue
             val owner = if (quoting.isEmpty()) {
@@ -293,6 +285,37 @@ object AccountDiscovery {
     }
 
     /**
+     * The head folds of [foreignAccounts] alone. They need no "every message", only one
+     * message showing the account's digits where a masked number starts, so every scan
+     * runs them - an incremental one included.
+     */
+    fun headFolds(accounts: List<Account>, observations: List<Observation>): Map<String, String> {
+        val out = HashMap<String, String>()
+        for (account in accounts) {
+            val senders = account.senderIds.mapTo(HashSet()) { senderKey(it) }
+            val mine = observations.filter { senderKey(it.sender) in senders }
+            headFoldOf(account, accounts, mine)?.let { out[account.id] = it }
+        }
+        return out
+    }
+
+    /**
+     * Its digits are where a masked number starts, not where it ends: "0210" from
+     * "00210 ###### 001". That is the branch, so the account is whichever the number's end
+     * names - even one the user has named since, because it never was an account. Nothing
+     * may quote it as an end of its own.
+     */
+    private fun headFoldOf(account: Account, accounts: List<Account>, mine: List<Observation>): String? {
+        val tail = account.last4 ?: return null
+        if (mine.any { it.accountNumberTail == tail }) return null
+        return mine.firstNotNullOfOrNull { o ->
+            o.accountNumberTail?.takeIf { o.head?.endsWith(tail) == true }
+                ?.let { ownerOf(accounts, o.sender, it) }
+                ?.takeIf { it != account.id }
+        }
+    }
+
+    /**
      * Accounts known by digits no message ends with, though one of their aliases is: a
      * merge kept the wrong number on top - "Same account as…" picked the other way round
      * leaves the account that was made from where "00210 ###### 001" starts, with the real
@@ -300,19 +323,28 @@ object AccountDiscovery {
      * quoted where there are several; the old digits become an alias, so nothing routes
      * differently.
      */
-    fun renumbered(accounts: List<Account>, observations: List<Observation>): Map<String, String> {
+    fun renumbered(accounts: List<Account>, observations: List<Observation>, full: Boolean = true): Map<String, String> {
         val out = HashMap<String, String>()
         for (account in accounts) {
             val tail = account.last4 ?: continue
-            if (account.aliases.isEmpty()) continue
-            val senders = account.senderIds.mapTo(HashSet()) { it.trim().lowercase() }
-            val quoted = observations
-                .filter { it.sender.trim().lowercase() in senders }
+            val senders = account.senderIds.mapTo(HashSet()) { senderKey(it) }
+            val mine = observations.filter { senderKey(it.sender) in senders }
+            val quoted = mine.mapNotNull { it.accountNumberTail }.groupingBy { it }.eachCount()
+            if ((quoted[tail] ?: 0) > 0) continue
+            // An alias quoted while its own number is not says something only of every
+            // message: a few new ones may simply all be transfers quoting the other party.
+            val alias = if (!full) null
+            else account.aliases.filter { (quoted[it] ?: 0) > 0 }.maxByOrNull { quoted.getValue(it) }
+            // Or the only account of its bank was made from where a masked number starts,
+            // so there is no other account to fold into: it takes the number's end, where
+            // no other account has it.
+            val end = mine.filter { it.head?.endsWith(tail) == true }
                 .mapNotNull { it.accountNumberTail }
                 .groupingBy { it }.eachCount()
-            if ((quoted[tail] ?: 0) > 0) continue
-            val real = account.aliases.filter { (quoted[it] ?: 0) > 0 }.maxByOrNull { quoted.getValue(it) } ?: continue
-            out[account.id] = real
+                .entries.sortedByDescending { it.value }
+                .map { it.key }
+                .firstOrNull { end -> accounts.none { it.id != account.id && it.answersTo(end) } }
+            out[account.id] = alias ?: end ?: continue
         }
         return out
     }
@@ -344,20 +376,20 @@ object AccountDiscovery {
         }
         if (unplaced.isEmpty()) return emptyList()
 
-        val knownSenders = existing.flatMap { it.senderIds }.mapTo(HashSet()) { it.trim().lowercase() }
+        val knownSenders = existing.flatMap { it.senderIds }.mapTo(HashSet()) { senderKey(it) }
         val existingIds = existing.mapTo(HashSet()) { it.id }
         // At a bank we already know, a number quoted once is not an account yet. It is as
         // likely a reference as a new account, and a new account quotes its number again
         // soon enough; until then its message waits unassigned rather than founding one.
         val quoted = observations.mapNotNull { o ->
-            o.accountNumberTail?.let { o.sender.trim().lowercase() to it }
+            o.accountNumberTail?.let { senderKey(o.sender) to it }
         }.groupingBy { it }.eachCount()
         return propose(unplaced, colorOffset = existing.size).filter { candidate ->
-            val known = candidate.senderIds.filter { it.trim().lowercase() in knownSenders }
+            val known = candidate.senderIds.filter { senderKey(it) in knownSenders }
             candidate.id !in existingIds &&
                 (known.isEmpty() ||
                     candidate.last4 != null &&
-                    known.any { (quoted[it.trim().lowercase() to candidate.last4] ?: 0) >= 2 })
+                    known.any { (quoted[senderKey(it) to candidate.last4] ?: 0) >= 2 })
         }
     }
 
@@ -419,10 +451,10 @@ object AccountDiscovery {
      * never move money in an account, so nothing it says belongs in a spending total.
      */
     fun isKnownSender(accounts: List<Account>, sender: String): Boolean {
-        val s = sender.trim().lowercase()
+        val s = senderKey(sender)
         if (s.isEmpty()) return false
         return accounts.any { account ->
-            account.senderIds.any { it.trim().lowercase() == s } ||
+            account.senderIds.any { senderKey(it) == s } ||
                 account.bankName.trim().lowercase().let { it.isNotEmpty() && it == s }
         }
     }
@@ -434,8 +466,8 @@ object AccountDiscovery {
         tailIsCard: Boolean = false,
     ): String? {
         if (accounts.isEmpty()) return null
-        val s = sender.trim().lowercase()
-        fun ownsSender(a: Account) = a.senderIds.any { it.trim().lowercase() == s }
+        val s = senderKey(sender)
+        fun ownsSender(a: Account) = a.senderIds.any { senderKey(it) == s }
 
         if (tail != null) {
             accounts.firstOrNull { it.answersTo(tail) && ownsSender(it) }?.let { return it.id }
