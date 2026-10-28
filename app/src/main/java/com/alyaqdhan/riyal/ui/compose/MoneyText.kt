@@ -1,14 +1,19 @@
 package com.alyaqdhan.riyal.ui.compose
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.FastOutSlowInEasing
+import kotlin.math.roundToInt
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.SideEffect
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -240,7 +245,7 @@ private fun RollingAmount(
                     if (prefix.isNotEmpty()) Text(prefix, style = fitted, maxLines = 1, softWrap = false)
                     if (info == null || !info.symbolAfter) Sign()
                     // Keyed on the replay count: a finished scan starts the roll over.
-                    key(Rolls.generation) { RollingDigits(minor, number, fitted) }
+                    key(Rolls.generation) { RollingDigits(minor, number, Money.formatAmount(0, code), fitted) }
                 }
             }
             if (info != null && info.symbolAfter) {
@@ -251,23 +256,112 @@ private fun RollingAmount(
     }
 }
 
+/** NumberFlow's own timing: 900 ms, easing out hard so a spin settles rather than stops. */
+private const val SPIN_MS = 900
+private val spinEasing = CubicBezierEasing(0.25f, 1f, 0.5f, 1f)
+
 /**
- * The digits of [number], rolling to it. They arrive from zeros, so a figure is seen to
- * land when its screen opens - a tab switch included - and after a scan; from then on
- * each change rolls up when the value grows and down when it shrinks.
+ * The digits of [number], rolling to it the way firePOS's NumberFlow (with its
+ * `continuous` plugin) does.
+ *
+ * Every figure arrives from zero ([zero], "0.000") - when its screen opens, a tab switch
+ * included, and again when a scan lands - and then rolls to each new value. Places are
+ * paired from the right, so the decimals stay put and a figure that gains digits grows
+ * leftwards, the new places opening out of the decimal point's side; one that loses them
+ * closes the same way. Each digit is a wheel that turns through the digits between, up
+ * when the figure grows and down when it shrinks, and a place whose higher places changed
+ * goes once more round, as an odometer's would.
  */
 @Composable
-private fun RollingDigits(minor: Long, number: String, style: TextStyle) {
-    var shown by remember { mutableStateOf(number.map { if (it.isDigit()) '0' else it }.joinToString("")) }
+private fun RollingDigits(minor: Long, number: String, zero: String, style: TextStyle) {
+    var shown by remember { mutableStateOf(zero) }
+    var before by remember { mutableStateOf(zero) }
     var rising by remember { mutableStateOf(true) }
-    var was by remember { mutableStateOf<Long?>(null) }
+    var was by remember { mutableLongStateOf(0L) }
+    var turn by remember { mutableIntStateOf(0) }
+    var widest by remember { mutableIntStateOf(zero.length) }
     LaunchedEffect(number, minor) {
-        rising = was?.let { minor >= it } ?: true
+        if (number == shown) return@LaunchedEffect
+        rising = kotlin.math.abs(minor) >= kotlin.math.abs(was)
         was = minor
+        before = shown
         shown = number
+        widest = maxOf(widest, number.length)
+        turn++
     }
-    shown.forEachIndexed { i, c ->
-        key(shown.length - i) { RollingChar(c, rising, style) }
+    val measurer = rememberTextMeasurer()
+    val cell = remember(style) { measurer.measure("0", style).size }
+    val width = with(LocalDensity.current) { cell.width.toDp() }
+    val height = with(LocalDensity.current) { cell.height.toDp() }
+    Row {
+        for (place in widest - 1 downTo 0) {
+            key(place) {
+                RollingPlace(
+                    c = shown.getOrNull(shown.length - 1 - place),
+                    turn = turn,
+                    rising = rising,
+                    lap = higherPlaces(before, place) != higherPlaces(shown, place),
+                    style = style,
+                    width = width,
+                    height = height,
+                )
+            }
+        }
+    }
+}
+
+/** The value of the places above [place], counted from the right, as written. */
+private fun higherPlaces(s: String, place: Int): String =
+    s.dropLast(place + 1).filter(Char::isDigit).trimStart('0')
+
+/** One place: opens when the figure gains it, closes when it loses it. */
+@Composable
+private fun RollingPlace(c: Char?, turn: Int, rising: Boolean, lap: Boolean, style: TextStyle, width: Dp, height: Dp) {
+    val held = remember { mutableStateOf(c ?: '0') }
+    SideEffect { if (c != null) held.value = c }
+    val visible = remember { MutableTransitionState(false) }
+    visible.targetState = c != null
+    AnimatedVisibility(
+        visibleState = visible,
+        enter = expandHorizontally(tween(SPIN_MS, easing = spinEasing), expandFrom = Alignment.End) +
+            fadeIn(tween(SPIN_MS / 2)),
+        exit = shrinkHorizontally(tween(SPIN_MS, easing = spinEasing), shrinkTowards = Alignment.End) +
+            fadeOut(tween(SPIN_MS / 3)),
+    ) {
+        val ch = c ?: held.value
+        if (ch.isDigit()) {
+            DigitWheel(ch.digitToInt(), turn, rising, lap, style, width, height)
+        } else {
+            Text(ch.toString(), style = style, maxLines = 1, softWrap = false)
+        }
+    }
+}
+
+/** A wheel of 0-9 behind a one-digit window, turned to [digit]. */
+@Composable
+private fun DigitWheel(digit: Int, turn: Int, rising: Boolean, lap: Boolean, style: TextStyle, width: Dp, height: Dp) {
+    val wheel = remember { Animatable(0f) }
+    LaunchedEffect(turn) {
+        val from = wheel.value
+        val at = ((from % 10f) + 10f) % 10f
+        var delta = if (rising) ((digit - at) % 10f + 10f) % 10f else -(((at - digit) % 10f + 10f) % 10f)
+        if (lap) delta += if (rising) 10f else -10f
+        if (delta != 0f) wheel.animateTo(from + delta, tween(SPIN_MS, easing = spinEasing))
+        wheel.snapTo(digit.toFloat())
+    }
+    val position = wheel.value
+    val base = kotlin.math.floor(position)
+    Box(Modifier.size(width, height).clipToBounds()) {
+        for (k in 0..1) {
+            val shownDigit = (((base.toInt() + k) % 10) + 10) % 10
+            Text(
+                shownDigit.toString(),
+                style = style,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.offset { IntOffset(0, ((base + k - wheel.value) * height.toPx()).roundToInt()) },
+            )
+        }
     }
 }
 
@@ -278,24 +372,6 @@ object Rolls {
 
     fun replay() {
         generation++
-    }
-}
-
-@Composable
-private fun RollingChar(c: Char, rising: Boolean, style: TextStyle) {
-    AnimatedContent(
-        targetState = c,
-        transitionSpec = {
-            val travel = tween<IntOffset>(durationMillis = 360, easing = FastOutSlowInEasing)
-            val fade = tween<Float>(durationMillis = 220)
-            (slideInVertically(travel) { h -> if (rising) h else -h } + fadeIn(fade)) togetherWith
-                (slideOutVertically(travel) { h -> if (rising) -h else h } + fadeOut(fade)) using
-                SizeTransform(clip = true)
-        },
-        modifier = Modifier.clipToBounds(),
-        label = "digit",
-    ) { shown ->
-        Text(shown.toString(), style = style, maxLines = 1, softWrap = false)
     }
 }
 

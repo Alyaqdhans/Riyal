@@ -190,7 +190,9 @@ fun CurrencyField(
             readOnly = true,
             singleLine = true,
             label = { Text(label) },
-            leadingIcon = info?.let { { Flag(it) } },
+            // The sign, not the flag: the field is about the money's currency, and the
+            // sign is how that money is written everywhere else in the app.
+            leadingIcon = { CurrencySign(code, height = 18.dp) },
             trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null) },
             modifier = Modifier.fillMaxWidth(),
         )

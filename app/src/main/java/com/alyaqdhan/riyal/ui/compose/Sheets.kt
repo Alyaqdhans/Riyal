@@ -6,6 +6,10 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.compose.ui.text.rememberTextMeasurer
+import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
+import com.alyaqdhan.riyal.ui.theme.successContainer
+import androidx.annotation.DrawableRes
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.onPlaced
@@ -96,12 +100,20 @@ import kotlinx.coroutines.launch
 /** Wraps text as a clipboard entry for the new suspend [androidx.compose.ui.platform.Clipboard] API. */
 fun plainText(text: String): ClipEntry = ClipEntry(ClipData.newPlainText("riyal", text))
 
-/** How each operation type is labelled everywhere the user picks one. */
+/** How each operation type is named where the user picks one: as Home names its totals. */
 @StringRes
 fun typeLabel(type: TxnType): Int = when (type) {
-    TxnType.EXPENSE -> R.string.label_money_out
-    TxnType.INCOME -> R.string.label_money_in
+    TxnType.EXPENSE -> R.string.label_expense
+    TxnType.INCOME -> R.string.label_income
     TxnType.TRANSFER -> R.string.label_transfer
+}
+
+/** And the arrow Home's totals carry, so the same thing looks the same everywhere. */
+@DrawableRes
+fun typeIcon(type: TxnType): Int = when (type) {
+    TxnType.EXPENSE -> R.drawable.ic_sym_arrow_up
+    TxnType.INCOME -> R.drawable.ic_sym_arrow_down
+    TxnType.TRANSFER -> R.drawable.ic_sym_swap
 }
 
 /**
@@ -556,14 +568,27 @@ fun ManualTxnDialog(
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                // Home's colours: spending red, income green, a transfer neither.
+                val tones = mapOf(
+                    TxnType.EXPENSE to (MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer),
+                    TxnType.INCOME to (successContainer() to onSuccessContainer()),
+                    TxnType.TRANSFER to (MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer),
+                )
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                     TxnType.entries.forEachIndexed { index, option ->
+                        val (tone, onTone) = tones.getValue(option)
                         SegmentedButton(
                             selected = type == option,
                             onClick = { type = option },
                             shape = SegmentedButtonDefaults.itemShape(index = index, count = TxnType.entries.size),
                             modifier = Modifier.weight(1f),
-                            icon = {},
+                            colors = SegmentedButtonDefaults.colors(
+                                activeContainerColor = tone,
+                                activeContentColor = onTone,
+                            ),
+                            icon = {
+                                Icon(painterResource(typeIcon(option)), contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
                         ) {
                             Text(
                                 stringResource(typeLabel(option)),
@@ -573,13 +598,16 @@ fun ManualTxnDialog(
                         }
                     }
                 }
+                // The amount is what the form is for, so it is written large.
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
                     label = { Text(stringResource(R.string.label_amount)) },
-                    suffix = { CurrencySign(currency) },
+                    suffix = { CurrencySign(currency, height = 22.dp) },
                     singleLine = true,
+                    textStyle = MaterialTheme.typography.headlineSmall,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 CurrencyField(
                     label = stringResource(R.string.label_currency),
@@ -737,7 +765,25 @@ fun CategoryChips(
     order: CategoryOrder = CategoryOrder.Empty,
 ) {
     val all = remember(type, order) { order.sort(Categories.forType(type)) }
-    val rows = remember(all) { List(CHIP_ROWS) { r -> all.filterIndexed { i, _ -> i % CHIP_ROWS == r } } }
+    val measurer = rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.labelLarge
+    val density = LocalDensity.current
+    val rows = remember(all, labelStyle, density) {
+        // Each chip goes on whichever row is shortest so far, so the three end level
+        // instead of stepping down like stairs. Other always closes, on the row it
+        // levels best.
+        val other = all.filter { it.id == Categories.DEFAULT_EXPENSE || it.id == Categories.DEFAULT_INCOME }
+        val chipFrame = with(density) { (8 + 18 + 8 + 16 + 8).dp.toPx() }
+        fun width(cat: Category) = measurer.measure(cat.name, labelStyle).size.width + chipFrame
+        val lines = List(CHIP_ROWS) { mutableListOf<Category>() }
+        val lengths = FloatArray(CHIP_ROWS)
+        (all - other.toSet() + other).forEach { cat ->
+            val r = lengths.indices.minBy { lengths[it] }
+            lines[r] += cat
+            lengths[r] += width(cat)
+        }
+        lines
+    }
     val scroll = rememberScrollState()
     var selectedAt by remember { mutableStateOf<Int?>(null) }
     val gutter = with(LocalDensity.current) { 24.dp.roundToPx() }

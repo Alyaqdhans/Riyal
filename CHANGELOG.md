@@ -106,12 +106,16 @@ is attached there.
   like setup's, float over the page.
 - Dialogs pop in, and leave quickly.
 - Headline figures - Home's net and its pills, Analysis totals, account balances - roll
-  their digits: in from zero when they appear, again when a scan or a refresh lands, and
-  to each new value, up when it grows and down when it shrinks.
+  like an odometer, the way firePOS's figures do: in from zero when they appear, again
+  when a scan or a refresh lands, and to each new value. Each digit turns through the
+  ones between, and a figure that gains digits grows leftwards from its decimals.
 - Settings opens on a status card: up to date, reading, or what went wrong, when it last
   read, and what it holds.
-- Category choices are every category in three rows that scroll sideways, instead of a
-  handful and "More".
+- Category choices are every category in three level rows that scroll sideways, Other
+  last, instead of a handful and "More".
+- The Add form names its kinds as Home does - Expense, Income, Transfer - in Home's
+  colours and arrows, writes the amount large, and the currency field shows the
+  currency's sign instead of its flag.
 - **No more motion for its own sake.** Cards no longer pop in, buttons no longer
   bounce, charts draw in place, and the coin mascot no longer blinks. What moves is
   movement between places - tabs, pages - dialogs, and figures that change. The category wheel is back
