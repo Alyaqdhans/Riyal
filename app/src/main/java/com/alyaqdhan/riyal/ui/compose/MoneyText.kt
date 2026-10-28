@@ -1,5 +1,29 @@
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.key
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.InlineTextContent
@@ -113,6 +137,12 @@ fun MoneyText(
     sign: MoneySign = MoneySign.NEGATIVE,
     textAlign: TextAlign? = null,
     autoSize: TextAutoSize? = null,
+    /**
+     * Digits roll to a new value - up when it grows, down when it shrinks - rather than
+     * being swapped. For the few headline figures that change in front of the user, as
+     * a period is picked or a scan lands; a list row keeps still.
+     */
+    roll: Boolean = false,
 ) {
     val prefix = when (sign) {
         MoneySign.NONE -> ""
@@ -121,6 +151,11 @@ fun MoneyText(
         MoneySign.IN -> "+"
     }
     val number = Money.formatAmount(kotlin.math.abs(minor), currency)
+    if (roll) {
+        val tint = color.takeOrElse { style.color.takeOrElse { LocalContentColor.current } }
+        RollingAmount(minor, prefix, number, currency, modifier, style, tint, textAlign, shrink = autoSize != null)
+        return
+    }
     val text = remember(prefix, number, currency) {
         buildAnnotatedString { appendAmount(prefix, number, currency) }
     }
@@ -136,6 +171,101 @@ fun MoneyText(
         autoSize = autoSize,
         inlineContent = signContent(listOf(currency), tint),
     )
+}
+
+/**
+ * [MoneyText] with rolling digits, laid out as [appendAmount] writes an amount: the figure
+ * left to right in either language, a sign that follows it outside that run so it lands
+ * on the side each script puts it, a sign that leads it inside. Digits are paired from
+ * the right, so units roll into units however many digits the new value has, and set in
+ * tabular figures so nothing beside them shifts as they turn.
+ */
+@Composable
+private fun RollingAmount(
+    minor: Long,
+    prefix: String,
+    number: String,
+    code: String,
+    modifier: Modifier,
+    style: TextStyle,
+    tint: Color,
+    textAlign: TextAlign?,
+    shrink: Boolean,
+) {
+    val info = Currencies.of(code)
+    // Which way this change goes, settled once per value.
+    val last = remember { longArrayOf(minor) }
+    val rising = remember(minor) { (minor >= last[0]).also { last[0] = minor } }
+    val figures = style.copy(color = tint, fontFeatureSettings = "tnum")
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val align = when (textAlign) {
+        TextAlign.End, TextAlign.Right -> Alignment.CenterEnd
+        TextAlign.Center -> Alignment.Center
+        else -> Alignment.CenterStart
+    }
+    BoxWithConstraints(
+        modifier.clearAndSetSemantics { contentDescription = "$prefix$number $code" },
+        contentAlignment = align,
+    ) {
+        // Too wide for its room: smaller, as autoSize would have made the text.
+        val size = figures.fontSize
+        val fitted = if (shrink && size.isSp && constraints.hasBoundedWidth) {
+            val signWidth = with(density) { (size * SIGN_EM * (info?.symbolAspect ?: 1f) * 1.3f).toPx() }
+            val wide = measurer.measure(prefix + number, figures).size.width + signWidth
+            val scale = (constraints.maxWidth / wide).coerceIn(0.5f, 1f)
+            figures.copy(fontSize = size * scale)
+        } else {
+            figures
+        }
+        val signHeight = with(density) { (fitted.fontSize * SIGN_EM).toDp() }
+
+        @Composable
+        fun Sign() = when {
+            info == null -> Text("$code ", style = fitted, maxLines = 1, softWrap = false)
+            info.symbol != null -> CurrencySign(code, height = signHeight, tint = tint)
+            else -> Text(
+                info.glyph + if (info.glyph.last().isLetter()) " " else "",
+                style = fitted,
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (prefix.isNotEmpty()) Text(prefix, style = fitted, maxLines = 1, softWrap = false)
+                    if (info == null || !info.symbolAfter) Sign()
+                    number.forEachIndexed { i, c ->
+                        key(number.length - i) { RollingChar(c, rising, fitted) }
+                    }
+                }
+            }
+            if (info != null && info.symbolAfter) {
+                Spacer(Modifier.width(with(density) { (fitted.fontSize * 0.2f).toDp() }))
+                Sign()
+            }
+        }
+    }
+}
+
+@Composable
+private fun RollingChar(c: Char, rising: Boolean, style: TextStyle) {
+    AnimatedContent(
+        targetState = c,
+        transitionSpec = {
+            val travel = tween<IntOffset>(durationMillis = 360, easing = FastOutSlowInEasing)
+            val fade = tween<Float>(durationMillis = 220)
+            (slideInVertically(travel) { h -> if (rising) h else -h } + fadeIn(fade)) togetherWith
+                (slideOutVertically(travel) { h -> if (rising) -h else h } + fadeOut(fade)) using
+                SizeTransform(clip = true)
+        },
+        modifier = Modifier.clipToBounds(),
+        label = "digit",
+    ) { shown ->
+        Text(shown.toString(), style = style, maxLines = 1, softWrap = false)
+    }
 }
 
 /**

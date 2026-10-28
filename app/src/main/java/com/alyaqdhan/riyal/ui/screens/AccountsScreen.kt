@@ -287,6 +287,7 @@ private fun TotalRow(accounts: List<Account>, balances: Map<String, Long>) {
         byCurrency.forEach { (currency, group) ->
             val total = group.sumOf { balances[it.id] ?: it.openingBalanceMinor }
             MoneyText(total, currency,
+                roll = true,
                 style = MaterialTheme.typography.headlineSmall,
                 color = if (total < 0) MaterialTheme.colorScheme.error else successColor(),
             )
@@ -325,6 +326,7 @@ private fun AccountCard(
                 MoneyText(
                     balance,
                     account.currency,
+                    roll = true,
                     style = MaterialTheme.typography.titleMedium,
                     color = if (balance < 0) MaterialTheme.colorScheme.error else successColor(),
                 )

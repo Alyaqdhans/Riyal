@@ -104,9 +104,11 @@ is attached there.
 - The welcome screen shows the app's mark instead of the coin face, and its buttons,
   like setup's, float over the page.
 - Dialogs pop in, and leave quickly.
+- Headline figures - Home's net and its pills, Analysis totals, account balances - roll
+  their digits to a new value, up when it grows and down when it shrinks.
 - **No more motion for its own sake.** Cards no longer pop in, buttons no longer
   bounce, charts draw in place, and the coin mascot no longer blinks. What moves is
-  movement between places - tabs, pages - and the Add form. The category wheel is back
+  movement between places - tabs, pages - dialogs, and figures that change. The category wheel is back
   on Material's own wavy indicator, held flat; the bar a scan shows keeps its wave.
 
 ## 1.7.1 — 2026-10-27

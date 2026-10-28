@@ -325,6 +325,7 @@ private fun SummaryCard(totals: Stats.MonthTotals, currency: String) {
                 totals.net,
                 currency,
                 sign = MoneySign.NEGATIVE,
+                roll = true,
                 style = MaterialTheme.typography.displaySmall,
                 color = if (totals.net < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                 autoSize = TextAutoSize.StepBased(
@@ -391,6 +392,7 @@ private fun TotalPill(
                 minor,
                 currency,
                 sign = MoneySign.NONE,
+                roll = true,
                 style = MaterialTheme.typography.labelLarge,
                 color = content,
                 textAlign = TextAlign.End,

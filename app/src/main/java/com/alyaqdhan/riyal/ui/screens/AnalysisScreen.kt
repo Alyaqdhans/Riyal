@@ -306,6 +306,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     else totals.received,
                                     currency,
                                     sign = MoneySign.NONE,
+                                    roll = true,
                                     style = MaterialTheme.typography.headlineSmall,
                                 )
                                 Text(
@@ -821,6 +822,7 @@ private fun SummaryTile(
             amount,
             currency,
             sign = if (signed) MoneySign.NEGATIVE else MoneySign.NONE,
+            roll = true,
             style = MaterialTheme.typography.titleMedium,
             color = if (signed && amount < 0) MaterialTheme.colorScheme.error
             else MaterialTheme.colorScheme.onSurface,
