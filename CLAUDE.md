@@ -13,12 +13,18 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
 - **Never run an emulator.** Verify with `assembleDebug` + unit tests. The owner tests on
   a real phone from Android Studio, where the debug build installs beside the real app.
 - **Native components only.** Use stock Material 3 parts (`ListItem`,
-  `ShortNavigationBar`, `SwipeToDismissBox`, `ModalBottomSheet`, `AlertDialog`, chips,
-  `FloatingActionButton`) and real libraries (Vico for charts, the markdown renderer for
-  release notes). Don't hand-draw widgets. Wavy progress indicators stay wavy components
-  with `amplitude = 0` (`FlatWheel`/`FlatBar` in `ui/compose/Indicators.kt`).
-- **No decorative motion.** No fragment transitions, no pop-in or bounce, and
-  `MotionScheme.standard()`. Charts use `animationSpec = null, animateIn = false`.
+  `HorizontalFloatingToolbar`, `SwipeToDismissBox`, `ModalBottomSheet`, `AlertDialog`,
+  chips, `FloatingActionButton`) and real libraries (Vico for charts, the markdown
+  renderer for release notes). Don't hand-draw widgets. Wavy progress indicators stay
+  wavy components with `amplitude = 0` (`FlatWheel`/`FlatBar` in
+  `ui/compose/Indicators.kt`), except `ScanBar`: the owner wants a scan's bar to keep
+  its wave.
+- **Pages are activities, each with its own `res/layout`.** The phone's own transition
+  plays between them (the owner's MyBattery app is the reference). Never set a window
+  animation or `overridePendingTransition`. The five tabs are fragments that switch in
+  place, with no transition.
+- **No decorative motion.** No pop-in or bounce, and `MotionScheme.standard()`. Charts
+  use `animationSpec = null, animateIn = false`.
 - **Exact versions.** `androidx.compose.material3:material3:1.5.0-alpha23` with
   `@OptIn(ExperimentalMaterial3Api / ExperimentalMaterial3ExpressiveApi)`. Use its
   current APIs: `ListItem(onClick | checked/onCheckedChange, …) { headline }`, and
@@ -62,10 +68,11 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `data/AccountDiscovery.kt` | Banks list, accounts proposed from messages, routing a message to an account |
 | `data/TransferMatcher.kt` | Pairs an expense and an income across your own accounts |
 | `data/Updates.kt` | **All network code**: GitHub releases list + APK download. `ApkInstaller.kt` hands the file to Android via FileProvider |
-| `ui/MainViewModel.kt` | One activity-scoped VM for every screen: scanning, setup flow, updates, edits |
-| `ui/nav/Fragments.kt` + `res/navigation/nav_graph.xml` | XML nav graph routing fragments, each rendering one Compose screen |
-| `MainActivity.kt` | The `ShortNavigationBar` (5 tabs) and global dialogs (update prompt, manual add) |
-| `ui/screens/*` | Home, Transactions, Analysis, Accounts, Settings (tabs); Setup, Review, Updates, Changelog, Categories… (pushed pages) |
+| `ui/MainViewModel.kt` | One VM for every screen, owned by `RiyalApp` (`Context.riyalViewModel`): scanning, setup flow, updates, edits |
+| `ui/nav/Fragments.kt` + `res/navigation/nav_graph.xml` | The five tabs: fragments of the nav graph, each with its `fragment_*.xml` layout |
+| `ui/nav/Pages.kt` | `PageActivity` and every page opened from a tab (onboarding, setup, review, categories, updates, changelog), each with its `activity_*.xml` layout |
+| `MainActivity.kt` | The tabs, the floating toolbar (`HorizontalFloatingToolbar` + Add FAB), global dialogs (update prompt, manual add); sends a first run to `OnboardingActivity` |
+| `ui/screens/*` | Home, Transactions, Analysis, Accounts, Settings (tabs); Setup, Review, Updates, Changelog, Categories… (pages) |
 | `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips) |
 
 ## How a message is read (1.8.0+)
@@ -78,9 +85,19 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
    `Store.labels`) apply to every message with that key.
 4. `BalanceChain` proves directions; `TemplateInference` marks templates with two or
    more agreeing proofs and none against as *proven*, and spreads their direction.
-5. Records are converted into the account's currency when the bank charged another, and
+5. Accounts follow the balance, not the digits. `BalanceChain` joins each message to the
+   earlier one from the same bank whose balance it continues, and the joins make lines:
+   one line is one account. A number is an account only when a line mostly quotes it and
+   it recurs; other digits (the other party's account, references) route by their line.
+   An incremental scan reads back the newest stored records (`ANCHORS_PER_SENDER`) so a
+   new message still finds its line. A full scan folds accounts proven to be such
+   numbers into the real one (`AccountDiscovery.foreignAccounts`), and their digits stay
+   as `Account.aliases`.
+6. Records are converted into the account's currency when the bank charged another, and
    the original is kept on the record (`originalAmountMinor/Currency`).
-6. Each scan stores `TemplateStat`s, which the setup's `Tutor` turns into questions.
+7. Each scan stores `TemplateStat`s, which the setup's `Tutor` turns into questions. Only a
+   wrong kind counts against the reading; a category fix does not. Answers are kept, and
+   stepping back to one replays the tutor from the answers as they now stand.
 
 The scan fingerprint includes the parser version, skeleton version, labels, excluded
 senders and FX overrides, so changing any of them makes the next scan re-read
@@ -95,5 +112,9 @@ everything.
   the schema.
 - Shell heredocs on this machine collapse doubled backslashes. Edit Kotlin regex source
   with an editor tool or a script file, not inline `sed`/heredoc replacements.
-- Each tab screen leaves `toolbarSpace` at the end of its list for the bar drawn over it.
-  Pushed pages hide the bar (see `Tab` in `MainActivity`).
+- Each tab screen leaves `toolbarSpace` at the end of its list for the floating toolbar
+  drawn over it. Pages are activities and have no toolbar.
+- The view model lives as long as the app, so `autoScanOnLaunch(fresh)` is told when
+  `MainActivity` starts fresh, and a page restored after process death checks
+  `vm.setupActive` before trusting its saved state.
+- Store JSON field `alias` (account aliases) is optional like the others.

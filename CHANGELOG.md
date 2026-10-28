@@ -12,8 +12,10 @@ is attached there.
   Android's installer on an update you chose to download. Android still shows its own
   install screen and asks you to confirm.
 - **The first scan after updating reads your whole inbox again.** How messages are read
-  changed (parser version 3), so records are rebuilt. Your categories, rules, accounts
+  changed (parser version 4), so records are rebuilt. Your categories, rules, accounts
   and budgets are kept; nothing is wiped.
+- **What you taught a test build is asked again.** Templates are recognised differently
+  now (skeleton version 2), so answers given to an earlier 1.8.0 build no longer apply.
 
 ### Riyal learns how your banks write
 
@@ -33,10 +35,26 @@ is attached there.
     bank, type (current, savings, card, wallet), balance, digits and senders. "Not my
     bank" drops a sender for good, and senders it missed can be added.
   - **Is this read correctly?** Real messages, each with what Riyal made of it. Yes or
-    No; No lets you say what it really was and its category. Every answer decides every
-    message written the same way. Answering correctly ends the questions sooner, while
-    a wrong answer makes Riyal check its other readings of that bank.
+    No. No keeps money in or out as it was and asks for the right category, because
+    that is what is usually wrong; the other kinds are a tap away. Every answer decides
+    every message written the same way. Answering correctly ends the questions sooner,
+    while getting money in or out wrong makes Riyal check its other readings of that
+    bank. The back arrow, or the back gesture, steps through earlier answers to change
+    them.
 - Run the setup again any time from Settings › Teach Riyal.
+
+### One account is one account
+
+- **A bank's other numbers no longer become accounts.** Messages also quote the other
+  party's account on a transfer, or a reference where the account usually goes, and
+  each one used to become an account of its own: one Bank Nizwa account showed as
+  seven. Riyal now follows the balance. Messages whose balances continue one another
+  are one account, whatever digits they quote, and an account made from such a number
+  is folded back into the real one on the next full read.
+- Accounts masked with "#" ("00210######001") read their real last digits.
+- Bank Nizwa purchases read the shop, not the date after it.
+- **Same account as…** in an account's editor merges it into another account of the same
+  bank. Its records move across, and its number keeps routing there.
 - Review's "money out / money in" teaches the whole kind of message instead of adopting
   a keyword, and it gains "Not a transaction".
 - The keyword lists and sender lists are gone from Settings; the setup replaces them.
@@ -63,16 +81,21 @@ is attached there.
 
 ### A layout that is easy to get around
 
-- A standard bottom navigation bar with five labelled tabs: Home, Transactions,
-  Analysis, Accounts and Settings. Add is a button on Home and Transactions.
+- Material 3 Expressive's floating toolbar: five tabs (Home, Transactions, Analysis,
+  Accounts and Settings, named on a long press) and the Add button attached at its end.
+- **Pages open the way your phone opens screens.** Setup, Review, categories, updates
+  and the rest are screens of their own, so your phone's own transition plays going in
+  and coming back.
+- A new icon: the Omani rial sign on teal.
 - **Home is a dashboard:** expense, income and net for the period; one "needs your
   attention" list; your accounts and their balances; top spending; recent records.
 - Records are standard list rows with circular category icons. Swiping archives, with
   undo. Removing for good is in the record's sheet, behind a question.
 - Settings is grouped rows with icons; choices open radio-button dialogs.
-- **No more motion for its own sake.** Pages no longer slide or fade in, cards no longer
-  pop in, buttons no longer bounce, charts draw in place, and the coin mascot no longer
-  blinks. The category wheel is back on Material's own wavy indicator, held flat.
+- **No more motion for its own sake.** Cards no longer pop in, buttons no longer
+  bounce, charts draw in place, and the coin mascot no longer blinks. The category wheel
+  is back on Material's own wavy indicator, held flat; the bar a scan shows keeps its
+  wave.
 
 ## 1.7.1 — 2026-10-27
 

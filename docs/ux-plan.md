@@ -42,11 +42,11 @@ These are the patterns shared by MyMoney (Raha) and other well-reviewed trackers
 
 | Area | Change |
 | --- | --- |
-| Navigation | Material 3 `ShortNavigationBar`: Home, Transactions, Analysis, Accounts, Settings, labelled, with badges. Add is a FAB on Home and Transactions. |
+| Navigation | Material 3 Expressive `HorizontalFloatingToolbar` (the owner preferred it to the docked bar): Home, Transactions, Analysis, Accounts, Settings as toggles named on long press, with badges, and the Add FAB attached. Pages are activities with their own layouts, so the phone's own transition plays. |
 | Home | Period, then expense/income/net; one "needs your attention" list; accounts with balances; top spending; recent records by day. |
 | Rows | Stock `ListItem` with circular category icons; native `SwipeToDismissBox` archives; removal moved to the record sheet behind a confirmation. |
 | Settings | Grouped `ListItem` rows with icons; toggles on the whole row; radio-button dialogs; Updates as a page of its own. |
-| Motion | No fragment transitions, no pop-ins or bounces, `MotionScheme.standard()`, charts drawn in place. Wavy indicators kept as components but flat. |
+| Motion | The phone's own transition between pages, none between tabs; no pop-ins or bounces, `MotionScheme.standard()`, charts drawn in place. Wavy indicators kept as components but flat, except the scan bar, which keeps its wave. |
 | Currency | The new Omani rial sign (and other signs) in place of codes; a flag picker; purchases abroad converted into rials with the original kept. |
 | Reading | Fixed keyword and sender rules replaced by a setup that learns each bank's templates from balances and a few yes/no answers. |
 
