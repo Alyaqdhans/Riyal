@@ -341,6 +341,19 @@ class AccountDiscoveryTest {
     }
 
     @Test
+    fun `an account made from where a masked number starts folds into where it ends`() {
+        // "0350" came from the start of "00350 ###### 005". Even named, and with no message
+        // left to say where it was opened, it was never an account.
+        val withHead = oneLine.map { if (it.accountTail == "005") it.copy(head = "00350") else it }
+        val main = AccountDiscovery.propose(withHead).single()
+        val phantom = main.copy(id = "acc_phantom", last4 = "0350", name = "Savings", openingAtMillis = base - hours(100))
+        assertEquals(mapOf("acc_phantom" to main.id), AccountDiscovery.foreignAccounts(listOf(main, phantom), withHead))
+        // A number some message does end with is an account of its own.
+        val quoted = withHead + seen("0350", 50_000, 7, -1_000, line = 2)
+        assertTrue(AccountDiscovery.foreignAccounts(listOf(main, phantom), quoted).isEmpty())
+    }
+
+    @Test
     fun `an account read from a number no message quotes any more goes back to the real one`() {
         // An earlier reading made "0350" out of "00350 ###### 005". Read properly, the
         // message it was opened from belongs to 005, and nothing quotes 0350 at all.

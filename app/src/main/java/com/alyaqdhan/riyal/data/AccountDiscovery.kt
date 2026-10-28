@@ -111,6 +111,8 @@ object AccountDiscovery {
         val line: Int? = null,
         /** The account it already belongs to: a stored record, read back for context. */
         val accountId: String? = null,
+        /** The digits before the mask of a masked account number ([SmsParser.Result.Parsed.accountHead]). */
+        val head: String? = null,
     ) {
         /** The digits only when they name an account, which is what an account is keyed by. */
         val accountNumberTail: String? get() = accountTail?.takeUnless { tailIsCard }
@@ -241,10 +243,25 @@ object AccountDiscovery {
         val out = HashMap<String, String>()
         for (account in accounts) {
             val tail = account.last4 ?: continue
-            if (account.name.isNotBlank()) continue
             val senders = account.senderIds.mapTo(HashSet()) { it.trim().lowercase() }
             val mine = observations.filter { it.sender.trim().lowercase() in senders }
             val quoting = mine.filter { it.accountNumberTail == tail }
+            // Its digits are where a masked number starts, not where it ends: "0210" from
+            // "00210 ###### 001". That is the branch, so the account is whichever the
+            // number's end names - even one the user has named since, because it never
+            // was an account. Nothing may quote it as an end of its own.
+            if (quoting.isEmpty()) {
+                val real = mine.firstNotNullOfOrNull { o ->
+                    o.accountNumberTail?.takeIf { o.head?.endsWith(tail) == true }
+                        ?.let { ownerOf(accounts, o.sender, it) }
+                        ?.takeIf { it != account.id }
+                }
+                if (real != null) {
+                    out[account.id] = real
+                    continue
+                }
+            }
+            if (account.name.isNotBlank()) continue
             val owner = if (quoting.isEmpty()) {
                 // Nothing quotes its number any more: an earlier reading took it from a
                 // message that is now read better ("00210 ###### 001" was "0210"). The

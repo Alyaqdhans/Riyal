@@ -820,6 +820,7 @@ class ScanEngine(
         tailIsCard = f.tailIsCard,
         line = line,
         accountId = accountId,
+        head = f.accountHead?.takeUnless { f.tailIsCard },
     )
 
     /**

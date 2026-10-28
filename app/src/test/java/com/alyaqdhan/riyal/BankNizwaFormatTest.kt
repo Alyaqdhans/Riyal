@@ -74,7 +74,17 @@ class BankNizwaFormatTest {
                 "الرصيد المتوفر هو 304.420 ر.ع"
         )
         assertEquals("005", r.accountTail)
+        assertEquals("00350", r.accountHead)
         assertEquals("1234", parsed("Withdrawal of RO 1.000 from a/c XXXX 1234 at X").accountTail)
+    }
+
+    @Test
+    fun `wider or unbroken spacing around the mask still reads the end`() {
+        listOf("00350  ###### 005", "00350 ###### 005", "00350 ### ### 005", "00350######005").forEach { number ->
+            val r = parsed("تم سحب 6.000 ر.ع من حساب رقم $number الى SALI####AHMD. الرصيد المتوفر هو 304.420 ر.ع")
+            assertEquals(number, "005", r.accountTail)
+            assertEquals(number, "00350", r.accountHead)
+        }
     }
 
     @Test

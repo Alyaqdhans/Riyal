@@ -57,6 +57,12 @@ class SmsParser(
              * tail can say which account a message is about only by elimination.
              */
             val tailIsCard: Boolean = false,
+            /**
+             * The digits written before the mask in a masked account number: "00210" of
+             * "00210 ###### 001". The branch, never the account - an earlier reading took
+             * its end for one, and this is how that account is recognised and folded.
+             */
+            val accountHead: String? = null,
             /** The wording suggests moving money between accounts rather than spending. */
             val transferHint: Boolean = false,
             /**
@@ -299,6 +305,7 @@ class SmsParser(
             balanceCurrency = balanceCurrency.takeIf { balanceMinor != null },
             accountTail = accountTail,
             tailIsCard = tail?.fromCard == true,
+            accountHead = tail?.head,
             transferHint = transferHint,
             bankStamp = bankStamp,
             selfTransferTo = selfTransferTo,
@@ -434,7 +441,7 @@ class SmsParser(
         }
 
     /** The digits a message quotes, and whether they name a card or an account. */
-    private data class Tail(val digits: String, val fromCard: Boolean)
+    private data class Tail(val digits: String, val fromCard: Boolean, val head: String? = null)
 
     private fun findAccountTail(body: String): Tail? {
         var card: Tail? = null
@@ -457,10 +464,11 @@ class SmsParser(
             // came from. Banks call yours "your account" and mask it - "00210######001" -
             // while the other party's is written plainly, so the number that reads most
             // like yours is the one the message is about. Ties go to the first.
-            val score = (if (isYours(body, m.range.first, keyword)) 2 else 0) +
-                (if (token.any { it in MASK_CHARS }) 1 else 0)
+            val masked = token.any { it in MASK_CHARS }
+            val score = (if (isYours(body, m.range.first, keyword)) 2 else 0) + (if (masked) 1 else 0)
             if (score > bestScore) {
-                best = Tail(digits.takeLast(4), fromCard = false)
+                val head = token.takeWhile { it.isDigit() }.takeIf { masked && it.length >= 3 }
+                best = Tail(digits.takeLast(4), fromCard = false, head = head)
                 bestScore = score
             }
         }
@@ -568,7 +576,7 @@ class SmsParser(
          * is out of date and the inbox must be read again. Forgetting to bump it after a
          * parser fix means the fix only reaches messages that arrive afterwards.
          */
-        const val VERSION = 5
+        const val VERSION = 6
 
         const val NUM = """\d{1,3}(?:,\d{3})+(?:\.\d{1,3})?|\d+(?:\.\d{1,3})?"""
 
@@ -620,8 +628,8 @@ class SmsParser(
          * trailing letters and the captured token simply stops at the first character
          * that cannot belong to an account number.
          */
-        /** Digits, a run of mask, more digits, with a space allowed around the mask. */
-        private const val MASKED_SPACED = "\\d*\\s?[Xx*#\\u2022]{2,}\\s?\\d{2,}"
+        /** Digits, a run of mask, more digits, with spaces allowed around and inside the mask. */
+        private const val MASKED_SPACED = "\\d*[\\s\\u00A0]*(?:[Xx*#\\u2022][\\s\\u00A0]*){2,}\\d{2,}"
 
         val accountTailPattern = Regex(
             "(?i)(?:\\ba/c|\\bacc(?:t|ount)?\\b|\\bcard\\b|حساب\\p{L}*)" +

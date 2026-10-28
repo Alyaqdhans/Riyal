@@ -98,7 +98,9 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
    An incremental scan reads back the newest stored records (`ANCHORS_PER_SENDER`) so a
    new message still finds its line. A full scan folds accounts proven to be such
    numbers into the real one (`AccountDiscovery.foreignAccounts`), and their digits stay
-   as `Account.aliases`.
+   as `Account.aliases`. The account is always the end of a masked number; the digits
+   before the mask (`accountHead`, "00210" of "00210 ###### 001") are the branch, and an
+   account made from them folds into the one the end names.
 6. Records are converted into the account's currency when the bank charged another, and
    the original is kept on the record (`originalAmountMinor/Currency`).
 7. Each scan stores `TemplateStat`s, which the setup's `Tutor` turns into questions. Only a

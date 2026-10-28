@@ -12,7 +12,7 @@ is attached there.
   Android's installer on an update you chose to download. Android still shows its own
   install screen and asks you to confirm.
 - **The first scan after updating reads your whole inbox again.** How messages are read
-  changed (parser version 5), so records are rebuilt. Your categories, rules, accounts
+  changed (parser version 6), so records are rebuilt. Your categories, rules, accounts
   and budgets are kept; nothing is wiped.
 - **What you taught a test build is asked again.** Templates are recognised differently
   now (skeleton version 2), so answers given to an earlier 1.8.0 build no longer apply.
@@ -52,8 +52,9 @@ is attached there.
   are one account, whatever digits they quote, and an account made from such a number
   is folded back into the real one on the next full read.
 - Accounts masked with "#", with or without spaces ("00210 ###### 001"), read their
-  real last digits, and an account an earlier build made from the masked number
-  ("0210") is folded into the real one on the next full read.
+  real last digits, however the spaces fall. An account an earlier build made from
+  where the number starts ("0210") is folded into the one its end names on the next
+  full read, even if it was given a name since.
 - Bank Nizwa purchases read the shop, not the date after it.
 - **Same account as…** in an account's editor merges it into another account of the same
   bank. Its records move across, and its number keeps routing there.
