@@ -59,6 +59,8 @@ import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.reasonText
 import com.alyaqdhan.riyal.data.TransferProposal
 import com.alyaqdhan.riyal.data.TxnType
+import com.alyaqdhan.riyal.ui.compose.MoneyText
+import com.alyaqdhan.riyal.ui.compose.MoneyAwareText
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.bidi
@@ -368,8 +370,7 @@ private fun TransferCard(
             ) {
                 Text("⇄", style = MaterialTheme.typography.headlineSmall)
                 Column(Modifier.weight(1f)) {
-                    Text(
-                        bidi(Money.format(proposal.amountMinor, proposal.currency)),
+                    MoneyText(proposal.amountMinor, proposal.currency,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                     )
@@ -383,7 +384,7 @@ private fun TransferCard(
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
+                MoneyAwareText(
                     stringResource(
                         R.string.review_left_account,
                         bidi("− " + Money.format(proposal.amountMinor, proposal.currency)),
@@ -392,7 +393,7 @@ private fun TransferCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
-                Text(
+                MoneyAwareText(
                     stringResource(
                         R.string.review_arrived_account,
                         bidi("+ " + Money.format(proposal.amountMinor, proposal.currency)),
@@ -437,8 +438,7 @@ private fun ReviewCard(
                 )
                 Column(Modifier.weight(1f)) {
                     if (item.directionOnly) {
-                        Text(
-                            bidi(Money.format(item.amountMinor!!, item.currency ?: "")),
+                        MoneyText(item.amountMinor!!, item.currency ?: "",
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Text(

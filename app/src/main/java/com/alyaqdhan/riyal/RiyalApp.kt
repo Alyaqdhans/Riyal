@@ -2,6 +2,7 @@ package com.alyaqdhan.riyal
 
 import android.app.Application
 import android.content.pm.ApplicationInfo
+import com.alyaqdhan.riyal.core.Currencies
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Language
 import com.alyaqdhan.riyal.core.Prefs
@@ -27,6 +28,7 @@ class RiyalApp : Application() {
         Verbose.attach(Language.latinDigits(this))
         Dates.use(resources.configuration.locales[0])
         prefs = Prefs(this)
+        Currencies.setOverrides(Currencies.decode(prefs.fxRates))
         Words.apply(this)
         store = Store(this, prefs.autoConfirmTransfers)
         DynamicColors.applyToActivitiesIfAvailable(this)

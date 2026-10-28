@@ -66,6 +66,15 @@ class Prefs(context: Context) {
         get() = sp.getString("default_currency", "OMR") ?: "OMR"
         set(v) = sp.edit().putString("default_currency", v).apply()
 
+    /**
+     * Exchange rates the user corrected, as "CODE=rials per unit" lines. Only floating
+     * currencies can be here - see [Currencies.setOverrides] - and an empty set means the
+     * built-in reference rates.
+     */
+    var fxRates: Set<String>
+        get() = sp.getStringSet("fx_rates", emptySet())!!.toSet()
+        set(v) = sp.edit().putStringSet("fx_rates", v.toSet()).apply()
+
     /** Only read senders whose name looks like a bank (contains bank/بنك/مصرف) or is allowlisted. */
     var bankSendersOnly: Boolean
         get() = sp.getBoolean("bank_senders_only", true)

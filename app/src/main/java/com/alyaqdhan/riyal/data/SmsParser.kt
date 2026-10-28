@@ -43,6 +43,12 @@ class SmsParser(
             val trace: List<ParseNote>,
             /** The balance the bank quoted in this message, if it quoted one. */
             val balanceMinor: Long? = null,
+            /**
+             * The currency of [balanceMinor]. Usually the same as [currency], but not on a
+             * purchase made abroad: "USD 9.99 at STEAM ... Avl Bal OMR 120.000" spent
+             * dollars from an account that holds rials.
+             */
+            val balanceCurrency: String? = null,
             /** Last digits of the account this message is about ("a/c XXXX1234"). */
             val accountTail: String? = null,
             /**
@@ -180,7 +186,12 @@ class SmsParser(
         if (candidates.isEmpty()) return Result.NeedsReview(ReviewReason.NO_AMOUNT, trace)
         val usable = candidates.filter { !it.nearBalance }
         if (usable.isEmpty()) return Result.NeedsReview(ReviewReason.BALANCE_ONLY, trace)
-        val chosen = usable.minByOrNull { abs(it.pos - hit.pos) }!!
+        // A purchase abroad is often quoted twice - "USD 9.99 (OMR 3.841)" - and the
+        // figure in the account's own currency is the one that actually left it, fees
+        // and the bank's rate included. Only when there is none is the foreign figure
+        // taken, to be converted when the record is built.
+        val home = usable.filter { c -> c.currencyToken?.let { tokenToIso(it) } == defaultCurrency }
+        val chosen = home.ifEmpty { usable }.minByOrNull { abs(it.pos - hit.pos) }!!
 
         var currency = chosen.currencyToken?.let { tokenToIso(it) }
         if (currency == null) {
@@ -211,13 +222,15 @@ class SmsParser(
 
         // 4 ── account context: the balance-like numbers the amount step rejected are
         // exactly what an account needs, so keep the last one instead of dropping it.
-        val balanceMinor = candidates.lastOrNull { it.nearBalance }?.let { c ->
-            runCatching { Money.toMinor(BigDecimal(c.raw.replace(",", "")), currency) }.getOrNull()
+        val balanceCandidate = candidates.lastOrNull { it.nearBalance }
+        val balanceCurrency = balanceCandidate?.currencyToken?.let { tokenToIso(it) } ?: currency
+        val balanceMinor = balanceCandidate?.let { c ->
+            runCatching { Money.toMinor(BigDecimal(c.raw.replace(",", "")), balanceCurrency) }.getOrNull()
         }
         if (balanceMinor != null) {
             trace += ParseNote(
                 R.string.trace_balance,
-                listOf(Money.format(balanceMinor, currency)),
+                listOf(Money.format(balanceMinor, balanceCurrency)),
             )
         }
         val tail = findAccountTail(body)
@@ -249,6 +262,7 @@ class SmsParser(
             confidence = confidence.coerceIn(5, 100),
             trace = trace,
             balanceMinor = balanceMinor,
+            balanceCurrency = balanceCurrency.takeIf { balanceMinor != null },
             accountTail = accountTail,
             tailIsCard = tail?.fromCard == true,
             transferHint = transferHint,
@@ -412,7 +426,7 @@ class SmsParser(
             "SR", "رس" -> "SAR"
             "DHS", "دإ" -> "AED"
             "RS", "₹" -> "INR"
-            "$" -> "USD"
+            "$", "US$" -> "USD"
             "€" -> "EUR"
             "£" -> "GBP"
             else -> t
@@ -483,7 +497,7 @@ class SmsParser(
          * is out of date and the inbox must be read again. Forgetting to bump it after a
          * parser fix means the fix only reaches messages that arrive afterwards.
          */
-        const val VERSION = 2
+        const val VERSION = 3
 
         const val NUM = """\d{1,3}(?:,\d{3})+(?:\.\d{1,3})?|\d+(?:\.\d{1,3})?"""
 
@@ -493,7 +507,9 @@ class SmsParser(
             "AED", "DHS", "د\\.?\\s?إ\\.?",
             "KWD", "BHD", "QAR",
             "USD", "EUR", "GBP", "INR",
-            "RS\\.?", "\\$", "€", "£", "₹",
+            // "US$" before "$", or the dollar sign alone would match and leave "US"
+            // in front of it, where nothing reads it as part of the currency.
+            "US\\$", "RS\\.?", "\\$", "€", "£", "₹",
         ).joinToString("|")
 
         val curFirst = Regex("(?i)(?:^|[\\s:(\\[])($CUR)\\s*($NUM)(?!\\d)")

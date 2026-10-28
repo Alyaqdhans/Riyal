@@ -64,6 +64,9 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
+import com.alyaqdhan.riyal.ui.compose.MoneySign
+import com.alyaqdhan.riyal.ui.compose.MoneyText
+import com.alyaqdhan.riyal.ui.compose.MoneyAwareText
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryWheel
 import com.alyaqdhan.riyal.ui.compose.EmptyState
@@ -248,7 +251,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                     )
                 }
                 if (moved > 0) {
-                    Text(
+                    MoneyAwareText(
                         stringResource(
                             R.string.an_moved_note,
                             bidi(Money.format(moved, currency)),
@@ -302,25 +305,18 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                Text(
-                                    bidi(
-                                        Money.formatAmount(
-                                            if (donutType == TxnType.EXPENSE) totals.spent
-                                            else totals.received,
-                                            currency,
-                                        )
-                                    ),
+                                MoneyText(
+                                    if (donutType == TxnType.EXPENSE) totals.spent
+                                    else totals.received,
+                                    currency,
+                                    sign = MoneySign.NONE,
                                     style = MaterialTheme.typography.headlineSmall,
                                 )
                                 Text(
                                     if (slices.isEmpty()) {
-                                        stringResource(R.string.an_donut_nothing, currency)
+                                        stringResource(R.string.an_donut_nothing)
                                     } else {
-                                        stringResource(
-                                            R.string.an_donut_categories,
-                                            currency,
-                                            counted(R.plurals.count_categories, slices.size),
-                                        )
+                                        counted(R.plurals.count_categories, slices.size)
                                     },
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -348,11 +344,10 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     Text(cat.name, style = MaterialTheme.typography.bodyMedium)
                                     DeltaText(s.amountMinor, previousSlices[s.categoryId] ?: 0L)
                                 }
-                                Text(
-                                    // Bare figure: the donut's own centre names the
-                                    // currency directly above, so printing "OMR" again
-                                    // on all six rows is six readings of one fact.
-                                    bidi(Money.formatAmount(s.amountMinor, currency)),
+                                MoneyText(
+                                    s.amountMinor,
+                                    currency,
+                                    sign = MoneySign.NONE,
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                                 Text(
@@ -467,7 +462,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                         modifier = Modifier.weight(1f),
                                     )
                                     val up = mover.deltaMinor > 0
-                                    Text(
+                                    MoneyAwareText(
                                         stringResource(
                                             if (up) R.string.an_up_amount
                                             else R.string.an_down_amount,
@@ -518,8 +513,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
-                                    Text(
-                                        bidi(Money.format(r.typicalMinor, currency)),
+                                    MoneyText(r.typicalMinor, currency,
                                         style = MaterialTheme.typography.bodyMedium,
                                     )
                                 }
@@ -823,36 +817,20 @@ private fun SummaryTile(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        // The currency used to have a line of its own in all three tiles - one line of
-        // height each to say the same three letters. It shares the label's line, which
-        // has room to spare, rather than the figure's, which does not: a negative Net
-        // is wide enough that "OMR" beside it was cut off.
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                currency,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
         Text(
-            bidi(
-                (if (signed && amount < 0) "− " else "") +
-                    Money.formatAmount(abs(amount), currency)
-            ),
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        // The currency's sign rides with the figure, so the tile no longer spends a
+        // line, or the end of the label's line, spelling out the code.
+        MoneyText(
+            amount,
+            currency,
+            sign = if (signed) MoneySign.NEGATIVE else MoneySign.NONE,
             style = MaterialTheme.typography.titleMedium,
             color = if (signed && amount < 0) MaterialTheme.colorScheme.error
             else MaterialTheme.colorScheme.onSurface,
-            softWrap = false,
-            maxLines = 1,
         )
         DeltaText(amount, previous, upIsGood = upIsGood)
     }
@@ -922,7 +900,7 @@ private fun StatLine(label: String, value: String, color: Color = Color.Unspecif
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(
+        MoneyAwareText(
             value,
             style = MaterialTheme.typography.bodyMedium,
             color = if (color == Color.Unspecified) MaterialTheme.colorScheme.onSurface else color,
@@ -955,7 +933,7 @@ private fun InsightRow(
         }
         Column {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.bodyMedium)
+            MoneyAwareText(value, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

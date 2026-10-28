@@ -1027,6 +1027,10 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         put("cat", t.categoryId); put("src", t.categorySource)
         put("conf", t.confidence); put("man", t.manual)
         if (t.legIds.isNotEmpty()) put("legs", JSONArray().apply { t.legIds.forEach { put(it) } })
+        // Only on a converted record, so a file without them reads exactly as before.
+        if (t.isConverted) {
+            put("oamt", t.originalAmountMinor); put("ocur", t.originalCurrency)
+        }
     }
 
     private fun txnFromJson(o: JSONObject) = Txn(
@@ -1045,6 +1049,8 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         confidence = o.getInt("conf"),
         manual = o.optBoolean("man", false),
         legIds = o.optJSONArray("legs").toStringSet().toList(),
+        originalAmountMinor = if (o.has("oamt")) o.getLong("oamt") else null,
+        originalCurrency = o.optNullableString("ocur"),
     )
 
     private fun accountToJson(a: Account) = JSONObject().apply {

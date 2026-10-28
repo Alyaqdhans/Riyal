@@ -186,10 +186,10 @@ fun BudgetSection(
                     AssistChip(
                         onClick = { showEditor = true },
                         label = {
-                            Text(
+                            MoneyAwareText(
                                 stringResource(
                                     R.string.budget_uncapped,
-                                    bidi(Money.formatAmount(progress.unbudgetedMinor, currency)),
+                                    bidi(Money.format(progress.unbudgetedMinor, currency)),
                                 )
                             )
                         },
@@ -265,7 +265,7 @@ private fun BudgetTotal(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
-                Text(
+                MoneyAwareText(
                     stringResource(
                         R.string.budget_spent_of_cap,
                         bidi(Money.format(progress.totalSpentMinor, currency)),
@@ -289,7 +289,7 @@ private fun BudgetTotal(
             modifier = Modifier.fillMaxWidth(),
         )
         val elapsedPct = (progress.elapsedFraction * 100).roundToInt()
-        Text(
+        MoneyAwareText(
             when {
                 progress.over -> stringResource(
                     R.string.budget_over_by,
@@ -352,7 +352,7 @@ fun BudgetBar(
         ) {
             CategoryIcon(categoryId, size = 16.dp)
             Text(cat.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            Text(
+            MoneyAwareText(
                 stringResource(
                     R.string.budget_bar_amounts,
                     bidi(Money.format(spent, currency)),
@@ -384,7 +384,7 @@ fun BudgetBar(
             }
         }
         if (over) {
-            Text(
+            MoneyAwareText(
                 stringResource(R.string.budget_over_by, bidi(Money.format(spent - budget, currency))),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.error,
@@ -447,7 +447,7 @@ private fun BudgetEditorDialog(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             CategoryIcon(catId, size = 18.dp)
-                            Text(
+                            MoneyAwareText(
                                 stringResource(
                                     R.string.budget_line,
                                     Categories.byId(catId).name,

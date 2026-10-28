@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import com.alyaqdhan.riyal.R
 
 import android.content.Context
+import com.alyaqdhan.riyal.core.Currencies
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.LogLine
 import com.alyaqdhan.riyal.core.Money
@@ -336,7 +337,9 @@ class ScanEngine(
                     AccountDiscovery.Observation(
                         sender = pm.msg.sender,
                         accountTail = pm.result.accountTail,
-                        currency = pm.result.currency,
+                        // The balance says what the account holds; a purchase abroad says
+                        // only what the shop charged.
+                        currency = pm.result.balanceCurrency ?: pm.result.currency,
                         balanceMinor = pm.result.balanceMinor,
                         atMillis = pm.msg.atMillis,
                         signedMinor = if (pm.result.direction == Direction.EXPENSE) {
@@ -437,6 +440,15 @@ class ScanEngine(
             }?.takeIf { it != accountId }
             val cat = Categorizer.categorize(result.direction, result.merchant, pm.msg.body, rules, pm.msg.sender)
             val type = if (selfTo != null) TxnType.TRANSFER else TxnType.of(result.direction)
+            // Money spent abroad is counted in the currency the account holds, so it is
+            // in the month's totals and moves the balance. What the bank charged stays on
+            // the record beside it.
+            val homeCurrency = accounts.firstOrNull { it.id == accountId }?.currency ?: prefs.defaultCurrency
+            val converted = if (result.currency != homeCurrency) {
+                Currencies.convert(result.amountMinor, result.currency, homeCurrency)
+            } else {
+                null
+            }
             logRecord(
                 Verbose.str(
                     R.string.scanlog_msg_header,
@@ -445,6 +457,15 @@ class ScanEngine(
                 )
             )
             result.trace.forEach { logRecord(Verbose.str(R.string.scanlog_trace, it.text())) }
+            if (converted != null) {
+                logRecord(
+                    Verbose.str(
+                        R.string.scanlog_converted,
+                        Money.format(result.amountMinor, result.currency),
+                        Money.format(converted, homeCurrency),
+                    )
+                )
+            }
             logRecord(
                 Verbose.str(
                     R.string.scanlog_category,
@@ -463,7 +484,7 @@ class ScanEngine(
                 logRecord(
                     Verbose.str(
                         R.string.scanlog_recorded_transfer,
-                        Money.format(result.amountMinor, result.currency),
+                        Money.format(converted ?: result.amountMinor, homeCurrency.takeIf { converted != null } ?: result.currency),
                     ),
                     LogLine.Kind.OK,
                 )
@@ -472,8 +493,8 @@ class ScanEngine(
                     Verbose.str(
                         R.string.scanlog_recorded,
                         Money.formatSigned(
-                            result.amountMinor,
-                            result.currency,
+                            converted ?: result.amountMinor,
+                            homeCurrency.takeIf { converted != null } ?: result.currency,
                             type == TxnType.EXPENSE,
                         ),
                         result.confidence,
@@ -484,8 +505,8 @@ class ScanEngine(
             txns += Txn(
                 id = pm.id,
                 atMillis = pm.msg.atMillis,
-                amountMinor = result.amountMinor,
-                currency = result.currency,
+                amountMinor = converted ?: result.amountMinor,
+                currency = if (converted != null) homeCurrency else result.currency,
                 type = type,
                 fromAccountId = when (type) {
                     TxnType.INCOME -> null
@@ -502,6 +523,8 @@ class ScanEngine(
                 categoryId = if (type == TxnType.TRANSFER) Categories.TRANSFER_ID else cat.categoryId,
                 categorySource = "auto",
                 confidence = result.confidence,
+                originalAmountMinor = result.amountMinor.takeIf { converted != null },
+                originalCurrency = result.currency.takeIf { converted != null },
             )
         }
 
@@ -641,6 +664,8 @@ class ScanEngine(
         "bankOnly=${prefs.bankSendersOnly}",
         "allowOnly=${prefs.senderFilterEnabled}",
         prefs.senderAllowlist.map { it.lowercase() }.sorted().joinToString(","),
+        // A corrected exchange rate changes what every converted record is worth.
+        "fx=" + Currencies.fingerprint(),
     ).joinToString("|")
 
     private fun accountName(accounts: List<Account>, id: String?): String =

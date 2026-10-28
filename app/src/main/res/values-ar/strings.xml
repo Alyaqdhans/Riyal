@@ -37,6 +37,38 @@
     <string name="label_money_in">مبلغ وارد</string>
     <string name="label_money_out">مبلغ صادر</string>
 
+    <string name="cur_omr">ريال عماني</string>
+    <string name="cur_usd">دولار أمريكي</string>
+    <string name="cur_aed">درهم إماراتي</string>
+    <string name="cur_sar">ريال سعودي</string>
+    <string name="cur_qar">ريال قطري</string>
+    <string name="cur_bhd">دينار بحريني</string>
+    <string name="cur_jod">دينار أردني</string>
+    <string name="cur_kwd">دينار كويتي</string>
+    <string name="cur_eur">يورو</string>
+    <string name="cur_gbp">جنيه إسترليني</string>
+    <string name="cur_inr">روبية هندية</string>
+    <string name="cur_pkr">روبية باكستانية</string>
+    <string name="cur_bdt">تاكا بنغلاديشية</string>
+    <string name="cur_php">بيزو فلبيني</string>
+    <string name="cur_egp">جنيه مصري</string>
+    <string name="cur_lkr">روبية سريلانكية</string>
+    <string name="cur_npr">روبية نيبالية</string>
+    <string name="cur_try">ليرة تركية</string>
+    <string name="cur_cny">يوان صيني</string>
+    <string name="cur_pick_title">العملة</string>
+    <string name="cur_search">ابحث عن عملة</string>
+    <string name="cur_none_match">لا توجد عملة مطابقة</string>
+    <string name="cur_fixed_peg">سعر ثابت</string>
+    <string name="cur_rate_line">1 %1$s = %2$s</string>
+    <string name="cur_rates_title">أسعار الصرف</string>
+    <string name="cur_rates_intro">تُحتسب المشتريات بعملة أخرى بعملتك وفق هذه الأسعار. عملات الخليج والدولار أسعارها ثابتة يحددها البنك المركزي، وأما البقية فأسعار مرجعية يمكنك تصحيحها.</string>
+    <string name="cur_rate_edit_title">سعر %1$s</string>
+    <string name="cur_rate_edit_label">قيمة 1 %1$s</string>
+    <string name="cur_rate_reset">استخدام السعر المدمج</string>
+    <string name="cur_rate_custom">سعرك</string>
+    <string name="cur_counted_as">خُصم %1$s، وحُسب بقيمة %2$s</string>
+
     <string name="tab_home">ريال</string>
     <string name="tab_home_a11y">الرئيسية</string>
     <string name="tab_transactions">المعاملات</string>
@@ -485,8 +517,7 @@
     <string name="an_moved_note">%1$s انتقلت بين حساباتك أنت ولا تُحتسب في أي من الرقمين.</string>
     <string name="an_donut_spent">صُرف</string>
     <string name="an_donut_received">ورد</string>
-    <string name="an_donut_nothing">%1$s · لا شيء مُسجَّل</string>
-    <string name="an_donut_categories">%1$s · %2$s</string>
+    <string name="an_donut_nothing">لا شيء مُسجَّل</string>
     <string name="an_percent">%d%%</string>
     <string name="an_no_spending">لا مصروفات مُسجَّلة في هذه الفترة.</string>
     <string name="an_no_income">لا دخل مُسجَّل في هذه الفترة.</string>
@@ -897,6 +928,7 @@
     <string name="log_note_available">%1$s متاح</string>
     <string name="log_note_unreachable">تعذّر الوصول إلى GitHub، حاول مرة أخرى لاحقاً</string>
     <string name="log_note_currency">العملة الافتراضية ← %1$s</string>
+    <string name="log_rate_changed">تم ضبط سعر صرف %1$s على %2$s ريال (السعر المدمج عند "-")؛ سيعيد الفحص القادم قراءة الرسائل بالسعر الجديد</string>
     <string name="log_note_language">اللغة ← %1$s</string>
 
     <string name="scanlog_started">──────── بدأ الفحص ────────</string>
@@ -940,6 +972,7 @@
     <string name="scanlog_msg_header">✉ %1$s · %2$s</string>
     <string name="scanlog_not_your_bank">    ← ليس من بنوكك، فلا يمكن أن يكون حرَّك مالك؛ ولم تُسجَّل</string>
     <string name="scanlog_category">    · التصنيف: %1$s (%2$s)</string>
+    <string name="scanlog_converted">    · %1$s مدفوعة بعملة أجنبية، وحُسبت بقيمة %2$s</string>
     <string name="scanlog_cat_rule">قاعدتك طابقت \"%1$s\"</string>
     <string name="scanlog_cat_builtin">مطابقة مدمجة \"%1$s\"</string>
     <string name="scanlog_cat_default">الافتراضي</string>

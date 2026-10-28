@@ -55,9 +55,10 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Numerals
 import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Categories
+import com.alyaqdhan.riyal.ui.compose.MoneyText
 import com.alyaqdhan.riyal.ui.MainViewModel
-import com.alyaqdhan.riyal.ui.compose.CURRENCIES
-import com.alyaqdhan.riyal.ui.compose.DropdownField
+import com.alyaqdhan.riyal.ui.compose.CurrencyField
+import com.alyaqdhan.riyal.ui.compose.CurrencySign
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.bidi
 import com.alyaqdhan.riyal.ui.compose.counted
@@ -254,8 +255,7 @@ private fun TotalRow(accounts: List<Account>, balances: Map<String, Long>) {
         )
         byCurrency.forEach { (currency, group) ->
             val total = group.sumOf { balances[it.id] ?: it.openingBalanceMinor }
-            Text(
-                bidi(Money.format(total, currency)),
+            MoneyText(total, currency,
                 style = MaterialTheme.typography.headlineSmall,
                 color = if (total < 0) MaterialTheme.colorScheme.error else successColor(),
             )
@@ -302,8 +302,7 @@ private fun AccountCard(
                     )
                 }
             }
-            Text(
-                bidi(Money.format(balance, account.currency)),
+            MoneyText(balance, account.currency,
                 style = MaterialTheme.typography.titleMedium,
                 color = if (balance < 0) MaterialTheme.colorScheme.error else successColor(),
             )
@@ -374,7 +373,7 @@ private fun AccountEditorDialog(
                             )
                         )
                     },
-                    suffix = { Text(currency) },
+                    suffix = { CurrencySign(currency) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )
@@ -393,12 +392,10 @@ private fun AccountEditorDialog(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                DropdownField(
+                CurrencyField(
                     label = stringResource(R.string.label_currency),
-                    value = currency,
-                    options = CURRENCIES,
-                    display = { it },
-                    onSelect = { currency = it },
+                    code = currency,
+                    onPick = { currency = it },
                 )
                 OutlinedTextField(
                     value = last4,

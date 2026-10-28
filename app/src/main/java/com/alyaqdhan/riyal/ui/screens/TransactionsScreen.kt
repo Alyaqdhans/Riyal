@@ -50,6 +50,7 @@ import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.EmptyState
+import com.alyaqdhan.riyal.ui.compose.MoneyAwareText
 import com.alyaqdhan.riyal.ui.compose.FilterSheet
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.SwipeableTxnRow
@@ -355,7 +356,7 @@ private fun DayHeader(date: LocalDate, dayTxns: List<Txn>) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (spentByCurrency.isNotEmpty()) {
-            Text(
+            MoneyAwareText(
                 spentByCurrency.joinToString(" · "),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JPY symbol. Path data from Wikimedia Commons (public domain / CC0), the same
+     source and paths the firePOS CurrencyIcon uses. Tinted at runtime like any icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="17.05dp"
+    android:height="24dp"
+    android:viewportWidth="188.415"
+    android:viewportHeight="265.25">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M0,0 L38.608,0 94.208,109.163 149.806,0 188.415,0 109.654,142.993 109.654,147.643 174.517,147.643 174.517,171.245 109.654,171.245 109.654,265.25 78.767,265.25 78.767,171.245 13.899,171.245 13.899,147.643 78.768,147.643 78.768,142.993 Z" />
+</vector>

@@ -68,6 +68,8 @@ import com.alyaqdhan.riyal.data.Category
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.data.UserRule
+import com.alyaqdhan.riyal.ui.compose.MoneyText
+import com.alyaqdhan.riyal.ui.compose.MoneyAwareText
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.FlatBar
 import com.alyaqdhan.riyal.ui.compose.HelpAction
@@ -204,7 +206,7 @@ fun CategoriesScreen(
             item(key = "transfers") {
                 val moved = Stats.transferTotalIn(txns, slice.start, slice.endExclusive, currency)
                 if (moved > 0) {
-                    Text(
+                    MoneyAwareText(
                         stringResource(
                             R.string.cats_transfers_note,
                             bidi(Money.format(moved, currency)),
@@ -397,8 +399,7 @@ private fun CategoryRow(
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    bidi(Money.format(amountMinor, currency)),
+                MoneyText(amountMinor, currency,
                     style = MaterialTheme.typography.titleSmall,
                     color = when {
                         !used -> MaterialTheme.colorScheme.onSurfaceVariant

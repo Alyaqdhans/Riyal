@@ -53,6 +53,9 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
+import com.alyaqdhan.riyal.ui.compose.MoneyAwareText
+import com.alyaqdhan.riyal.ui.compose.MoneySign
+import com.alyaqdhan.riyal.ui.compose.MoneyText
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.BudgetSection
 import com.alyaqdhan.riyal.ui.compose.EmptyState
@@ -151,15 +154,12 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         val net = totals.net
-                        Text(
-                            bidi(
-                                (if (net < 0) "\u2212 " else "") +
-                                    Money.format(kotlin.math.abs(net), currency)
-                            ),
+                        MoneyText(
+                            net,
+                            currency,
+                            sign = MoneySign.NEGATIVE,
                             style = MaterialTheme.typography.headlineMedium,
                             color = if (net < 0) MaterialTheme.colorScheme.error else successColor(),
-                            maxLines = 1,
-                            softWrap = false,
                             autoSize = TextAutoSize.StepBased(
                                 minFontSize = 18.sp,
                                 maxFontSize = MaterialTheme.typography.headlineMedium.fontSize,
@@ -168,8 +168,8 @@ fun HomeScreen(
                         // Both figures, one line, no labels repeated: colour says which
                         // is which, and the currency was named by the number above.
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                stringResource(R.string.home_out, Money.formatAmount(totals.spent, currency)),
+                            MoneyAwareText(
+                                stringResource(R.string.home_out, Money.format(totals.spent, currency)),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error,
                             )
@@ -178,8 +178,8 @@ fun HomeScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Text(
-                                stringResource(R.string.home_in, Money.formatAmount(totals.received, currency)),
+                            MoneyAwareText(
+                                stringResource(R.string.home_in, Money.format(totals.received, currency)),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = successColor(),
                             )

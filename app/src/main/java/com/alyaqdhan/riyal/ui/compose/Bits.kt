@@ -220,11 +220,14 @@ fun TxnRow(
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    bidi(
-                        if (transfer) Money.format(txn.amountMinor, txn.currency)
-                        else Money.formatSigned(txn.amountMinor, txn.currency, expense)
-                    ),
+                MoneyText(
+                    txn.amountMinor,
+                    txn.currency,
+                    sign = when {
+                        transfer -> MoneySign.NONE
+                        expense -> MoneySign.OUT
+                        else -> MoneySign.IN
+                    },
                     style = MaterialTheme.typography.titleSmall,
                     // Money direction is semantic: out = danger red, in = success green,
                     // moved between your own accounts = neither.
@@ -234,6 +237,16 @@ fun TxnRow(
                         else -> successColor()
                     },
                 )
+                // Bought abroad: what the shop charged, under what it counts as.
+                if (txn.isConverted) {
+                    MoneyText(
+                        txn.originalAmountMinor!!,
+                        txn.originalCurrency!!,
+                        sign = MoneySign.NONE,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 // Only the transfer note. The category was already stated by the badge
                 // at the head of the row, and saying it again in words cost about a
                 // third of the width - which is why the merchant and the account line

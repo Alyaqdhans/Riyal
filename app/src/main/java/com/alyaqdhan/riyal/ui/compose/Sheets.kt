@@ -86,8 +86,6 @@ import java.time.ZoneId
 import java.util.Locale
 import kotlinx.coroutines.launch
 
-val CURRENCIES = listOf("OMR", "SAR", "AED", "KWD", "BHD", "QAR", "USD", "EUR", "GBP", "INR")
-
 /** Wraps text as a clipboard entry for the new suspend [androidx.compose.ui.platform.Clipboard] API. */
 fun plainText(text: String): ClipEntry = ClipEntry(ClipData.newPlainText("riyal", text))
 
@@ -562,16 +560,14 @@ fun ManualTxnDialog(
                     value = amount,
                     onValueChange = { amount = it },
                     label = { Text(stringResource(R.string.label_amount)) },
-                    suffix = { Text(currency) },
+                    suffix = { CurrencySign(currency) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )
-                DropdownField(
+                CurrencyField(
                     label = stringResource(R.string.label_currency),
-                    value = currency,
-                    options = CURRENCIES,
-                    display = { it },
-                    onSelect = { currency = it },
+                    code = currency,
+                    onPick = { currency = it },
                 )
 
                 if (live.isNotEmpty()) {

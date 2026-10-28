@@ -67,13 +67,15 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.core.Currencies
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Language
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
-import com.alyaqdhan.riyal.ui.compose.CURRENCIES
+import com.alyaqdhan.riyal.ui.compose.CurrencyPickerSheet
+import com.alyaqdhan.riyal.ui.compose.ExchangeRatesSheet
 import com.alyaqdhan.riyal.ui.compose.FlatBar
 import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
@@ -139,6 +141,7 @@ fun SettingsScreen(
     var confirmRestore by remember { mutableStateOf(false) }
     var backupMessages by remember { mutableStateOf(prefs.backupIncludeMessages) }
     var pickCurrency by remember { mutableStateOf(false) }
+    var showRates by remember { mutableStateOf(false) }
     var pickLanguage by remember { mutableStateOf(false) }
     val language = Language.current()
 
@@ -169,9 +172,15 @@ fun SettingsScreen(
             SettingsCard(stringResource(R.string.set_card_money)) {
                 ValueLine(
                     title = stringResource(R.string.set_default_currency),
-                    value = currency,
+                    value = Currencies.of(currency)?.let { it.flag + " " + it.code } ?: currency,
                     detail = stringResource(R.string.set_help_currency),
                     onClick = { pickCurrency = true },
+                )
+                ValueLine(
+                    title = stringResource(R.string.cur_rates_title),
+                    value = "",
+                    detail = stringResource(R.string.cur_rates_intro),
+                    onClick = { showRates = true },
                 )
                 NavLine(
                     title = stringResource(R.string.acct_title),
@@ -647,17 +656,24 @@ fun SettingsScreen(
     ScanSheetHost(vm)
 
     if (pickCurrency) {
-        PickerDialog(
-            title = stringResource(R.string.set_default_currency),
-            options = CURRENCIES,
+        CurrencyPickerSheet(
             selected = currency,
             onPick = {
                 currency = it
-                prefs.defaultCurrency = it
-                note(R.string.log_note_currency, it)
+                vm.setDefaultCurrency(it)
                 pickCurrency = false
             },
             onDismiss = { pickCurrency = false },
+        )
+    }
+
+    if (showRates) {
+        val overrides by vm.fxOverrides.collectAsState()
+        ExchangeRatesSheet(
+            base = currency,
+            overrides = overrides,
+            onSetRate = { code, rate -> vm.setRate(code, rate) },
+            onDismiss = { showRates = false },
         )
     }
 

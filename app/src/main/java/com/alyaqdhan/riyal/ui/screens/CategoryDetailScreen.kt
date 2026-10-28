@@ -41,6 +41,8 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
+import com.alyaqdhan.riyal.ui.compose.MoneyText
+import com.alyaqdhan.riyal.ui.compose.MoneyAwareText
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.bidi
@@ -144,8 +146,7 @@ fun CategoryDetailScreen(
                     ) {
                         CategoryBadge(categoryId, size = 56.dp)
                         Column(Modifier.weight(1f)) {
-                            Text(
-                                bidi(Money.format(total, currency)),
+                            MoneyText(total, currency,
                                 style = MaterialTheme.typography.headlineSmall,
                                 color = if (category.income) successColor() else MaterialTheme.colorScheme.onSurface,
                             )
@@ -178,8 +179,7 @@ fun CategoryDetailScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f),
                         )
-                        Text(
-                            bidi(Money.format(amount, currency)),
+                        MoneyText(amount, currency,
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -264,7 +264,7 @@ private fun ComparisonLine(now: Long, before: Long, currency: String) {
             bidi(Money.format(before, currency)),
         )
     }
-    Text(
+    MoneyAwareText(
         text,
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -357,7 +357,17 @@ data class Txn(
     val manual: Boolean = false,
     /** TRANSFER only: the ids of the two messages that were merged into this record. */
     val legIds: List<String> = emptyList(),
+    /**
+     * What the bank actually charged, when it charged another currency: a Steam game is
+     * "USD 9.99" in a message that never mentions rials. [amountMinor] and [currency]
+     * are then that figure converted into the account's own currency, which is what
+     * every total and balance counts; these keep the original so it can still be shown.
+     */
+    val originalAmountMinor: Long? = null,
+    val originalCurrency: String? = null,
 ) {
+    val isConverted: Boolean get() = originalCurrency != null && originalAmountMinor != null
+
     val isExpense: Boolean get() = type == TxnType.EXPENSE
     val isIncome: Boolean get() = type == TxnType.INCOME
     val isTransfer: Boolean get() = type == TxnType.TRANSFER

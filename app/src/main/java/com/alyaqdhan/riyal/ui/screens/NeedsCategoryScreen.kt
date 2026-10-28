@@ -53,6 +53,8 @@ import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.data.UserRule
+import com.alyaqdhan.riyal.ui.compose.MoneySign
+import com.alyaqdhan.riyal.ui.compose.MoneyText
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryChips
 import com.alyaqdhan.riyal.ui.compose.CategoryOrder
@@ -335,14 +337,11 @@ private fun MerchantCard(
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        bidi(Money.formatAmount(group.amountMinor, group.currency)),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
+                    MoneyText(
+                        group.amountMinor,
                         group.currency,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        sign = MoneySign.NONE,
+                        style = MaterialTheme.typography.titleMedium,
                     )
                 }
                 Icon(
@@ -494,8 +493,10 @@ private fun RecordRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                bidi(Money.formatAmount(txn.amountMinor, txn.currency)),
+            MoneyText(
+                txn.amountMinor,
+                txn.currency,
+                sign = MoneySign.NONE,
                 style = MaterialTheme.typography.bodyMedium,
             )
             Icon(

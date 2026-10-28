@@ -37,6 +37,38 @@
     <string name="label_money_in">Money in</string>
     <string name="label_money_out">Money out</string>
 
+    <string name="cur_omr">Omani rial</string>
+    <string name="cur_usd">US dollar</string>
+    <string name="cur_aed">UAE dirham</string>
+    <string name="cur_sar">Saudi riyal</string>
+    <string name="cur_qar">Qatari riyal</string>
+    <string name="cur_bhd">Bahraini dinar</string>
+    <string name="cur_jod">Jordanian dinar</string>
+    <string name="cur_kwd">Kuwaiti dinar</string>
+    <string name="cur_eur">Euro</string>
+    <string name="cur_gbp">British pound</string>
+    <string name="cur_inr">Indian rupee</string>
+    <string name="cur_pkr">Pakistani rupee</string>
+    <string name="cur_bdt">Bangladeshi taka</string>
+    <string name="cur_php">Philippine peso</string>
+    <string name="cur_egp">Egyptian pound</string>
+    <string name="cur_lkr">Sri Lankan rupee</string>
+    <string name="cur_npr">Nepalese rupee</string>
+    <string name="cur_try">Turkish lira</string>
+    <string name="cur_cny">Chinese yuan</string>
+    <string name="cur_pick_title">Currency</string>
+    <string name="cur_search">Search currencies</string>
+    <string name="cur_none_match">No currency matches</string>
+    <string name="cur_fixed_peg">Fixed rate</string>
+    <string name="cur_rate_line">1 %1$s = %2$s</string>
+    <string name="cur_rates_title">Exchange rates</string>
+    <string name="cur_rates_intro">Purchases in another currency are counted in yours at these rates. The Gulf currencies and the dollar are fixed by their central banks; the rest are reference rates you can correct.</string>
+    <string name="cur_rate_edit_title">Rate for %1$s</string>
+    <string name="cur_rate_edit_label">How much one %1$s is worth</string>
+    <string name="cur_rate_reset">Use the built-in rate</string>
+    <string name="cur_rate_custom">Your rate</string>
+    <string name="cur_counted_as">Charged %1$s, counted as %2$s</string>
+
     <string name="tab_home">Riyal</string>
     <string name="tab_home_a11y">Home</string>
     <string name="tab_transactions">Transactions</string>
@@ -445,8 +477,7 @@
     <string name="an_moved_note">%1$s moved between your own accounts and is counted in neither figure.</string>
     <string name="an_donut_spent">spent</string>
     <string name="an_donut_received">received</string>
-    <string name="an_donut_nothing">%1$s · nothing recorded</string>
-    <string name="an_donut_categories">%1$s · %2$s</string>
+    <string name="an_donut_nothing">Nothing recorded</string>
     <string name="an_percent">%d%%</string>
     <string name="an_no_spending">No spending recorded for this period.</string>
     <string name="an_no_income">No income recorded for this period.</string>
@@ -805,6 +836,7 @@
     <string name="log_note_available">%1$s is available</string>
     <string name="log_note_unreachable">could not reach GitHub, try again later</string>
     <string name="log_note_currency">default currency → %1$s</string>
+    <string name="log_rate_changed">exchange rate for %1$s set to %2$s rials (built-in when "-"); the next scan re-reads the inbox at the new rate</string>
     <string name="log_note_language">language → %1$s</string>
 
     <string name="scanlog_started">──────── scan started ────────</string>
@@ -848,6 +880,7 @@
     <string name="scanlog_msg_header">✉ %1$s · %2$s</string>
     <string name="scanlog_not_your_bank">    → not one of your banks, so it cannot have moved your money; not recorded</string>
     <string name="scanlog_category">    · category: %1$s (%2$s)</string>
+    <string name="scanlog_converted">    · %1$s charged abroad, counted as %2$s</string>
     <string name="scanlog_cat_rule">your rule match \"%1$s\"</string>
     <string name="scanlog_cat_builtin">built-in match \"%1$s\"</string>
     <string name="scanlog_cat_default">default</string>

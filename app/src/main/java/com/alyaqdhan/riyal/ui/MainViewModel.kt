@@ -14,6 +14,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.RiyalApp
+import com.alyaqdhan.riyal.core.Currencies
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Account
@@ -33,6 +34,7 @@ import com.alyaqdhan.riyal.data.UpdateApi
 import com.alyaqdhan.riyal.data.Updates
 import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -869,11 +871,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         toAccountId: String?,
         learnSimilar: Boolean = true,
     ) = viewModelScope.launch(Dispatchers.IO) {
+        val counted = countedIn(amountMinor, currency, if (type == TxnType.INCOME) toAccountId else fromAccountId)
         val txn = Txn(
             id = "man-${item.id}",
             atMillis = item.atMillis,
-            amountMinor = amountMinor,
-            currency = currency,
+            amountMinor = counted.amountMinor,
+            currency = counted.currency,
+            originalAmountMinor = counted.originalAmountMinor,
+            originalCurrency = counted.originalCurrency,
             type = type,
             fromAccountId = fromAccountId,
             toAccountId = toAccountId,
@@ -906,11 +911,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         toAccountId: String?,
         atMillis: Long = System.currentTimeMillis(),
     ) = viewModelScope.launch(Dispatchers.IO) {
+        val counted = countedIn(amountMinor, currency, if (type == TxnType.INCOME) toAccountId else fromAccountId)
         val txn = Txn(
             id = "man-${UUID.randomUUID().toString().take(8)}",
             atMillis = atMillis,
-            amountMinor = amountMinor,
-            currency = currency,
+            amountMinor = counted.amountMinor,
+            currency = counted.currency,
+            originalAmountMinor = counted.originalAmountMinor,
+            originalCurrency = counted.originalCurrency,
             type = type,
             fromAccountId = fromAccountId,
             toAccountId = toAccountId,
@@ -928,6 +936,57 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             Money.format(amountMinor, currency),
             Categories.byId(categoryId).name,
         )
+        Verbose.flush()
+    }
+
+    /** An amount as a record counts it, and what it was charged in when that differs. */
+    private data class Counted(
+        val amountMinor: Long,
+        val currency: String,
+        val originalAmountMinor: Long? = null,
+        val originalCurrency: String? = null,
+    )
+
+    /**
+     * A hand-entered amount is converted exactly as a scanned one is: into the currency
+     * of the account it touches, or the app's own when it touches none.
+     */
+    private fun countedIn(amountMinor: Long, currency: String, accountId: String?): Counted {
+        val home = accounts.value.firstOrNull { it.id == accountId }?.currency ?: prefs.defaultCurrency
+        if (currency == home) return Counted(amountMinor, currency)
+        val converted = Currencies.convert(amountMinor, currency, home) ?: return Counted(amountMinor, currency)
+        return Counted(converted, home, amountMinor, currency)
+    }
+
+    // ─────────────────────────── currency ───────────────────────────
+
+    private val _defaultCurrency = MutableStateFlow(prefs.defaultCurrency)
+    val defaultCurrency: StateFlow<String> = _defaultCurrency
+
+    fun setDefaultCurrency(code: String) {
+        if (code == prefs.defaultCurrency) return
+        prefs.defaultCurrency = code
+        _defaultCurrency.value = code
+        Verbose.info(Verbose.str(R.string.log_setting_changed, Verbose.str(R.string.log_note_currency, code)))
+        Verbose.flush()
+    }
+
+    private val _fxOverrides = MutableStateFlow(Currencies.decode(prefs.fxRates))
+    val fxOverrides: StateFlow<Map<String, BigDecimal>> = _fxOverrides
+
+    /**
+     * Corrects one floating rate, as rials per unit; null goes back to the built-in one.
+     * Converted records were worked out at the old rate, so the next scan re-reads the
+     * inbox - the rates are part of the scan's fingerprint.
+     */
+    fun setRate(code: String, omrPerUnit: BigDecimal?) {
+        val next = _fxOverrides.value.toMutableMap().apply {
+            if (omrPerUnit == null || omrPerUnit.signum() <= 0) remove(code) else put(code, omrPerUnit)
+        }
+        prefs.fxRates = Currencies.encode(next)
+        Currencies.setOverrides(next)
+        _fxOverrides.value = next
+        Verbose.info(R.string.log_rate_changed, code, omrPerUnit?.toPlainString() ?: "-")
         Verbose.flush()
     }
 
@@ -950,7 +1009,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             getApplication<Application>().contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { w ->
                 w.appendLine(
                     "id,datetime,type,amount,currency,from_account,to_account,merchant," +
-                        "category,sender,description,confidence,manual"
+                        "category,sender,description,confidence,manual,charged_amount,charged_currency"
                 )
                 val fmt = DateTimeFormatter.ISO_LOCAL_DATE_TIME
                 for (t in list) {
@@ -962,6 +1021,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                             csv(accountName(t.fromAccountId)), csv(accountName(t.toAccountId)),
                             csv(t.merchant ?: ""), csv(Categories.byId(t.categoryId).name),
                             csv(t.sender), csv(t.body), t.confidence.toString(), t.manual.toString(),
+                            t.originalAmountMinor?.let { minor ->
+                                Money.toMajor(minor, t.originalCurrency!!).toPlainString()
+                            }.orEmpty(),
+                            t.originalCurrency.orEmpty(),
                         ).joinToString(",")
                     )
                 }
