@@ -230,6 +230,8 @@ data class Account(
     val color: Int = 0,
     val archived: Boolean = false,
     val needsBalance: Boolean = false,
+    /** What sort of account it is: a label and an icon, nothing in the arithmetic. */
+    val kind: AccountKind = AccountKind.CURRENT,
 ) {
     /**
      * How the account is named everywhere in the app: "Bank Muscat · 0019" - the bank
@@ -279,6 +281,9 @@ data class Account(
         }
     }
 }
+
+/** The sorts of account a bank texts about. */
+enum class AccountKind { CURRENT, SAVINGS, CARD, WALLET }
 
 /**
  * One budget plan: a period plus a spending cap per expense category. The period is

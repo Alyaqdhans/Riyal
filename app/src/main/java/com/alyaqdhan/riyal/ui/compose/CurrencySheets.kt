@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package com.alyaqdhan.riyal.ui.compose
 
@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -27,7 +28,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -74,7 +76,7 @@ fun CurrencyPickerSheet(
     }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden),
     ) {
         Column(Modifier.fillMaxHeight(0.9f)) {
             Text(
@@ -103,7 +105,7 @@ fun CurrencyPickerSheet(
             LazyColumn {
                 items(shown, key = { it.code }) { info ->
                     ListItem(
-                        headlineContent = { Text(stringResource(info.name)) },
+                        onClick = { onPick(info.code) },
                         supportingContent = { Text(info.code) },
                         leadingContent = { Flag(info) },
                         trailingContent = {
@@ -117,8 +119,7 @@ fun CurrencyPickerSheet(
                                 CurrencySign(info.code, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         },
-                        modifier = Modifier.clickable { onPick(info.code) },
-                    )
+                    ) { Text(stringResource(info.name)) }
                 }
             }
         }
@@ -189,7 +190,7 @@ fun ExchangeRatesSheet(
     val rows = remember(overrides, base) { Currencies.ALL.filter { it.code != base } }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden),
     ) {
         Column(Modifier.fillMaxHeight(0.9f)) {
             Text(
@@ -208,7 +209,6 @@ fun ExchangeRatesSheet(
                     val rate = Currencies.rate(info.code, base)
                     val custom = info.code in overrides
                     ListItem(
-                        headlineContent = { Text(stringResource(info.name)) },
                         supportingContent = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 MoneyAwareText(
@@ -239,7 +239,7 @@ fun ExchangeRatesSheet(
                                 }
                             }
                         },
-                    )
+                    ) { Text(stringResource(info.name)) }
                 }
             }
         }

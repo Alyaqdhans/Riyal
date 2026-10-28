@@ -20,11 +20,14 @@ import com.alyaqdhan.riyal.data.AccountDiscovery
 import com.alyaqdhan.riyal.data.BudgetPlan
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Direction
+import com.alyaqdhan.riyal.data.MessageKind
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.ScanEngine
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.ScanSummary
+import com.alyaqdhan.riyal.data.Skeleton
 import com.alyaqdhan.riyal.data.TransferProposal
+import com.alyaqdhan.riyal.data.Tutor
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.data.UpdateApi
@@ -44,6 +47,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -910,35 +914,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
     }
 
-    /**
-     * Adopts a word from a message as a gate keyword, so that kind of message is read
-     * automatically from the next scan instead of being asked about again.
-     *
-     * Only ever called because the user tapped it. The gate decides what the app is
-     * allowed to look at at all, and a word added to it silently would change how the
-     * whole inbox is read on evidence of one message.
-     */
-    fun learnKeyword(word: String, direction: Direction) {
-        val w = word.trim().lowercase()
-        if (w.isEmpty()) return
-        if (direction == Direction.EXPENSE) {
-            if (w in prefs.expenseKeywords) return
-            prefs.expenseKeywords = prefs.expenseKeywords + w
-        } else {
-            if (w in prefs.incomeKeywords) return
-            prefs.incomeKeywords = prefs.incomeKeywords + w
-        }
-        Verbose.ok(
-            R.string.log_keyword_added,
-            w,
-            Verbose.str(
-                if (direction == Direction.EXPENSE) R.string.log_word_out
-                else R.string.log_word_in
-            ),
-        )
-        Verbose.flush()
-    }
-
     fun resolveReview(
         item: ReviewItem,
         amountMinor: Long,
@@ -978,6 +953,224 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             ) + if (learnSimilar) Verbose.str(R.string.log_review_resolved_learn) else ""
         )
         Verbose.flush()
+    }
+
+    // ─────────────────────────── setup ───────────────────────────
+
+    /**
+     * The setup's steps: read the inbox, check the banks and accounts it found, answer a
+     * few questions about how their messages were read, done.
+     */
+    enum class SetupStep { READING, ACCOUNTS, QUESTIONS, DONE }
+
+    /** One question: a real message, and what the app made of it. */
+    data class SetupQuestion(
+        val key: String,
+        val sender: String,
+        val body: String,
+        val atMillis: Long,
+        val guess: MessageKind,
+        /** The record the message became, when it became one. */
+        val txn: Txn?,
+        val amountMinor: Long?,
+        val currency: String?,
+        /** Other messages of the same kind, which the answer decides as well. */
+        val similar: Int,
+    )
+
+    private val _setupStep = MutableStateFlow(SetupStep.READING)
+    val setupStep: StateFlow<SetupStep> = _setupStep
+
+    private val _setupQuestion = MutableStateFlow<SetupQuestion?>(null)
+    val setupQuestion: StateFlow<SetupQuestion?> = _setupQuestion
+
+    private val _setupProgress = MutableStateFlow(0f)
+    val setupProgress: StateFlow<Float> = _setupProgress
+
+    private val _questionsLeft = MutableStateFlow(0)
+    val questionsLeft: StateFlow<Int> = _questionsLeft
+
+    private val _questionsAsked = MutableStateFlow(0)
+    val questionsAsked: StateFlow<Int> = _questionsAsked
+
+    private val _taughtCount = MutableStateFlow(0)
+    val taughtCount: StateFlow<Int> = _taughtCount
+
+    private var tutor: Tutor? = null
+    private var setupJob: Job? = null
+
+    /** Whether the setup should be offered on Home: never finished, and messages can be read. */
+    private val _setupDone = MutableStateFlow(prefs.setupDone)
+    val setupDone: StateFlow<Boolean> = _setupDone
+
+    /**
+     * Starts the setup from the top: a full read of the inbox, so the accounts and the
+     * questions are about everything, not only what arrived since the last scan.
+     */
+    fun startSetup() {
+        setupJob?.cancel()
+        tutor = null
+        _setupQuestion.value = null
+        _taughtCount.value = 0
+        _setupStep.value = SetupStep.READING
+        setupJob = viewModelScope.launch {
+            // Whatever scan is already running finishes first; then the full one.
+            scanState.first { it !is ScanState.Running }
+            startScan(showSheet = false, full = true)
+            scanState.first { it !is ScanState.Running }
+            _setupStep.value = SetupStep.ACCOUNTS
+        }
+    }
+
+    /** The accounts step's "this is right": the questions come next. */
+    fun confirmSetupAccounts() {
+        confirmAccounts()
+        val labels = store.labels.value
+        val candidates = store.templates.value
+            .filter { it.key !in labels && it.guess != null && it.count > 0 }
+            .map { Tutor.Candidate(it.key, it.sender, it.count, it.confidence) }
+        tutor = Tutor(candidates, prefs.teachRight, prefs.teachWrong)
+        _setupStep.value = SetupStep.QUESTIONS
+        nextQuestion()
+    }
+
+    private fun nextQuestion() {
+        val t = tutor ?: return
+        _setupProgress.value = t.progress
+        _questionsAsked.value = t.asked
+        val next = t.next()
+        if (next == null) {
+            finishSetup()
+            return
+        }
+        _questionsLeft.value = t.questionsLeft()
+        val stat = store.templates.value.first { it.key == next.key }
+        val txn = txns.value.firstOrNull { it.id == stat.sampleId || stat.sampleId in it.legIds }
+        val review = reviews.value.firstOrNull { it.id == stat.sampleId }
+        _setupQuestion.value = SetupQuestion(
+            key = stat.key,
+            sender = stat.sender,
+            body = stat.sampleBody,
+            atMillis = stat.sampleAt,
+            guess = stat.guess ?: MessageKind.OUT,
+            txn = txn,
+            amountMinor = txn?.amountMinor ?: review?.amountMinor,
+            currency = txn?.currency ?: review?.currency,
+            similar = (stat.count - 1).coerceAtLeast(0),
+        )
+    }
+
+    /**
+     * An answer. "Right" confirms the reading - and the category, which is then
+     * remembered for the shop. "Wrong" carries what it actually was: the kind, and for
+     * money in or out the category. Either way the answer is about the whole template,
+     * so every message written like this one is read that way from now on.
+     */
+    fun answerSetup(right: Boolean, kind: MessageKind? = null, categoryId: String? = null) {
+        val q = _setupQuestion.value ?: return
+        val t = tutor ?: return
+        t.answer(q.key, right)
+        prefs.teachRight = t.right
+        prefs.teachWrong = t.wrong
+        val taught = if (right) q.guess else kind ?: q.guess
+        _taughtCount.value = _taughtCount.value + 1
+        viewModelScope.launch(Dispatchers.IO) {
+            store.setLabel(q.key, taught)
+            Verbose.ok(
+                R.string.log_taught,
+                q.sender,
+                Verbose.str(
+                    when (taught) {
+                        MessageKind.OUT -> R.string.log_word_out
+                        MessageKind.IN -> R.string.log_word_in
+                        MessageKind.TRANSFER -> R.string.label_transfer
+                        MessageKind.NONE -> R.string.kind_none
+                    }
+                ),
+                q.similar,
+            )
+            val txn = q.txn
+            val merchant = txn?.merchant?.takeIf { it.isNotBlank() }
+            val confirmed = if (right) txn?.categoryId else categoryId
+            if (txn != null && confirmed != null && taught.direction != null &&
+                !(right && confirmed == Categories.defaultFor(txn.type))
+            ) {
+                // The category answer is about the shop, so it is remembered as one.
+                setCategory(txn, confirmed, merchant?.takeIf { prefs.smartRules })
+            }
+            Verbose.flush()
+        }
+        nextQuestion()
+    }
+
+    /**
+     * Ends the setup, early or not. What was taught applies from the next read of the
+     * inbox, so one is started now rather than left for the next launch.
+     */
+    fun finishSetup() {
+        prefs.setupDone = true
+        _setupDone.value = true
+        _setupQuestion.value = null
+        _setupStep.value = SetupStep.DONE
+        if (_taughtCount.value > 0) startScan(showSheet = false, full = true)
+    }
+
+    /**
+     * The user says a sender is not their bank: it is never read again, and the accounts
+     * that were made from its messages go with it.
+     */
+    fun excludeSender(sender: String) = viewModelScope.launch(Dispatchers.IO) {
+        val key = sender.trim().lowercase()
+        prefs.excludedSenders = prefs.excludedSenders + sender.trim()
+        prefs.senderAllowlist = prefs.senderAllowlist.filterNot { it.trim().lowercase() == key }.toSet()
+        accounts.value.filter { a -> a.senderIds.any { it.trim().lowercase() == key } }
+            .forEach { store.deleteAccount(it.id) }
+        Verbose.info(R.string.log_sender_excluded, sender)
+        Verbose.flush()
+    }
+
+    /** A bank the first read missed: its messages are read from now on. */
+    fun includeSender(sender: String) {
+        val key = sender.trim().lowercase()
+        prefs.excludedSenders = prefs.excludedSenders.filterNot { it.trim().lowercase() == key }.toSet()
+        prefs.senderAllowlist = prefs.senderAllowlist + sender.trim()
+        Verbose.info(R.string.log_sender_included, sender)
+        Verbose.flush()
+    }
+
+    /** The setup's accounts step after a sender was added: read again, then back here. */
+    fun rereadForSetup() {
+        setupJob?.cancel()
+        _setupStep.value = SetupStep.READING
+        setupJob = viewModelScope.launch {
+            scanState.first { it !is ScanState.Running }
+            startScan(showSheet = false, full = true)
+            scanState.first { it !is ScanState.Running }
+            _setupStep.value = SetupStep.ACCOUNTS
+        }
+    }
+
+    /**
+     * Review's "this is money out" outside the setup: the same lesson, about the whole
+     * template, and a read of the inbox so every message like it is answered at once.
+     */
+    fun teach(item: ReviewItem, kind: MessageKind) = viewModelScope.launch(Dispatchers.IO) {
+        store.setLabel(Skeleton.of(item.sender, item.body), kind)
+        Verbose.ok(
+            R.string.log_taught,
+            item.sender,
+            Verbose.str(
+                when (kind) {
+                    MessageKind.OUT -> R.string.log_word_out
+                    MessageKind.IN -> R.string.log_word_in
+                    MessageKind.TRANSFER -> R.string.label_transfer
+                    MessageKind.NONE -> R.string.kind_none
+                }
+            ),
+            0,
+        )
+        Verbose.flush()
+        startScan(showSheet = false, full = true)
     }
 
     fun addManual(

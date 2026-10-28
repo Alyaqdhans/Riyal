@@ -1,10 +1,9 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 
 package com.alyaqdhan.riyal.ui.screens
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -107,32 +107,32 @@ fun UpdatesScreen(vm: MainViewModel, onBack: () -> Unit, onOpenChangelog: () -> 
                 modifier = Modifier.padding(16.dp),
             )
             ListItem(
-                headlineContent = { Text(stringResource(R.string.upd_check_on_start)) },
+                checked = checkOnStart,
+                onCheckedChange = { vm.setCheckOnStart(it) },
                 supportingContent = { Text(stringResource(R.string.upd_check_on_start_detail)) },
                 leadingContent = { Icon(painterResource(R.drawable.ic_sym_system_update), contentDescription = null) },
-                trailingContent = { Switch(checked = checkOnStart, onCheckedChange = { vm.setCheckOnStart(it) }) },
-            )
+                trailingContent = { Switch(checked = checkOnStart, onCheckedChange = null) },
+            ) { Text(stringResource(R.string.upd_check_on_start)) }
             ListItem(
-                headlineContent = { Text(stringResource(R.string.upd_beta)) },
+                checked = includeBeta,
+                onCheckedChange = { vm.setIncludeBeta(it, version) },
                 supportingContent = { Text(stringResource(R.string.upd_beta_detail)) },
                 leadingContent = { Icon(painterResource(R.drawable.ic_sym_science), contentDescription = null) },
-                trailingContent = { Switch(checked = includeBeta, onCheckedChange = { vm.setIncludeBeta(it, version) }) },
-            )
+                trailingContent = { Switch(checked = includeBeta, onCheckedChange = null) },
+            ) { Text(stringResource(R.string.upd_beta)) }
             ListItem(
-                headlineContent = { Text(stringResource(R.string.upd_changelog)) },
+                onClick = onOpenChangelog,
                 supportingContent = { Text(stringResource(R.string.upd_changelog_detail)) },
                 leadingContent = { Icon(painterResource(R.drawable.ic_sym_history), contentDescription = null) },
                 trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                modifier = Modifier.clickable(onClick = onOpenChangelog),
-            )
+            ) { Text(stringResource(R.string.upd_changelog)) }
             if (skipped.isNotEmpty()) {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.upd_skipped)) },
                     supportingContent = { Text(skipped.sorted().joinToString(", ")) },
                     trailingContent = {
                         TextButton(onClick = { vm.clearSkippedUpdates() }) { Text(stringResource(R.string.action_clear)) }
                     },
-                )
+                ) { Text(stringResource(R.string.upd_skipped)) }
             }
             Text(
                 stringResource(R.string.upd_privacy),

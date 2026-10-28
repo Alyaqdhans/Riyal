@@ -1,8 +1,20 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 
 package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.ui.res.painterResource
+import com.alyaqdhan.riyal.data.AccountKind
+import com.alyaqdhan.riyal.data.Banks
+import com.alyaqdhan.riyal.ui.compose.iconFor
+import com.alyaqdhan.riyal.ui.compose.labelFor
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -310,8 +322,13 @@ private fun AccountCard(
     }
 }
 
+/**
+ * Everything about one account, in one dialog: what to call it, which bank and what
+ * sort of account it is, what is in it, which digits and senders route messages to it.
+ * The setup's accounts step opens it too.
+ */
 @Composable
-private fun AccountEditorDialog(
+internal fun AccountEditorDialog(
     account: Account,
     isNew: Boolean,
     onSave: (Account) -> Unit,
@@ -324,6 +341,7 @@ private fun AccountEditorDialog(
     var currency by remember { mutableStateOf(account.currency) }
     var senders by remember { mutableStateOf(account.senderIds.joinToString(", ")) }
     var archived by remember { mutableStateOf(account.archived) }
+    var kind by remember { mutableStateOf(account.kind) }
     var balance by remember {
         mutableStateOf(
             if (account.openingBalanceMinor == 0L && account.needsBalance) ""
@@ -356,12 +374,24 @@ private fun AccountEditorDialog(
                     },
                     singleLine = true,
                 )
-                OutlinedTextField(
-                    value = bankName,
-                    onValueChange = { bankName = it },
-                    label = { Text(stringResource(R.string.label_bank)) },
-                    singleLine = true,
-                )
+                BankField(value = bankName, onValueChange = { bankName = it })
+                Text(stringResource(R.string.acct_kind), style = MaterialTheme.typography.labelLarge)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AccountKind.entries.forEach { option ->
+                        FilterChip(
+                            selected = kind == option,
+                            onClick = { kind = option },
+                            label = { Text(stringResource(labelFor(option))) },
+                            leadingIcon = {
+                                Icon(
+                                    painterResource(iconFor(option)),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            },
+                        )
+                    }
+                }
                 OutlinedTextField(
                     value = balance,
                     onValueChange = { balance = it },
@@ -445,6 +475,7 @@ private fun AccountEditorDialog(
                             senderIds = senders.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet(),
                             archived = archived,
                             needsBalance = false,
+                            kind = kind,
                         )
                     )
                 },
@@ -477,3 +508,45 @@ private fun blankAccount(currency: String) = Account(
     color = Categories.PALETTE.random(),
     needsBalance = true,
 )
+
+/**
+ * The bank, typed or picked: the stock editable dropdown, suggesting the banks the app
+ * knows by name as the user types, and taking any other name as it is.
+ */
+@Composable
+private fun BankField(value: String, onValueChange: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val suggestions = remember(value) {
+        Banks.KNOWN.filter { value.isBlank() || it.contains(value.trim(), ignoreCase = true) }
+    }
+    ExposedDropdownMenuBox(expanded = expanded && suggestions.isNotEmpty(), onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {
+                onValueChange(it)
+                expanded = true
+            },
+            label = { Text(stringResource(R.string.label_bank)) },
+            leadingIcon = { Icon(painterResource(R.drawable.ic_sym_account_balance), contentDescription = null) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded && suggestions.isNotEmpty(),
+            onDismissRequest = { expanded = false },
+        ) {
+            suggestions.forEach { bank ->
+                DropdownMenuItem(
+                    text = { Text(Account.bankLabel(bank)) },
+                    onClick = {
+                        onValueChange(bank)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}

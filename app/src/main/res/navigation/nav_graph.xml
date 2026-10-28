@@ -54,6 +54,11 @@
     </fragment>
 
     <fragment
+        android:id="@+id/setupFragment"
+        android:name="com.alyaqdhan.riyal.ui.nav.SetupFragment"
+        android:label="@string/setup_title" />
+
+    <fragment
         android:id="@+id/updatesFragment"
         android:name="com.alyaqdhan.riyal.ui.nav.UpdatesFragment"
         android:label="@string/upd_title" />

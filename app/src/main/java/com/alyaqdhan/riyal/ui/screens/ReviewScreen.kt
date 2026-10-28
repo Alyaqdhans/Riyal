@@ -54,6 +54,7 @@ import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Direction
+import com.alyaqdhan.riyal.data.MessageKind
 import com.alyaqdhan.riyal.data.MsgTemplate
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.reasonText
@@ -131,6 +132,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
     val dismissedFuture = stringResource(R.string.review_dismissed_future)
     val dismissedOne = stringResource(R.string.review_dismissed_one)
     val undo = stringResource(R.string.action_undo)
+    val taught = stringResource(R.string.review_taught)
 
     Scaffold(
         topBar = {
@@ -231,14 +233,9 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                             item = item,
                             rememberDefault = vm.prefs.smartRules,
                             onResolve = { learn -> resolving = Resolving(item, learn) },
-                            onDecide = { direction, word ->
-                                if (word != null) vm.learnKeyword(word, direction)
-                                resolving = Resolving(
-                                    item = item,
-                                    learnSimilar = false,
-                                    type = if (direction == Direction.EXPENSE) TxnType.EXPENSE
-                                    else TxnType.INCOME,
-                                )
+                            onTeach = { kind ->
+                                vm.teach(item, kind)
+                                scope.launch { snackbar.showSnackbar(taught) }
                             },
                             onDismiss = { alsoSimilar ->
                                 val similar = if (alsoSimilar) {
@@ -421,7 +418,7 @@ private fun ReviewCard(
     item: ReviewItem,
     rememberDefault: Boolean,
     onResolve: (learnSimilar: Boolean) -> Unit,
-    onDecide: (direction: Direction, learnWord: String?) -> Unit,
+    onTeach: (MessageKind) -> Unit,
     onDismiss: (alsoSimilar: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -481,26 +478,6 @@ private fun ReviewCard(
                     indication = null,
                 ) { expanded = !expanded },
             )
-            // The word is offered, never taken. A gate keyword decides what the app
-            // reads at all, so adopting one on the evidence of a single message is the
-            // user's call and starts unticked.
-            var learnWord by remember { mutableStateOf<String?>(null) }
-            if (item.directionOnly && item.suggestedWords.isNotEmpty()) {
-                Text(
-                    stringResource(R.string.review_learn_word),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    item.suggestedWords.take(2).forEach { word ->
-                        FilterChip(
-                            selected = learnWord == word,
-                            onClick = { learnWord = if (learnWord == word) null else word },
-                            label = { Text(stringResource(R.string.review_learn_word_chip, word)) },
-                        )
-                    }
-                }
-            }
             var rememberChoice by remember { mutableStateOf(rememberDefault) }
             if (!item.directionOnly) {
                 Row(
@@ -520,21 +497,25 @@ private fun ReviewCard(
                     )
                 }
             }
-            // One question, two answers. Everything else about the record is already
-            // known, so this is the whole decision.
+            // One question, and the answer is about every message written like this
+            // one: it teaches the kind, and the inbox is read again with it, so the
+            // others like it are answered in the same moment.
             if (item.directionOnly) {
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     FilledTonalButton(
-                        onClick = { onDecide(Direction.EXPENSE, learnWord) },
+                        onClick = { onTeach(MessageKind.OUT) },
                         modifier = Modifier.weight(1f),
                     ) { Text(stringResource(R.string.label_money_out)) }
                     FilledTonalButton(
-                        onClick = { onDecide(Direction.INCOME, learnWord) },
+                        onClick = { onTeach(MessageKind.IN) },
                         modifier = Modifier.weight(1f),
                     ) { Text(stringResource(R.string.label_money_in)) }
+                }
+                TextButton(onClick = { onTeach(MessageKind.NONE) }) {
+                    Text(stringResource(R.string.setup_kind_none))
                 }
             }
             Row(

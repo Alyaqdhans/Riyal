@@ -98,7 +98,7 @@ private val settingsDayFmt: DateTimeFormatter get() = Dates.pattern("d MMM uuuu"
  * used to sit under every row is behind the (i) instead, because a screen where every
  * setting explains itself at rest has to be read rather than scanned. The few
  * explanations still on show are the ones describing *this* state rather than what a
- * control would do - a fresh-start floor, an allowlist that would match nothing.
+ * control would do - such as a fresh-start floor.
  */
 @Composable
 fun SettingsScreen(
@@ -109,6 +109,7 @@ fun SettingsScreen(
     onBackup: () -> Unit,
     onRestore: () -> Unit,
     onOpenUpdates: () -> Unit,
+    onOpenSetup: () -> Unit,
 ) {
     val context = LocalContext.current
     val prefs = vm.prefs
@@ -116,24 +117,15 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
 
     val hasPerm by vm.hasSmsPermission.collectAsState()
-    val knownSenders by vm.senders.collectAsState()
     val rules by vm.rules.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val budgets by vm.budgets.collectAsState()
     val txns by vm.txns.collectAsState()
     val lastSummary by vm.lastSummary.collectAsState()
 
-    var expenseKw by remember { mutableStateOf(prefs.expenseKeywords) }
-    var incomeKw by remember { mutableStateOf(prefs.incomeKeywords) }
-    var newExpenseKw by remember { mutableStateOf("") }
-    var newIncomeKw by remember { mutableStateOf("") }
     var rangeMonths by remember { mutableStateOf(prefs.scanRangeMonths) }
     var freshStart by remember { mutableStateOf(prefs.scanSinceMillis) }
     var currency by remember { mutableStateOf(prefs.defaultCurrency) }
-    var senderFilter by remember { mutableStateOf(prefs.senderFilterEnabled) }
-    var allowlist by remember { mutableStateOf(prefs.senderAllowlist) }
-    var newSender by remember { mutableStateOf("") }
-    var bankOnly by remember { mutableStateOf(prefs.bankSendersOnly) }
     var scanOnLaunch by remember { mutableStateOf(prefs.scanOnLaunch) }
     var smartRules by remember { mutableStateOf(prefs.smartRules) }
     var budgetsEnabled by remember { mutableStateOf(prefs.budgetsEnabled) }
@@ -290,150 +282,16 @@ fun SettingsScreen(
                     )
                 }
 
-                ExpandLine(
-                    title = stringResource(R.string.set_gate_keywords),
-                    value = stringResource(
-                        R.string.set_keyword_counts,
-                        expenseKw.size,
-                        incomeKw.size,
-                    ),
-                    detail = stringResource(R.string.set_help_keywords),
-                ) {
-                    Text(
-                        stringResource(R.string.label_money_out),
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                    KeywordChips(expenseKw) { kw ->
-                        expenseKw = expenseKw - kw
-                        prefs.expenseKeywords = expenseKw
-                        note(R.string.log_note_kw_removed_out, kw)
-                    }
-                    AddKeywordRow(
-                        value = newExpenseKw,
-                        onValueChange = { newExpenseKw = it },
-                        onAdd = {
-                            val kw = newExpenseKw.trim().lowercase()
-                            if (kw.isNotEmpty()) {
-                                expenseKw = expenseKw + kw
-                                prefs.expenseKeywords = expenseKw
-                                note(R.string.log_note_kw_added_out, kw)
-                            }
-                            newExpenseKw = ""
-                        },
-                    )
-                    Text(
-                        stringResource(R.string.label_money_in),
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                    KeywordChips(incomeKw) { kw ->
-                        incomeKw = incomeKw - kw
-                        prefs.incomeKeywords = incomeKw
-                        note(R.string.log_note_kw_removed_in, kw)
-                    }
-                    AddKeywordRow(
-                        value = newIncomeKw,
-                        onValueChange = { newIncomeKw = it },
-                        onAdd = {
-                            val kw = newIncomeKw.trim().lowercase()
-                            if (kw.isNotEmpty()) {
-                                incomeKw = incomeKw + kw
-                                prefs.incomeKeywords = incomeKw
-                                note(R.string.log_note_kw_added_in, kw)
-                            }
-                            newIncomeKw = ""
-                        },
-                    )
-                    TextButton(onClick = {
-                        prefs.resetKeywords()
-                        expenseKw = prefs.expenseKeywords
-                        incomeKw = prefs.incomeKeywords
-                        note(R.string.log_note_kw_reset)
-                    }) { Text(stringResource(R.string.set_reset_defaults)) }
-                }
-
-                ExpandLine(
-                    title = stringResource(R.string.set_who_is_read),
-                    value = senderSummary(bankOnly, senderFilter, allowlist.size),
-                    detail = stringResource(R.string.set_help_who_is_read),
-                ) {
-                    SwitchLine(
-                        title = stringResource(R.string.set_bank_only),
-                        checked = bankOnly,
-                        onCheckedChange = {
-                            bankOnly = it
-                            prefs.bankSendersOnly = it
-                            note(if (it) R.string.log_note_bank_only_on else R.string.log_note_bank_only_off)
-                        },
-                        detail = stringResource(R.string.set_help_bank_only),
-                    )
-                    SwitchLine(
-                        title = stringResource(R.string.set_only_approved),
-                        checked = senderFilter,
-                        onCheckedChange = {
-                            senderFilter = it
-                            prefs.senderFilterEnabled = it
-                            note(if (it) R.string.log_note_allowlist_on else R.string.log_note_allowlist_off)
-                        },
-                        detail = stringResource(R.string.set_help_only_approved),
-                    )
-                    if (senderFilter || bankOnly) {
-                        if (allowlist.isEmpty()) {
-                            Text(
-                                stringResource(
-                                    if (senderFilter) R.string.set_no_approved
-                                    else R.string.set_no_extra_approved
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (senderFilter) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        } else {
-                            KeywordChips(allowlist) { sender ->
-                                allowlist = allowlist - sender
-                                prefs.senderAllowlist = allowlist
-                                note(R.string.log_note_sender_removed, sender)
-                            }
-                        }
-                        // Add a sender by name directly, for a bank whose ID hasn't shown up
-                        // in the inbox yet (or a contact number you know is a bank).
-                        AddKeywordRow(
-                            value = newSender,
-                            onValueChange = { newSender = it },
-                            label = stringResource(R.string.set_sender_name),
-                            onAdd = {
-                                val s = newSender.trim()
-                                if (s.isNotEmpty() && s !in allowlist) {
-                                    allowlist = allowlist + s
-                                    prefs.senderAllowlist = allowlist
-                                    note(R.string.log_note_sender_added_by_name, s)
-                                }
-                                newSender = ""
-                            },
-                        )
-                        val suggestions = remember(knownSenders, allowlist) {
-                            (knownSenders - allowlist).sorted().take(12)
-                        }
-                        if (suggestions.isNotEmpty()) {
-                            Text(
-                                stringResource(R.string.set_seen_in_inbox),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                suggestions.forEach { sender ->
-                                    AssistChip(
-                                        onClick = {
-                                            allowlist = allowlist + sender
-                                            prefs.senderAllowlist = allowlist
-                                            note(R.string.log_note_sender_approved, sender)
-                                        },
-                                        label = { Text(sender) },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+                // What used to be here - the lists of words that decide a message's
+                // direction, and of senders allowed to be read - was a set of fixed rules
+                // the user had to maintain. The setup replaces both: it learns how each
+                // bank writes from its own balances and from a few answers, and its
+                // accounts step is where a sender is added or turned away.
+                NavLine(
+                    title = stringResource(R.string.set_teach),
+                    detail = stringResource(R.string.set_teach_detail),
+                    onClick = onOpenSetup,
+                )
 
                 // Progress belongs on the screen that has the button. This row used to
                 // start a scan whose sheet only Home and Activity rendered, so the work
@@ -765,15 +623,6 @@ private fun rangeLabel(months: Int): String = when (months) {
     else -> stringResource(R.string.set_range_months, months)
 }
 
-@Composable
-private fun senderSummary(bankOnly: Boolean, allowlistOn: Boolean, approved: Int): String = when {
-    allowlistOn && approved == 0 -> stringResource(R.string.set_senders_nobody)
-    allowlistOn -> counted(R.plurals.count_approved, approved)
-    bankOnly && approved > 0 -> stringResource(R.string.set_senders_banks_plus, approved)
-    bankOnly -> stringResource(R.string.set_senders_banks_only)
-    else -> stringResource(R.string.set_senders_any)
-}
-
 // ─────────────────────────── one line per row ───────────────────────────
 
 /**
@@ -1067,52 +916,6 @@ private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> U
                 modifier = Modifier.padding(bottom = 4.dp),
             )
             content()
-        }
-    }
-}
-
-@Composable
-private fun KeywordChips(items: Set<String>, onRemove: (String) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items.forEach { item ->
-            InputChip(
-                selected = false,
-                onClick = {},
-                label = { Text(item) },
-                trailingIcon = {
-                    Icon(
-                        Icons.Filled.Close,
-                        contentDescription = stringResource(R.string.set_remove_item, item),
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clickable { onRemove(item) },
-                    )
-                },
-            )
-        }
-    }
-}
-
-@Composable
-private fun AddKeywordRow(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onAdd: () -> Unit,
-    label: String? = null,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(label ?: stringResource(R.string.set_add_keyword)) },
-            singleLine = true,
-            modifier = Modifier.weight(1f),
-        )
-        FilledTonalButton(onClick = onAdd, enabled = value.isNotBlank()) {
-            Text(stringResource(R.string.action_add))
         }
     }
 }

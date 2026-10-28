@@ -1121,6 +1121,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         put("open", a.openingBalanceMinor); put("openAt", a.openingAtMillis)
         put("senders", JSONArray().apply { a.senderIds.forEach { put(it) } })
         put("color", a.color); put("archived", a.archived); put("needsBal", a.needsBalance)
+        put("kind", a.kind.name)
     }
 
     /**
@@ -1143,6 +1144,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         color = o.optInt("color", 0),
         archived = o.optBoolean("archived", false),
         needsBalance = o.optBoolean("needsBal", false),
+        kind = runCatching { AccountKind.valueOf(o.optString("kind")) }.getOrDefault(AccountKind.CURRENT),
     )
 
     private fun budgetToJson(b: BudgetPlan) = JSONObject().apply {

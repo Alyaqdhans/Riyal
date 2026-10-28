@@ -175,6 +175,7 @@ class MainActivity : AppCompatActivity() {
             R.id.categoryDetailFragment,
             R.id.updatesFragment,
             R.id.changelogFragment,
+            R.id.setupFragment,
         )
     }
 }

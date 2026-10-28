@@ -60,6 +60,9 @@ object Banks {
     private fun matches(key: String, sender: String): Boolean =
         if (key.length <= 4) key in words(sender) else key in squash(sender)
 
+    /** Every bank this list can name, in the order a picker shows them. */
+    val KNOWN: List<String> get() = BRANDS.values.distinct().sorted()
+
     /** "BankMuscat", "Bank Dhofar", "بنك نزوى"… plus brands that omit the word "bank". */
     fun looksLikeBank(sender: String): Boolean {
         val s = squash(sender)

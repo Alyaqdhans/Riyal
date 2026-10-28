@@ -30,6 +30,7 @@ import com.alyaqdhan.riyal.ui.screens.NeedsCategoryScreen
 import com.alyaqdhan.riyal.ui.screens.OnboardingScreen
 import com.alyaqdhan.riyal.ui.screens.ReviewScreen
 import com.alyaqdhan.riyal.ui.screens.SettingsScreen
+import com.alyaqdhan.riyal.ui.screens.SetupScreen
 import com.alyaqdhan.riyal.ui.screens.TransactionsScreen
 import com.alyaqdhan.riyal.ui.screens.UpdatesScreen
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
@@ -92,6 +93,7 @@ class HomeFragment : ScreenFragment() {
             onOpenReview = { findNavController().navigate(R.id.reviewFragment) },
             onOpenAccounts = { findNavController().navigate(R.id.accountsFragment) },
             onOpenNeedsCategory = { findNavController().navigate(R.id.needsCategoryFragment) },
+            onOpenSetup = { findNavController().navigate(R.id.setupFragment) },
             // Settings is a tab rather than a pushed page, so this goes through the same
             // switch the toolbar uses: navigating to it directly would stack a second
             // copy on top of Home and leave Back going nowhere sensible.
@@ -136,6 +138,26 @@ class NeedsCategoryFragment : InnerFragment() {
     @Composable
     override fun Screen() {
         NeedsCategoryScreen(vm, onBack = { back() })
+    }
+}
+
+/**
+ * Teaching Riyal the user's banks. Reached straight after onboarding, from Home until it
+ * has been done once, and from Settings whenever the user wants to go through it again.
+ */
+class SetupFragment : InnerFragment() {
+
+    @Composable
+    override fun Screen() {
+        SetupScreen(vm, onFinished = {
+            val nav = findNavController()
+            if (nav.previousBackStackEntry != null) {
+                nav.popBackStack()
+            } else {
+                // Arrived from onboarding, which is gone from the stack: Home becomes the root.
+                nav.navigate(R.id.homeFragment, null, navOptions { popUpTo(R.id.setupFragment) { inclusive = true } })
+            }
+        })
     }
 }
 
@@ -302,6 +324,7 @@ class SettingsFragment : ScreenFragment() {
             onOpenAccounts = { findNavController().navigate(R.id.accountsFragment) },
             onOpenCategories = { findNavController().navigate(R.id.categoriesFragment) },
             onOpenUpdates = { findNavController().navigate(R.id.updatesFragment) },
+            onOpenSetup = { findNavController().navigate(R.id.setupFragment) },
             onExport = { exportCsv.launch("riyal-transactions.csv") },
             onBackup = { saveBackup.launch("riyal-backup-" + LocalDate.now() + ".json") },
             onRestore = { openBackup.launch(BACKUP_TYPES) },
@@ -350,13 +373,16 @@ class OnboardingFragment : ScreenFragment() {
         Verbose.flush()
     }
 
+    /**
+     * With messages to read, onboarding hands over to the setup, which reads them and
+     * asks about them. Without, there is nothing to set up yet, so Home it is.
+     */
     private fun finishOnboarding(startScan: Boolean) {
         vm.prefs.onboardingDone = true
         findNavController().navigate(
-            R.id.homeFragment,
+            if (startScan) R.id.setupFragment else R.id.homeFragment,
             null,
             navOptions { popUpTo(R.id.onboardingFragment) { inclusive = true } },
         )
-        if (startScan) vm.startScan(showSheet = false)
     }
 }

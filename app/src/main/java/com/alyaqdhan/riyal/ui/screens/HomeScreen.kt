@@ -75,6 +75,7 @@ fun HomeScreen(
     onOpenAccounts: () -> Unit,
     onOpenNeedsCategory: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSetup: () -> Unit,
 ) {
     val txns by vm.txns.collectAsState()
     val hasPerm by vm.hasSmsPermission.collectAsState()
@@ -85,6 +86,7 @@ fun HomeScreen(
     val budgetsOn by vm.budgetsOn.collectAsState()
     val needsCategory by vm.needsCategoryCount.collectAsState()
     val needsAccountCheck by vm.accountsNeedConfirming.collectAsState()
+    val setupDone by vm.setupDone.collectAsState()
     val pendingTransfers by vm.pendingTransfers.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
 
@@ -194,9 +196,23 @@ fun HomeScreen(
                 }
             }
 
+            // ── setup: offered until it has been done once. It is what teaches the app the
+            // user's banks, and it also covers what the accounts card below asks.
+            if (hasPerm && !setupDone) {
+                ActionCard(
+                    face = FaceStyle.NORMAL,
+                    mood = 0.6f,
+                    title = stringResource(R.string.home_setup_title),
+                    subtitle = stringResource(R.string.home_setup_subtitle),
+                    container = MaterialTheme.colorScheme.primaryContainer,
+                    content = MaterialTheme.colorScheme.onPrimaryContainer,
+                    onClick = onOpenSetup,
+                )
+            }
+
             // ── accounts: balances read from SMS are a first guess until the user says
             // otherwise, so this asks once and then gets out of the way for good.
-            if (needsAccountCheck) {
+            if (needsAccountCheck && setupDone) {
                 ActionCard(
                     face = FaceStyle.CONFUSED,
                     mood = 0.3f,
