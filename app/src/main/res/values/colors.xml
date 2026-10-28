@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="splash_background">#E9F5F5</color>
+    <!-- The launcher icon's teal, for the splash screen's icon circle. -->
+    <color name="brand_teal">#00796B</color>
 </resources>
