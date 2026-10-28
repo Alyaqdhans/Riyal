@@ -16,12 +16,14 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
+import kotlinx.coroutines.launch
 
 /**
  * A record row that is archived by swiping it away, either way: Material's own
@@ -40,10 +42,17 @@ fun SwipeableTxnRow(
     content: @Composable () -> Unit,
 ) {
     val state = rememberSwipeToDismissBoxState()
+    val scope = rememberCoroutineScope()
     SwipeToDismissBox(
         state = state,
         modifier = modifier,
-        onDismiss = { onArchive() },
+        onDismiss = {
+            onArchive()
+            // A list that hides archived records drops this row and the reset never
+            // runs. One that keeps them - a category's page - gets the row back in
+            // place, rather than left swiped off the edge.
+            scope.launch { state.reset() }
+        },
         backgroundContent = {
             val toStart = state.dismissDirection == SwipeToDismissBoxValue.EndToStart
             Box(

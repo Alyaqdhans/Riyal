@@ -1028,7 +1028,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val labels = store.labels.value
         val candidates = store.templates.value
             .filter { it.key !in labels && it.guess != null && it.count > 0 }
-            .map { Tutor.Candidate(it.key, it.sender, it.count, it.confidence) }
+            .map {
+                // A bank's codes and offers are often its most frequent message, but a
+                // misreading there costs no money; the questions start with what does.
+                val weight = if (it.guess == MessageKind.NONE) (it.count / 4).coerceAtLeast(1) else it.count
+                Tutor.Candidate(it.key, it.sender, weight, it.confidence)
+            }
         tutor = Tutor(candidates, prefs.teachRight, prefs.teachWrong)
         _setupStep.value = SetupStep.QUESTIONS
         nextQuestion()

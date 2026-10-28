@@ -322,10 +322,17 @@ class ScanEngine(
         if (provenTemplates > 0) Verbose.scan(R.string.scanlog_proven_kinds, provenTemplates)
         if (labels.isNotEmpty()) Verbose.scan(R.string.scanlog_taught_kinds, labels.size)
 
+        // A short pass sees a day or two of messages, too few to prove a template on its
+        // own; what earlier passes proved still holds, so it is used when this one could
+        // not prove anything itself.
+        val earlier = store.templates.value.associateBy { it.key }
         for (r in reads) {
             val msg = r.msg
             val msgId = r.id
-            val result = decide(r, labels[r.key], proven[r.id], templates[r.key], parser)
+            val template = templates[r.key]?.takeIf { TemplateInference.isProven(it) }
+                ?: earlier[r.key]?.takeIf { TemplateInference.isProven(it) }
+                ?: templates[r.key]
+            val result = decide(r, labels[r.key], proven[r.id], template, parser)
             if (labels[r.key]?.kind == MessageKind.TRANSFER && result is SmsParser.Result.Parsed) {
                 taughtTransfers += msgId
             }
