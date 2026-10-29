@@ -142,7 +142,9 @@ is attached there.
   their caps, laid out like top spending, the rest a tap away. A period without one
   offers last period's caps in one tap. Its editor sets every cap at once: tap the
   categories to cap, type what each may spend, with what went on it the period before as
-  a guide, and Save; deleting the plan is at the end of the form.
+  a guide, and Save; deleting the plan is at the end of the form. Tapping a category
+  leaves the keyboard closed, and the keyboard's Next steps down the amounts, Done on
+  the last.
 - **Dates are tiles.** Every period choice - Home, Analysis, How far back, the welcome
   screen - is a sheet of equal tiles, each with an icon and the dates it covers.
 - Records are standard list rows with circular category icons. Swipe one open and tap

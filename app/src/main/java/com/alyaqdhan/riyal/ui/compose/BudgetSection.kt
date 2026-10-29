@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
@@ -42,7 +43,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -466,7 +467,9 @@ private fun BudgetEditor(
                 .map { (id, minor) -> id to Money.toMajor(minor, currency).stripTrailingZeros().toPlainString() }
         )
     }
-    var added by remember { mutableStateOf<String?>(null) }
+    // Each amount field's handle, so the keyboard's Next goes to the field below it
+    // rather than to the remove button beside it.
+    val fields = remember { mutableMapOf<String, FocusRequester>() }
     var confirmDelete by remember { mutableStateOf(false) }
     val spentBefore = remember(txns, before, currency) {
         categories.associate { it.id to Stats.categoryTotalIn(txns, it.id, before.start, before.endExclusive, currency) }
@@ -499,15 +502,13 @@ private fun BudgetEditor(
                             caps = caps.filter { it.first != c.id }
                         } else {
                             caps = caps + (c.id to "")
-                            added = c.id
                         }
                     },
                 )
-                caps.forEach { (id, text) ->
+                caps.forEachIndexed { index, (id, text) ->
                     key(id) {
-                        val focus = remember { FocusRequester() }
-                        // A category just tapped goes straight to its amount.
-                        LaunchedEffect(Unit) { if (id == added) focus.requestFocus() }
+                        val focus = fields.getOrPut(id) { FocusRequester() }
+                        val below = caps.getOrNull(index + 1)?.first
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -533,7 +534,12 @@ private fun BudgetEditor(
                                     null
                                 },
                                 singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                // Next while there is an amount below to fill, Done on the last.
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Decimal,
+                                    imeAction = if (below != null) ImeAction.Next else ImeAction.Done,
+                                ),
+                                keyboardActions = KeyboardActions(onNext = { below?.let { fields[it]?.requestFocus() } }),
                                 modifier = Modifier.weight(1f).focusRequester(focus),
                             )
                             IconButton(onClick = { caps = caps.filter { it.first != id } }) {
