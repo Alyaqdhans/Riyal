@@ -41,6 +41,8 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
+import com.alyaqdhan.riyal.ui.compose.MoneyText
+import com.alyaqdhan.riyal.ui.compose.MoneyAwareText
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.bidi
@@ -56,7 +58,6 @@ import com.alyaqdhan.riyal.ui.compose.title
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.TxnSort
-import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import com.alyaqdhan.riyal.ui.theme.successColor
 import kotlin.math.abs
@@ -137,7 +138,7 @@ fun CategoryDetailScreen(
             }
 
             item(key = "summary") {
-                Card(Modifier.fillMaxWidth().popIn()) {
+                Card(Modifier.fillMaxWidth()) {
                     Row(
                         Modifier.padding(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -145,8 +146,7 @@ fun CategoryDetailScreen(
                     ) {
                         CategoryBadge(categoryId, size = 56.dp)
                         Column(Modifier.weight(1f)) {
-                            Text(
-                                bidi(Money.format(total, currency)),
+                            MoneyText(total, currency,
                                 style = MaterialTheme.typography.headlineSmall,
                                 color = if (category.income) successColor() else MaterialTheme.colorScheme.onSurface,
                             )
@@ -179,8 +179,7 @@ fun CategoryDetailScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f),
                         )
-                        Text(
-                            bidi(Money.format(amount, currency)),
+                        MoneyText(amount, currency,
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -193,7 +192,6 @@ fun CategoryDetailScreen(
             if (inCategory.isEmpty()) {
                 item(key = "empty") {
                     EmptyState(
-                        style = FaceStyle.SLEEPY,
                         title = stringResource(R.string.cat_detail_empty_title, slice.title()),
                         subtitle = stringResource(R.string.cat_detail_empty_subtitle),
                     )
@@ -205,8 +203,8 @@ fun CategoryDetailScreen(
                     SwipeableTxnRow(
                         archived = txn.id in archivedIds,
                         onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
-                        onDelete = { removeForGood(vm, snackbar, scope, txn) },
-                        deleteLabel = deleteLabelFor(txn),
+                        onRemove = { removeForGood(vm, snackbar, scope, txn) },
+                                    removeLabel = removeLabelOf(txn),
                     ) {
                         TxnRow(txn, onClick = { editing = txn }, accounts = accounts)
                     }
@@ -265,7 +263,7 @@ private fun ComparisonLine(now: Long, before: Long, currency: String) {
             bidi(Money.format(before, currency)),
         )
     }
-    Text(
+    MoneyAwareText(
         text,
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,

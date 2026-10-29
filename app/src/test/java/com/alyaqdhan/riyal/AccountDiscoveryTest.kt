@@ -246,15 +246,242 @@ class AccountDiscoveryTest {
     @Test
     fun `a new account number at a bank we know is still a new account`() {
         // After a fresh start the accounts arrive one at a time, and the second one
-        // must not be swallowed by the first: the bank named a number we don't hold.
+        // must not be swallowed by the first: the bank named a number we don't hold,
+        // and named it again.
         val existing = AccountDiscovery.propose(
             listOf(obs("BankMuscat", "0019", 350_250, base, -12_500))
         )
         val added = AccountDiscovery.proposeMissing(
             existing,
-            listOf(obs("BankMuscat", "0038", 5_000, base + hours(6), -500))
+            listOf(
+                obs("BankMuscat", "0038", 5_000, base + hours(6), -500),
+                obs("BankMuscat", "0038", 4_500, base + hours(7), -500),
+            )
         )
         assertEquals("0038", added.single().last4)
+    }
+
+    @Test
+    fun `a number a bank we know quotes once is not an account yet`() {
+        // It is as likely a reference or the other party's account as a new account of
+        // yours; its message waits unassigned rather than founding one.
+        val existing = AccountDiscovery.propose(
+            listOf(obs("BankMuscat", "0019", 350_250, base, -12_500))
+        )
+        val one = obs("BankMuscat", "0038", 5_000, base + hours(6), -500)
+        assertTrue(AccountDiscovery.proposeMissing(existing, listOf(one)).isEmpty())
+        assertNull(AccountDiscovery.routeTo(existing, "BankMuscat", "0038"))
+    }
+
+    // ── the digits that are not an account ──
+
+    private fun seen(
+        tail: String?,
+        balance: Long,
+        at: Long,
+        signed: Long,
+        line: Int?,
+        accountId: String? = null,
+    ) = AccountDiscovery.Observation(
+        "BANK NIZWA", tail, "OMR", balance, base + hours(at), signed, line = line, accountId = accountId,
+    )
+
+    /** One account's balance line: purchases naming nothing, withdrawals naming the account, a reference. */
+    private val oneLine = listOf(
+        seen(null, 310_420, 1, -2_750, line = 1),
+        seen("005", 306_420, 2, -4_000, line = 1),
+        seen(null, 304_820, 3, -1_600, line = 1),
+        seen("4410", 301_830, 4, -2_990, line = 1),
+        seen("005", 299_830, 5, -2_000, line = 1),
+        seen("7716", 298_730, 6, -1_100, line = 1),
+    )
+
+    @Test
+    fun `numbers on one balance line other than the account's are not accounts`() {
+        // One Bank Nizwa account came back as seven: every reference and every other
+        // party's number founded an account of its own.
+        val accounts = AccountDiscovery.propose(oneLine)
+        assertEquals(1, accounts.size)
+        assertEquals("005", accounts.single().last4)
+        // The newest balance on the line opens it.
+        assertEquals(298_730L, accounts.single().openingBalanceMinor)
+    }
+
+    @Test
+    fun `two balance lines that each quote their own number are two accounts`() {
+        val savings = listOf(
+            seen("0038", 900_000, 2, 10_000, line = 2),
+            seen("0038", 910_000, 4, 10_000, line = 2),
+        )
+        val accounts = AccountDiscovery.propose(oneLine + savings)
+        assertEquals(setOf("005", "0038"), accounts.map { it.last4 }.toSet())
+    }
+
+    @Test
+    fun `a reference after the last stored record lands in the account it belongs to`() {
+        // An incremental pass: the account's last stored record is read back, and the
+        // new message continues its balance while quoting someone else's number.
+        val existing = AccountDiscovery.propose(oneLine)
+        val id = existing.single().id
+        val observations = listOf(
+            seen("005", 299_830, 5, -2_000, line = 9, accountId = id),
+            seen("9182", 297_830, 7, -2_000, line = 9),
+        )
+        assertTrue(AccountDiscovery.proposeMissing(existing, observations).isEmpty())
+        assertEquals(id, AccountDiscovery.lineAccounts(existing, observations)[9])
+    }
+
+    @Test
+    fun `an account made from a reference is folded back into the real one`() {
+        val main = AccountDiscovery.propose(oneLine).single()
+        val phantom = main.copy(id = "acc_phantom", last4 = "4410")
+        // Named or not: the bank's messages, by majority, say it was never an account.
+        val named = main.copy(id = "acc_named", last4 = "7716", name = "Mum's")
+        val folded = AccountDiscovery.foreignAccounts(listOf(main, phantom, named), oneLine)
+        assertEquals(mapOf("acc_phantom" to main.id, "acc_named" to main.id), folded)
+    }
+
+    @Test
+    fun `a bank's only account made from where its number starts takes the number's end`() {
+        val withHead = oneLine.map { if (it.accountTail == "005") it.copy(head = "00350") else it }
+        val lone = AccountDiscovery.propose(withHead).single().copy(last4 = "0350")
+        assertEquals(mapOf(lone.id to "005"), AccountDiscovery.renumbered(listOf(lone), withHead))
+    }
+
+    @Test
+    fun `a number a few messages quote beside the bank's main one folds into it`() {
+        // Two refunds said "0350" on the main account's own balance line.
+        val main = AccountDiscovery.propose(oneLine).single()
+        val stray = main.copy(id = "acc_stray", last4 = "0350", name = "Named")
+        val few = List(2) { seen("0350", 300_000L + it, 10L + it, 1_000, line = 1) }
+        val many = oneLine + List(30) { seen("005", 200_000L + it, 20L + it, -100, line = 1) }
+        assertEquals(mapOf("acc_stray" to main.id), AccountDiscovery.minorityFolds(listOf(main, stray), many + few))
+        // A rarely used account with a balance line of its own, in use alongside, stays.
+        val ownLine = List(3) { seen("0350", 50_000L - it, 25L + it, -10, line = 9) }
+        assertTrue(AccountDiscovery.minorityFolds(listOf(main, stray), many + ownLine).isEmpty())
+        // Many transfers to someone's "0350", on the main account's balance line, fold.
+        val transfers = List(12) { seen("0350", 210_000L + it, 21L + it, -500, line = 1) }
+        assertEquals(mapOf("acc_stray" to main.id), AccountDiscovery.minorityFolds(listOf(main, stray), many + transfers))
+        // A line of its own, but all before the main account's first message: the same
+        // account under an older number.
+        val older = List(3) { seen("0350", 50_000L - it, -200L + it, -10, line = 9) }
+        assertEquals(mapOf("acc_stray" to main.id), AccountDiscovery.minorityFolds(listOf(main, stray), many + older))
+    }
+
+    // ── which group of a masked number is the account ──
+
+    private fun masked(vararg groups: String, at: Long, line: Int?) =
+        seen(groups.last().takeLast(4), 100_000L - at, at, -100, line = line).copy(groups = groups.toList())
+
+    private fun settled(observations: List<AccountDiscovery.Observation>) =
+        AccountDiscovery.resolveMaskedTails(observations).mapNotNull { it.accountTail }.toSet()
+
+    @Test
+    fun `one account written every which way is the group all its numbers share`() {
+        // Bank Nizwa's formats, with made-up times: before a renumbering "002…001",
+        // after it "001 … 00350" spaced and unspaced. One balance line runs through.
+        val older = List(4) { masked("002", "001", at = it.toLong(), line = 1) }
+        val newer = List(4) { masked("001", "00350", at = 10L + it, line = 1) }
+        assertEquals(setOf("001"), settled(older + newer))
+        // The balance line broken at the renumbering: two runs sharing "001" that
+        // never overlap are still one account.
+        val split = older + newer.map { it.copy(line = 2) }
+        assertEquals(setOf("001"), settled(split))
+    }
+
+    @Test
+    fun `an account an earlier build made from the branch group folds into the real one`() {
+        val observed = AccountDiscovery.resolveMaskedTails(
+            List(4) { masked("005", "00350", at = it.toLong(), line = 1) }
+        )
+        val main = AccountDiscovery.propose(observed).single()
+        val stale = main.copy(id = "acc_stale", last4 = "0350")
+        assertEquals("005", main.last4)
+        assertEquals(mapOf("acc_stale" to main.id), AccountDiscovery.headFolds(listOf(main, stale), observed))
+    }
+
+    @Test
+    fun `two accounts at one branch are told apart by their ends`() {
+        val a = List(4) { masked("001", "00350", at = it.toLong() * 2, line = 1) }
+        val b = List(4) { masked("002", "00350", at = it.toLong() * 2 + 1, line = 2) }
+        val tails = AccountDiscovery.resolveMaskedTails(a + b).map { it.accountTail }
+        assertEquals(List(4) { "001" } + List(4) { "002" }, tails)
+    }
+
+    @Test
+    fun `an account only ever written one way is known by its shorter group`() {
+        assertEquals(setOf("001"), settled(List(3) { masked("001", "00350", at = it.toLong(), line = 1) }))
+        assertEquals(setOf("0019"), settled(List(3) { masked("0427", "0019", at = it.toLong(), line = 1) }))
+    }
+
+    @Test
+    fun `someone else's number on an account's balance line is left to itself`() {
+        // A transfer quoting only the other party's number, at another branch, sits on
+        // the account's balance line by the balance it carries. Joining the two left an
+        // account whose numbers share no group, and choosing between none stopped the scan.
+        val own = List(4) { masked("0350", "0019", at = it.toLong() * 2, line = 1) }
+        val theirs = masked("0630", "0022", at = 3L, line = 1)
+        assertEquals(List(4) { "0019" } + "0022", AccountDiscovery.resolveMaskedTails(own + theirs).map { it.accountTail })
+        // Two numbers each sharing a different group with the line's own: nothing
+        // decides, so every number keeps the parser's answer.
+        val branch = masked("0350", "0777", at = 5L, line = 1)
+        val end = masked("0630", "0019", at = 7L, line = 1)
+        assertEquals(List(4) { "0019" } + "0777" + "0019", AccountDiscovery.resolveMaskedTails(own + branch + end).map { it.accountTail })
+    }
+
+    @Test
+    fun `a sender is one bank however it is spelled`() {
+        val main = AccountDiscovery.propose(oneLine).single()
+        val spelled = main.copy(senderIds = setOf("BankNizwa"))
+        assertEquals(main.id, AccountDiscovery.ownerOf(listOf(spelled), "BANK NIZWA", "005"))
+    }
+
+    @Test
+    fun `an account kept under the wrong digits by a merge takes the ones its messages end with`() {
+        // "001" merged into "0210" the wrong way round: one account, known by the branch.
+        val main = AccountDiscovery.propose(oneLine).single()
+        val wrong = main.copy(last4 = "0350", aliases = setOf("005"))
+        assertEquals(mapOf(main.id to "005"), AccountDiscovery.renumbered(listOf(wrong), oneLine))
+        // Its own digits still quoted: left as it is.
+        assertTrue(AccountDiscovery.renumbered(listOf(main.copy(aliases = setOf("4410"))), oneLine).isEmpty())
+    }
+
+    @Test
+    fun `an account made from where a masked number starts folds into where it ends`() {
+        // "0350" came from the start of "00350 ###### 005". Even named, and with no message
+        // left to say where it was opened, it was never an account.
+        val withHead = oneLine.map { if (it.accountTail == "005") it.copy(head = "00350") else it }
+        val main = AccountDiscovery.propose(withHead).single()
+        val phantom = main.copy(id = "acc_phantom", last4 = "0350", name = "Savings", openingAtMillis = base - hours(100))
+        assertEquals(mapOf("acc_phantom" to main.id), AccountDiscovery.foreignAccounts(listOf(main, phantom), withHead))
+        // A number some message does end with is an account of its own.
+        // A number some message does end with, with a balance of its own while the main
+        // account is in use, is an account of its own.
+        val quoted = withHead + seen("0350", 50_000, 3, -1_000, line = 2)
+        assertTrue(AccountDiscovery.foreignAccounts(listOf(main, phantom), quoted).isEmpty())
+    }
+
+    @Test
+    fun `an account read from a number no message quotes any more goes back to the real one`() {
+        // An earlier reading made "0350" out of "00350 ###### 005". Read properly, the
+        // message it was opened from belongs to 005, and nothing quotes 0350 at all.
+        val main = AccountDiscovery.propose(oneLine).single()
+        val founding = oneLine[1]
+        val misread = main.copy(
+            id = "acc_misread", last4 = "0350",
+            openingBalanceMinor = founding.balanceMinor!!, openingAtMillis = founding.atMillis + 1,
+        )
+        assertEquals(mapOf("acc_misread" to main.id), AccountDiscovery.foreignAccounts(listOf(main, misread), oneLine))
+        // An account with no such message, or one the user named, is left alone.
+        val other = misread.copy(id = "acc_other", openingAtMillis = base - hours(100))
+        assertTrue(AccountDiscovery.foreignAccounts(listOf(main, other), oneLine).isEmpty())
+    }
+
+    @Test
+    fun `digits folded into an account route to it from then on`() {
+        val account = account("a", "005", sender = "BANK NIZWA").copy(aliases = setOf("4410"))
+        assertEquals("a", AccountDiscovery.routeTo(listOf(account, account("b", "0038", "BANK NIZWA")), "BANK NIZWA", "4410"))
+        assertEquals("a", AccountDiscovery.ownerOf(listOf(account), "bank nizwa", "4410"))
     }
 
     @Test

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The one folder the FileProvider may hand to the installer: downloaded releases in
+     the app's private cache. Nothing else of the app's is reachable through it. -->
+<paths>
+    <cache-path
+        name="updates"
+        path="updates/" />
+</paths>

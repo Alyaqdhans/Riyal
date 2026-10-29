@@ -1,8 +1,32 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 
 package com.alyaqdhan.riyal.ui.screens
 
+import com.alyaqdhan.riyal.ui.compose.ActionButton
+import com.alyaqdhan.riyal.ui.compose.DeleteButton
+import com.alyaqdhan.riyal.ui.compose.MenuChoice
+import com.alyaqdhan.riyal.ui.compose.ChoiceMenu
 import androidx.compose.foundation.layout.Arrangement
+import com.alyaqdhan.riyal.ui.compose.popIn
+import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
+import com.alyaqdhan.riyal.ui.compose.toolbarSpace
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.Card
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.ui.res.painterResource
+import com.alyaqdhan.riyal.data.AccountKind
+import com.alyaqdhan.riyal.data.Banks
+import com.alyaqdhan.riyal.ui.compose.iconFor
+import com.alyaqdhan.riyal.ui.compose.labelFor
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,7 +49,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -55,23 +78,23 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Numerals
 import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Categories
+import com.alyaqdhan.riyal.ui.compose.MoneyText
 import com.alyaqdhan.riyal.ui.MainViewModel
-import com.alyaqdhan.riyal.ui.compose.CURRENCIES
-import com.alyaqdhan.riyal.ui.compose.DropdownField
+import com.alyaqdhan.riyal.ui.compose.CurrencyField
+import com.alyaqdhan.riyal.ui.compose.CurrencySign
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.bidi
 import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.HelpAction
-import com.alyaqdhan.riyal.ui.compose.popIn
-import com.alyaqdhan.riyal.ui.compose.pressBounce
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import com.alyaqdhan.riyal.ui.theme.successColor
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import com.alyaqdhan.riyal.ui.theme.legible
 
 private val asOfFmt: DateTimeFormatter get() = Dates.pattern("dd MMM uuuu, h:mm a")
 
@@ -83,7 +106,7 @@ private val asOfFmt: DateTimeFormatter get() = Dates.pattern("dd MMM uuuu, h:mm 
  * that and asking the user to vouch for the numbers before anything relies on them.
  */
 @Composable
-fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
+fun AccountsScreen(vm: MainViewModel, onBack: (() -> Unit)?) {
     val accounts by vm.accounts.collectAsState()
     val balances by vm.balances.collectAsState()
     val needsConfirming by vm.accountsNeedConfirming.collectAsState()
@@ -94,12 +117,15 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.acct_title)) },
+                // A tab has no way back; reached from somewhere, it does.
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                        )
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.action_back),
+                            )
+                        }
                     }
                 },
                 actions = { HelpAction(
@@ -114,7 +140,6 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
             if (accounts.isEmpty()) {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     EmptyState(
-                        style = FaceStyle.SLEEPY,
                         title = stringResource(R.string.acct_empty_title),
                         subtitle = stringResource(R.string.acct_empty_subtitle),
                     )
@@ -122,17 +147,18 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
                         Modifier.fillMaxWidth().padding(16.dp),
                         horizontalArrangement = Arrangement.Center,
                     ) {
-                        FilledTonalButton(
+                        ActionButton(
+                            text = stringResource(R.string.acct_add),
+                            icon = R.drawable.ic_sym_add,
                             onClick = { editing = blankAccount(vm.prefs.defaultCurrency) },
-                            modifier = Modifier.pressBounce(),
-                        ) { Text(stringResource(R.string.acct_add)) }
+                        )
                     }
                 }
                 return@Column
             }
 
             LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = toolbarSpace + 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (needsConfirming) {
@@ -155,10 +181,12 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
                     )
                 }
                 item(key = "add") {
-                    FilledTonalButton(
+                    ActionButton(
+                        text = stringResource(R.string.acct_add),
+                        icon = R.drawable.ic_sym_add,
                         onClick = { editing = blankAccount(vm.prefs.defaultCurrency) },
-                        modifier = Modifier.fillMaxWidth().pressBounce(),
-                    ) { Text(stringResource(R.string.acct_add)) }
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         }
@@ -178,24 +206,33 @@ fun AccountsScreen(vm: MainViewModel, onBack: () -> Unit) {
                 editing = null
             },
             onDismiss = { editing = null },
+            mergeTargets = mergeTargetsFor(account, accounts),
+            onMerge = { target ->
+                vm.mergeAccount(account, target)
+                editing = null
+            },
         )
     }
 
     confirmDelete?.let { account ->
+        val pop = rememberDialogPop()
         AlertDialog(
-            onDismissRequest = { confirmDelete = null },
+            onDismissRequest = { pop.leave { confirmDelete = null } },
+            modifier = Modifier.popIn(pop),
             title = {
                 Text(stringResource(R.string.delete_title, account.displayName))
             },
             text = { Text(stringResource(R.string.acct_delete_body)) },
             confirmButton = {
                 TextButton(onClick = {
-                    vm.deleteAccount(account.id)
-                    confirmDelete = null
-                }) { Text(stringResource(R.string.action_delete)) }
+                    pop.leave {
+                        vm.deleteAccount(account.id)
+                        confirmDelete = null
+                    }
+                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDelete = null }) {
+                TextButton(onClick = { pop.leave { confirmDelete = null } }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -208,14 +245,14 @@ private fun ConfirmBanner(count: Int, anyMissingBalance: Boolean, onConfirm: () 
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.primaryContainer,
-        modifier = Modifier.fillMaxWidth().popIn(),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Face(mood = 0.4f, style = FaceStyle.CONFUSED, modifier = Modifier.size(48.dp))
+                Icon(painterResource(R.drawable.ic_sym_account_balance), contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(32.dp))
                 Column {
                     Text(
                         stringResource(R.string.acct_confirm_title),
@@ -237,7 +274,8 @@ private fun ConfirmBanner(count: Int, anyMissingBalance: Boolean, onConfirm: () 
             }
             Button(
                 onClick = onConfirm,
-                modifier = Modifier.fillMaxWidth().pressBounce(),
+                modifier = Modifier.fillMaxWidth(),
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.acct_confirm_button)) }
         }
     }
@@ -257,8 +295,8 @@ private fun TotalRow(accounts: List<Account>, balances: Map<String, Long>) {
         )
         byCurrency.forEach { (currency, group) ->
             val total = group.sumOf { balances[it.id] ?: it.openingBalanceMinor }
-            Text(
-                bidi(Money.format(total, currency)),
+            MoneyText(total, currency,
+                roll = true,
                 style = MaterialTheme.typography.headlineSmall,
                 color = if (total < 0) MaterialTheme.colorScheme.error else successColor(),
             )
@@ -272,64 +310,66 @@ private fun AccountCard(
     balance: Long,
     onEdit: () -> Unit,
 ) {
-    // Two lines: which account, and what is in it. Everything else the card used to
-    // recite - the opening figure, the senders it reads, Edit and Delete - is in the
-    // editor this row opens, which is where it can actually be changed.
-    Surface(
-        onClick = onEdit,
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier
-            .fillMaxWidth()
-            .popIn()
-            .pressBounce(0.98f),
-    ) {
-        Row(
-            Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier
-                    .size(12.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Color(if (account.color != 0) account.color else Categories.colorFor("other"))
-                    ),
-            )
-            Column(Modifier.weight(1f)) {
-                Text(account.displayName, style = MaterialTheme.typography.titleMedium)
-                if (account.needsBalance) {
-                    Text(
-                        stringResource(R.string.acct_needs_balance),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary,
-                    )
-                }
-            }
-            Text(
-                bidi(Money.format(balance, account.currency)),
-                style = MaterialTheme.typography.titleMedium,
-                color = if (balance < 0) MaterialTheme.colorScheme.error else successColor(),
-            )
-        }
+    // Two lines: which account, and what is in it. Everything else - the opening figure,
+    // the senders it reads, Edit and Delete - is in the editor this row opens, which is
+    // where it can actually be changed.
+    Card(Modifier.fillMaxWidth()) {
+        ListItem(
+            onClick = onEdit,
+            leadingContent = {
+                Icon(
+                    painterResource(iconFor(account.kind)),
+                    contentDescription = null,
+                    tint = legible(Color(if (account.color != 0) account.color else Categories.colorFor("other"))),
+                )
+            },
+            supportingContent = {
+                Text(
+                    if (account.needsBalance) stringResource(R.string.acct_needs_balance)
+                    else stringResource(labelFor(account.kind)),
+                    color = if (account.needsBalance) MaterialTheme.colorScheme.tertiary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            trailingContent = {
+                MoneyText(
+                    balance,
+                    account.currency,
+                    roll = true,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (balance < 0) MaterialTheme.colorScheme.error else successColor(),
+                )
+            },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        ) { Text(account.displayName, style = MaterialTheme.typography.titleMedium) }
     }
 }
 
+/**
+ * Everything about one account, in one dialog: what to call it, which bank and what
+ * sort of account it is, what is in it, which digits and senders route messages to it.
+ * The setup's accounts step opens it too.
+ */
 @Composable
-private fun AccountEditorDialog(
+internal fun AccountEditorDialog(
     account: Account,
     isNew: Boolean,
     onSave: (Account) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
+    /** The bank's other accounts, any of which this one may turn out to be. */
+    mergeTargets: List<Account> = emptyList(),
+    onMerge: (Account) -> Unit = {},
 ) {
+    var merging by remember { mutableStateOf<Account?>(null) }
+    var pickingMerge by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(account.name) }
     var bankName by remember { mutableStateOf(account.bankName) }
     var last4 by remember { mutableStateOf(account.last4.orEmpty()) }
     var currency by remember { mutableStateOf(account.currency) }
     var senders by remember { mutableStateOf(account.senderIds.joinToString(", ")) }
     var archived by remember { mutableStateOf(account.archived) }
+    var kind by remember { mutableStateOf(account.kind) }
     var balance by remember {
         mutableStateOf(
             if (account.openingBalanceMinor == 0L && account.needsBalance) ""
@@ -337,9 +377,11 @@ private fun AccountEditorDialog(
         )
     }
     val parsedBalance = Numerals.decimal(balance)
+    val pop = rememberDialogPop()
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { pop.leave(onDismiss) },
+        modifier = Modifier.popIn(pop),
         title = {
             Text(
                 stringResource(
@@ -362,12 +404,24 @@ private fun AccountEditorDialog(
                     },
                     singleLine = true,
                 )
-                OutlinedTextField(
-                    value = bankName,
-                    onValueChange = { bankName = it },
-                    label = { Text(stringResource(R.string.label_bank)) },
-                    singleLine = true,
-                )
+                BankField(value = bankName, onValueChange = { bankName = it })
+                Text(stringResource(R.string.acct_kind), style = MaterialTheme.typography.labelLarge)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AccountKind.entries.forEach { option ->
+                        FilterChip(
+                            selected = kind == option,
+                            onClick = { kind = option },
+                            label = { Text(stringResource(labelFor(option))) },
+                            leadingIcon = {
+                                Icon(
+                                    painterResource(iconFor(option)),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            },
+                        )
+                    }
+                }
                 OutlinedTextField(
                     value = balance,
                     onValueChange = { balance = it },
@@ -379,7 +433,7 @@ private fun AccountEditorDialog(
                             )
                         )
                     },
-                    suffix = { Text(currency) },
+                    suffix = { CurrencySign(currency) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )
@@ -398,12 +452,10 @@ private fun AccountEditorDialog(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                DropdownField(
+                CurrencyField(
                     label = stringResource(R.string.label_currency),
-                    value = currency,
-                    options = CURRENCIES,
-                    display = { it },
-                    onSelect = { currency = it },
+                    code = currency,
+                    onPick = { currency = it },
                 )
                 OutlinedTextField(
                     value = last4,
@@ -412,6 +464,37 @@ private fun AccountEditorDialog(
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 )
+                // A bank can quote other digits where the account usually goes; when one
+                // of those became an account, this is how it is put back.
+                if (!isNew && mergeTargets.isNotEmpty()) {
+                    Box {
+                        OutlinedButton(onClick = { pickingMerge = true }, shapes = ButtonDefaults.shapes()) {
+                            Icon(
+                                painterResource(R.drawable.ic_sym_merge),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text(
+                                stringResource(R.string.acct_same_as),
+                                modifier = Modifier.padding(start = 8.dp),
+                            )
+                        }
+                        ChoiceMenu(expanded = pickingMerge, onDismiss = { pickingMerge = false }) {
+                            mergeTargets.forEachIndexed { index, target ->
+                                MenuChoice(
+                                    text = target.displayName,
+                                    selected = false,
+                                    index = index,
+                                    count = mergeTargets.size,
+                                    icon = iconFor(target.kind),
+                                ) {
+                                    pickingMerge = false
+                                    merging = target
+                                }
+                            }
+                        }
+                    }
+                }
                 OutlinedTextField(
                     value = senders,
                     onValueChange = { senders = it },
@@ -419,59 +502,88 @@ private fun AccountEditorDialog(
                     placeholder = { Text(stringResource(R.string.acct_senders_placeholder)) },
                     supportingText = { Text(stringResource(R.string.acct_senders_help)) },
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Switch(checked = archived, onCheckedChange = { archived = it })
-                    Text(
-                        stringResource(R.string.acct_archived),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
+                // The whole row is the switch, and stays plain when on.
+                val plain = ListItemDefaults.colors(containerColor = Color.Transparent)
+                ListItem(
+                    checked = archived,
+                    onCheckedChange = { archived = it },
+                    colors = ListItemDefaults.colors(
+                        containerColor = Color.Transparent,
+                        selectedContainerColor = Color.Transparent,
+                        selectedContentColor = plain.contentColor,
+                        selectedSupportingContentColor = plain.supportingContentColor,
+                        selectedTrailingContentColor = plain.trailingContentColor,
+                    ),
+                    supportingContent = { Text(stringResource(R.string.acct_archived_detail)) },
+                    trailingContent = { Switch(checked = archived, onCheckedChange = null) },
+                ) { Text(stringResource(R.string.acct_archived)) }
+                if (!isNew) DeleteButton(onClick = { pop.leave(onDelete) })
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 enabled = name.isNotBlank() || bankName.isNotBlank() || last4.isNotBlank(),
                 onClick = {
                     val minor = parsedBalance?.let { Money.toMinor(it, currency) } ?: 0L
-                    onSave(
-                        account.copy(
-                            name = name.trim(),
-                            bankName = bankName.trim(),
-                            last4 = last4.trim().ifBlank { null },
-                            currency = currency,
-                            openingBalanceMinor = minor,
-                            // A hand-entered figure is true as of now, so the opening
-                            // moment moves with it and older records stop double-counting.
-                            openingAtMillis = if (minor != account.openingBalanceMinor) {
-                                System.currentTimeMillis()
-                            } else {
-                                account.openingAtMillis
-                            },
-                            senderIds = senders.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet(),
-                            archived = archived,
-                            needsBalance = false,
-                        )
+                    val edited = account.copy(
+                        name = name.trim(),
+                        bankName = bankName.trim(),
+                        last4 = last4.trim().ifBlank { null },
+                        currency = currency,
+                        openingBalanceMinor = minor,
+                        // A hand-entered figure is true as of now, so the opening
+                        // moment moves with it and older records stop double-counting.
+                        openingAtMillis = if (minor != account.openingBalanceMinor) {
+                            System.currentTimeMillis()
+                        } else {
+                            account.openingAtMillis
+                        },
+                        senderIds = senders.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet(),
+                        archived = archived,
+                        needsBalance = false,
+                        kind = kind,
                     )
+                    pop.leave { onSave(edited) }
                 },
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            Row {
-                if (!isNew) {
-                    TextButton(
-                        onClick = onDelete,
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error,
-                        ),
-                    ) { Text(stringResource(R.string.action_delete)) }
-                }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-            }
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
         },
     )
+
+    merging?.let { target ->
+        val confirmPop = rememberDialogPop()
+        AlertDialog(
+            onDismissRequest = { confirmPop.leave { merging = null } },
+            modifier = Modifier.popIn(confirmPop),
+            title = { Text(stringResource(R.string.acct_merge_title, target.displayName)) },
+            text = { Text(stringResource(R.string.acct_merge_body, account.displayName, target.displayName)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    // The question goes, then the editor it was asked over.
+                    confirmPop.leave {
+                        merging = null
+                        pop.leave { onMerge(target) }
+                    }
+                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.acct_merge)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmPop.leave { merging = null } }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+}
+
+/** The accounts [account] could be the same as: the others its bank texts about. */
+internal fun mergeTargetsFor(account: Account, accounts: List<Account>): List<Account> {
+    val senders = account.senderIds.mapTo(HashSet()) { it.trim().lowercase() }
+    return accounts.filter { other ->
+        other.id != account.id && !other.archived &&
+            (other.senderIds.any { it.trim().lowercase() in senders } ||
+                other.bankName.isNotBlank() && other.bankName == account.bankName)
+    }
 }
 
 private fun blankAccount(currency: String) = Account(
@@ -485,3 +597,48 @@ private fun blankAccount(currency: String) = Account(
     color = Categories.PALETTE.random(),
     needsBalance = true,
 )
+
+/**
+ * The bank, typed or picked: the stock editable dropdown, suggesting the banks the app
+ * knows by name as the user types, and taking any other name as it is.
+ */
+@Composable
+private fun BankField(value: String, onValueChange: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val suggestions = remember(value) {
+        Banks.KNOWN.filter { value.isBlank() || it.contains(value.trim(), ignoreCase = true) }
+    }
+    ExposedDropdownMenuBox(expanded = expanded && suggestions.isNotEmpty(), onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {
+                onValueChange(it)
+                expanded = true
+            },
+            label = { Text(stringResource(R.string.label_bank)) },
+            leadingIcon = { Icon(painterResource(R.drawable.ic_sym_account_balance), contentDescription = null) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded && suggestions.isNotEmpty(),
+            onDismissRequest = { expanded = false },
+        ) {
+            suggestions.forEachIndexed { index, bank ->
+                MenuChoice(
+                    text = Account.bankLabel(bank),
+                    selected = bank == value,
+                    index = index,
+                    count = suggestions.size,
+                    icon = R.drawable.ic_sym_account_balance,
+                ) {
+                    onValueChange(bank)
+                    expanded = false
+                }
+            }
+        }
+    }
+}

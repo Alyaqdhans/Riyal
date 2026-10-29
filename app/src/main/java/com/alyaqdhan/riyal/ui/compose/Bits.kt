@@ -3,8 +3,18 @@
 package com.alyaqdhan.riyal.ui.compose
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.ListItem
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -13,9 +23,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -51,6 +63,10 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,29 +95,22 @@ fun localDateOf(millis: Long): LocalDate =
     Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
 
 /**
- * The pill itself: its height, the gap it floats above the system bar by, and enough
- * clearance that the last row is readable rather than touching it.
- *
- * This is only half the answer - see [toolbarSpace].
+ * The floating toolbar: its height and the gap it floats above the system bar by,
+ * Material's own figures for both.
  */
-private val ToolbarPill = 96.dp
+val BottomBarHeight: Dp = FloatingToolbarDefaults.ContainerSize + FloatingToolbarDefaults.ScreenOffset
 
 /**
- * The room a scrolling page must leave at its end so its last row can be read rather
- * than sitting under the floating toolbar, which hovers over the content instead of
- * taking a row of its own.
+ * The room a scrolling tab must leave at its end so its last row can be read rather than
+ * sitting under the floating toolbar, which hovers over the content instead of taking a
+ * row of its own.
  *
- * The toolbar sits above the navigation bar, so the space it occupies is the pill plus
- * whatever the system bar takes - which is 24dp of gesture pill on one phone and three
- * times that with button navigation. A fixed number was right for exactly one of those
- * and cut the last row off on the other, so it is measured rather than assumed.
- *
- * For the four tab screens only - a pushed page hides the toolbar, so it needs nothing
- * more than ordinary padding at its end.
+ * Only the toolbar and a little clearance: the system's navigation bar under it is
+ * already in the padding every Scaffold gives its content. For the five tabs only - a
+ * page opened from one has no toolbar.
  */
 val toolbarSpace: Dp
-    @Composable get() = ToolbarPill +
-        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    @Composable get() = BottomBarHeight + 8.dp
 
 @Composable
 fun ToolbarSpacer() {
@@ -169,63 +178,43 @@ fun TxnRow(
         accounts.firstOrNull { it.id == wanted }?.let { if (oneBank) it.shortName else it.displayName }
     }
 
-    Surface(
+    val time = (if (showDate) rowTimeFmt else rowClockFmt)
+        .format(Instant.ofEpochMilli(txn.atMillis).atZone(ZoneId.systemDefault()))
+    val detail = if (transfer) {
+        val unassigned = stringResource(R.string.row_unassigned)
+        stringResource(
+            R.string.row_transfer_route,
+            accountName(txn.fromAccountId) ?: unassigned,
+            accountName(txn.toAccountId) ?: unassigned,
+            time,
+        )
+    } else {
+        // The category is said in words only when the headline is a shop: when there is
+        // no shop the headline already is the category.
+        listOfNotNull(
+            category.name.takeIf { txn.merchant != null },
+            (accountName(txn.accountId) ?: txn.sender).takeIf { showAccount },
+            time,
+        ).joinToString(" · ")
+    }
+
+    ListItem(
         onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = modifier
-            .fillMaxWidth()
-            .pressBounce(0.97f),
-    ) {
-        Row(
-            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            CategoryBadge(category.id)
-            Column(Modifier.weight(1f)) {
-                Text(
-                    if (transfer) stringResource(R.string.label_transfer)
-                    else txn.merchant?.let(::unmasked) ?: category.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val time = (if (showDate) rowTimeFmt else rowClockFmt)
-                    .format(Instant.ofEpochMilli(txn.atMillis).atZone(ZoneId.systemDefault()))
-                Text(
-                    if (transfer) {
-                        val unassigned = stringResource(R.string.row_unassigned)
-                        stringResource(
-                            R.string.row_transfer_route,
-                            accountName(txn.fromAccountId) ?: unassigned,
-                            accountName(txn.toAccountId) ?: unassigned,
-                            time,
-                        )
-                    } else {
-                        val account = accountName(txn.accountId) ?: txn.sender
-                        if (showAccount) stringResource(R.string.row_account_time, account, time)
-                        else time
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (!transfer && txn.categorySource == "auto" && txn.confidence < 70) {
-                    Text(
-                        stringResource(R.string.row_low_confidence, txn.confidence),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiary,
-                    )
-                }
-            }
+        modifier = modifier,
+        leadingContent = { CategoryBadge(category.id, size = 40.dp) },
+        supportingContent = {
+            Text(detail, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+        trailingContent = {
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    bidi(
-                        if (transfer) Money.format(txn.amountMinor, txn.currency)
-                        else Money.formatSigned(txn.amountMinor, txn.currency, expense)
-                    ),
+                MoneyText(
+                    txn.amountMinor,
+                    txn.currency,
+                    sign = when {
+                        transfer -> MoneySign.NONE
+                        expense -> MoneySign.OUT
+                        else -> MoneySign.IN
+                    },
                     style = MaterialTheme.typography.titleSmall,
                     // Money direction is semantic: out = danger red, in = success green,
                     // moved between your own accounts = neither.
@@ -235,12 +224,17 @@ fun TxnRow(
                         else -> successColor()
                     },
                 )
-                // Only the transfer note. The category was already stated by the badge
-                // at the head of the row, and saying it again in words cost about a
-                // third of the width - which is why the merchant and the account line
-                // were both ellipsed at once, leaving two Oman Oil stations looking
-                // identical. "not counted" is not a repeat of anything: it is why a
-                // transfer's amount is neither red nor green.
+                // Bought abroad: what the shop charged, under what it counts as.
+                if (txn.isConverted) {
+                    MoneyText(
+                        txn.originalAmountMinor!!,
+                        txn.originalCurrency!!,
+                        sign = MoneySign.NONE,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                // "not counted" is why a transfer's amount is neither red nor green.
                 if (transfer) {
                     Text(
                         stringResource(R.string.row_not_counted),
@@ -249,18 +243,24 @@ fun TxnRow(
                     )
                 }
             }
-        }
+        },
+    ) {
+        Text(
+            if (transfer) stringResource(R.string.label_transfer)
+            else txn.merchant?.let(::unmasked) ?: category.name,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
-/** Friendly empty state with a mascot face. */
+/** Nothing to show yet: an icon on a tonal circle, what is missing, and why. */
 @Composable
 fun EmptyState(
-    style: FaceStyle,
     title: String,
     subtitle: String? = null,
-    mood: Float = 0.2f,
     modifier: Modifier = Modifier,
+    @DrawableRes icon: Int = R.drawable.ic_sym_inbox,
 ) {
     Column(
         modifier
@@ -269,13 +269,20 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Face(
-            mood = mood,
-            style = style,
-            modifier = Modifier
-                .size(108.dp)
-                .popIn(),
-        )
+        Box(
+            Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(icon),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(32.dp),
+            )
+        }
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         if (subtitle != null) {
             Text(
@@ -294,9 +301,9 @@ fun LogRow(line: LogLine) {
     val color = when (line.kind) {
         LogLine.Kind.OK -> MaterialTheme.colorScheme.primary
         LogLine.Kind.FAIL -> MaterialTheme.colorScheme.error
-        LogLine.Kind.SKIP -> MaterialTheme.colorScheme.outline
+        LogLine.Kind.SKIP -> MaterialTheme.colorScheme.onSurfaceVariant
         LogLine.Kind.SCAN -> MaterialTheme.colorScheme.tertiary
-        LogLine.Kind.INFO -> MaterialTheme.colorScheme.onSurfaceVariant
+        LogLine.Kind.INFO -> MaterialTheme.colorScheme.onSurface
     }
     Text(
         bidi("[${line.time}]") + " " + line.text,
@@ -349,12 +356,14 @@ fun HelpAction(title: String, help: String) {
         )
     }
     if (open) {
+        val pop = rememberDialogPop()
         AlertDialog(
-            onDismissRequest = { open = false },
+            onDismissRequest = { pop.leave { open = false } },
+            modifier = Modifier.popIn(pop),
             title = { Text(title) },
             text = { Text(help) },
             confirmButton = {
-                TextButton(onClick = { open = false }) {
+                TextButton(onClick = { pop.leave { open = false } }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_got_it))
                 }
             },
@@ -375,4 +384,88 @@ fun appVersion(context: android.content.Context): String = try {
     context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
 } catch (e: Exception) {
     "1.0"
+}
+
+private val relativeDayFmt: DateTimeFormatter get() = Dates.pattern("d MMM uuuu")
+
+/** "2 hours ago", or the date once that stops being a useful way to say it. */
+@Composable
+fun relativeTime(millis: Long): String {
+    val minutes = (System.currentTimeMillis() - millis) / 60_000
+    return when {
+        minutes < 1 -> stringResource(R.string.set_just_now)
+        minutes < 60 -> stringResource(
+            R.string.set_ago,
+            counted(R.plurals.count_minutes, minutes.toInt()),
+        )
+        minutes < 60 * 24 -> stringResource(
+            R.string.set_ago,
+            counted(R.plurals.count_hours, (minutes / 60).toInt()),
+        )
+        minutes < 60 * 24 * 7 -> stringResource(
+            R.string.set_ago,
+            counted(R.plurals.count_days, (minutes / (60 * 24)).toInt()),
+        )
+        else -> stringResource(
+            R.string.set_on_date,
+            relativeDayFmt.format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())),
+        )
+    }
+}
+
+/**
+ * Deleting what an editor is open on: at the end of its form, the whole width, in the
+ * error colour, well away from Cancel and Save, so it is never the button a thumb meant
+ * for one of them.
+ */
+@Composable
+fun DeleteButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val error = MaterialTheme.colorScheme.error
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().padding(top = 8.dp),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = error),
+        border = BorderStroke(1.dp, error.copy(alpha = 0.5f)),
+        shapes = ButtonDefaults.shapes(),
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_sym_delete),
+            contentDescription = null,
+            modifier = Modifier.size(ButtonDefaults.IconSize),
+        )
+        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+        Text(stringResource(R.string.action_delete))
+    }
+}
+
+/**
+ * A screen's own action - Add account, New category - as Material 3 Expressive's medium
+ * button: taller than a plain one, led by its icon, and its corners square off while it
+ * is pressed and spring back after, so the press is felt.
+ */
+@Composable
+fun ActionButton(
+    text: String,
+    @DrawableRes icon: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    tonal: Boolean = false,
+) {
+    val height = ButtonDefaults.MediumContainerHeight
+    val content: @Composable RowScope.() -> Unit = {
+        Icon(
+            painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier.size(ButtonDefaults.iconSizeFor(height)),
+        )
+        Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(height)))
+        Text(text, style = ButtonDefaults.textStyleFor(height))
+    }
+    val shapes = ButtonDefaults.shapesFor(height)
+    val padding = ButtonDefaults.contentPaddingFor(height, hasStartIcon = true)
+    if (tonal) {
+        FilledTonalButton(onClick, shapes, modifier.heightIn(min = height), contentPadding = padding, content = content)
+    } else {
+        Button(onClick, shapes, modifier.heightIn(min = height), contentPadding = padding, content = content)
+    }
 }

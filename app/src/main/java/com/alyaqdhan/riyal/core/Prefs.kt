@@ -66,6 +66,15 @@ class Prefs(context: Context) {
         get() = sp.getString("default_currency", "OMR") ?: "OMR"
         set(v) = sp.edit().putString("default_currency", v).apply()
 
+    /**
+     * Exchange rates the user corrected, as "CODE=rials per unit" lines. Only floating
+     * currencies can be here - see [Currencies.setOverrides] - and an empty set means the
+     * built-in reference rates.
+     */
+    var fxRates: Set<String>
+        get() = sp.getStringSet("fx_rates", emptySet())!!.toSet()
+        set(v) = sp.edit().putStringSet("fx_rates", v.toSet()).apply()
+
     /** Only read senders whose name looks like a bank (contains bank/بنك/مصرف) or is allowlisted. */
     var bankSendersOnly: Boolean
         get() = sp.getBoolean("bank_senders_only", true)
@@ -137,6 +146,31 @@ class Prefs(context: Context) {
         get() = sp.getStringSet("sender_allowlist", emptySet())!!.toSet()
         set(v) = sp.edit().putStringSet("sender_allowlist", v.toSet()).apply()
 
+    /**
+     * Senders the user said are not their bank - a telecom that quotes a balance, a shop
+     * that texts receipts. Never read, whatever their messages look like.
+     */
+    var excludedSenders: Set<String>
+        get() = sp.getStringSet("excluded_senders", emptySet())!!.toSet()
+        set(v) = sp.edit().putStringSet("excluded_senders", v.toSet()).apply()
+
+    /**
+     * Whether the setup - accounts checked, a few messages confirmed - has been gone
+     * through once. Until then Home offers it; it can be run again from Settings.
+     */
+    var setupDone: Boolean
+        get() = sp.getBoolean("setup_done", false)
+        set(v) = sp.edit().putBoolean("setup_done", v).apply()
+
+    /** Setup answers so far: how often the app's reading was right, and wrong. */
+    var teachRight: Int
+        get() = sp.getInt("teach_right", 0)
+        set(v) = sp.edit().putInt("teach_right", v).apply()
+
+    var teachWrong: Int
+        get() = sp.getInt("teach_wrong", 0)
+        set(v) = sp.edit().putInt("teach_wrong", v).apply()
+
     var expenseKeywords: Set<String>
         get() = sp.getStringSet("kw_expense", null)?.toSet() ?: DEFAULT_EXPENSE_KEYWORDS
         set(v) = sp.edit().putStringSet("kw_expense", v.toSet()).apply()
@@ -166,6 +200,29 @@ class Prefs(context: Context) {
     var lastReleaseNotes: String
         get() = sp.getString("last_release_notes", "") ?: ""
         set(v) = sp.edit().putString("last_release_notes", v).apply()
+
+    /** Whether opening the app looks for a new release at all (still at most once a day). */
+    var checkUpdatesOnStart: Boolean
+        get() = sp.getBoolean("check_updates_on_start", true)
+        set(v) = sp.edit().putBoolean("check_updates_on_start", v).apply()
+
+    /** Offer GitHub pre-releases too. Off: a beta is something you opt into. */
+    var updateIncludeBeta: Boolean
+        get() = sp.getBoolean("update_include_beta", false)
+        set(v) = sp.edit().putBoolean("update_include_beta", v).apply()
+
+    /** Versions the user said not to be offered. Only that version: a later one is offered. */
+    var skippedUpdates: Set<String>
+        get() = sp.getStringSet("skipped_updates", emptySet())!!.toSet()
+        set(v) = sp.edit().putStringSet("skipped_updates", v.toSet()).apply()
+
+    /**
+     * The version the start-up prompt was last shown for. It appears once per release,
+     * then the update waits quietly in Settings until the user goes to it.
+     */
+    var updatePromptedTag: String?
+        get() = sp.getString("update_prompted_tag", null)
+        set(v) = sp.edit().putString("update_prompted_tag", v).apply()
 
     /**
      * The date of the newest message the last successful scan read.

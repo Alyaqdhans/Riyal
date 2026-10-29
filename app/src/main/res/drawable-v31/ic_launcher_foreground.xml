@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12 and later: the same sign, in the lightest tone of the wallpaper's own
+     palette, so the icon wears the colours the app inside it does. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- The ink is 56 wide and 29.5 tall, centred: inside the 66dp circle every
+         launcher mask keeps. -->
+    <group
+        android:scaleX="0.077637"
+        android:scaleY="0.077637"
+        android:translateX="25.221"
+        android:translateY="37.888">
+        <path
+            android:fillColor="@android:color/system_accent1_10"
+            android:pathData="M259.9,219.89c-.63-49.2,11.44-95.41,35.76-137.75C331.7,19.4,371.24-.36,439.78,34.99c10.67,5.5,53.6,35.43,57.81,44.54,5.03,10.87-27.48,103.87-29.11,122.3-34.69-37.51-99.37-98.66-154.85-69.62-45.05,23.58-12.02,62.54,11.46,87.68h406.25l-39.14,70.23-289.2-2c-1.11,4.66.87,3.3,2.53,4.6,12.44,9.72,80.97,31.54,94.75,31.54l172.05,1.99-39.49,71.25H10.03l39.24-71.24h272.14l-37.11-36.13H69.33l39.23-70.23h151.33Z" />
+    </group>
+</vector>

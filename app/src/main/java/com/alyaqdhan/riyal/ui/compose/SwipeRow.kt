@@ -1,28 +1,27 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package com.alyaqdhan.riyal.ui.compose
 
 import androidx.annotation.StringRes
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.AnchoredDraggableState
+import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.anchoredDraggable
+import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,144 +36,129 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import kotlin.math.sign
 import kotlinx.coroutines.launch
 
 /**
- * How far a row travels, as a share of its width. Wide enough for an icon over a word
- * and for a thumb to land on without aiming, short enough that the swipe is a flick
- * rather than a haul across the screen. A fraction rather than a fixed size so the
- * gesture is the same shape on any phone, bounded either way so it stays a tappable
- * button on a small screen and does not become a wall on a tablet.
+ * How far a row travels, as a share of its width: room for an icon over a word and for a
+ * thumb to land on without aiming, bounded either way so it stays a button on a small
+ * phone and does not become a wall on a large one.
  */
-private const val RevealFraction = 0.38f
+private const val REVEAL_FRACTION = 0.38f
 private val MinReveal = 116.dp
 private val MaxReveal = 176.dp
 
-/**
- * How much of a drag past the stop still moves the row. Enough to feel the edge give
- * rather than hit a wall, not enough to look like the row might keep going.
- */
-private const val Overdrag = 0.22f
-
-/** Past this much of the travel, letting go opens rather than closes. */
-private const val SettleAt = 0.5f
-
-/** A flick faster than this decides the direction on its own, wherever it started. */
-private const val FlingVelocity = 700f
+/** Where a swiped row can come to rest. */
+private enum class Reveal { CLOSED, ARCHIVE, REMOVE }
 
 /**
- * A row you can swipe instead of hunting for a button: one way archives it, the other
- * removes it.
+ * A record row you can swipe instead of hunting for a button: towards the end archives
+ * it, towards the start removes it.
  *
- * The swipe reveals, it does not decide. A row travels [RevealFraction] of its width
- * and stops there with one action showing, and that action runs when it is tapped.
- * Nothing happens at the end of a gesture, so there is no distance at which the row is
- * committed and no question to answer afterwards: a swipe begun by accident is undone
- * by letting go and swiping back, and a swipe meant on purpose costs one tap.
+ * The swipe reveals, it does not decide. The row slides part of its width and holds
+ * there with one action showing, and that action runs when it is tapped - the tap is the
+ * confirmation. Let go short of halfway, or tap the row itself, and it closes again, so a
+ * swipe begun by accident costs nothing.
  *
- * Dragging past the stop still moves the row, with most of the travel taken out of it,
- * and it settles back to the stop on release. The give is what says the row has reached
- * its limit; a hard edge reads as the gesture having failed.
+ * Built on Compose's own anchored drag, which settles and flings the row the way every
+ * other swipe on the phone does. The colour behind is drawn only while the row is open,
+ * inside the list item's own outline, so none of it shows at the rounded corners of a row
+ * at rest.
  */
 @Composable
 fun SwipeableTxnRow(
     archived: Boolean,
     onArchive: () -> Unit,
-    onDelete: () -> Unit,
+    onRemove: () -> Unit,
     modifier: Modifier = Modifier,
-    @StringRes deleteLabel: Int = R.string.row_remove,
+    @StringRes removeLabel: Int = R.string.row_remove,
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val offset = remember { Animatable(0f) }
+    val state = remember { AnchoredDraggableState(Reveal.CLOSED) }
     var reveal by remember { mutableFloatStateOf(0f) }
-
-    val x = offset.value
-    // Negative is a swipe to the left, which uncovers the right-hand edge.
-    val toStart = x < 0f
+    val x = state.offset.takeUnless { it.isNaN() } ?: 0f
     val open = abs(x) > 0.5f
 
-    fun close() = scope.launch { offset.animateTo(0f, spring()) }
+    fun close() = scope.launch { state.animateTo(Reveal.CLOSED) }
 
-    fun settle(velocity: Float) = scope.launch {
-        val target = when {
-            reveal <= 0f -> 0f
-            velocity > FlingVelocity -> if (x > 0f) reveal else 0f
-            velocity < -FlingVelocity -> if (x < 0f) -reveal else 0f
-            x > reveal * SettleAt -> reveal
-            x < -reveal * SettleAt -> -reveal
-            else -> 0f
-        }
-        offset.animateTo(target, spring())
-    }
-
+    val archiveLabel = stringResource(if (archived) R.string.row_unarchive else R.string.row_archive)
+    val removeText = stringResource(removeLabel)
     Box(
         modifier
             .fillMaxWidth()
-            // The row slides inside its own bounds, not across the list's margin. Without
-            // this the content escapes the card it belongs to and runs to the screen edge
-            // while every row around it stays inset.
-            .clip(RoundedCornerShape(20.dp))
             .onSizeChanged { size ->
                 val min = with(density) { MinReveal.toPx() }
                 val max = with(density) { MaxReveal.toPx() }
-                reveal = (size.width * RevealFraction).coerceIn(min, max)
+                val distance = (size.width * REVEAL_FRACTION).coerceIn(min, max)
+                if (distance != reveal) {
+                    reveal = distance
+                    // Dragged right, the row uncovers its left edge; dragged left, its right.
+                    state.updateAnchors(
+                        DraggableAnchors {
+                            Reveal.CLOSED at 0f
+                            Reveal.ARCHIVE at distance
+                            Reveal.REMOVE at -distance
+                        }
+                    )
+                }
+            }
+            // The same two actions without the gesture, for TalkBack.
+            .semantics {
+                customActions = listOf(
+                    CustomAccessibilityAction(archiveLabel) { onArchive(); true },
+                    CustomAccessibilityAction(removeText) { onRemove(); true },
+                )
             },
     ) {
         if (open) {
-            val remove = toStart
+            val remove = x < 0f
             Box(
                 Modifier
                     .matchParentSize()
+                    .clip(ListItemDefaults.shapes().shape)
                     .background(
                         if (remove) MaterialTheme.colorScheme.errorContainer
                         else MaterialTheme.colorScheme.secondaryContainer
                     ),
-                contentAlignment =
-                    if (remove) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft,
+                contentAlignment = if (remove) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft,
             ) {
                 RevealedAction(
-                    label = stringResource(
-                        when {
-                            remove -> deleteLabel
-                            archived -> R.string.row_unarchive
-                            else -> R.string.row_archive
-                        }
-                    ),
+                    label = if (remove) removeText else archiveLabel,
+                    icon = when {
+                        remove -> R.drawable.ic_sym_delete
+                        archived -> R.drawable.ic_sym_unarchive
+                        else -> R.drawable.ic_sym_archive
+                    },
                     remove = remove,
                     width = with(density) { reveal.toDp() },
                     onClick = {
-                        if (remove) onDelete() else onArchive()
+                        if (remove) onRemove() else onArchive()
                         close()
                     },
                 )
             }
         }
-
         Box(
             Modifier
                 .absoluteOffset { IntOffset(x.roundToInt(), 0) }
                 .fillMaxWidth()
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    state = rememberDraggableState { delta ->
-                        scope.launch { offset.snapTo(resist(offset.value + delta, reveal)) }
-                    },
-                    onDragStopped = { velocity -> settle(velocity) },
-                ),
+                .anchoredDraggable(state, Orientation.Horizontal),
         ) {
             content()
-            // An open row's content is a lid over the action, not a target. Tapping it
-            // shuts the row instead of opening whatever the row itself opens, so a tap
-            // aimed at the action but landing short costs nothing.
+            // An open row is a lid over its action, not a target: tapping it shuts the row
+            // instead of opening the record, so a tap that lands short costs nothing.
             if (open) {
                 Box(
                     Modifier
@@ -189,31 +173,19 @@ fun SwipeableTxnRow(
     }
 }
 
-/** Past the stop the row still gives, but only by [Overdrag] of what the thumb asks for. */
-private fun resist(target: Float, limit: Float): Float {
-    if (limit <= 0f) return 0f
-    val over = abs(target) - limit
-    if (over <= 0f) return target
-    return sign(target) * (limit + over * Overdrag)
-}
-
 /**
- * The thing you tap. It fills the strip the swipe opened rather than sitting somewhere
- * inside it, so the whole revealed area is the target and the gesture does not have to
- * be finished accurately to be finished at all.
+ * The action itself. It fills the strip the swipe opened, so the whole revealed area is
+ * the target and the gesture does not have to be finished accurately.
  */
 @Composable
 private fun RevealedAction(
     label: String,
+    icon: Int,
     remove: Boolean,
-    width: androidx.compose.ui.unit.Dp,
+    width: Dp,
     onClick: () -> Unit,
 ) {
-    val tint = if (remove) {
-        MaterialTheme.colorScheme.onErrorContainer
-    } else {
-        MaterialTheme.colorScheme.onSecondaryContainer
-    }
+    val tint = if (remove) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer
     Column(
         Modifier
             .width(width)
@@ -222,12 +194,7 @@ private fun RevealedAction(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            if (remove) Icons.Filled.Delete else Icons.Filled.Refresh,
-            contentDescription = null,
-            tint = tint,
-            modifier = Modifier.size(22.dp),
-        )
+        Icon(painterResource(icon), contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
         Text(label, style = MaterialTheme.typography.labelLarge, color = tint)
     }
 }

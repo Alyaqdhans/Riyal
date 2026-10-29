@@ -43,6 +43,12 @@ class SmsParser(
             val trace: List<ParseNote>,
             /** The balance the bank quoted in this message, if it quoted one. */
             val balanceMinor: Long? = null,
+            /**
+             * The currency of [balanceMinor]. Usually the same as [currency], but not on a
+             * purchase made abroad: "USD 9.99 at STEAM ... Avl Bal OMR 120.000" spent
+             * dollars from an account that holds rials.
+             */
+            val balanceCurrency: String? = null,
             /** Last digits of the account this message is about ("a/c XXXX1234"). */
             val accountTail: String? = null,
             /**
@@ -51,6 +57,20 @@ class SmsParser(
              * tail can say which account a message is about only by elimination.
              */
             val tailIsCard: Boolean = false,
+            /**
+             * The digits written before the mask in a masked account number: "00210" of
+             * "00210 ###### 001". The branch, never the account - an earlier reading took
+             * its end for one, and this is how that account is recognised and folded.
+             */
+            val accountHead: String? = null,
+            /**
+             * Every group of digits a masked account number shows - "001" and "00210" of
+             * "001 ###### 00210" - in no particular order. A bank does not write them in
+             * one order (Bank Nizwa has "002########001", "001 ###### 00210" and
+             * "001######00210" for one account), so which group is the account is
+             * settled across all of the bank's messages: [AccountDiscovery.resolveMaskedTails].
+             */
+            val accountGroups: List<String>? = null,
             /** The wording suggests moving money between accounts rather than spending. */
             val transferHint: Boolean = false,
             /**
@@ -159,6 +179,40 @@ class SmsParser(
             confidence -= 20
             trace += ParseNote(R.string.trace_both_directions)
         }
+        return read(body, lower, hit, trace, confidence)
+    }
+
+    /**
+     * Reads [rawBody] as money moving in [direction], whatever its words say or whether
+     * it has any. For a message whose kind is already known some other way - the user
+     * taught its template, or the account's balances proved it - so the amount, the
+     * counterparty and the account are read exactly as they would be for a message the
+     * keywords had decided.
+     *
+     * Null when there is no usable amount, which no amount of knowing the direction can
+     * fix.
+     */
+    fun parseAs(rawBody: String, direction: Direction): Result.Parsed? {
+        val body = normalize(rawBody)
+        val lower = body.lowercase()
+        val usable = findAmounts(body, lower).filter { !it.nearBalance }
+        val anchor = usable.firstOrNull { c -> c.currencyToken?.let { tokenToIso(it) } == defaultCurrency }
+            ?: usable.firstOrNull()
+            ?: return null
+        val trace = mutableListOf<ParseNote>()
+        if (body != rawBody) trace += ParseNote(R.string.trace_normalized)
+        return read(body, lower, KeywordHit("", anchor.pos, direction), trace, 90) as? Result.Parsed
+    }
+
+    /** Everything after the direction is settled: amount, counterparty, account. */
+    private fun read(
+        body: String,
+        lower: String,
+        hit: KeywordHit,
+        trace: MutableList<ParseNote>,
+        startConfidence: Int,
+    ): Result {
+        var confidence = startConfidence
 
         // 2 ── amount
         val candidates = findAmounts(body, lower)
@@ -180,7 +234,12 @@ class SmsParser(
         if (candidates.isEmpty()) return Result.NeedsReview(ReviewReason.NO_AMOUNT, trace)
         val usable = candidates.filter { !it.nearBalance }
         if (usable.isEmpty()) return Result.NeedsReview(ReviewReason.BALANCE_ONLY, trace)
-        val chosen = usable.minByOrNull { abs(it.pos - hit.pos) }!!
+        // A purchase abroad is often quoted twice - "USD 9.99 (OMR 3.841)" - and the
+        // figure in the account's own currency is the one that actually left it, fees
+        // and the bank's rate included. Only when there is none is the foreign figure
+        // taken, to be converted when the record is built.
+        val home = usable.filter { c -> c.currencyToken?.let { tokenToIso(it) } == defaultCurrency }
+        val chosen = home.ifEmpty { usable }.minByOrNull { abs(it.pos - hit.pos) }!!
 
         var currency = chosen.currencyToken?.let { tokenToIso(it) }
         if (currency == null) {
@@ -211,13 +270,15 @@ class SmsParser(
 
         // 4 ── account context: the balance-like numbers the amount step rejected are
         // exactly what an account needs, so keep the last one instead of dropping it.
-        val balanceMinor = candidates.lastOrNull { it.nearBalance }?.let { c ->
-            runCatching { Money.toMinor(BigDecimal(c.raw.replace(",", "")), currency) }.getOrNull()
+        val balanceCandidate = candidates.lastOrNull { it.nearBalance }
+        val balanceCurrency = balanceCandidate?.currencyToken?.let { tokenToIso(it) } ?: currency
+        val balanceMinor = balanceCandidate?.let { c ->
+            runCatching { Money.toMinor(BigDecimal(c.raw.replace(",", "")), balanceCurrency) }.getOrNull()
         }
         if (balanceMinor != null) {
             trace += ParseNote(
                 R.string.trace_balance,
-                listOf(Money.format(balanceMinor, currency)),
+                listOf(Money.format(balanceMinor, balanceCurrency)),
             )
         }
         val tail = findAccountTail(body)
@@ -249,8 +310,11 @@ class SmsParser(
             confidence = confidence.coerceIn(5, 100),
             trace = trace,
             balanceMinor = balanceMinor,
+            balanceCurrency = balanceCurrency.takeIf { balanceMinor != null },
             accountTail = accountTail,
             tailIsCard = tail?.fromCard == true,
+            accountHead = tail?.head,
+            accountGroups = tail?.groups,
             transferHint = transferHint,
             bankStamp = bankStamp,
             selfTransferTo = selfTransferTo,
@@ -386,23 +450,63 @@ class SmsParser(
         }
 
     /** The digits a message quotes, and whether they name a card or an account. */
-    private data class Tail(val digits: String, val fromCard: Boolean)
+    private data class Tail(
+        val digits: String,
+        val fromCard: Boolean,
+        val head: String? = null,
+        val groups: List<String>? = null,
+    )
 
     private fun findAccountTail(body: String): Tail? {
         var card: Tail? = null
+        var best: Tail? = null
+        var bestScore = -1
         for (m in accountTailPattern.findAll(body)) {
-            val token = m.groupValues[1].trimEnd { !it.isDigit() && !it.isLetter() }
+            val written = m.groupValues[1].trimEnd { !it.isDigit() && !it.isLetter() }
             // "رصيدك في الحساب 12.500" would otherwise read the balance as an account.
-            if (amountLike.matches(token)) continue
+            if (amountLike.matches(written)) continue
+            // "00210######": the end is hidden, and what is left is the branch.
+            val rest = body.substring(m.groups[1]!!.range.first + written.length)
+            if (written.all { it.isDigit() } && hiddenEnd.containsMatchIn(rest)) continue
+            val token = written
+            // The last digits as written are only a first answer for a masked number;
+            // which of its groups is the account is settled across the bank's messages.
             val digits = token.takeLastWhile { it.isDigit() }
+            // "00210 ###### 00210": Bank Nizwa's refunds repeat the branch where the last
+            // digits go. That names no account - read as one, every refund was "0210" -
+            // so the message goes where its balance line says.
+            val lead = token.takeWhile { it.isDigit() }
+            if (lead.isNotEmpty() && lead == digits && token.any { it in MASK_CHARS }) continue
             if (digits.length < 3) continue
-            val fromCard = m.groupValues[0].trimStart().lowercase().startsWith("card")
+            val keyword = m.groupValues[0].trimStart().lowercase()
             // A message that quotes both ("purchase on card *4321 from a/c ...0019")
             // is about the account; the card is just how it was reached.
-            if (!fromCard) return Tail(digits.takeLast(4), fromCard = false)
-            if (card == null) card = Tail(digits.takeLast(4), fromCard = true)
+            if (keyword.startsWith("card")) {
+                if (card == null) card = Tail(digits.takeLast(4), fromCard = true)
+                continue
+            }
+            // A message can quote two accounts: yours, and the one the money went to or
+            // came from. Banks call yours "your account" and mask it - "00210######001" -
+            // while the other party's is written plainly, so the number that reads most
+            // like yours is the one the message is about. Ties go to the first.
+            val masked = token.any { it in MASK_CHARS }
+            val score = (if (isYours(body, m.range.first, keyword)) 2 else 0) + (if (masked) 1 else 0)
+            if (score > bestScore) {
+                val head = token.takeWhile { it.isDigit() }.takeIf { masked && it.length >= 3 }
+                val groups = if (masked) digitGroups.findAll(token).map { it.value }.toList().takeIf { it.size >= 2 } else null
+                best = Tail(digits.takeLast(4), fromCard = false, head = head, groups = groups)
+                bestScore = score
+            }
         }
-        return card
+        return best ?: card
+    }
+
+    /** "your a/c", "ur account", "حسابك", "حسابكم": the customer's own account. */
+    private fun isYours(body: String, at: Int, keyword: String): Boolean {
+        val word = keyword.takeWhile { it.isLetter() }
+        if (word.startsWith("حساب")) return word.endsWith("ك") || word.endsWith("كم")
+        val before = body.substring(max(0, at - 8), at).lowercase().trimEnd()
+        return before.endsWith("your") || before == "ur" || before.endsWith(" ur")
     }
 
     private fun tokenToIso(token: String): String {
@@ -412,7 +516,7 @@ class SmsParser(
             "SR", "رس" -> "SAR"
             "DHS", "دإ" -> "AED"
             "RS", "₹" -> "INR"
-            "$" -> "USD"
+            "$", "US$" -> "USD"
             "€" -> "EUR"
             "£" -> "GBP"
             else -> t
@@ -433,11 +537,26 @@ class SmsParser(
                 cleanMerchant(m.groupValues[1])?.let { return it }
             }
         }
+        // An Arabic message writes the shop in Latin letters, and not every bank puts a
+        // preposition in front of it: "تم خصم ... من حسابك رقم LULU HYPERMARKET\BOWSHAR\OM
+        // في ...". In an Arabic sentence the Latin words are the names, so the first that
+        // is a name is the shop.
+        if (lower.any(::isArabicLetter)) {
+            for (m in latinRun.findAll(body)) {
+                if (m.value.length < 3) continue
+                cleanMerchant(m.value)?.let { return it }
+            }
+        }
         return if ("atm" in lower) "ATM" else null
     }
 
+    private fun isArabicLetter(c: Char) = c in '؀'..'ۿ'
+
     private fun cleanMerchant(raw: String): String? {
-        var s = raw.trim()
+        // Card payments carry the card network's own field: name, city and country,
+        // split by backslashes ("IKEA - FOOD SALES\\AL KHUWAIR\OM"). The name is the
+        // first part; the rest would make every branch a different shop.
+        var s = raw.substringBefore('\\').trim()
         s = cutTail.replace(s, "")
         s = cutTailAr.replace(s, "")
         // "5842-Al Fatah Food Com LLC" - the terminal number is the till, not the shop,
@@ -460,7 +579,17 @@ class SmsParser(
         return s.take(40)
     }
 
+    /**
+     * Latin digits, without the invisible marks Arabic messages carry around their
+     * numbers, and with full-width masks as plain ones. A direction mark between "00210"
+     * and its mask was enough to end the account number at "00210", and its account
+     * became "0210".
+     */
     private fun normalize(s: String): String = Numerals.latin(s)
+        .replace(invisibleMarks, "")
+        .replace('＃', '#')
+        .replace('＊', '*')
+        .replace('●', '•')
 
     private fun wordIn(hay: String, phrase: String): Boolean {
         if (phrase.firstOrNull() !in 'a'..'z') return phrase in hay
@@ -483,7 +612,16 @@ class SmsParser(
          * is out of date and the inbox must be read again. Forgetting to bump it after a
          * parser fix means the fix only reaches messages that arrive afterwards.
          */
-        const val VERSION = 2
+        const val VERSION = 11
+
+        /** The runs of digits in an account number, around and between its masks. */
+        private val digitGroups = Regex("[0-9]{2,}")
+
+        /** A mask straight after the digits, with nothing after it: an account's hidden end. */
+        private val hiddenEnd = Regex("^\\s*[Xx*#\\u2022]{2,}(?!\\s*\\d)")
+
+        /** Direction marks, isolates, zero-width spaces and joiners: format, not text. */
+        private val invisibleMarks = Regex("[\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069\\u061C\\uFEFF]")
 
         const val NUM = """\d{1,3}(?:,\d{3})+(?:\.\d{1,3})?|\d+(?:\.\d{1,3})?"""
 
@@ -493,7 +631,9 @@ class SmsParser(
             "AED", "DHS", "د\\.?\\s?إ\\.?",
             "KWD", "BHD", "QAR",
             "USD", "EUR", "GBP", "INR",
-            "RS\\.?", "\\$", "€", "£", "₹",
+            // "US$" before "$", or the dollar sign alone would match and leave "US"
+            // in front of it, where nothing reads it as part of the currency.
+            "US\\$", "RS\\.?", "\\$", "€", "£", "₹",
         ).joinToString("|")
 
         val curFirst = Regex("(?i)(?:^|[\\s:(\\[])($CUR)\\s*($NUM)(?!\\d)")
@@ -533,15 +673,31 @@ class SmsParser(
          * trailing letters and the captured token simply stops at the first character
          * that cannot belong to an account number.
          */
+        /** Digits, a run of mask, more digits, with spaces allowed around and inside the mask. */
+        private const val MASKED_SPACED = "\\d*[\\s\\u00A0]*(?:[Xx*#\\u2022][\\s\\u00A0]*){2,}\\d{2,}"
+
         val accountTailPattern = Regex(
             "(?i)(?:\\ba/c|\\bacc(?:t|ount)?\\b|\\bcard\\b|حساب\\p{L}*)" +
                 "[\\s:]*" +
                 "(?:(?:no\\.?|number|#|ending(?:\\s+in)?|رقم|المنتهية?)\\s*(?:ب|في|in)?[\\s:]*)?" +
-                "([0-9Xx*\\u2022.\\u2026-]{3,32})"
+                // "#" masks too, and the mask can stand apart from the digits: Bank Nizwa
+                // writes "00210 ###### 001". Read as one token up to the first space or
+                // "#", that account was "0210" - the branch, not the account - and became
+                // an account of its own beside the real one.
+                "($MASKED_SPACED|[0-9Xx*#\\u2022.\\u2026-]{3,32})"
         )
+
+        /** What a bank writes in place of the digits it hides. */
+        val MASK_CHARS = setOf('X', 'x', '*', '#', '•', '…', '.')
 
         /** A plain decimal is an amount, never an account number. */
         val amountLike = Regex("""^\d+\.\d+$""")
+
+        /**
+         * A run of Latin words, as a name is written inside an Arabic message - up to the
+         * card network's backslash, the Arabic that follows, or the end of a clause.
+         */
+        val latinRun = Regex("[A-Za-z][A-Za-z0-9&'.\\- ]*[A-Za-z0-9]")
 
     /**
      * "…debited from your A/C 0372XXXXXXXX0038 and credited to your A/C 0372XXXXXXXX0022…"
@@ -549,7 +705,7 @@ class SmsParser(
      */
     private val SELF_TRANSFER = Regex(
         "(?i)(?:debited|خصم).{0,80}?(?:credited to (?:your )?a/?c|إلى حساب\\p{L}*)" +
-            "[\\s:.]*(?:no\\.?|number|#|رقم)?[\\s:.]*([0-9Xx*\\u2022.-]{3,32})",
+            "[\\s:.]*(?:no\\.?|number|#|رقم)?[\\s:.]*($MASKED_SPACED|[0-9Xx*#\\u2022.-]{3,32})",
         RegexOption.DOT_MATCHES_ALL,
     )
 
@@ -649,7 +805,12 @@ class SmsParser(
         val tillPrefix = Regex("^\\d{2,}\\s*-\\s*")
         val digitTail = Regex("[\\d/:\\-]{4,}\\s*$")
         val doubleSpace = Regex("\\s{2,}")
-        val notAName = Regex("(?i)^(?:x+\\d*|\\d+|you|yours?)$")
+        // Months too: "في 28-OCT, 12:55:24" is a date, and with its day cut off as a till
+        // number it was being remembered as a shop called "OCT".
+        val notAName = Regex(
+            "(?i)^(?:x+\\d*|\\d+|you|yours?|jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec|" +
+                "omr|r\\.?o|usd|aed|sar|otp|am|pm)$"
+        )
 
         val TRIM_CHARS = ".,;:-_*'\"()".toSet()
     }

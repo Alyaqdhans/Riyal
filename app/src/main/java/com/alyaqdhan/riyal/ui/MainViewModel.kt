@@ -2,47 +2,54 @@ package com.alyaqdhan.riyal.ui
 
 import android.Manifest
 import android.app.Application
-import android.app.DownloadManager
-import android.content.Intent
-import android.os.Environment
-import androidx.core.net.toUri
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.RiyalApp
+import com.alyaqdhan.riyal.core.Currencies
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.data.Account
+import com.alyaqdhan.riyal.data.ApkInstaller
 import com.alyaqdhan.riyal.data.reasonText
 import com.alyaqdhan.riyal.data.AccountDiscovery
 import com.alyaqdhan.riyal.data.BudgetPlan
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Direction
+import com.alyaqdhan.riyal.data.MessageKind
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.ScanEngine
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.ScanSummary
+import com.alyaqdhan.riyal.data.Skeleton
 import com.alyaqdhan.riyal.data.TransferProposal
+import com.alyaqdhan.riyal.data.Tutor
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.data.UpdateApi
 import com.alyaqdhan.riyal.data.Updates
 import com.alyaqdhan.riyal.data.UserRule
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
+import java.io.File
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -140,8 +147,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val hasSmsPermission: StateFlow<Boolean> = _hasSmsPermission
     private var lastLoggedPermission: Boolean? = null
 
+    private val _storeReady = MutableStateFlow(false)
+
+    /** Once the store has been read from disk. The launch splash stays until then. */
+    val storeReady: StateFlow<Boolean> = _storeReady
+
     init {
         refreshPermission()
+        viewModelScope.launch {
+            store.awaitLoaded()
+            _storeReady.value = true
+        }
     }
 
     fun refreshPermission() {
@@ -160,9 +176,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private var launchScanDone = false
 
-    /** Auto-scan when the app opens (Settings toggle, on by default). Quiet: no sheet pops up. */
-    fun autoScanOnLaunch() {
-        if (launchScanDone) return
+    /**
+     * Auto-scan when the app opens (Settings toggle, on by default). Quiet: no sheet pops up.
+     *
+     * @param fresh the app was opened, rather than its screen rebuilt (rotated, or the
+     *   language changed). This view model lives as long as the app does, so leaving the
+     *   app and opening it again is a launch it has to be told about.
+     */
+    fun autoScanOnLaunch(fresh: Boolean) {
+        if (launchScanDone && !fresh) return
         launchScanDone = true
         refreshPermission()
         if (prefs.onboardingDone && prefs.scanOnLaunch && _hasSmsPermission.value) {
@@ -205,6 +227,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 prefs.lastScanAt = summary.at
                 _scanState.value = ScanState.Done(summary)
+                // The figures roll again, changed or not: a refresh should be seen to land.
+                com.alyaqdhan.riyal.ui.compose.Rolls.replay()
             } catch (e: SecurityException) {
                 Verbose.fail(R.string.log_scan_aborted_permission)
                 Verbose.flush()
@@ -213,6 +237,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
             } catch (e: Exception) {
                 Verbose.fail(R.string.log_scan_failed, e.javaClass.simpleName, e.message)
+                // Where in Riyal's own code it stopped: a copied log then says what broke,
+                // where "NoSuchElementException: null" alone said nothing.
+                e.stackTrace.filter { it.className.startsWith("com.alyaqdhan.riyal") }.take(3).forEach {
+                    Verbose.fail(R.string.log_scan_failed_at, "${it.fileName}:${it.lineNumber}", it.methodName)
+                }
                 Verbose.flush()
                 val unknown = getApplication<Application>().getString(R.string.scan_unknown_error)
                 _scanState.value = ScanState.Failed(e.message ?: unknown)
@@ -237,6 +266,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             account.displayName,
             Money.format(account.openingBalanceMinor, account.currency),
         )
+        Verbose.flush()
+    }
+
+    /** The two were one account all along: [from] and its records fold into [into]. */
+    fun mergeAccount(from: Account, into: Account) = viewModelScope.launch(Dispatchers.IO) {
+        store.mergeAccount(from.id, into.id)
+        Verbose.ok(R.string.log_account_merged, from.displayName, into.displayName)
         Verbose.flush()
     }
 
@@ -346,179 +382,266 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * What the last look at GitHub found.
      *
-     * The first version of this kept only a release that was newer and threw away every
-     * other answer, which made the row look broken in the two cases that are not rare at
-     * all: tapping Check now while already on the latest did nothing visible, and the
-     * release notes were unreachable unless an update happened to be waiting. The answer
-     * is worth keeping whichever way it came out.
+     * Every answer is kept, not only a newer release: tapping Check now while already on
+     * the latest has to say so, and the notes of the version you have are worth reading
+     * whether or not anything is waiting.
      */
     sealed interface UpdateState {
-        /** Nothing has been asked yet in this session, and nothing was remembered. */
+        /** Nothing has been asked yet, and nothing was remembered. */
         data object Unknown : UpdateState
-        /** A request is in flight. Only ever true because someone tapped. */
+        /** A request is in flight. Only ever shown because someone tapped. */
         data object Checking : UpdateState
-        /** GitHub has a newer one. [release] is what Download acts on. */
+        /** A newer release on the chosen channel, not skipped. */
         data class Available(val release: Updates.Release) : UpdateState
-        /** GitHub answered, and what it has is not newer. Kept for its notes. */
-        data class UpToDate(val release: Updates.Release) : UpdateState
-        /** Offline, rate-limited, no releases published, a body that would not parse. */
+        /** GitHub answered, and nothing on the channel is newer. */
+        data class UpToDate(val release: Updates.Release?) : UpdateState
+        /** Offline, rate-limited, nothing published, a body that would not parse. */
         data object Unreachable : UpdateState
     }
 
     private val _updateState = MutableStateFlow<UpdateState>(
-        // A remembered answer means the notes are on the (i) the moment Settings opens,
-        // rather than only after a check the user has no reason to know they must run.
+        // A remembered answer means the notes are there the moment Settings opens.
         prefs.lastReleaseTag?.let { tag ->
-            UpdateState.UpToDate(
-                Updates.Release(
-                    tag = tag,
-                    notes = prefs.lastReleaseNotes,
-                    apkUrl = null, apkName = null, apkBytes = 0L,
-                )
-            )
+            UpdateState.UpToDate(Updates.Release(tag = tag, notes = prefs.lastReleaseNotes))
         } ?: UpdateState.Unknown
     )
     val updateState: StateFlow<UpdateState> = _updateState
 
-    /** The release to download, which is only ever one that is actually newer. */
-    val update: StateFlow<Updates.Release?> =
-        _updateState.map { (it as? UpdateState.Available)?.release }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    private val _lastUpdateCheck = MutableStateFlow(prefs.lastUpdateCheckAt)
+    val lastUpdateCheck: StateFlow<Long> = _lastUpdateCheck
+
+    /** Every release GitHub listed on its last answer: the changelog. Null until asked. */
+    private val _releases = MutableStateFlow<List<Updates.Release>?>(null)
+    val releases: StateFlow<List<Updates.Release>?> = _releases
+
+    private val _releasesFailed = MutableStateFlow(false)
+    val releasesFailed: StateFlow<Boolean> = _releasesFailed
 
     /**
-     * Asks GitHub whether there is a newer release, at most once a day.
-     *
-     * A check that fails - offline, no releases yet, a rate limit - writes a line in the
-     * verbose log and changes nothing on screen, because an update check nobody asked
-     * for is not something to interrupt anyone about. [force] is the user tapping "Check
-     * now", which skips the throttle and is the only path that a person is waiting on.
-     *
-     * A check that finds a newer release does say so: Home shows a card once
-     * [updateState] becomes [UpdateState.Available]. Until that existed the answer lived
-     * only in Settings, so the way to find out a release was out was to go looking for
-     * one. It is still only ever a card - nothing is downloaded, and nothing installs.
+     * The release the update dialog is open on. A check finds a new version and opens it
+     * once for that version; after that the update waits in Settings until it is wanted.
      */
-    fun checkForUpdate(currentVersion: String, force: Boolean = false) =
+    private val _updatePrompt = MutableStateFlow<Updates.Release?>(null)
+    val updatePrompt: StateFlow<Updates.Release?> = _updatePrompt
+
+    fun openUpdatePrompt(release: Updates.Release) {
+        _updatePrompt.value = release
+    }
+
+    fun dismissUpdatePrompt() {
+        _updatePrompt.value = null
+    }
+
+    private val _checkOnStart = MutableStateFlow(prefs.checkUpdatesOnStart)
+    val checkOnStart: StateFlow<Boolean> = _checkOnStart
+
+    fun setCheckOnStart(on: Boolean) {
+        prefs.checkUpdatesOnStart = on
+        _checkOnStart.value = on
+        Verbose.info(
+            Verbose.str(
+                R.string.log_setting_changed,
+                Verbose.str(if (on) R.string.log_note_update_check_on else R.string.log_note_update_check_off),
+            )
+        )
+        Verbose.flush()
+    }
+
+    private val _includeBeta = MutableStateFlow(prefs.updateIncludeBeta)
+    val includeBeta: StateFlow<Boolean> = _includeBeta
+
+    private val _skipped = MutableStateFlow(prefs.skippedUpdates)
+    val skippedUpdates: StateFlow<Set<String>> = _skipped
+
+    /** Switching channels re-decides from the answer already in hand; no new request. */
+    fun setIncludeBeta(on: Boolean, currentVersion: String) {
+        prefs.updateIncludeBeta = on
+        _includeBeta.value = on
+        Verbose.info(
+            Verbose.str(
+                R.string.log_setting_changed,
+                Verbose.str(if (on) R.string.log_note_beta_on else R.string.log_note_beta_off),
+            )
+        )
+        _releases.value?.let { decide(it, currentVersion, prompt = false) }
+        Verbose.flush()
+    }
+
+    /**
+     * Asks GitHub for its releases, at most once a day unless [force]d by a tap.
+     *
+     * A failed check that nobody asked for changes nothing on screen: it is a line in the
+     * log, and the next launch tries again. [onStart] is the launch's own check, which
+     * the "check on start" switch can turn off entirely.
+     */
+    fun checkForUpdate(currentVersion: String, force: Boolean = false, onStart: Boolean = false) =
         viewModelScope.launch(Dispatchers.IO) {
+            if (onStart && !prefs.checkUpdatesOnStart) return@launch
             if (!Updates.shouldCheck(System.currentTimeMillis(), prefs.lastUpdateCheckAt, force)) {
                 return@launch
             }
             if (force) _updateState.value = UpdateState.Checking
+            val askedAt = SystemClock.uptimeMillis()
 
-            val release = UpdateApi.latestRelease()
-            if (release == null) {
-                // Nothing is stamped here on purpose, so the next launch tries again.
-                // A background check that failed stays invisible, as before. One the
-                // user asked for has someone waiting on it, and silence reads as a
-                // broken button, so that one says it could not ask.
+            val list = UpdateApi.releases()
+            // A tap is answered after a second at least: a check that came back at once
+            // flashed its spinner too quickly to read as having checked anything.
+            if (force) delay(MIN_CHECK_MS - (SystemClock.uptimeMillis() - askedAt))
+            if (list == null) {
+                // Nothing is stamped on purpose, so the next launch tries again.
                 if (force) _updateState.value = UpdateState.Unreachable
                 Verbose.flush()
                 return@launch
             }
-            // The day starts from an answer, not from an attempt. Stamping it above
-            // meant a launch with no signal - on a plane, on the way in to work - spent
-            // the day's one check on nothing, and a release published that morning went
-            // unnoticed until the next day.
-            prefs.lastUpdateCheckAt = System.currentTimeMillis()
-            prefs.lastReleaseTag = release.tag
-            prefs.lastReleaseNotes = release.notes
-            if (Updates.isNewer(release.tag, currentVersion)) {
-                _updateState.value = UpdateState.Available(release)
-                Verbose.ok(
-                    if (release.hasApk) R.string.log_update_newer_apk
-                    else R.string.log_update_newer_no_apk,
-                    release.tag,
-                    currentVersion,
-                )
-            } else {
-                _updateState.value = UpdateState.UpToDate(release)
-                Verbose.info(R.string.log_update_latest, currentVersion, release.tag)
-            }
+            // The day starts from an answer, not from an attempt.
+            val now = System.currentTimeMillis()
+            prefs.lastUpdateCheckAt = now
+            _lastUpdateCheck.value = now
+            _releases.value = list
+            _releasesFailed.value = false
+            decide(list, currentVersion, prompt = true, asked = force)
             Verbose.flush()
         }
+
+    private fun decide(
+        list: List<Updates.Release>,
+        currentVersion: String,
+        prompt: Boolean,
+        asked: Boolean = false,
+    ) {
+        val newest = Updates.newest(list, prefs.updateIncludeBeta)
+        newest?.let {
+            prefs.lastReleaseTag = it.tag
+            prefs.lastReleaseNotes = it.notes
+        }
+        val offer = Updates.pick(list, currentVersion, prefs.updateIncludeBeta, prefs.skippedUpdates)
+        if (offer == null) {
+            _updateState.value = UpdateState.UpToDate(newest)
+            Verbose.info(R.string.log_update_latest, currentVersion, newest?.tag ?: "-")
+            return
+        }
+        _updateState.value = UpdateState.Available(offer)
+        Verbose.ok(
+            if (offer.hasApk) R.string.log_update_newer_apk else R.string.log_update_newer_no_apk,
+            offer.tag,
+            currentVersion,
+        )
+        // The dialog opens once per version on its own, and every time someone asks.
+        val seen = prefs.updatePromptedTag?.let { Updates.sameVersion(it, offer.tag) } == true
+        if (prompt && (asked || !seen)) {
+            prefs.updatePromptedTag = offer.tag
+            _updatePrompt.value = offer
+        }
+    }
+
+    /** The changelog page asking for the list when no check has fetched it yet. */
+    fun loadReleases() = viewModelScope.launch(Dispatchers.IO) {
+        _releasesFailed.value = false
+        val list = UpdateApi.releases()
+        if (list == null) _releasesFailed.value = true else _releases.value = list
+        Verbose.flush()
+    }
+
+    /** "Not this version." A later release is still offered. */
+    fun skipUpdate(release: Updates.Release) {
+        prefs.skippedUpdates = prefs.skippedUpdates + release.tag
+        _skipped.value = prefs.skippedUpdates
+        cancelDownload()
+        _updatePrompt.value = null
+        _updateState.value = UpdateState.UpToDate(release)
+        Verbose.info(R.string.log_update_skipped, release.tag)
+        Verbose.flush()
+    }
+
+    fun clearSkippedUpdates() {
+        prefs.skippedUpdates = emptySet()
+        _skipped.value = emptySet()
+    }
+
+    sealed interface DownloadState {
+        data object Idle : DownloadState
+        data class Downloading(val tag: String, val fraction: Float) : DownloadState
+        data class Ready(val tag: String, val file: File) : DownloadState
+        data class Failed(val tag: String) : DownloadState
+    }
+
+    private val _download = MutableStateFlow<DownloadState>(DownloadState.Idle)
+    val download: StateFlow<DownloadState> = _download
+    private var downloadJob: Job? = null
 
     /**
-     * Puts the release's APK in the phone's public Downloads folder and opens the
-     * Downloads screen so the user can tap it themselves.
-     *
-     * DownloadManager does the work: progress, retries, its own notification, and no
-     * storage permission at all for this destination. What it deliberately does not do
-     * is install anything. The app asks for neither REQUEST_INSTALL_PACKAGES nor a
-     * FileProvider, so the last step is a person choosing to install a file they can
-     * see - which is also the step where they will be told, by Android, if the APK is
-     * signed with a different key than the copy they already have.
-     *
-     * Returns false when there is nothing to download, so the caller can say so rather
-     * than opening an empty Downloads screen.
+     * Fetches the release's APK into the app's own cache, with the progress on screen.
+     * Nothing installs at the end of it: [install] hands the file to Android, which asks.
      */
-    fun downloadUpdate(): Boolean {
-        val release = update.value ?: return false
-        val url = release.apkUrl ?: run {
+    fun startDownload(release: Updates.Release) {
+        if (_download.value is DownloadState.Downloading) return
+        val asset = release.apk ?: run {
             Verbose.fail(R.string.log_update_no_apk, release.tag)
             Verbose.flush()
-            return false
+            _download.value = DownloadState.Failed(release.tag)
+            return
         }
+        downloadJob = viewModelScope.launch(Dispatchers.IO) {
+            _download.value = DownloadState.Downloading(release.tag, 0f)
+            val context = getApplication<Application>()
+            ApkInstaller.clearOld(context)
+            val name = asset.name.replace(UNSAFE_FILE_CHARS, "_").ifBlank { "Riyal.apk" }
+            val dest = File(ApkInstaller.updatesDir(context), name)
+            val ok = UpdateApi.download(asset, dest) { fraction ->
+                _download.value = DownloadState.Downloading(release.tag, fraction)
+            }
+            _download.value = if (ok) DownloadState.Ready(release.tag, dest) else DownloadState.Failed(release.tag)
+        }
+    }
+
+    fun cancelDownload() {
+        downloadJob?.cancel()
+        downloadJob = null
+        if (_download.value is DownloadState.Downloading) _download.value = DownloadState.Idle
+    }
+
+    enum class InstallResult { STARTED, NEEDS_PERMISSION, FAILED }
+
+    /**
+     * Opens Android's installer on a finished download. Without the "install unknown
+     * apps" permission it opens nothing and says so, so the caller can take the user to
+     * the switch and back.
+     */
+    fun install(file: File): InstallResult {
         val context = getApplication<Application>()
-        return try {
-            val name = release.apkName ?: "Riyal-${release.tag}.apk"
-            val request = DownloadManager.Request(url.toUri())
-                .setTitle(name)
-                .setDescription("Riyal ${release.tag}")
-                .setMimeType("application/vnd.android.package-archive")
-                .setNotificationVisibility(
-                    DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
-                )
-                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
-            val manager = context.getSystemService(DownloadManager::class.java)
-            manager.enqueue(request)
-            Verbose.ok(R.string.log_download_started, name)
-            Verbose.flush()
-            openDownloads(context)
-            true
-        } catch (e: Exception) {
-            Verbose.fail(R.string.log_download_failed, e.javaClass.simpleName)
-            Verbose.flush()
-            false
-        }
+        if (!ApkInstaller.canInstall(context)) return InstallResult.NEEDS_PERMISSION
+        val started = ApkInstaller.install(context, file)
+        Verbose.info(if (started) R.string.log_install_opened else R.string.log_install_failed)
+        Verbose.flush()
+        return if (started) InstallResult.STARTED else InstallResult.FAILED
     }
 
-    /** The system Downloads screen, where the file will appear. */
-    private fun openDownloads(context: Application) {
-        try {
-            context.startActivity(
-                Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-            )
-        } catch (e: Exception) {
-            // A phone with no Downloads UI. The file still arrives; the notification
-            // DownloadManager posts is another way to reach it.
-            Verbose.info(R.string.log_no_downloads_screen)
-            Verbose.flush()
-        }
-    }
+    fun openInstallPermission() = ApkInstaller.openInstallPermission(getApplication())
 
-    fun addBudget(label: String, startMillis: Long, endExclusiveMillis: Long) =
+    /**
+     * Saves a plan as the editor, or a copy of last period's caps, left it: a new one is
+     * added, an existing one has its caps replaced. Each cap that changed is logged.
+     */
+    fun saveBudget(plan: BudgetPlan, copiedFrom: BudgetPlan? = null) =
         viewModelScope.launch(Dispatchers.IO) {
-            store.addBudget(
-                BudgetPlan(
-                    id = BudgetPlan.ID_PREFIX + UUID.randomUUID().toString().take(8),
-                    label = label,
-                    startMillis = startMillis,
-                    endExclusiveMillis = endExclusiveMillis,
-                )
-            )
-            Verbose.ok(R.string.log_budget_created, label)
-            Verbose.flush()
-        }
-
-    fun setBudgetLine(planId: String, categoryId: String, minor: Long) =
-        viewModelScope.launch(Dispatchers.IO) {
-            store.setBudgetLine(planId, categoryId, minor)
-            if (minor > 0) {
-                Verbose.info(R.string.log_budget_set, Categories.byId(categoryId).name, minor)
+            val before = budgets.value.firstOrNull { plan.id.isNotBlank() && it.id == plan.id }
+            if (before == null) {
+                store.addBudget(plan.copy(id = BudgetPlan.ID_PREFIX + UUID.randomUUID().toString().take(8)))
             } else {
-                Verbose.info(R.string.log_budget_removed, Categories.byId(categoryId).name)
+                store.updateBudget(plan)
+            }
+            when {
+                copiedFrom != null -> Verbose.ok(R.string.log_budget_copied, copiedFrom.label, plan.label)
+                before == null -> Verbose.ok(R.string.log_budget_created, plan.label)
+            }
+            val old = before?.lines.orEmpty()
+            plan.lines.forEach { (categoryId, minor) ->
+                if (old[categoryId] != minor) {
+                    Verbose.info(R.string.log_budget_set, Categories.byId(categoryId).name, minor)
+                }
+            }
+            (old.keys - plan.lines.keys).forEach {
+                Verbose.info(R.string.log_budget_removed, Categories.byId(it).name)
             }
             Verbose.flush()
         }
@@ -529,40 +652,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.info(R.string.log_budget_deleted, label)
         Verbose.flush()
     }
-
-    /**
-     * Moves a plan to a different period, which is how a plan stops being a calendar
-     * month: the screens step months, the plan carries its own bounds.
-     */
-    fun setBudgetPeriod(planId: String, label: String, startMillis: Long, endExclusiveMillis: Long) =
-        viewModelScope.launch(Dispatchers.IO) {
-            val plan = budgets.value.firstOrNull { it.id == planId } ?: return@launch
-            store.updateBudget(
-                plan.copy(
-                    label = label,
-                    startMillis = startMillis,
-                    endExclusiveMillis = endExclusiveMillis,
-                )
-            )
-            Verbose.info(R.string.log_budget_period, plan.label, label)
-            Verbose.flush()
-        }
-
-    /** Copies an existing plan's caps into a new period, the usual month-to-month move. */
-    fun copyBudget(source: BudgetPlan, label: String, startMillis: Long, endExclusiveMillis: Long) =
-        viewModelScope.launch(Dispatchers.IO) {
-            store.addBudget(
-                BudgetPlan(
-                    id = BudgetPlan.ID_PREFIX + UUID.randomUUID().toString().take(8),
-                    label = label,
-                    startMillis = startMillis,
-                    endExclusiveMillis = endExclusiveMillis,
-                    lines = source.lines,
-                )
-            )
-            Verbose.ok(R.string.log_budget_copied, source.label, label)
-            Verbose.flush()
-        }
 
     // ─────────────────────────── user edits ───────────────────────────
 
@@ -829,35 +918,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
     }
 
-    /**
-     * Adopts a word from a message as a gate keyword, so that kind of message is read
-     * automatically from the next scan instead of being asked about again.
-     *
-     * Only ever called because the user tapped it. The gate decides what the app is
-     * allowed to look at at all, and a word added to it silently would change how the
-     * whole inbox is read on evidence of one message.
-     */
-    fun learnKeyword(word: String, direction: Direction) {
-        val w = word.trim().lowercase()
-        if (w.isEmpty()) return
-        if (direction == Direction.EXPENSE) {
-            if (w in prefs.expenseKeywords) return
-            prefs.expenseKeywords = prefs.expenseKeywords + w
-        } else {
-            if (w in prefs.incomeKeywords) return
-            prefs.incomeKeywords = prefs.incomeKeywords + w
-        }
-        Verbose.ok(
-            R.string.log_keyword_added,
-            w,
-            Verbose.str(
-                if (direction == Direction.EXPENSE) R.string.log_word_out
-                else R.string.log_word_in
-            ),
-        )
-        Verbose.flush()
-    }
-
     fun resolveReview(
         item: ReviewItem,
         amountMinor: Long,
@@ -869,11 +929,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         toAccountId: String?,
         learnSimilar: Boolean = true,
     ) = viewModelScope.launch(Dispatchers.IO) {
+        val counted = countedIn(amountMinor, currency, if (type == TxnType.INCOME) toAccountId else fromAccountId)
         val txn = Txn(
             id = "man-${item.id}",
             atMillis = item.atMillis,
-            amountMinor = amountMinor,
-            currency = currency,
+            amountMinor = counted.amountMinor,
+            currency = counted.currency,
+            originalAmountMinor = counted.originalAmountMinor,
+            originalCurrency = counted.originalCurrency,
             type = type,
             fromAccountId = fromAccountId,
             toAccountId = toAccountId,
@@ -896,6 +959,308 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
     }
 
+    // ─────────────────────────── setup ───────────────────────────
+
+    /**
+     * The setup's steps: read the inbox, check the banks and accounts it found, answer a
+     * few questions about how their messages were read, done.
+     */
+    enum class SetupStep { READING, ACCOUNTS, QUESTIONS, DONE }
+
+    /** One question: a real message, and what the app made of it. */
+    data class SetupQuestion(
+        val key: String,
+        val sender: String,
+        val body: String,
+        val atMillis: Long,
+        val guess: MessageKind,
+        /** The record the message became, when it became one. */
+        val txn: Txn?,
+        val amountMinor: Long?,
+        val currency: String?,
+        /** Other messages of the same kind, which the answer decides as well. */
+        val similar: Int,
+    )
+
+    private val _setupStep = MutableStateFlow(SetupStep.READING)
+    val setupStep: StateFlow<SetupStep> = _setupStep
+
+    private val _setupQuestion = MutableStateFlow<SetupQuestion?>(null)
+    val setupQuestion: StateFlow<SetupQuestion?> = _setupQuestion
+
+    private val _setupProgress = MutableStateFlow(0f)
+    val setupProgress: StateFlow<Float> = _setupProgress
+
+    private val _questionsLeft = MutableStateFlow(0)
+    val questionsLeft: StateFlow<Int> = _questionsLeft
+
+    private val _questionsAsked = MutableStateFlow(0)
+    val questionsAsked: StateFlow<Int> = _questionsAsked
+
+    private val _taughtCount = MutableStateFlow(0)
+    val taughtCount: StateFlow<Int> = _taughtCount
+
+    private var tutor: Tutor? = null
+    private var setupJob: Job? = null
+
+    /** One answered question, kept so the user can step back to it and change it. */
+    data class SetupAnswer(
+        val question: SetupQuestion,
+        val kind: MessageKind,
+        /** The category the record was filed under, for money in or out. */
+        val categoryId: String?,
+        /** "Yes", as asked. */
+        val confirmed: Boolean,
+    )
+
+    // The tutor is rebuilt from these whenever an earlier answer changes: replaying the
+    // answers in order gives exactly the state they would have produced.
+    private var tutorCandidates: List<Tutor.Candidate> = emptyList()
+    private var tutorRight = 0
+    private var tutorWrong = 0
+    private val setupAnswers = ArrayList<SetupAnswer>()
+
+    /** Which answer is on screen; [setupAnswers]' size when it is a question not yet asked. */
+    private var setupCursor = 0
+
+    private val _setupAnswer = MutableStateFlow<SetupAnswer?>(null)
+
+    /** What was answered for the question on screen, when the user stepped back to it. */
+    val setupAnswer: StateFlow<SetupAnswer?> = _setupAnswer
+
+    private val _canStepBack = MutableStateFlow(false)
+    val canStepBack: StateFlow<Boolean> = _canStepBack
+
+    /**
+     * Whether a setup has been started in this process. A page restored after the
+     * system reclaimed the app has a fresh view model with nothing under way, and has
+     * to start again rather than wait on a read that is not happening.
+     */
+    val setupActive: Boolean get() = setupJob != null
+
+    /** Whether the setup should be offered on Home: never finished, and messages can be read. */
+    private val _setupDone = MutableStateFlow(prefs.setupDone)
+    val setupDone: StateFlow<Boolean> = _setupDone
+
+    /**
+     * Starts the setup from the top: a full read of the inbox, so the accounts and the
+     * questions are about everything, not only what arrived since the last scan.
+     */
+    fun startSetup() {
+        setupJob?.cancel()
+        tutor = null
+        setupAnswers.clear()
+        setupCursor = 0
+        _setupAnswer.value = null
+        _setupQuestion.value = null
+        _taughtCount.value = 0
+        _setupStep.value = SetupStep.READING
+        setupJob = viewModelScope.launch {
+            // Whatever scan is already running finishes first; then the full one.
+            scanState.first { it !is ScanState.Running }
+            startScan(showSheet = false, full = true)
+            scanState.first { it !is ScanState.Running }
+            _setupStep.value = SetupStep.ACCOUNTS
+        }
+    }
+
+    /** The accounts step's "this is right": the questions come next. */
+    fun confirmSetupAccounts() {
+        confirmAccounts()
+        val labels = store.labels.value
+        val candidates = store.templates.value
+            .filter { it.key !in labels && it.guess != null && it.count > 0 }
+            .map {
+                // A bank's codes and offers are often its most frequent message, but a
+                // misreading there costs no money; the questions start with what does.
+                val weight = if (it.guess == MessageKind.NONE) (it.count / 4).coerceAtLeast(1) else it.count
+                Tutor.Candidate(it.key, it.sender, weight, it.confidence)
+            }
+        tutorCandidates = candidates
+        tutorRight = prefs.teachRight
+        tutorWrong = prefs.teachWrong
+        setupAnswers.clear()
+        setupCursor = 0
+        tutor = Tutor(candidates, tutorRight, tutorWrong)
+        _setupStep.value = SetupStep.QUESTIONS
+        showSetupQuestion()
+    }
+
+    /** Back to the question before the one on screen, with its answer, to change it. */
+    fun stepBackSetup() {
+        if (setupCursor == 0) return
+        setupCursor--
+        showSetupQuestion()
+    }
+
+    private fun showSetupQuestion() {
+        val t = tutor ?: return
+        _setupProgress.value = t.progress
+        _questionsAsked.value = setupCursor
+        _canStepBack.value = setupCursor > 0
+        if (setupCursor < setupAnswers.size) {
+            val earlier = setupAnswers[setupCursor]
+            _setupAnswer.value = earlier
+            _setupQuestion.value = earlier.question
+            _questionsLeft.value = t.questionsLeft() + (setupAnswers.size - setupCursor)
+            return
+        }
+        _setupAnswer.value = null
+        val next = t.next()
+        if (next == null) {
+            finishSetup()
+            return
+        }
+        _questionsLeft.value = t.questionsLeft()
+        val stat = store.templates.value.first { it.key == next.key }
+        val txn = txns.value.firstOrNull { it.id == stat.sampleId || stat.sampleId in it.legIds }
+        val review = reviews.value.firstOrNull { it.id == stat.sampleId }
+        _setupQuestion.value = SetupQuestion(
+            key = stat.key,
+            sender = stat.sender,
+            body = stat.sampleBody,
+            atMillis = stat.sampleAt,
+            guess = stat.guess ?: MessageKind.OUT,
+            txn = txn,
+            amountMinor = txn?.amountMinor ?: review?.amountMinor,
+            currency = txn?.currency ?: review?.currency,
+            similar = (stat.count - 1).coerceAtLeast(0),
+        )
+    }
+
+    /**
+     * An answer. "Right" confirms the reading - and the category, which is then
+     * remembered for the shop. "Wrong" carries what it actually was: usually the same
+     * kind in another category, sometimes another kind altogether. Either way the answer
+     * is about the whole template, so every message written like this one is read that
+     * way from now on.
+     *
+     * Only a wrong kind counts against the reading. A category is about the shop, not
+     * about how the bank's message was read, so fixing one confirms the reading as much
+     * as a "yes" does - and shouldn't buy more questions.
+     *
+     * Answering a question the user stepped back to replaces its answer and moves on to
+     * the one after it.
+     */
+    fun answerSetup(right: Boolean, kind: MessageKind? = null, categoryId: String? = null) {
+        val q = _setupQuestion.value ?: return
+        if (tutor == null) return
+        val taught = if (right) q.guess else kind ?: q.guess
+        val answer = SetupAnswer(
+            question = q,
+            kind = taught,
+            categoryId = if (right) q.txn?.categoryId else categoryId,
+            confirmed = right,
+        )
+        if (setupCursor < setupAnswers.size) setupAnswers[setupCursor] = answer else setupAnswers += answer
+        setupCursor++
+        val t = Tutor(tutorCandidates, tutorRight, tutorWrong)
+        setupAnswers.forEach { t.answer(it.question.key, wasRight = it.kind == it.question.guess) }
+        tutor = t
+        prefs.teachRight = t.right
+        prefs.teachWrong = t.wrong
+        _taughtCount.value = setupAnswers.size
+        viewModelScope.launch(Dispatchers.IO) {
+            store.setLabel(q.key, taught)
+            Verbose.ok(
+                R.string.log_taught,
+                q.sender,
+                Verbose.str(
+                    when (taught) {
+                        MessageKind.OUT -> R.string.log_word_out
+                        MessageKind.IN -> R.string.log_word_in
+                        MessageKind.TRANSFER -> R.string.label_transfer
+                        MessageKind.NONE -> R.string.kind_none
+                    }
+                ),
+                q.similar,
+            )
+            val txn = q.txn
+            val merchant = txn?.merchant?.takeIf { it.isNotBlank() }
+            val confirmed = answer.categoryId
+            if (txn != null && confirmed != null && taught.direction != null &&
+                !(right && confirmed == Categories.defaultFor(txn.type))
+            ) {
+                // The category answer is about the shop, so it is remembered as one.
+                setCategory(txn, confirmed, merchant?.takeIf { prefs.smartRules })
+            }
+            Verbose.flush()
+        }
+        showSetupQuestion()
+    }
+
+    /**
+     * Ends the setup, early or not. What was taught applies from the next read of the
+     * inbox, so one is started now rather than left for the next launch.
+     */
+    fun finishSetup() {
+        prefs.setupDone = true
+        _setupDone.value = true
+        _setupQuestion.value = null
+        _setupAnswer.value = null
+        _canStepBack.value = false
+        _setupStep.value = SetupStep.DONE
+        if (_taughtCount.value > 0) startScan(showSheet = false, full = true)
+    }
+
+    /**
+     * The user says a sender is not their bank: it is never read again, and the accounts
+     * that were made from its messages go with it.
+     */
+    fun excludeSender(sender: String) = viewModelScope.launch(Dispatchers.IO) {
+        val key = sender.trim().lowercase()
+        prefs.excludedSenders = prefs.excludedSenders + sender.trim()
+        prefs.senderAllowlist = prefs.senderAllowlist.filterNot { it.trim().lowercase() == key }.toSet()
+        accounts.value.filter { a -> a.senderIds.any { it.trim().lowercase() == key } }
+            .forEach { store.deleteAccount(it.id) }
+        Verbose.info(R.string.log_sender_excluded, sender)
+        Verbose.flush()
+    }
+
+    /** A bank the first read missed: its messages are read from now on. */
+    fun includeSender(sender: String) {
+        val key = sender.trim().lowercase()
+        prefs.excludedSenders = prefs.excludedSenders.filterNot { it.trim().lowercase() == key }.toSet()
+        prefs.senderAllowlist = prefs.senderAllowlist + sender.trim()
+        Verbose.info(R.string.log_sender_included, sender)
+        Verbose.flush()
+    }
+
+    /** The setup's accounts step after a sender was added: read again, then back here. */
+    fun rereadForSetup() {
+        setupJob?.cancel()
+        _setupStep.value = SetupStep.READING
+        setupJob = viewModelScope.launch {
+            scanState.first { it !is ScanState.Running }
+            startScan(showSheet = false, full = true)
+            scanState.first { it !is ScanState.Running }
+            _setupStep.value = SetupStep.ACCOUNTS
+        }
+    }
+
+    /**
+     * Review's "this is money out" outside the setup: the same lesson, about the whole
+     * template, and a read of the inbox so every message like it is answered at once.
+     */
+    fun teach(item: ReviewItem, kind: MessageKind) = viewModelScope.launch(Dispatchers.IO) {
+        store.setLabel(Skeleton.of(item.sender, item.body), kind)
+        Verbose.ok(
+            R.string.log_taught,
+            item.sender,
+            Verbose.str(
+                when (kind) {
+                    MessageKind.OUT -> R.string.log_word_out
+                    MessageKind.IN -> R.string.log_word_in
+                    MessageKind.TRANSFER -> R.string.label_transfer
+                    MessageKind.NONE -> R.string.kind_none
+                }
+            ),
+            0,
+        )
+        Verbose.flush()
+        startScan(showSheet = false, full = true)
+    }
+
     fun addManual(
         amountMinor: Long,
         currency: String,
@@ -906,11 +1271,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         toAccountId: String?,
         atMillis: Long = System.currentTimeMillis(),
     ) = viewModelScope.launch(Dispatchers.IO) {
+        val counted = countedIn(amountMinor, currency, if (type == TxnType.INCOME) toAccountId else fromAccountId)
         val txn = Txn(
             id = "man-${UUID.randomUUID().toString().take(8)}",
             atMillis = atMillis,
-            amountMinor = amountMinor,
-            currency = currency,
+            amountMinor = counted.amountMinor,
+            currency = counted.currency,
+            originalAmountMinor = counted.originalAmountMinor,
+            originalCurrency = counted.originalCurrency,
             type = type,
             fromAccountId = fromAccountId,
             toAccountId = toAccountId,
@@ -928,6 +1296,57 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             Money.format(amountMinor, currency),
             Categories.byId(categoryId).name,
         )
+        Verbose.flush()
+    }
+
+    /** An amount as a record counts it, and what it was charged in when that differs. */
+    private data class Counted(
+        val amountMinor: Long,
+        val currency: String,
+        val originalAmountMinor: Long? = null,
+        val originalCurrency: String? = null,
+    )
+
+    /**
+     * A hand-entered amount is converted exactly as a scanned one is: into the currency
+     * of the account it touches, or the app's own when it touches none.
+     */
+    private fun countedIn(amountMinor: Long, currency: String, accountId: String?): Counted {
+        val home = accounts.value.firstOrNull { it.id == accountId }?.currency ?: prefs.defaultCurrency
+        if (currency == home) return Counted(amountMinor, currency)
+        val converted = Currencies.convert(amountMinor, currency, home) ?: return Counted(amountMinor, currency)
+        return Counted(converted, home, amountMinor, currency)
+    }
+
+    // ─────────────────────────── currency ───────────────────────────
+
+    private val _defaultCurrency = MutableStateFlow(prefs.defaultCurrency)
+    val defaultCurrency: StateFlow<String> = _defaultCurrency
+
+    fun setDefaultCurrency(code: String) {
+        if (code == prefs.defaultCurrency) return
+        prefs.defaultCurrency = code
+        _defaultCurrency.value = code
+        Verbose.info(Verbose.str(R.string.log_setting_changed, Verbose.str(R.string.log_note_currency, code)))
+        Verbose.flush()
+    }
+
+    private val _fxOverrides = MutableStateFlow(Currencies.decode(prefs.fxRates))
+    val fxOverrides: StateFlow<Map<String, BigDecimal>> = _fxOverrides
+
+    /**
+     * Corrects one floating rate, as rials per unit; null goes back to the built-in one.
+     * Converted records were worked out at the old rate, so the next scan re-reads the
+     * inbox - the rates are part of the scan's fingerprint.
+     */
+    fun setRate(code: String, omrPerUnit: BigDecimal?) {
+        val next = _fxOverrides.value.toMutableMap().apply {
+            if (omrPerUnit == null || omrPerUnit.signum() <= 0) remove(code) else put(code, omrPerUnit)
+        }
+        prefs.fxRates = Currencies.encode(next)
+        Currencies.setOverrides(next)
+        _fxOverrides.value = next
+        Verbose.info(R.string.log_rate_changed, code, omrPerUnit?.toPlainString() ?: "-")
         Verbose.flush()
     }
 
@@ -950,7 +1369,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             getApplication<Application>().contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { w ->
                 w.appendLine(
                     "id,datetime,type,amount,currency,from_account,to_account,merchant," +
-                        "category,sender,description,confidence,manual"
+                        "category,sender,description,confidence,manual,charged_amount,charged_currency"
                 )
                 val fmt = DateTimeFormatter.ISO_LOCAL_DATE_TIME
                 for (t in list) {
@@ -962,6 +1381,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                             csv(accountName(t.fromAccountId)), csv(accountName(t.toAccountId)),
                             csv(t.merchant ?: ""), csv(Categories.byId(t.categoryId).name),
                             csv(t.sender), csv(t.body), t.confidence.toString(), t.manual.toString(),
+                            t.originalAmountMinor?.let { minor ->
+                                Money.toMajor(minor, t.originalCurrency!!).toPlainString()
+                            }.orEmpty(),
+                            t.originalCurrency.orEmpty(),
                         ).joinToString(",")
                     )
                 }
@@ -1010,4 +1433,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun csv(s: String) = "\"" + s.replace("\"", "\"\"") + "\""
 
+    private companion object {
+        val UNSAFE_FILE_CHARS = Regex("[^A-Za-z0-9._-]")
+
+        /** The shortest a check someone asked for shows that it is checking. */
+        const val MIN_CHECK_MS = 1_000L
+    }
 }

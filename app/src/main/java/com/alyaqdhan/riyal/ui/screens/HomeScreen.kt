@@ -2,80 +2,88 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.text.font.FontWeight
+import com.alyaqdhan.riyal.ui.compose.title
+import androidx.compose.foundation.layout.size
+import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
+import com.alyaqdhan.riyal.ui.theme.successContainer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.shape.CircleShape
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.TextAutoSize
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.alyaqdhan.riyal.ui.compose.PeriodBar
-import com.alyaqdhan.riyal.ui.compose.appVersion
-import com.alyaqdhan.riyal.ui.compose.bidi
-import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.R
-import com.alyaqdhan.riyal.core.Money
+import com.alyaqdhan.riyal.data.Account
+import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.ui.MainViewModel
-import com.alyaqdhan.riyal.ui.compose.BudgetSection
+import com.alyaqdhan.riyal.ui.compose.BudgetCard
+import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.EmptyState
-import com.alyaqdhan.riyal.ui.compose.Face
-import com.alyaqdhan.riyal.ui.compose.FaceStyle
-import com.alyaqdhan.riyal.ui.compose.SectionTitle
-import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
+import com.alyaqdhan.riyal.ui.compose.FlatBar
+import com.alyaqdhan.riyal.ui.compose.MoneySign
+import com.alyaqdhan.riyal.ui.compose.MoneyText
+import com.alyaqdhan.riyal.ui.compose.PeriodBar
+import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.TxnRow
-import com.alyaqdhan.riyal.ui.compose.popIn
-import com.alyaqdhan.riyal.ui.compose.pressBounce
-import com.alyaqdhan.riyal.ui.compose.ScanRefresh
+import com.alyaqdhan.riyal.ui.compose.counted
+import com.alyaqdhan.riyal.ui.compose.dayLabel
+import com.alyaqdhan.riyal.ui.compose.iconFor
+import com.alyaqdhan.riyal.ui.compose.localDateOf
+import com.alyaqdhan.riyal.ui.compose.toolbarSpace
 import com.alyaqdhan.riyal.ui.theme.successColor
-import kotlinx.coroutines.launch
+import com.alyaqdhan.riyal.ui.compose.categoryColor
 
-
+/**
+ * The dashboard, laid out the way people already read one in every finance app they
+ * use: the period, then what came in, went out and is left over, then anything waiting
+ * on them, where the money sits, where it went, and the latest records.
+ *
+ * Every section is one card with one job, and the things that need the user are one
+ * list rather than a stack of differently coloured banners competing for attention.
+ */
 @Composable
 fun HomeScreen(
     vm: MainViewModel,
@@ -83,11 +91,11 @@ fun HomeScreen(
     onOpenReview: () -> Unit,
     onOpenAccounts: () -> Unit,
     onOpenNeedsCategory: () -> Unit,
-    onOpenSettings: () -> Unit,
+    onOpenSetup: () -> Unit,
+    onOpenTransactions: () -> Unit,
+    onOpenAnalysis: () -> Unit,
 ) {
     val txns by vm.txns.collectAsState()
-    val updateState by vm.updateState.collectAsState()
-    val appVersion = appVersion(LocalContext.current)
     val hasPerm by vm.hasSmsPermission.collectAsState()
     val reviews by vm.reviews.collectAsState()
     val accounts by vm.accounts.collectAsState()
@@ -96,293 +104,158 @@ fun HomeScreen(
     val budgetsOn by vm.budgetsOn.collectAsState()
     val needsCategory by vm.needsCategoryCount.collectAsState()
     val needsAccountCheck by vm.accountsNeedConfirming.collectAsState()
+    val setupDone by vm.setupDone.collectAsState()
     val pendingTransfers by vm.pendingTransfers.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
+    val archivedIds by vm.archivedIds.collectAsState()
+    val slice by vm.homeSlice.collectAsState()
 
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
-    // The same period control as everywhere else, and the same kind of period. Home used
-    // to have its own pair of chevrons over a month it never let you leave: no presets,
-    // no calendar, and no way to ask about a week or a year the way Analysis can.
-    val slice by vm.homeSlice.collectAsState()
     val totals = remember(txns, currency, slice) {
         Stats.totalsIn(txns, slice.start, slice.endExclusive, currency)
     }
+    val topSpending = remember(txns, currency, slice) {
+        Stats.breakdownIn(txns, slice.start, slice.endExclusive, currency).take(4)
+    }
     val pending = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_PENDING } }
+    // The newest records of the period chosen above, so the dates switch the list too.
+    val recent = remember(txns, archivedIds, slice) {
+        txns.asSequence().filter { it.id !in archivedIds && slice.contains(it.atMillis) }.take(8).toList()
+            .groupBy { localDateOf(it.atMillis) }
+    }
     var picker by remember { mutableStateOf<Txn?>(null) }
-    // The budget follows the selector above it: one period control per screen.
-    val budgetSlice = slice
 
-    val scope = rememberCoroutineScope()
-    val faceRotation = remember { Animatable(0f) }
-
-    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_home)) }) }) { padding ->
-        ScanRefresh(vm, Modifier.padding(padding)) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            // ── period selector: every stat below follows it
-            PeriodBar(slice = slice, onChange = { vm.setHomeSlice(it) }, txns = txns)
-
-            // ── the one hero: the face reacts to the month, Net is the number, and
-            // spent/received sit under it as a single line rather than two more cards.
-            Card(
-                shape = RoundedCornerShape(28.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .popIn(),
-            ) {
-                Row(
-                    Modifier.padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    val moodLabel = stringResource(
-                        when (Stats.moodLabel(totals)) {
-                            Stats.Mood.QUIET -> R.string.mood_quiet
-                            Stats.Mood.NO_INCOME_YET -> R.string.mood_no_income_yet
-                            Stats.Mood.WELL_UNDER -> R.string.mood_well_under
-                            Stats.Mood.FINE -> R.string.mood_fine
-                            Stats.Mood.CLOSE -> R.string.mood_close
-                            Stats.Mood.OVER -> R.string.mood_over
-                        }
-                    )
-                    Face(
-                        mood = Stats.mood(totals),
-                        modifier = Modifier
-                            .size(88.dp)
-                            .graphicsLayer { rotationZ = faceRotation.value }
-                            // The sentence that used to say this is gone from the screen,
-                            // so the face carries it for anyone reading by screen reader.
-                            .semantics { contentDescription = moodLabel }
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                            ) {
-                                scope.launch {
-                                    faceRotation.snapTo(-12f)
-                                    faceRotation.animateTo(
-                                        0f,
-                                        spring(
-                                            dampingRatio = Spring.DampingRatioHighBouncy,
-                                            stiffness = Spring.StiffnessLow,
-                                        ),
-                                    )
-                                }
-                            },
-                    )
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            stringResource(R.string.home_net),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        val net = totals.net
-                        Text(
-                            bidi(
-                                (if (net < 0) "\u2212 " else "") +
-                                    Money.format(kotlin.math.abs(net), currency)
-                            ),
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = if (net < 0) MaterialTheme.colorScheme.error else successColor(),
-                            maxLines = 1,
-                            softWrap = false,
-                            autoSize = TextAutoSize.StepBased(
-                                minFontSize = 18.sp,
-                                maxFontSize = MaterialTheme.typography.headlineMedium.fontSize,
-                            ),
-                        )
-                        // Both figures, one line, no labels repeated: colour says which
-                        // is which, and the currency was named by the number above.
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                stringResource(R.string.home_out, Money.formatAmount(totals.spent, currency)),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                            Text(
-                                "\u00b7",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                stringResource(R.string.home_in, Money.formatAmount(totals.received, currency)),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = successColor(),
-                            )
-                        }
-                        if (totals.otherCurrencyCount > 0) {
-                            Text(
-                                stringResource(
-                                    R.string.home_other_currencies,
-                                    counted(R.plurals.count_transactions, totals.otherCurrencyCount),
-                                ),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-
-            // ── accounts: balances read from SMS are a first guess until the user says
-            // otherwise, so this asks once and then gets out of the way for good.
-            if (needsAccountCheck) {
-                ActionCard(
-                    face = FaceStyle.CONFUSED,
-                    mood = 0.3f,
-                    title = stringResource(R.string.home_check_accounts_title),
-                    // The title already says what to do, so the line under it only has to
-                    // say what there is - three lines of prompt on a screen you are
-                    // trying to read past is the prompt shouting.
-                    subtitle = stringResource(
-                        R.string.home_check_accounts_subtitle,
-                        counted(R.plurals.count_accounts, accounts.size),
-                    ),
-                    container = MaterialTheme.colorScheme.primaryContainer,
-                    content = MaterialTheme.colorScheme.onPrimaryContainer,
-                    onClick = onOpenAccounts,
-                    modifier = Modifier.popIn(140),
+    val attention = buildList {
+        if (hasPerm && !setupDone) {
+            add(
+                Attention(
+                    R.drawable.ic_sym_school,
+                    stringResource(R.string.home_setup_title),
+                    stringResource(R.string.home_setup_subtitle),
+                    onOpenSetup,
                 )
-            }
-
-            // ── budget: only present once switched on in Settings
-            if (budgetsOn) {
-                BudgetSection(
-                    slice = budgetSlice,
-                    plans = budgets,
-                    txns = txns,
-                    currency = currency,
-                    onCreate = { label, start, end -> vm.addBudget(label, start, end) },
-                    onCopy = { source, label, start, end -> vm.copyBudget(source, label, start, end) },
-                    onSetLine = { planId, categoryId, minor -> vm.setBudgetLine(planId, categoryId, minor) },
-                    onSetPeriod = { planId, label, start, end -> vm.setBudgetPeriod(planId, label, start, end) },
-                    onDelete = { vm.deleteBudget(it) },
-                    modifier = Modifier.popIn(160),
-                )
-            }
-
-            // ── permission: the only reason scanning could be unavailable
-            if (!hasPerm) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .popIn(180),
-                ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                Icons.Filled.Lock,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                            Text(stringResource(R.string.home_sms_off_title), style = MaterialTheme.typography.titleMedium)
-                        }
-                        Text(
-                            stringResource(R.string.home_sms_off_body),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Button(
-                            onClick = onRequestPermission,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .pressBounce(),
-                        ) {
-                            Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.home_sms_allow))
-                        }
-                    }
-                }
-            }
-
-            // ── needs review: unreadable messages and transfer pairs both wait here
-            if (pending.isNotEmpty() || pendingTransfers.isNotEmpty()) {
-                val parts = buildList {
-                    if (pendingTransfers.isNotEmpty()) add(counted(R.plurals.home_possible_transfers, pendingTransfers.size))
-                    if (pending.isNotEmpty()) add(counted(R.plurals.home_unreadable_messages, pending.size))
-                }
-                ActionCard(
-                    face = FaceStyle.CONFUSED,
-                    mood = -0.2f,
-                    title = stringResource(R.string.review_title),
-                    subtitle = stringResource(R.string.home_needs_review_subtitle, parts.joinToString(" · ")),
-                    container = MaterialTheme.colorScheme.tertiaryContainer,
-                    content = MaterialTheme.colorScheme.onTertiaryContainer,
-                    onClick = onOpenReview,
-                    modifier = Modifier.popIn(200),
-                )
-            }
-
-            // Sits under Needs review because it is the same kind of thing: something
-            // waiting on the user. Nothing said "these have no category" before, so a
-            // backlog could grow for months without ever being mentioned.
-            if (needsCategory > 0) {
-                ActionCard(
-                    face = FaceStyle.CONFUSED,
-                    mood = 0f,
-                    title = counted(R.plurals.home_needs_category_title, needsCategory),
-                    // How they are ordered is something the page itself shows on arrival.
-                    subtitle = stringResource(R.string.home_needs_category_subtitle),
-                    container = MaterialTheme.colorScheme.secondaryContainer,
-                    content = MaterialTheme.colorScheme.onSecondaryContainer,
-                    onClick = onOpenNeedsCategory,
-                    modifier = Modifier.popIn(240),
-                )
-            }
-
-            // ── a newer release exists. Last of the cards on purpose: the ones above are
-            // things waiting on the user, and this is news. The check itself has run on
-            // launch since it was written, but its answer only ever appeared in Settings,
-            // so the way to learn a release was out was to go and look for one.
-            (updateState as? MainViewModel.UpdateState.Available)?.let { available ->
-                ActionCard(
-                    face = FaceStyle.NORMAL,
-                    mood = 0.8f,
-                    title = stringResource(R.string.home_update_title, available.release.tag),
-                    // Settings is where Download lives and where the notes are; saying
-                    // so means the tap is not a surprise.
-                    subtitle = stringResource(R.string.home_update_subtitle, appVersion),
-                    container = MaterialTheme.colorScheme.primaryContainer,
-                    content = MaterialTheme.colorScheme.onPrimaryContainer,
-                    onClick = onOpenSettings,
-                    modifier = Modifier.popIn(280),
-                )
-            }
-
-            // ── recent transactions
-            SectionTitle(stringResource(R.string.home_recent_transactions))
-            val recent = txns.take(6)
-            if (recent.isEmpty()) {
-                EmptyState(
-                    style = FaceStyle.SLEEPY,
-                    title = stringResource(R.string.home_empty_title),
-                    subtitle = stringResource(
-                        if (hasPerm) R.string.home_empty_with_permission
-                        else R.string.home_empty_without_permission
-                    ),
-                )
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    recent.forEachIndexed { index, txn ->
-                        TxnRow(
-                            txn,
-                            onClick = { picker = txn },
-                            modifier = Modifier.popIn(index * 40),
-                            accounts = accounts,
-                        )
-                    }
-                }
-            }
-            ToolbarSpacer()
+            )
         }
+        if (pending.isNotEmpty() || pendingTransfers.isNotEmpty()) {
+            val parts = buildList {
+                if (pendingTransfers.isNotEmpty()) add(counted(R.plurals.home_possible_transfers, pendingTransfers.size))
+                if (pending.isNotEmpty()) add(counted(R.plurals.home_unreadable_messages, pending.size))
+            }
+            add(
+                Attention(
+                    R.drawable.ic_sym_inbox,
+                    stringResource(R.string.review_title),
+                    stringResource(R.string.home_needs_review_subtitle, parts.joinToString(" · ")),
+                    onOpenReview,
+                )
+            )
+        }
+        if (needsCategory > 0) {
+            add(
+                Attention(
+                    R.drawable.ic_sym_category,
+                    counted(R.plurals.home_needs_category_title, needsCategory),
+                    stringResource(R.string.home_needs_category_subtitle),
+                    onOpenNeedsCategory,
+                )
+            )
+        }
+        // The setup checks the accounts too, so this is only for someone who skipped it.
+        if (needsAccountCheck && setupDone) {
+            add(
+                Attention(
+                    R.drawable.ic_sym_account_balance,
+                    stringResource(R.string.home_check_accounts_title),
+                    stringResource(R.string.home_check_accounts_subtitle, counted(R.plurals.count_accounts, accounts.size)),
+                    onOpenAccounts,
+                )
+            )
+        }
+    }
+
+    Scaffold(
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_home)) }) },
+    ) { padding ->
+        ScanRefresh(vm, Modifier.padding(padding)) {
+            LazyColumn(
+                contentPadding = PaddingValues(bottom = toolbarSpace),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item(key = "period") {
+                    PeriodBar(
+                        slice = slice,
+                        onChange = { vm.setHomeSlice(it) },
+                        txns = txns,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    )
+                }
+                item(key = "summary") { SummaryCard(totals, currency) }
+                if (budgetsOn) {
+                    item(key = "budget") {
+                        BudgetCard(
+                            slice = slice,
+                            plans = budgets,
+                            txns = txns,
+                            currency = currency,
+                            onSave = { plan, from -> vm.saveBudget(plan, from) },
+                            onDelete = { vm.deleteBudget(it) },
+                            categoryUse = categoryUse,
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                    }
+                }
+                if (!hasPerm) {
+                    item(key = "permission") { PermissionCard(onRequestPermission) }
+                }
+                if (attention.isNotEmpty()) {
+                    item(key = "attention") { AttentionCard(attention) }
+                }
+                if (topSpending.isNotEmpty()) {
+                    item(key = "top") { TopSpendingCard(topSpending, currency, onOpenAnalysis) }
+                }
+                item(key = "recent-header") {
+                    SectionHeader(
+                        stringResource(R.string.home_recent_transactions),
+                        action = stringResource(R.string.home_see_all).takeIf { recent.isNotEmpty() },
+                        onAction = onOpenTransactions,
+                    )
+                }
+                if (recent.isEmpty()) {
+                    item(key = "empty") {
+                        if (txns.isEmpty()) {
+                            EmptyState(
+                                title = stringResource(R.string.home_empty_title),
+                                subtitle = stringResource(
+                                    if (hasPerm) R.string.home_empty_with_permission
+                                    else R.string.home_empty_without_permission
+                                ),
+                                icon = R.drawable.ic_nav_records,
+                            )
+                        } else {
+                            // Records exist, just none in these dates.
+                            EmptyState(
+                                title = stringResource(R.string.home_period_empty, slice.title()),
+                                subtitle = stringResource(R.string.home_period_empty_hint),
+                                icon = R.drawable.ic_sym_calendar_month,
+                            )
+                        }
+                    }
+                } else {
+                    recent.forEach { (date, dayTxns) ->
+                        item(key = "day-$date") {
+                            Text(
+                                dayLabel(date),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                        }
+                        items(dayTxns, key = { it.id }) { txn ->
+                            TxnRow(txn, onClick = { picker = txn }, accounts = accounts, showDate = false)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -415,41 +288,198 @@ fun HomeScreen(
     }
 }
 
-/** A tappable prompt card: mascot, one line of why, and a chevron into the page. */
+/** One thing waiting on the user. */
+private data class Attention(
+    @param:DrawableRes val icon: Int,
+    val title: String,
+    val subtitle: String,
+    val onClick: () -> Unit,
+)
+
+/** A section's title, with its one way further in on the other side. */
 @Composable
-private fun ActionCard(
-    face: FaceStyle,
-    mood: Float,
-    title: String,
-    subtitle: String,
+private fun SectionHeader(title: String, action: String? = null, onAction: () -> Unit = {}) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+        if (action != null) TextButton(onClick = onAction, shapes = ButtonDefaults.shapes()) { Text(action) }
+    }
+}
+
+/**
+ * What the period came to: what is left, large, with what went out and what came in as
+ * two pills under it. Net is the one figure people open a money app to read, so it is
+ * the one shown big; the two that make it up stay a glance away.
+ */
+@Composable
+private fun SummaryCard(totals: Stats.MonthTotals, currency: String) {
+    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Column(Modifier.padding(20.dp)) {
+            Text(
+                stringResource(R.string.home_net),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            MoneyText(
+                totals.net,
+                currency,
+                sign = MoneySign.NEGATIVE,
+                roll = true,
+                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                color = if (totals.net < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 20.sp,
+                    maxFontSize = MaterialTheme.typography.displaySmall.fontSize,
+                ),
+            )
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TotalPill(
+                    R.drawable.ic_sym_arrow_up,
+                    stringResource(R.string.label_expense),
+                    totals.spent,
+                    currency,
+                    MaterialTheme.colorScheme.errorContainer,
+                    MaterialTheme.colorScheme.onErrorContainer,
+                    Modifier.weight(1f),
+                )
+                TotalPill(
+                    R.drawable.ic_sym_arrow_down,
+                    stringResource(R.string.label_income),
+                    totals.received,
+                    currency,
+                    successContainer(),
+                    onSuccessContainer(),
+                    Modifier.weight(1f),
+                )
+            }
+            if (totals.otherCurrencyCount > 0) {
+                Text(
+                    stringResource(
+                        R.string.home_other_currencies,
+                        counted(R.plurals.count_transactions, totals.otherCurrencyCount),
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
+        }
+    }
+}
+
+/** One side of the net: an arrow, its name and its total, in a pill of its own colour. */
+@Composable
+private fun TotalPill(
+    @DrawableRes icon: Int,
+    label: String,
+    minor: Long,
+    currency: String,
     container: Color,
     content: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
 ) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(24.dp),
-        color = container,
-        modifier = modifier
-            .fillMaxWidth()
-            .pressBounce(0.97f),
-    ) {
+    Surface(shape = CircleShape, color = container, contentColor = content, modifier = modifier) {
         Row(
-            Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(16.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+            MoneyText(
+                minor,
+                currency,
+                sign = MoneySign.NONE,
+                roll = true,
+                style = MaterialTheme.typography.labelLarge,
+                color = content,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f),
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 9.sp,
+                    maxFontSize = MaterialTheme.typography.labelLarge.fontSize,
+                ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PermissionCard(onRequestPermission: () -> Unit) {
+    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(painterResource(R.drawable.ic_sym_lock), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.home_sms_off_title), style = MaterialTheme.typography.titleMedium)
+            }
+            Text(
+                stringResource(R.string.home_sms_off_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(onClick = onRequestPermission, modifier = Modifier.fillMaxWidth(), shapes = ButtonDefaults.shapes()) {
+                Text(stringResource(R.string.home_sms_allow))
+            }
+        }
+    }
+}
+
+/** Everything waiting on the user, as one list with one row each. */
+@Composable
+private fun AttentionCard(items: List<Attention>) {
+    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Text(
+            stringResource(R.string.home_attention),
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp),
+        )
+        items.forEach { a ->
+            ListItem(
+                onClick = a.onClick,
+                leadingContent = { Icon(painterResource(a.icon), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                supportingContent = { Text(a.subtitle) },
+                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            ) { Text(a.title) }
+        }
+    }
+}
+
+/** Where the money went: the biggest categories of the period, each with its share. */
+@Composable
+private fun TopSpendingCard(slices: List<Stats.Slice>, currency: String, onOpenAnalysis: () -> Unit) {
+    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Face(mood = mood, style = face, modifier = Modifier.size(44.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = content)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = content)
+            Text(stringResource(R.string.home_top_spending), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            TextButton(onClick = onOpenAnalysis, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.home_see_all)) }
+        }
+        Column(
+            Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            slices.forEach { s ->
+                val category = Categories.byId(s.categoryId)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    CategoryBadge(category.id, size = 36.dp)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(category.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                            MoneyText(s.amountMinor, currency, sign = MoneySign.NONE, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        FlatBar(
+                            progress = { s.fraction },
+                            color = categoryColor(category.id),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
             }
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = content,
-            )
         }
     }
 }

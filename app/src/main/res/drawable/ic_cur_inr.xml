@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- INR symbol. Path data from Wikimedia Commons (public domain / CC0), the same
+     source and paths the firePOS CurrencyIcon uses. Tinted at runtime like any icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16.32dp"
+    android:height="24dp"
+    android:viewportWidth="170"
+    android:viewportHeight="250">
+    <group
+        android:translateX="-40.0"
+        android:translateY="1.0">
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M153 23h41l15-23H55L40 23h26c27 0 52 2 62 25H55L40 71h91v1c0 17-14 43-60 43H48v22l90 113h41L85 133c39-2 75-24 80-62h29l15-23h-45c-1-9-5-18-11-25z" />
+    </group>
+</vector>

@@ -17,6 +17,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.toArgb
 
 /**
  * Color the M3 Expressive way: on Android 12+ the whole palette is dynamic, derived
@@ -95,13 +98,30 @@ private val DarkScheme = darkColorScheme(
  * these are used wherever an amount has a direction.
  */
 @Composable
-fun successColor() = if (isSystemInDarkTheme()) Color(0xFF81C784) else Color(0xFF2E7D32)
+fun successColor() = legible(
+    if (isSystemInDarkTheme()) Color(0xFF81C784) else Color(0xFF2E7D32),
+    TEXT_CONTRAST,
+)
 
 @Composable
 fun successContainer() = if (isSystemInDarkTheme()) Color(0xFF1B4322) else Color(0xFFC8E6C9)
 
 @Composable
 fun onSuccessContainer() = if (isSystemInDarkTheme()) Color(0xFFC8E6C9) else Color(0xFF0B2E13)
+
+/**
+ * [color] moved in lightness, hue kept, just far enough to stand [ratio]:1 on this
+ * theme's cards ([legibleOn]). The palettes were picked on white; on a light card many
+ * of them faded to under 2:1, and on a dark one the deep ones sank.
+ */
+@Composable
+fun legible(color: Color, ratio: Double = GRAPHIC_CONTRAST): Color {
+    val card = MaterialTheme.colorScheme.surfaceContainerHighest
+    return remember(color, card, ratio) { Color(legibleOn(color.toArgb(), card.toArgb(), ratio)) }
+}
+
+/** Black or white, for a tick or an icon drawn on [fill]. */
+fun inkFor(fill: Color): Color = Color(inkOn(fill.toArgb()))
 
 /** Softer, rounder shape scale than stock M3: friendlier and less machine-perfect. */
 private val RiyalShapes = Shapes(
@@ -124,7 +144,10 @@ fun RiyalTheme(content: @Composable () -> Unit) {
     }
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
-        motionScheme = MotionScheme.expressive(),
+        // Standard, not expressive: the expressive springs overshoot, so every switch,
+        // sheet and button settled with a wobble. Components still move where the
+        // platform expects them to, without the bounce.
+        motionScheme = MotionScheme.standard(),
         shapes = RiyalShapes,
         content = content,
     )

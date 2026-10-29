@@ -15,6 +15,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.alyaqdhan.riyal.ui.MainViewModel
 
+/**
+ * Pull down to scan, with Material 3 Expressive's pull-to-refresh: its loading indicator
+ * morphs through Material's shapes while the scan runs, instead of the old spinning arc.
+ */
 @Composable
 fun ScanRefresh(
     vm: MainViewModel,

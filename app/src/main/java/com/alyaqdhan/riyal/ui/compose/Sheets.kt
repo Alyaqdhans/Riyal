@@ -6,6 +6,29 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.DropdownMenuPopup
+import androidx.compose.material3.DropdownMenuGroup
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.ui.text.rememberTextMeasurer
+import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
+import com.alyaqdhan.riyal.ui.theme.successContainer
+import androidx.annotation.DrawableRes
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material3.Icon
 import androidx.annotation.StringRes
 import com.alyaqdhan.riyal.R
 
@@ -31,6 +54,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -39,9 +63,9 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LinearWavyProgressIndicator
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
@@ -88,21 +112,106 @@ import java.time.ZoneId
 import java.util.Locale
 import kotlinx.coroutines.launch
 
-val CURRENCIES = listOf("OMR", "SAR", "AED", "KWD", "BHD", "QAR", "USD", "EUR", "GBP", "INR")
-
 /** Wraps text as a clipboard entry for the new suspend [androidx.compose.ui.platform.Clipboard] API. */
 fun plainText(text: String): ClipEntry = ClipEntry(ClipData.newPlainText("riyal", text))
 
-/** How each operation type is labelled everywhere the user picks one. */
+/** How each operation type is named where the user picks one: as Home names its totals. */
 @StringRes
 fun typeLabel(type: TxnType): Int = when (type) {
-    TxnType.EXPENSE -> R.string.label_money_out
-    TxnType.INCOME -> R.string.label_money_in
+    TxnType.EXPENSE -> R.string.label_expense
+    TxnType.INCOME -> R.string.label_income
     TxnType.TRANSFER -> R.string.label_transfer
 }
 
+/** And the arrow Home's totals carry, so the same thing looks the same everywhere. */
+@DrawableRes
+fun typeIcon(type: TxnType): Int = when (type) {
+    TxnType.EXPENSE -> R.drawable.ic_sym_arrow_up
+    TxnType.INCOME -> R.drawable.ic_sym_arrow_down
+    TxnType.TRANSFER -> R.drawable.ic_sym_swap
+}
+
+/** And Home's colours for it: spending red, income green, a transfer neither. */
+@Composable
+fun typeTone(type: TxnType): Pair<Color, Color> = when (type) {
+    TxnType.EXPENSE -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+    TxnType.INCOME -> successContainer() to onSuccessContainer()
+    TxnType.TRANSFER -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+}
+
 /**
- * The scan bottom sheet: expressive LoadingIndicator while working, the live verbose
+ * One of a few, as Material 3 Expressive's connected button group: the chosen one fills
+ * in [tone] and rounds fully, the others stay quiet. Replaces segmented buttons, which
+ * read as a row of boxes. [perRow] fixes how many sit on a row; left out, they share one
+ * row when every label fits and go two to a row when not.
+ */
+@Composable
+fun <T> ConnectedChoice(
+    options: List<T>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    label: @Composable (T) -> String,
+    modifier: Modifier = Modifier,
+    icon: ((T) -> Int)? = null,
+    tone: @Composable (T) -> Pair<Color, Color> = {
+        MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
+    },
+    perRow: Int? = null,
+) {
+    val labels = options.map { label(it) }
+    val measurer = rememberTextMeasurer()
+    val textStyle = MaterialTheme.typography.labelLarge
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        // One row when every label fits whole; otherwise two to a row, so a narrow phone
+        // gets "Expense | Income" and "Transfer" under them rather than three squeezed
+        // to ellipses.
+        val density = LocalDensity.current
+        val needed = with(density) {
+            labels.sumOf { measurer.measure(it, textStyle).size.width } +
+                options.size * (16.dp + if (icon != null) 24.dp else 0.dp).roundToPx() +
+                (options.size - 1) * ButtonGroupDefaults.ConnectedSpaceBetween.roundToPx()
+        }
+        val inRow = perRow ?: if (needed <= constraints.maxWidth) options.size else 2
+        Column(verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
+            options.indices.chunked(inRow).forEach { row ->
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                ) {
+                    row.forEachIndexed { at, index ->
+                        val option = options[index]
+                        val (on, onOn) = tone(option)
+                        ToggleButton(
+                            checked = option == selected,
+                            onCheckedChange = { onSelect(option) },
+                            modifier = Modifier.weight(1f).semantics { role = Role.RadioButton },
+                            shapes = when {
+                                row.size == 1 -> ToggleButtonDefaults.shapes()
+                                at == 0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                at == row.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            },
+                            colors = ToggleButtonDefaults.toggleButtonColors(
+                                checkedContainerColor = on,
+                                checkedContentColor = onOn,
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                        ) {
+                            if (icon != null) {
+                                Icon(painterResource(icon(option)), contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                            }
+                            Text(labels[index], maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The scan bottom sheet: a progress indicator while working, the live verbose
  * log streaming underneath, and a plain-language summary when done. Dismissable at any
  * time, the scan itself keeps running; the user is in charge of the window, not the work.
  */
@@ -135,8 +244,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        // Material 3 Expressive shape-morphing loading indicator
-                        LoadingIndicator(Modifier.size(52.dp))
+                        FlatWheel(Modifier.size(48.dp))
                         Column {
                             Text(
                                 stringResource(
@@ -161,15 +269,10 @@ fun ScanSheetHost(vm: MainViewModel) {
                             )
                         }
                     }
-                    // Expressive squiggly progress, determinate once the total is known
-                    if (s.total > 0) {
-                        LinearWavyProgressIndicator(
-                            progress = { s.processed / s.total.toFloat() },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    } else {
-                        LinearWavyProgressIndicator(Modifier.fillMaxWidth())
-                    }
+                    ScanBar(
+                        progress = if (s.total > 0) ({ s.processed / s.total.toFloat() }) else null,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
 
                 is MainViewModel.ScanState.Done -> Column {
@@ -177,7 +280,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Face(mood = 1f, modifier = Modifier.size(64.dp).popIn())
+                        Icon(painterResource(R.drawable.ic_sym_check_circle), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
                         Column {
                             Text(
                                 stringResource(R.string.scan_done),
@@ -233,7 +336,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Face(mood = -1f, style = FaceStyle.DIZZY, modifier = Modifier.size(64.dp).popIn())
+                    Icon(painterResource(R.drawable.ic_sym_error), contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
                     Column {
                         Text(
                             stringResource(R.string.scan_failed),
@@ -262,7 +365,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                 )
                 TextButton(onClick = {
                     scope.launch { clipboard.setClipEntry(plainText(Verbose.dump())) }
-                }) {
+                }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_copy))
                 }
             }
@@ -284,8 +387,8 @@ fun ScanSheetHost(vm: MainViewModel) {
                 onClick = { vm.closeScanSheet() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp)
-                    .pressBounce(),
+                    .padding(vertical = 16.dp),
+                shapes = ButtonDefaults.shapes(),
             ) {
                 Text(
                     stringResource(
@@ -353,6 +456,18 @@ fun TxnEditSheet(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
+                // Bought abroad: what the bank charged, and what it counts as here.
+                if (txn.isConverted) {
+                    MoneyAwareText(
+                        stringResource(
+                            R.string.cur_counted_as,
+                            Money.format(txn.originalAmountMinor!!, txn.originalCurrency!!),
+                            Money.format(txn.amountMinor, txn.currency),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
 
             if (txn.isTransfer) {
@@ -366,7 +481,8 @@ fun TxnEditSheet(
                 if (onSplitTransfer != null && txn.legIds.isNotEmpty()) {
                     Button(
                         onClick = onSplitTransfer,
-                        modifier = Modifier.fillMaxWidth().pressBounce(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shapes = ButtonDefaults.shapes(),
                     ) {
                         Text(
                             stringResource(
@@ -384,42 +500,38 @@ fun TxnEditSheet(
                     order = order,
                 )
                 if (pattern != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Switch(
-                            checked = makeRule && !marked,
-                            enabled = !marked,
-                            onCheckedChange = { makeRule = it },
-                        )
-                        Text(
-                            stringResource(R.string.sheet_always_rule, txn.merchant.orEmpty()),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (marked) MaterialTheme.colorScheme.onSurfaceVariant
-                            else MaterialTheme.colorScheme.onSurface,
-                        )
+                    // What happens to this name's other records, as one choice. It was a
+                    // switch for "always" and a button below it for "ask each time":
+                    // two controls about the same thing, which could disagree.
+                    Text(
+                        stringResource(R.string.sheet_rule_title, txn.merchant.orEmpty()),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    val choices = buildList {
+                        add(R.string.sheet_rule_once)
+                        add(R.string.sheet_rule_remember)
+                        if (onAskEachTime != null || marked) add(R.string.sheet_rule_ask)
                     }
-                    if (marked) {
-                        Text(
-                            stringResource(R.string.sheet_asked_each_time),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    val current = when {
+                        marked -> R.string.sheet_rule_ask
+                        makeRule -> R.string.sheet_rule_remember
+                        else -> R.string.sheet_rule_once
                     }
-                    // Offered right here because this is where the problem shows itself:
-                    // picking a category for the same person for the second time, and
-                    // seeing that the first answer was not a fact about them.
-                    if (onAskEachTime != null) {
-                        TextButton(onClick = { onAskEachTime(!marked) }) {
-                            Text(
-                                stringResource(
-                                    if (marked) R.string.sheet_remember_after_all
-                                    else R.string.sheet_always_ask
-                                )
-                            )
-                        }
-                    }
+                    ConnectedChoice(
+                        options = choices,
+                        selected = current,
+                        onSelect = { choice ->
+                            if (choice == R.string.sheet_rule_ask) {
+                                makeRule = false
+                                if (!marked) onAskEachTime?.invoke(true)
+                            } else {
+                                if (marked) onAskEachTime?.invoke(false)
+                                makeRule = choice == R.string.sheet_rule_remember
+                            }
+                        },
+                        label = { stringResource(it) },
+                    )
                 }
             }
 
@@ -444,7 +556,6 @@ fun TxnEditSheet(
                                 selected = acc.id == txn.accountId,
                                 onClick = { onSetAccount(acc.id) },
                                 label = { Text(acc.displayName) },
-                                modifier = Modifier.pressBounce(0.92f),
                             )
                         }
                     }
@@ -454,7 +565,7 @@ fun TxnEditSheet(
                 val otherAccounts = live.filter { it.id != txn.accountId }
                 if (onMarkTransfer != null && !txn.isTransfer && otherAccounts.isNotEmpty()) {
                     if (!transferTarget) {
-                        TextButton(onClick = { transferTarget = true }) {
+                        TextButton(onClick = { transferTarget = true }, shapes = ButtonDefaults.shapes()) {
                             Text(stringResource(R.string.sheet_was_transfer))
                         }
                     } else {
@@ -477,7 +588,6 @@ fun TxnEditSheet(
                                         }
                                     },
                                     label = { Text(acc.displayName) },
-                                    modifier = Modifier.pressBounce(0.92f),
                                 )
                             }
                         }
@@ -539,45 +649,40 @@ fun ManualTxnDialog(
     val transferValid = type != TxnType.TRANSFER ||
         (fromAccount != null && toAccount != null && fromAccount?.id != toAccount?.id)
 
+    val pop = rememberDialogPop()
+
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { pop.leave(onDismiss) },
+        modifier = Modifier.popIn(pop),
         title = { Text(title) },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    TxnType.entries.forEachIndexed { index, option ->
-                        SegmentedButton(
-                            selected = type == option,
-                            onClick = { type = option },
-                            shape = SegmentedButtonDefaults.itemShape(index = index, count = TxnType.entries.size),
-                            modifier = Modifier.weight(1f),
-                            icon = {},
-                        ) {
-                            Text(
-                                stringResource(typeLabel(option)),
-                                softWrap = false,
-                                maxLines = 1,
-                            )
-                        }
-                    }
-                }
+                ConnectedChoice(
+                    options = TxnType.entries,
+                    selected = type,
+                    onSelect = { type = it },
+                    label = { stringResource(typeLabel(it)) },
+                    icon = ::typeIcon,
+                    tone = { typeTone(it) },
+                )
+                // The amount is what the form is for, so it is written large.
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
                     label = { Text(stringResource(R.string.label_amount)) },
-                    suffix = { Text(currency) },
+                    suffix = { CurrencySign(currency, height = 22.dp) },
                     singleLine = true,
+                    textStyle = MaterialTheme.typography.headlineSmall,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
                 )
-                DropdownField(
+                CurrencyField(
                     label = stringResource(R.string.label_currency),
-                    value = currency,
-                    options = CURRENCIES,
-                    display = { it },
-                    onSelect = { currency = it },
+                    code = currency,
+                    onPick = { currency = it },
                 )
 
                 if (live.isNotEmpty()) {
@@ -588,6 +693,8 @@ fun ManualTxnDialog(
                             options = live,
                             display = { it.displayName },
                             onSelect = { fromAccount = it },
+                            selected = fromAccount,
+                            icon = { iconFor(it.kind) },
                         )
 
                         TxnType.INCOME -> DropdownField(
@@ -596,6 +703,8 @@ fun ManualTxnDialog(
                             options = live,
                             display = { it.displayName },
                             onSelect = { toAccount = it },
+                            selected = toAccount,
+                            icon = { iconFor(it.kind) },
                         )
 
                         TxnType.TRANSFER -> {
@@ -661,23 +770,23 @@ fun ManualTxnDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 enabled = parsed != null && parsed.signum() > 0 && transferValid,
                 onClick = {
-                    onSave(
-                        Money.toMinor(parsed!!, currency),
-                        currency,
-                        type,
-                        merchant.trim().ifBlank { null },
-                        categoryId,
-                        if (type == TxnType.INCOME) null else fromAccount?.id,
-                        if (type == TxnType.EXPENSE) null else toAccount?.id,
-                    )
+                    val minor = Money.toMinor(parsed!!, currency)
+                    val chosenCurrency = currency
+                    val chosenType = type
+                    val name = merchant.trim().ifBlank { null }
+                    val category = categoryId
+                    val from = if (type == TxnType.INCOME) null else fromAccount?.id
+                    val to = if (type == TxnType.EXPENSE) null else toAccount?.id
+                    pop.leave { onSave(minor, chosenCurrency, chosenType, name, category, from, to) }
                 },
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }
@@ -709,25 +818,19 @@ class CategoryOrder private constructor(private val use: Map<String, Int>) {
 fun rememberCategoryOrder(use: Map<String, Int>): CategoryOrder =
     remember { CategoryOrder.of(use) }
 
-/** How many chips the folded picker shows before it offers the rest. */
-private const val TOP_CHIPS = 6
-
-/** Past this many categories, reading the list stops being faster than typing. */
-private const val SEARCH_THRESHOLD = 20
+/** Rows of chips in the picker; the rest of the categories are a sideways scroll away. */
+private const val CHIP_ROWS = 3
 
 /**
  * The one category picker used everywhere: the correction sheet, the manual-entry
  * dialog, the budget editor and the backlog card, so "pick a category" is a single
  * gesture app-wide and no two of them can disagree about the order.
  *
- * It opens folded to the categories the user files into most, because the common case
- * is one tap and every extra chip is one more thing to read past. Whatever is already
- * selected stays visible even when it is not in that first handful - re-filing a record
- * must never hide where it currently sits.
- *
- * [allowSearch] is off for the backlog card, which draws one picker per merchant and
- * has to stay compact. Even where it is on, the field only appears once the list is
- * long enough that reading it is the slower option.
+ * Every category, in three rows that scroll sideways together - nothing folded away
+ * behind a "more". They run down the columns in the order the user files into most, so
+ * the first column holds the three likeliest and the rest are a swipe away. Whatever is
+ * already selected is scrolled into view when the picker opens: re-filing a record must
+ * never hide where it currently sits.
  */
 @Composable
 fun CategoryChips(
@@ -735,68 +838,112 @@ fun CategoryChips(
     selectedId: String,
     onSelect: (String) -> Unit,
     order: CategoryOrder = CategoryOrder.Empty,
-    allowSearch: Boolean = true,
 ) {
     val all = remember(type, order) { order.sort(Categories.forType(type)) }
-    var expanded by rememberSaveable(type) { mutableStateOf(false) }
-    var query by rememberSaveable(type) { mutableStateOf("") }
+    CategoryRows(all, selected = { it.id == selectedId }, onClick = { onSelect(it.id) })
+}
 
-    val searchable = allowSearch && all.size > SEARCH_THRESHOLD
-    val filtering = expanded && searchable && query.isNotBlank()
-    val shown = when {
-        filtering -> all.filter { it.name.contains(query.trim(), ignoreCase = true) }
-        expanded -> all
-        else -> {
-            val top = all.take(TOP_CHIPS)
-            if (top.none { it.id == selectedId }) top + all.filter { it.id == selectedId } else top
+/**
+ * Category chips in three rows that scroll sideways together. Each chip goes on whichever
+ * row is shortest so far, so the rows end level instead of stepping down like stairs,
+ * and Other always closes. A chip already selected when they open is scrolled into view,
+ * so re-filing a record shows where it sits; one tapped afterwards is already on screen,
+ * and the rows stay still.
+ */
+@Composable
+fun CategoryRows(
+    categories: List<Category>,
+    selected: (Category) -> Boolean,
+    onClick: (Category) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val measurer = rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.labelLarge
+    val density = LocalDensity.current
+    val rows = remember(categories, labelStyle, density) {
+        val other = categories.filter { it.id == Categories.DEFAULT_EXPENSE || it.id == Categories.DEFAULT_INCOME }
+        val chipFrame = with(density) { (8 + 18 + 8 + 16 + 8).dp.toPx() }
+        fun width(cat: Category) = measurer.measure(cat.name, labelStyle).size.width + chipFrame
+        val lines = List(CHIP_ROWS) { mutableListOf<Category>() }
+        val lengths = FloatArray(CHIP_ROWS)
+        (categories - other.toSet() + other).forEach { cat ->
+            val r = lengths.indices.minBy { lengths[it] }
+            lines[r] += cat
+            lengths[r] += width(cat)
+        }
+        lines.filter { it.isNotEmpty() }
+    }
+    val scroll = rememberScrollState()
+    // Only the selection the rows opened with: scrolling to a chip as it was tapped
+    // jumped the rows sideways under the finger.
+    val opening = remember { categories.firstOrNull(selected)?.id }
+    var selectedAt by remember { mutableStateOf<Int?>(null) }
+    val gutter = with(density) { 24.dp.roundToPx() }
+    LaunchedEffect(selectedAt != null) {
+        selectedAt?.let { scroll.scrollTo((it - gutter).coerceAtLeast(0)) }
+    }
+    // The chips are packed at their drawn height: each one's 48 dp touch frame left a
+    // 16 dp band between rows, and three rows of it pushed the Add form into a scroll.
+    // A chip is still a wide, 32 dp tall target, and the rows keep a gap between them.
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+        Column(
+            modifier.fillMaxWidth().horizontalScroll(scroll),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            rows.forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { cat ->
+                        val on = selected(cat)
+                        FilterChip(
+                            selected = on,
+                            onClick = { onClick(cat) },
+                            label = { Text(cat.name, maxLines = 1) },
+                            leadingIcon = { CategoryIcon(cat.id) },
+                            modifier = if (cat.id == opening && selectedAt == null) {
+                                Modifier.onPlaced { selectedAt = it.positionInParent().x.toInt() }
+                            } else {
+                                Modifier
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
+}
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (expanded && searchable) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                label = { Text(stringResource(R.string.sheet_find_category)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            shown.forEach { cat ->
-                FilterChip(
-                    selected = cat.id == selectedId,
-                    onClick = { onSelect(cat.id) },
-                    label = { Text(cat.name) },
-                    leadingIcon = { CategoryIcon(cat.id) },
-                    modifier = Modifier.pressBounce(0.92f),
-                )
-            }
-            if (!expanded && all.size > shown.size) {
-                AssistChip(
-                    onClick = { expanded = true },
-                    label = { Text(stringResource(R.string.sheet_more, all.size - shown.size)) },
-                    modifier = Modifier.pressBounce(0.92f),
-                )
-            }
-            if (expanded && !filtering) {
-                AssistChip(
-                    onClick = { expanded = false; query = "" },
-                    label = { Text(stringResource(R.string.sheet_less)) },
-                    modifier = Modifier.pressBounce(0.92f),
-                )
-            }
-        }
-        if (filtering && shown.isEmpty()) {
-            Text(
-                stringResource(R.string.sheet_no_category_matches),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+/**
+ * One choice in a menu, as Material 3 Expressive draws it: its icon, its name, the shape
+ * its place in the list gives it, and the current one filled and ticked.
+ */
+@Composable
+fun MenuChoice(
+    text: String,
+    selected: Boolean,
+    index: Int,
+    count: Int,
+    @DrawableRes icon: Int?,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        selected = selected,
+        onClick = onClick,
+        text = { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        shapes = MenuDefaults.itemShape(index, count),
+        leadingIcon = icon?.let { res -> { Icon(painterResource(res), contentDescription = null, modifier = Modifier.size(20.dp)) } },
+        trailingIcon = if (selected) {
+            { Icon(painterResource(R.drawable.ic_sym_check), contentDescription = null, modifier = Modifier.size(20.dp)) }
+        } else {
+            null
+        },
+    )
+}
+
+/** A menu of [MenuChoice]s, grouped, opening from whatever it sits in. */
+@Composable
+fun ChoiceMenu(expanded: Boolean, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    DropdownMenuPopup(expanded = expanded, onDismissRequest = onDismiss) {
+        DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) { content() }
     }
 }
 
@@ -807,6 +954,8 @@ fun <T> DropdownField(
     options: List<T>,
     display: (T) -> String,
     onSelect: (T) -> Unit,
+    selected: T? = null,
+    icon: ((T) -> Int)? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
@@ -816,20 +965,28 @@ fun <T> DropdownField(
             readOnly = true,
             singleLine = true,
             label = { Text(label) },
+            leadingIcon = if (icon != null && selected != null) {
+                { Icon(painterResource(icon(selected)), contentDescription = null) }
+            } else {
+                null
+            },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(display(option)) },
-                    onClick = {
-                        onSelect(option)
-                        expanded = false
-                    },
-                )
+            options.forEachIndexed { index, option ->
+                MenuChoice(
+                    text = display(option),
+                    selected = option == selected,
+                    index = index,
+                    count = options.size,
+                    icon = icon?.invoke(option),
+                ) {
+                    onSelect(option)
+                    expanded = false
+                }
             }
         }
     }

@@ -98,6 +98,17 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private val _lastSummary = MutableStateFlow<ScanSummary?>(null)
     val lastSummary: StateFlow<ScanSummary?> = _lastSummary
 
+    /**
+     * What the user taught about kinds of message, keyed by [Skeleton]: "messages written
+     * like this are money out". The strongest thing a scan knows; it overrides the words.
+     */
+    private val _labels = MutableStateFlow<Map<String, TemplateLabel>>(emptyMap())
+    val labels: StateFlow<Map<String, TemplateLabel>> = _labels
+
+    /** What the last scans learned about every kind of message they read. */
+    private val _templates = MutableStateFlow<List<TemplateStat>>(emptyList())
+    val templates: StateFlow<List<TemplateStat>> = _templates
+
     /** Live balance per account id, the one place every screen reads a balance from. */
     val balances: StateFlow<Map<String, Long>> =
         combine(_accounts, _txns) { accounts, txns ->
@@ -190,6 +201,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         seenSenders: Set<String>,
         summary: ScanSummary,
         examinedIds: Set<String>? = null,
+        templates: List<TemplateStat> = emptyList(),
     ) = mutex.withLock {
         // A message answered by hand can become readable later: adopting a gate keyword
         // is exactly that, and so is a parser fix. The scan then produces a record for a
@@ -258,6 +270,18 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
 
         _senders.value = _senders.value + seenSenders
         _lastSummary.value = summary
+        val beforeTemplates = _templates.value
+        // A full pass knows every template there is; a short one only the ones it met,
+        // which are refreshed without forgetting the rest.
+        _templates.value = if (examinedIds == null) {
+            templates
+        } else {
+            val fresh = templates.associateBy { it.key }
+            val kept = _templates.value.map { old ->
+                fresh[old.key]?.let { it.copy(count = maxOf(it.count, old.count)) } ?: old
+            }
+            kept + templates.filter { t -> kept.none { it.key == t.key } }
+        }
         // "You'll be asked about these again next time" was the deal. This is next time.
         if (deferred.isNotEmpty()) {
             Verbose.info(
@@ -275,7 +299,8 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         val changed = rawTxns != before ||
             _reviews.value != beforeReviews ||
             _transfers.value != beforeTransfers ||
-            _senders.value != beforeSenders
+            _senders.value != beforeSenders ||
+            _templates.value != beforeTemplates
         if (changed) {
             persistLocked()
         } else {
@@ -330,6 +355,20 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
                 .filter { it.id !in consumed }
                 .map { t -> manualTransfers[t.id]?.let { asMarkedTransfer(t, it) } ?: t } + merged
             ).sortedByDescending { it.atMillis }
+    }
+
+    // ─────────────────────────── learning ───────────────────────────
+
+    /** Teaches what a kind of message means. The next scan re-reads with it. */
+    suspend fun setLabel(key: String, kind: MessageKind) = mutex.withLock {
+        _labels.value = _labels.value + (key to TemplateLabel(kind, System.currentTimeMillis()))
+        persistLocked()
+    }
+
+    suspend fun clearLabel(key: String) = mutex.withLock {
+        if (key !in _labels.value) return@withLock
+        _labels.value = _labels.value - key
+        persistLocked()
     }
 
     // ─────────────────────────── transfers ───────────────────────────
@@ -489,6 +528,55 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         persistLocked()
     }
 
+    /**
+     * Folds one account into another: they were the same account all along. Its records
+     * move across, and its digits stay with the survivor as an alias, so a message
+     * quoting them is routed there from now on instead of founding the account again.
+     */
+    suspend fun mergeAccount(fromId: String, intoId: String) = mutex.withLock {
+        if (fromId == intoId) return@withLock
+        val from = _accounts.value.firstOrNull { it.id == fromId } ?: return@withLock
+        val into = _accounts.value.firstOrNull { it.id == intoId } ?: return@withLock
+        val digits = (from.aliases + listOfNotNull(from.last4)) - listOfNotNull(into.last4).toSet()
+        // The balance starts from whichever of the two was quoted last. That figure
+        // already counts everything before it; keeping the other's older or missing one
+        // added every record since on top, and the merged balance came out as their sum.
+        val opening = listOf(into, from).filter { !it.needsBalance }.maxByOrNull { it.openingAtMillis } ?: into
+        val merged = into.copy(
+            aliases = into.aliases + digits,
+            senderIds = into.senderIds + from.senderIds,
+            openingBalanceMinor = opening.openingBalanceMinor,
+            openingAtMillis = opening.openingAtMillis,
+            needsBalance = opening.needsBalance,
+        )
+        _accounts.value = _accounts.value.mapNotNull {
+            when (it.id) {
+                fromId -> null
+                intoId -> merged
+                else -> it
+            }
+        }
+        rawTxns = rawTxns.map {
+            it.copy(
+                fromAccountId = if (it.fromAccountId == fromId) intoId else it.fromAccountId,
+                toAccountId = if (it.toAccountId == fromId) intoId else it.toAccountId,
+            )
+        }
+        for ((k, v) in accountOverrides.toMap()) if (v == fromId) accountOverrides[k] = intoId
+        recomputeTxnsLocked()
+        persistLocked()
+    }
+
+    /** [last4] becomes the account's number; the number it had becomes an alias. */
+    suspend fun renumberAccount(id: String, last4: String) = mutex.withLock {
+        _accounts.value = _accounts.value.map {
+            if (it.id != id || it.last4 == last4) it
+            else it.copy(last4 = last4, aliases = it.aliases - last4 + listOfNotNull(it.last4))
+        }
+        recomputeTxnsLocked()
+        persistLocked()
+    }
+
     /** Routes one record to an account by hand, and remembers it across rescans. */
     suspend fun setTxnAccount(txnId: String, accountId: String) = mutex.withLock {
         accountOverrides[txnId] = accountId
@@ -515,19 +603,6 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
 
     suspend fun deleteBudget(id: String) = mutex.withLock {
         _budgets.value = _budgets.value.filter { it.id != id }
-        persistLocked()
-    }
-
-    /** Sets or clears one category cap inside a plan. A zero cap removes the line. */
-    suspend fun setBudgetLine(planId: String, categoryId: String, minor: Long) = mutex.withLock {
-        _budgets.value = _budgets.value.map { plan ->
-            if (plan.id != planId) plan
-            else plan.copy(
-                lines = plan.lines.toMutableMap().apply {
-                    if (minor > 0) this[categoryId] = minor else remove(categoryId)
-                },
-            )
-        }
         persistLocked()
     }
 
@@ -811,6 +886,8 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         _budgets.value = emptyList()
         _transfers.value = emptyList()
         _lastSummary.value = null
+        _labels.value = emptyMap()
+        _templates.value = emptyList()
         overrides.clear()
         accountOverrides.clear()
         transferDecisions.clear()
@@ -915,6 +992,20 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             root.optJSONArray("ignored")?.let { a ->
                 for (i in 0 until a.length()) ignored.add(a.getString(i))
             }
+            // Labels from a different template shape no longer match anything; they are
+            // dropped rather than kept as keys that can never be looked up again.
+            if (root.optInt("skeleton", Skeleton.VERSION) == Skeleton.VERSION) {
+                root.optJSONObject("labels")?.let { o ->
+                    _labels.value = buildMap {
+                        for (key in o.keys()) {
+                            val l = o.optJSONObject(key) ?: continue
+                            val kind = runCatching { MessageKind.valueOf(l.getString("k")) }.getOrNull() ?: continue
+                            put(key, TemplateLabel(kind, l.optLong("at")))
+                        }
+                    }
+                }
+                _templates.value = root.optJSONArray("templates").toListOf(::templateFromJson)
+            }
             root.optJSONObject("summary")?.let { s ->
                 _lastSummary.value = ScanSummary(
                     at = s.getLong("at"), tookMs = s.getLong("took"),
@@ -975,6 +1066,13 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             root.put("ignored", JSONArray().apply { ignored.forEach { put(it) } })
             root.put("archivedTxns", JSONArray().apply { archived.forEach { put(it) } })
             root.put("deferred", JSONArray().apply { deferred.forEach { put(it) } })
+            root.put("skeleton", Skeleton.VERSION)
+            root.put("labels", JSONObject().apply {
+                _labels.value.forEach { (key, l) ->
+                    put(key, JSONObject().apply { put("k", l.kind.name); put("at", l.atMillis) })
+                }
+            })
+            root.put("templates", JSONArray().apply { _templates.value.forEach { put(templateToJson(it)) } })
             _lastSummary.value?.let { s ->
                 root.put("summary", JSONObject().apply {
                     put("at", s.at); put("took", s.tookMs); put("scanned", s.scanned)
@@ -1027,6 +1125,10 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         put("cat", t.categoryId); put("src", t.categorySource)
         put("conf", t.confidence); put("man", t.manual)
         if (t.legIds.isNotEmpty()) put("legs", JSONArray().apply { t.legIds.forEach { put(it) } })
+        // Only on a converted record, so a file without them reads exactly as before.
+        if (t.isConverted) {
+            put("oamt", t.originalAmountMinor); put("ocur", t.originalCurrency)
+        }
     }
 
     private fun txnFromJson(o: JSONObject) = Txn(
@@ -1045,6 +1147,8 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         confidence = o.getInt("conf"),
         manual = o.optBoolean("man", false),
         legIds = o.optJSONArray("legs").toStringSet().toList(),
+        originalAmountMinor = if (o.has("oamt")) o.getLong("oamt") else null,
+        originalCurrency = o.optNullableString("ocur"),
     )
 
     private fun accountToJson(a: Account) = JSONObject().apply {
@@ -1053,6 +1157,8 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         put("open", a.openingBalanceMinor); put("openAt", a.openingAtMillis)
         put("senders", JSONArray().apply { a.senderIds.forEach { put(it) } })
         put("color", a.color); put("archived", a.archived); put("needsBal", a.needsBalance)
+        put("kind", a.kind.name)
+        if (a.aliases.isNotEmpty()) put("alias", JSONArray().apply { a.aliases.forEach { put(it) } })
     }
 
     /**
@@ -1075,6 +1181,8 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         color = o.optInt("color", 0),
         archived = o.optBoolean("archived", false),
         needsBalance = o.optBoolean("needsBal", false),
+        kind = runCatching { AccountKind.valueOf(o.optString("kind")) }.getOrDefault(AccountKind.CURRENT),
+        aliases = o.optJSONArray("alias").toStringSet(),
     )
 
     private fun budgetToJson(b: BudgetPlan) = JSONObject().apply {
@@ -1135,6 +1243,26 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         amountMinor = if (o.has("amt")) o.getLong("amt") else null,
         currency = o.optString("cur").takeIf { it.isNotBlank() },
         suggestedWords = o.optJSONArray("words").toStringList(),
+    )
+
+    private fun templateToJson(t: TemplateStat) = JSONObject().apply {
+        put("key", t.key); put("sen", t.sender); put("n", t.count)
+        put("sid", t.sampleId); put("body", t.sampleBody); put("at", t.sampleAt)
+        put("guess", t.guess?.name ?: JSONObject.NULL); put("conf", t.confidence.toDouble())
+        put("pout", t.provenOut); put("pin", t.provenIn)
+    }
+
+    private fun templateFromJson(o: JSONObject) = TemplateStat(
+        key = o.getString("key"),
+        sender = o.getString("sen"),
+        count = o.getInt("n"),
+        sampleId = o.getString("sid"),
+        sampleBody = o.optString("body"),
+        sampleAt = o.optLong("at"),
+        guess = o.optNullableString("guess")?.let { runCatching { MessageKind.valueOf(it) }.getOrNull() },
+        confidence = o.optDouble("conf", 0.0).toFloat(),
+        provenOut = o.optInt("pout"),
+        provenIn = o.optInt("pin"),
     )
 
     private fun ruleToJson(r: UserRule) = JSONObject().apply {

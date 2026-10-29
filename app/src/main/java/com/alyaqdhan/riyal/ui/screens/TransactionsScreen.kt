@@ -2,8 +2,17 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChipDefaults
+import com.alyaqdhan.riyal.ui.compose.typeIcon
+import com.alyaqdhan.riyal.ui.compose.typeLabel
+import com.alyaqdhan.riyal.ui.compose.typeTone
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -50,6 +59,7 @@ import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.EmptyState
+import com.alyaqdhan.riyal.ui.compose.MoneyAwareText
 import com.alyaqdhan.riyal.ui.compose.FilterSheet
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.SwipeableTxnRow
@@ -61,13 +71,12 @@ import com.alyaqdhan.riyal.ui.compose.TxnSort
 import com.alyaqdhan.riyal.ui.compose.bidi
 import com.alyaqdhan.riyal.ui.compose.dayLabel
 import com.alyaqdhan.riyal.ui.compose.localDateOf
-import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 
 @Composable
-fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
+fun TransactionsScreen(vm: MainViewModel) {
     val txns by vm.txns.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val categoryUse by vm.categoryUse.collectAsState()
@@ -130,20 +139,18 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     // one row pushed the Transfers chip off the right edge of something
                     // that gives no sign it scrolls.
                     SortChip(current = order, onSelect = { sort = it.name })
-                    TextButton(onClick = { showFilters = true }) {
-                        Text(
-                            if (hiddenFilterCount > 0) {
-                                stringResource(R.string.txn_filters_count, hiddenFilterCount)
-                            } else {
-                                stringResource(R.string.txn_filters)
-                            }
-                        )
-                    }
-                    IconButton(onClick = onExport, enabled = txns.isNotEmpty()) {
-                        Icon(
-                            Icons.Filled.Share,
-                            contentDescription = stringResource(R.string.txn_export_csv),
-                        )
+                    // Export lives in Settings with backup; this bar is for looking.
+                    IconButton(onClick = { showFilters = true }) {
+                        BadgedBox(
+                            badge = {
+                                if (hiddenFilterCount > 0) Badge { Text(hiddenFilterCount.toString()) }
+                            },
+                        ) {
+                            Icon(
+                                painterResource(R.drawable.ic_sym_filter_list),
+                                contentDescription = stringResource(R.string.txn_filters),
+                            )
+                        }
                     }
                 },
             )
@@ -167,10 +174,20 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     label = { Text(stringResource(R.string.label_all)) },
                 )
                 TxnType.entries.forEach { type ->
+                    // Named, marked and coloured as Home's totals are.
+                    val (tone, onTone) = typeTone(type)
                     FilterChip(
                         selected = typeFilter == type.name,
                         onClick = { typeFilter = if (typeFilter == type.name) null else type.name },
-                        label = { Text(stringResource(shortTypeLabel(type))) },
+                        label = { Text(stringResource(typeLabel(type))) },
+                        leadingIcon = {
+                            Icon(painterResource(typeIcon(type)), contentDescription = null, modifier = Modifier.size(18.dp))
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = tone,
+                            selectedLabelColor = onTone,
+                            selectedLeadingIconColor = onTone,
+                        ),
                     )
                 }
             }
@@ -178,6 +195,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                 TextButton(
                     onClick = { showArchived = !showArchived },
                     modifier = Modifier.padding(start = 8.dp),
+                    shapes = ButtonDefaults.shapes(),
                 ) {
                     Text(
                         if (showArchived) {
@@ -197,8 +215,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     color = MaterialTheme.colorScheme.secondaryContainer,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                        .popIn(),
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
                 ) {
                     Row(
                         Modifier.padding(start = 16.dp, end = 4.dp),
@@ -213,7 +230,7 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                         TextButton(onClick = {
                             vm.prefs.swipeHintSeen = true
                             swipeHintSeen = true
-                        }) { Text(stringResource(R.string.action_got_it)) }
+                        }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_got_it)) }
                     }
                 }
             }
@@ -225,7 +242,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                         .verticalScroll(rememberScrollState()),
                 ) {
                     EmptyState(
-                        style = FaceStyle.SLEEPY,
                         title = stringResource(R.string.txn_empty_title),
                         subtitle = stringResource(
                             when {
@@ -238,11 +254,10 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                     )
                 }
             } else {
+                // Rows are list items with their own inset, so the list adds none at the
+                // sides; the end leaves room for the bar and the Add button over it.
                 LazyColumn(
-                    contentPadding = PaddingValues(
-                        start = 16.dp, end = 16.dp, top = 10.dp, bottom = toolbarSpace,
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = toolbarSpace),
                 ) {
                     if (order.byDate) {
                         grouped.forEach { (date, dayTxns) ->
@@ -251,9 +266,8 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                                 SwipeableTxnRow(
                                     archived = txn.id in archivedIds,
                                     onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
-                                    onDelete = { removeForGood(vm, snackbar, scope, txn) },
-                                    deleteLabel = deleteLabelFor(txn),
-                                    modifier = Modifier.animateItem(),
+                                    onRemove = { removeForGood(vm, snackbar, scope, txn) },
+                                    removeLabel = removeLabelOf(txn),
                                 ) {
                                     TxnRow(
                                         txn,
@@ -270,9 +284,8 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
                             SwipeableTxnRow(
                                 archived = txn.id in archivedIds,
                                 onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
-                                onDelete = { removeForGood(vm, snackbar, scope, txn) },
-                                deleteLabel = deleteLabelFor(txn),
-                                modifier = Modifier.animateItem(),
+                                onRemove = { removeForGood(vm, snackbar, scope, txn) },
+                                    removeLabel = removeLabelOf(txn),
                             ) {
                                 TxnRow(
                                     txn,
@@ -334,13 +347,6 @@ fun TransactionsScreen(vm: MainViewModel, onExport: () -> Unit) {
     }
 }
 
-@StringRes
-private fun shortTypeLabel(type: TxnType): Int = when (type) {
-    TxnType.EXPENSE -> R.string.txn_type_out
-    TxnType.INCOME -> R.string.txn_type_in
-    TxnType.TRANSFER -> R.string.txn_type_transfers
-}
-
 @Composable
 private fun DayHeader(date: LocalDate, dayTxns: List<Txn>) {
     val spentByCurrency = dayTxns
@@ -350,7 +356,7 @@ private fun DayHeader(date: LocalDate, dayTxns: List<Txn>) {
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(top = 20.dp, bottom = 4.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
@@ -359,7 +365,7 @@ private fun DayHeader(date: LocalDate, dayTxns: List<Txn>) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (spentByCurrency.isNotEmpty()) {
-            Text(
+            MoneyAwareText(
                 spentByCurrency.joinToString(" · "),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

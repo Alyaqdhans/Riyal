@@ -7,8 +7,6 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,32 +15,37 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.FilledIconToggleButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,12 +59,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.ui.compose.ActionButton
+import com.alyaqdhan.riyal.ui.compose.DeleteButton
+import com.alyaqdhan.riyal.ui.compose.popIn
+import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
 import com.alyaqdhan.riyal.ui.compose.bidi
 import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.core.Money
@@ -70,20 +76,29 @@ import com.alyaqdhan.riyal.data.Category
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.data.UserRule
+import com.alyaqdhan.riyal.ui.compose.MoneyText
+import com.alyaqdhan.riyal.ui.compose.MoneyAwareText
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.FlatBar
 import com.alyaqdhan.riyal.ui.compose.HelpAction
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.CategoryChips
+import com.alyaqdhan.riyal.ui.compose.ConnectedChoice
 import com.alyaqdhan.riyal.ui.compose.CategoryVisuals
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
-import com.alyaqdhan.riyal.ui.compose.popIn
-import com.alyaqdhan.riyal.ui.compose.pressBounce
 import com.alyaqdhan.riyal.ui.compose.rememberCategoryOrder
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
+import com.alyaqdhan.riyal.ui.compose.typeIcon
+import com.alyaqdhan.riyal.ui.compose.typeLabel
+import com.alyaqdhan.riyal.ui.compose.typeTone
 import com.alyaqdhan.riyal.ui.theme.successColor
 import kotlin.math.roundToInt
+import com.alyaqdhan.riyal.ui.compose.categoryColor
+import com.alyaqdhan.riyal.ui.compose.rememberBadgeColours
+import com.alyaqdhan.riyal.ui.theme.inkFor
+import com.alyaqdhan.riyal.ui.theme.legible
 
 /**
  * Every category, split into what you spend and what you earn, each showing what it
@@ -195,6 +210,7 @@ fun CategoriesScreen(
                     TextButton(
                         onClick = { showEmpty = !showEmpty },
                         modifier = Modifier.padding(top = 4.dp),
+                        shapes = ButtonDefaults.shapes(),
                     ) {
                         Text(
                             if (showEmpty) stringResource(R.string.cats_hide_empty)
@@ -207,7 +223,7 @@ fun CategoriesScreen(
             item(key = "transfers") {
                 val moved = Stats.transferTotalIn(txns, slice.start, slice.endExclusive, currency)
                 if (moved > 0) {
-                    Text(
+                    MoneyAwareText(
                         stringResource(
                             R.string.cats_transfers_note,
                             bidi(Money.format(moved, currency)),
@@ -220,10 +236,12 @@ fun CategoriesScreen(
             }
 
             item(key = "add") {
-                FilledTonalButton(
+                ActionButton(
+                    text = stringResource(R.string.cats_add),
+                    icon = R.drawable.ic_sym_add,
                     onClick = { editing = Category(id = "", name = "", color = Categories.PALETTE.random()) },
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp).pressBounce(),
-                ) { Text(stringResource(R.string.cats_add)) }
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                )
             }
 
             // What the app has been taught, and the only place it can be untaught. A
@@ -245,10 +263,13 @@ fun CategoriesScreen(
                 )
             }
             item(key = "learned-add") {
-                FilledTonalButton(
+                ActionButton(
+                    text = stringResource(R.string.cats_add_keyword),
+                    icon = R.drawable.ic_sym_add,
                     onClick = { addingKeyword = true },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).pressBounce(),
-                ) { Text(stringResource(R.string.cats_add_keyword)) }
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    tonal = true,
+                )
             }
             val sortedRules = rules.sortedBy { it.pattern }
             items(sortedRules, key = { "rule-" + it.pattern + "-" + it.categoryId }) { rule ->
@@ -314,8 +335,10 @@ fun CategoriesScreen(
     }
 
     confirmDelete?.let { cat ->
+        val pop = rememberDialogPop()
         AlertDialog(
-            onDismissRequest = { confirmDelete = null },
+            onDismissRequest = { pop.leave { confirmDelete = null } },
+            modifier = Modifier.popIn(pop),
             title = { Text(stringResource(R.string.delete_title, cat.name)) },
             text = {
                 Text(
@@ -328,12 +351,14 @@ fun CategoriesScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    vm.deleteCategory(cat.id)
-                    confirmDelete = null
-                }) { Text(stringResource(R.string.action_delete)) }
+                    pop.leave {
+                        vm.deleteCategory(cat.id)
+                        confirmDelete = null
+                    }
+                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDelete = null }) {
+                TextButton(onClick = { pop.leave { confirmDelete = null } }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -357,7 +382,7 @@ private fun CategoryRow(
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth().popIn().pressBounce(0.98f),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -373,7 +398,7 @@ private fun CategoryRow(
                         modifier = Modifier.weight(1f),
                     )
                     if (onEdit != null) {
-                        TextButton(onClick = onEdit) { Text(stringResource(R.string.action_edit)) }
+                        TextButton(onClick = onEdit, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_edit)) }
                     }
                 }
                 Text(
@@ -391,17 +416,16 @@ private fun CategoryRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (used) {
-                    LinearProgressIndicator(
+                    FlatBar(
                         progress = { fraction.coerceIn(0f, 1f) },
-                        color = Color(Categories.colorFor(category.id)),
+                        color = categoryColor(category.id),
                         trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    bidi(Money.format(amountMinor, currency)),
+                MoneyText(amountMinor, currency,
                     style = MaterialTheme.typography.titleSmall,
                     color = when {
                         !used -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -436,7 +460,7 @@ private fun LearnedRow(
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth().popIn(),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             Modifier.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
@@ -452,7 +476,7 @@ private fun LearnedRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            TextButton(onClick = onAction) { Text(actionLabel) }
+            TextButton(onClick = onAction, shapes = ButtonDefaults.shapes()) { Text(actionLabel) }
         }
     }
 }
@@ -484,9 +508,11 @@ private fun KeywordRuleDialog(
     val blocked = pattern.isNotBlank() && pattern in askEachTime
     // Matching mirrors Categorizer.contains: short ASCII words match whole only.
     val wholeWord = pattern.length <= 4 && pattern.all { it in 'a'..'z' }
+    val pop = rememberDialogPop()
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { pop.leave(onDismiss) },
+        modifier = Modifier.popIn(pop),
         title = { Text(stringResource(R.string.cats_add_keyword)) },
         text = {
             Column(
@@ -500,38 +526,17 @@ private fun KeywordRuleDialog(
                     singleLine = true,
                     isError = blocked,
                 )
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    SegmentedButton(
-                        selected = !income,
-                        onClick = {
-                            income = false
-                            categoryId = Categories.defaultFor(TxnType.EXPENSE)
-                        },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(
-                            stringResource(R.string.label_money_out),
-                            softWrap = false,
-                            maxLines = 1,
-                        )
-                    }
-                    SegmentedButton(
-                        selected = income,
-                        onClick = {
-                            income = true
-                            categoryId = Categories.defaultFor(TxnType.INCOME)
-                        },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(
-                            stringResource(R.string.label_money_in),
-                            softWrap = false,
-                            maxLines = 1,
-                        )
-                    }
-                }
+                ConnectedChoice(
+                    options = SIDES,
+                    selected = type,
+                    onSelect = {
+                        income = it == TxnType.INCOME
+                        categoryId = Categories.defaultFor(it)
+                    },
+                    label = { stringResource(typeLabel(it)) },
+                    icon = ::typeIcon,
+                    tone = { typeTone(it) },
+                )
                 CategoryChips(
                     type = type,
                     selectedId = categoryId,
@@ -566,13 +571,18 @@ private fun KeywordRuleDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 enabled = pattern.isNotBlank() && !blocked,
-                onClick = { onSave(pattern, categoryId) },
+                onClick = {
+                    val word = pattern
+                    val category = categoryId
+                    pop.leave { onSave(word, category) }
+                },
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }
@@ -592,9 +602,11 @@ private fun CategoryEditorDialog(
         mutableStateOf(if (category.color != 0) category.color else Categories.PALETTE.first())
     }
     var icon by remember { mutableStateOf(category.icon.ifBlank { CategoryVisuals.KEYS.first() }) }
+    val pop = rememberDialogPop()
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { pop.leave(onDismiss) },
+        modifier = Modifier.popIn(pop),
         title = {
             Text(
                 stringResource(if (isNew) R.string.cats_new_title else R.string.cats_edit_title)
@@ -605,128 +617,156 @@ private fun CategoryEditorDialog(
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.label_name)) },
-                    singleLine = true,
-                )
+                // The category as it will look, beside its name, changing with each pick.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    val (circle, ink) = rememberBadgeColours(color)
+                    Box(
+                        Modifier
+                            .size(56.dp)
+                            .background(circle, MaterialShapes.Cookie9Sided.toShape()),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painterResource(CategoryVisuals.byKey(icon)),
+                            contentDescription = null,
+                            tint = ink,
+                            modifier = Modifier.size(28.dp),
+                        )
+                    }
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(stringResource(R.string.label_name)) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 if (isNew) {
                     // Which side of the ledger a category lives on decides which pickers
                     // offer it, so it is fixed once records start using it.
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = !income,
-                            onClick = { income = false },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(
-                                stringResource(R.string.label_expense),
-                                softWrap = false,
-                                maxLines = 1,
-                            )
-                        }
-                        SegmentedButton(
-                            selected = income,
-                            onClick = { income = true },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(
-                                stringResource(R.string.label_income),
-                                softWrap = false,
-                                maxLines = 1,
-                            )
-                        }
-                    }
+                    ConnectedChoice(
+                        options = SIDES,
+                        selected = if (income) TxnType.INCOME else TxnType.EXPENSE,
+                        onSelect = { income = it == TxnType.INCOME },
+                        label = { stringResource(typeLabel(it)) },
+                        icon = ::typeIcon,
+                        tone = { typeTone(it) },
+                    )
                 }
-                // Shown above the swatches because the icon is what the badge reads as
-                // at a glance in a list; the colour only tells it apart from its
-                // neighbours.
-                Text(stringResource(R.string.label_icon), style = MaterialTheme.typography.labelLarge)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    CategoryVisuals.KEYS.forEach { key ->
-                        val picked = key == icon
-                        Box(
-                            Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (picked) Color(color).copy(alpha = 0.24f)
-                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                )
-                                // The tint alone is not enough to say which one is
-                                // picked: it is the colour being chosen next to it, and
-                                // some of the palette sits close to the theme's own
-                                // grey. The ring does not depend on that colour.
-                                .then(
-                                    if (picked) Modifier.border(
-                                        2.dp,
-                                        MaterialTheme.colorScheme.primary,
-                                        CircleShape,
-                                    ) else Modifier
-                                )
-                                .clickable { icon = key }
-                                .pressBounce(0.9f),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painterResource(CategoryVisuals.byKey(key)),
-                                contentDescription = key,
-                                tint = if (picked) Color(color)
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        }
-                    }
-                }
-                Text(stringResource(R.string.label_colour), style = MaterialTheme.typography.labelLarge)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Categories.PALETTE.forEach { swatch ->
-                        Box(
-                            Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color(swatch))
-                                .clickable { color = swatch },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (swatch == color) {
+                // Both pickers are Expressive toggle buttons: the one picked fills with
+                // the category's colour and morphs from a circle to a rounded square,
+                // so it reads as chosen whatever the colour. Packed at their drawn size
+                // so the icons fit three rows that scroll sideways and the colours two.
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                    Text(stringResource(R.string.label_icon), style = MaterialTheme.typography.labelLarge)
+                    val icons = CategoryVisuals.KEYS
+                    LazyHorizontalGrid(
+                        rows = GridCells.Fixed(ICON_ROWS),
+                        state = rememberLazyGridState(
+                            initialFirstVisibleItemIndex = icons.indexOf(icon).coerceAtLeast(0) / ICON_ROWS * ICON_ROWS,
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(PICK_SIZE * ICON_ROWS + PICK_GAP * (ICON_ROWS - 1)),
+                        horizontalArrangement = Arrangement.spacedBy(PICK_GAP),
+                        verticalArrangement = Arrangement.spacedBy(PICK_GAP),
+                    ) {
+                        items(icons, key = { it }) { key ->
+                            PickToggle(
+                                checked = key == icon,
+                                onPick = { icon = key },
+                                fill = legible(Color(color)),
+                            ) {
                                 Icon(
-                                    Icons.Filled.Check,
-                                    contentDescription = stringResource(R.string.cats_selected),
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp),
+                                    painterResource(CategoryVisuals.byKey(key)),
+                                    contentDescription = key,
+                                    modifier = Modifier.size(22.dp),
                                 )
                             }
                         }
                     }
+                    Text(stringResource(R.string.label_colour), style = MaterialTheme.typography.labelLarge)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(PICK_GAP),
+                        verticalArrangement = Arrangement.spacedBy(PICK_GAP),
+                    ) {
+                        Categories.PALETTE.forEach { swatch ->
+                            PickToggle(
+                                checked = swatch == color,
+                                onPick = { color = swatch },
+                                fill = legible(Color(swatch)),
+                                rest = legible(Color(swatch)),
+                            ) {
+                                if (swatch == color) {
+                                    Icon(
+                                        painterResource(R.drawable.ic_sym_check),
+                                        contentDescription = stringResource(R.string.cats_selected),
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
+                if (onDelete != null) DeleteButton(onClick = { pop.leave(onDelete) })
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 enabled = name.isNotBlank(),
-                onClick = { onSave(name.trim(), income, color, icon) },
+                onClick = {
+                    val chosen = name.trim()
+                    val isIncome = income
+                    val tint = color
+                    val glyph = icon
+                    pop.leave { onSave(chosen, isIncome, tint, glyph) }
+                },
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            Row {
-                if (onDelete != null) {
-                    TextButton(onClick = onDelete) { Text(stringResource(R.string.action_delete)) }
-                }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-            }
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }
+
+/** The pickers' buttons: their size, the gap between them, and the icons' rows. */
+private val PICK_SIZE = 40.dp
+private val PICK_GAP = 8.dp
+private const val ICON_ROWS = 3
+
+/**
+ * One choice of the editor's icon or colour: Material 3 Expressive's toggle button,
+ * [rest] until picked, then [fill] in its checked shape.
+ */
+@Composable
+private fun PickToggle(
+    checked: Boolean,
+    onPick: () -> Unit,
+    fill: Color,
+    rest: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    content: @Composable () -> Unit,
+) {
+    FilledIconToggleButton(
+        checked = checked,
+        onCheckedChange = { onPick() },
+        shapes = IconButtonDefaults.toggleableShapes(),
+        modifier = Modifier.size(PICK_SIZE),
+        colors = IconButtonDefaults.filledIconToggleButtonColors(
+            containerColor = rest,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            checkedContainerColor = fill,
+            checkedContentColor = inkFor(fill),
+        ),
+        content = content,
+    )
+}
+
+/** The two sides a category or a keyword can be on, as the Add form names them. */
+private val SIDES = listOf(TxnType.EXPENSE, TxnType.INCOME)
 
 /**
  * The categories worth a row, most spent first, with the empty ones dropped unless

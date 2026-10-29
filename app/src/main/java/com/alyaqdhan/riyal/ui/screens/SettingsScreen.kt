@@ -1,59 +1,40 @@
-@file:OptIn(
-    ExperimentalMaterial3Api::class,
-    ExperimentalMaterial3ExpressiveApi::class,
-    ExperimentalLayoutApi::class,
-)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package com.alyaqdhan.riyal.ui.screens
 
+import com.alyaqdhan.riyal.ui.compose.CurrencySign
+import androidx.compose.material3.Surface
+import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Box
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.clickable
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.InputChip
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,48 +42,48 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import com.alyaqdhan.riyal.core.Dates
-import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.core.Currencies
+import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Language
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
-import com.alyaqdhan.riyal.ui.compose.CURRENCIES
-import com.alyaqdhan.riyal.ui.compose.counted
-import com.alyaqdhan.riyal.ui.compose.ToolbarSpacer
-import com.alyaqdhan.riyal.ui.compose.appVersion
-import com.alyaqdhan.riyal.ui.compose.plainText
 import com.alyaqdhan.riyal.ui.compose.popIn
-import com.alyaqdhan.riyal.ui.compose.pressBounce
-import kotlinx.coroutines.launch
+import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
+import com.alyaqdhan.riyal.ui.compose.CurrencyPickerSheet
+import com.alyaqdhan.riyal.ui.compose.ExchangeRatesSheet
+import com.alyaqdhan.riyal.ui.compose.ScanBar
+import java.time.LocalDate
+import com.alyaqdhan.riyal.ui.compose.PresetSheet
+import com.alyaqdhan.riyal.ui.compose.Preset
+import com.alyaqdhan.riyal.ui.compose.ScanSheetHost
+import com.alyaqdhan.riyal.ui.compose.appVersion
+import com.alyaqdhan.riyal.ui.compose.counted
+import com.alyaqdhan.riyal.ui.compose.plainText
+import com.alyaqdhan.riyal.ui.compose.relativeTime
+import com.alyaqdhan.riyal.ui.compose.toolbarSpace
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-
-private val settingsDayFmt: DateTimeFormatter get() = Dates.pattern("d MMM uuuu")
+import kotlinx.coroutines.launch
 
 /**
- * Everything the scanner does is decided here, but the reason to open Settings is
- * usually to *check* something rather than change it - so the screen opens with what
- * the app has actually done, and only then offers the switches.
- *
- * Each row is one line: a name, its current value, and the control. The paragraph that
- * used to sit under every row is behind the (i) instead, because a screen where every
- * setting explains itself at rest has to be read rather than scanned. The few
- * explanations still on show are the ones describing *this* state rather than what a
- * control would do - a fresh-start floor, an allowlist that would match nothing.
+ * Settings as a phone's own settings app lays them out: a short status at the top, then
+ * groups of rows, each row an icon, a name, what it is set to, and - where it holds a
+ * value - its switch. Every row is Material's own list item, so a row looks and responds
+ * like a row anywhere else on the phone.
  */
 @Composable
 fun SettingsScreen(
@@ -112,6 +93,8 @@ fun SettingsScreen(
     onExport: () -> Unit,
     onBackup: () -> Unit,
     onRestore: () -> Unit,
+    onOpenUpdates: () -> Unit,
+    onOpenSetup: () -> Unit,
 ) {
     val context = LocalContext.current
     val prefs = vm.prefs
@@ -119,42 +102,30 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
 
     val hasPerm by vm.hasSmsPermission.collectAsState()
-    val knownSenders by vm.senders.collectAsState()
     val rules by vm.rules.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val budgets by vm.budgets.collectAsState()
     val txns by vm.txns.collectAsState()
     val lastSummary by vm.lastSummary.collectAsState()
+    val currency by vm.defaultCurrency.collectAsState()
+    val budgetsOn by vm.budgetsOn.collectAsState()
+    val autoConfirm by vm.autoConfirmOn.collectAsState()
+    val updateState by vm.updateState.collectAsState()
+    val scan by vm.scanState.collectAsState()
+    val running = scan as? MainViewModel.ScanState.Running
 
-    var expenseKw by remember { mutableStateOf(prefs.expenseKeywords) }
-    var incomeKw by remember { mutableStateOf(prefs.incomeKeywords) }
-    var newExpenseKw by remember { mutableStateOf("") }
-    var newIncomeKw by remember { mutableStateOf("") }
     var rangeMonths by remember { mutableStateOf(prefs.scanRangeMonths) }
     var freshStart by remember { mutableStateOf(prefs.scanSinceMillis) }
-    var currency by remember { mutableStateOf(prefs.defaultCurrency) }
-    var senderFilter by remember { mutableStateOf(prefs.senderFilterEnabled) }
-    var allowlist by remember { mutableStateOf(prefs.senderAllowlist) }
-    var newSender by remember { mutableStateOf("") }
-    var bankOnly by remember { mutableStateOf(prefs.bankSendersOnly) }
     var scanOnLaunch by remember { mutableStateOf(prefs.scanOnLaunch) }
     var smartRules by remember { mutableStateOf(prefs.smartRules) }
-    var budgetsEnabled by remember { mutableStateOf(prefs.budgetsEnabled) }
-    var autoConfirmTransfers by remember { mutableStateOf(prefs.autoConfirmTransfers) }
-    var confirmWipe by remember { mutableStateOf(false) }
-    var confirmExport by remember { mutableStateOf(false) }
-    var confirmRestore by remember { mutableStateOf(false) }
     var backupMessages by remember { mutableStateOf(prefs.backupIncludeMessages) }
-    var pickCurrency by remember { mutableStateOf(false) }
-    var pickLanguage by remember { mutableStateOf(false) }
+    var dialog by remember { mutableStateOf(SettingsDialog.NONE) }
     val language = Language.current()
 
-    fun note(text: String) {
-        Verbose.info(Verbose.str(R.string.log_setting_changed, text))
+    fun note(@StringRes id: Int, vararg args: Any?) {
+        Verbose.info(Verbose.str(R.string.log_setting_changed, Verbose.str(id, *args)))
         Verbose.flush()
     }
-
-    fun note(@StringRes id: Int, vararg args: Any?) = note(Verbose.str(id, *args))
 
     Scaffold(
         topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_settings)) }) },
@@ -163,672 +134,613 @@ fun SettingsScreen(
             Modifier
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(bottom = toolbarSpace + 16.dp),
         ) {
             StatusCard(
+                scan = scan,
                 lastScanAt = prefs.lastScanAt,
                 records = txns.size,
                 accounts = accounts.size,
                 messagesRead = lastSummary?.scanned,
             )
 
-            SettingsCard(stringResource(R.string.set_card_money)) {
-                ValueLine(
-                    title = stringResource(R.string.set_default_currency),
-                    value = currency,
-                    detail = stringResource(R.string.set_help_currency),
-                    onClick = { pickCurrency = true },
-                )
-                NavLine(
-                    title = stringResource(R.string.acct_title),
-                    value = if (accounts.isEmpty()) stringResource(R.string.an_none_yet)
-                    else "${accounts.size}",
-                    detail = stringResource(R.string.set_help_accounts),
-                    onClick = onOpenAccounts,
-                )
-                NavLine(
-                    title = stringResource(R.string.cats_title),
-                    value = if (rules.isEmpty()) null
-                    else counted(R.plurals.count_learned, rules.size),
-                    detail = stringResource(R.string.set_help_categories),
-                    onClick = onOpenCategories,
-                )
-                SwitchLine(
-                    title = stringResource(R.string.budget_title),
-                    value = if (budgetsEnabled && budgets.isNotEmpty()) {
-                        counted(R.plurals.count_plans, budgets.size)
-                    } else {
-                        null
-                    },
-                    checked = budgetsEnabled,
-                    onCheckedChange = {
-                        budgetsEnabled = it
-                        vm.budgetsEnabled = it
-                        note(if (it) R.string.log_note_budget_on else R.string.log_note_budget_off)
-                    },
-                    detail = stringResource(R.string.set_help_budget),
+            SectionLabel(R.string.set_section_general)
+            NavRow(
+                R.drawable.ic_sym_language,
+                stringResource(R.string.settings_language),
+                when (language) {
+                    Language.Choice.ARABIC -> stringResource(R.string.settings_language_arabic)
+                    Language.Choice.ENGLISH -> stringResource(R.string.settings_language_english)
+                    Language.Choice.SYSTEM -> stringResource(R.string.settings_language_system)
+                },
+            ) { dialog = SettingsDialog.LANGUAGE }
+            NavRow(
+                R.drawable.ic_sym_payments,
+                stringResource(R.string.set_default_currency),
+                Currencies.of(currency)?.let { stringResource(it.name) } ?: currency,
+                valueLead = { CurrencySign(currency, height = 14.dp) },
+            ) { dialog = SettingsDialog.CURRENCY }
+            NavRow(
+                R.drawable.ic_sym_currency_exchange,
+                stringResource(R.string.cur_rates_title),
+                stringResource(R.string.cur_rates_short),
+            ) { dialog = SettingsDialog.RATES }
+
+            SectionLabel(R.string.set_card_scanning)
+            NavRow(
+                R.drawable.ic_sym_lock,
+                stringResource(R.string.set_sms_permission),
+                stringResource(if (hasPerm) R.string.set_allowed else R.string.set_off),
+                warning = !hasPerm,
+            ) {
+                context.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
                 )
             }
-
-            SettingsCard(stringResource(R.string.set_card_scanning)) {
-                ActionLine(
-                    title = stringResource(R.string.set_sms_permission),
-                    value = stringResource(if (hasPerm) R.string.set_allowed else R.string.set_off),
-                    valueIsWarning = !hasPerm,
-                    detail = stringResource(R.string.set_help_permission),
-                    actionLabel = stringResource(R.string.set_manage),
-                    onAction = {
-                        context.startActivity(
-                            Intent(
-                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                Uri.fromParts("package", context.packageName, null),
-                            ),
-                        )
-                    },
-                )
-                SwitchLine(
-                    title = stringResource(R.string.set_scan_on_open),
-                    checked = scanOnLaunch,
-                    onCheckedChange = {
-                        scanOnLaunch = it
-                        prefs.scanOnLaunch = it
-                        note(if (it) R.string.log_note_scan_open_on else R.string.log_note_scan_open_off)
-                    },
-                    detail = stringResource(R.string.set_help_scan_on_open),
-                )
-
-                ExpandLine(
-                    title = stringResource(R.string.set_how_far_back),
-                    value = rangeLabel(rangeMonths),
-                    detail = stringResource(R.string.set_help_how_far_back),
-                ) {
-                    val ranges = listOf(
-                        1 to stringResource(R.string.set_range_1mo),
-                        3 to stringResource(R.string.set_range_3mo),
-                        6 to stringResource(R.string.set_range_6mo),
-                        12 to stringResource(R.string.set_range_1yr),
-                        0 to stringResource(R.string.set_range_all),
-                    )
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        ranges.forEachIndexed { index, (months, label) ->
-                            SegmentedButton(
-                                selected = rangeMonths == months,
-                                onClick = {
-                                    rangeMonths = months
-                                    prefs.scanRangeMonths = months
-                                    note(R.string.log_note_scan_range, label)
-                                },
-                                shape = SegmentedButtonDefaults.itemShape(index = index, count = ranges.size),
-                                modifier = Modifier.weight(1f),
-                                icon = {},
-                            ) { Text(label, softWrap = false, maxLines = 1, style = MaterialTheme.typography.labelMedium) }
-                        }
-                    }
-                }
-                // The fresh-start floor overrides the range above, so it stays on screen
-                // rather than behind a tap: it is the reason "everything" can still show
-                // nothing older than the day it was chosen.
-                if (freshStart > 0L) {
-                    StateNote(
-                        stringResource(
-                            R.string.set_fresh_start,
-                            settingsDayFmt.format(
-                                Instant.ofEpochMilli(freshStart).atZone(ZoneId.systemDefault())
-                            ),
-                        ),
-                        action = stringResource(R.string.set_read_older),
-                        onAction = {
+            NavRow(
+                R.drawable.ic_sym_school,
+                stringResource(R.string.set_teach),
+                stringResource(R.string.set_teach_short),
+                onClick = onOpenSetup,
+            )
+            SwitchRow(
+                R.drawable.ic_sym_sync,
+                stringResource(R.string.set_scan_on_open),
+                stringResource(R.string.set_scan_on_open_detail),
+                checked = scanOnLaunch,
+            ) {
+                scanOnLaunch = it
+                prefs.scanOnLaunch = it
+                note(if (it) R.string.log_note_scan_open_on else R.string.log_note_scan_open_off)
+            }
+            NavRow(
+                R.drawable.ic_sym_calendar,
+                stringResource(R.string.set_how_far_back),
+                rangeLabel(rangeMonths),
+            ) { dialog = SettingsDialog.RANGE }
+            // The fresh-start floor overrides the range above, so it stays on screen: it
+            // is why "everything" can still show nothing older than the day it was set.
+            if (freshStart > 0L) {
+                ListItem(
+                    trailingContent = {
+                        TextButton(onClick = {
                             prefs.scanSinceMillis = 0L
                             freshStart = 0L
                             note(R.string.log_note_fresh_start_lifted)
-                        },
-                    )
-                }
-
-                ExpandLine(
-                    title = stringResource(R.string.set_gate_keywords),
-                    value = stringResource(
-                        R.string.set_keyword_counts,
-                        expenseKw.size,
-                        incomeKw.size,
-                    ),
-                    detail = stringResource(R.string.set_help_keywords),
+                        }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.set_read_older)) }
+                    },
                 ) {
                     Text(
-                        stringResource(R.string.label_money_out),
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                    KeywordChips(expenseKw) { kw ->
-                        expenseKw = expenseKw - kw
-                        prefs.expenseKeywords = expenseKw
-                        note(R.string.log_note_kw_removed_out, kw)
-                    }
-                    AddKeywordRow(
-                        value = newExpenseKw,
-                        onValueChange = { newExpenseKw = it },
-                        onAdd = {
-                            val kw = newExpenseKw.trim().lowercase()
-                            if (kw.isNotEmpty()) {
-                                expenseKw = expenseKw + kw
-                                prefs.expenseKeywords = expenseKw
-                                note(R.string.log_note_kw_added_out, kw)
-                            }
-                            newExpenseKw = ""
-                        },
-                    )
-                    Text(
-                        stringResource(R.string.label_money_in),
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                    KeywordChips(incomeKw) { kw ->
-                        incomeKw = incomeKw - kw
-                        prefs.incomeKeywords = incomeKw
-                        note(R.string.log_note_kw_removed_in, kw)
-                    }
-                    AddKeywordRow(
-                        value = newIncomeKw,
-                        onValueChange = { newIncomeKw = it },
-                        onAdd = {
-                            val kw = newIncomeKw.trim().lowercase()
-                            if (kw.isNotEmpty()) {
-                                incomeKw = incomeKw + kw
-                                prefs.incomeKeywords = incomeKw
-                                note(R.string.log_note_kw_added_in, kw)
-                            }
-                            newIncomeKw = ""
-                        },
-                    )
-                    TextButton(onClick = {
-                        prefs.resetKeywords()
-                        expenseKw = prefs.expenseKeywords
-                        incomeKw = prefs.incomeKeywords
-                        note(R.string.log_note_kw_reset)
-                    }) { Text(stringResource(R.string.set_reset_defaults)) }
-                }
-
-                ExpandLine(
-                    title = stringResource(R.string.set_who_is_read),
-                    value = senderSummary(bankOnly, senderFilter, allowlist.size),
-                    detail = stringResource(R.string.set_help_who_is_read),
-                ) {
-                    SwitchLine(
-                        title = stringResource(R.string.set_bank_only),
-                        checked = bankOnly,
-                        onCheckedChange = {
-                            bankOnly = it
-                            prefs.bankSendersOnly = it
-                            note(if (it) R.string.log_note_bank_only_on else R.string.log_note_bank_only_off)
-                        },
-                        detail = stringResource(R.string.set_help_bank_only),
-                    )
-                    SwitchLine(
-                        title = stringResource(R.string.set_only_approved),
-                        checked = senderFilter,
-                        onCheckedChange = {
-                            senderFilter = it
-                            prefs.senderFilterEnabled = it
-                            note(if (it) R.string.log_note_allowlist_on else R.string.log_note_allowlist_off)
-                        },
-                        detail = stringResource(R.string.set_help_only_approved),
-                    )
-                    if (senderFilter || bankOnly) {
-                        if (allowlist.isEmpty()) {
-                            Text(
-                                stringResource(
-                                    if (senderFilter) R.string.set_no_approved
-                                    else R.string.set_no_extra_approved
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (senderFilter) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        } else {
-                            KeywordChips(allowlist) { sender ->
-                                allowlist = allowlist - sender
-                                prefs.senderAllowlist = allowlist
-                                note(R.string.log_note_sender_removed, sender)
-                            }
-                        }
-                        // Add a sender by name directly, for a bank whose ID hasn't shown up
-                        // in the inbox yet (or a contact number you know is a bank).
-                        AddKeywordRow(
-                            value = newSender,
-                            onValueChange = { newSender = it },
-                            label = stringResource(R.string.set_sender_name),
-                            onAdd = {
-                                val s = newSender.trim()
-                                if (s.isNotEmpty() && s !in allowlist) {
-                                    allowlist = allowlist + s
-                                    prefs.senderAllowlist = allowlist
-                                    note(R.string.log_note_sender_added_by_name, s)
-                                }
-                                newSender = ""
-                            },
-                        )
-                        val suggestions = remember(knownSenders, allowlist) {
-                            (knownSenders - allowlist).sorted().take(12)
-                        }
-                        if (suggestions.isNotEmpty()) {
-                            Text(
-                                stringResource(R.string.set_seen_in_inbox),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                suggestions.forEach { sender ->
-                                    AssistChip(
-                                        onClick = {
-                                            allowlist = allowlist + sender
-                                            prefs.senderAllowlist = allowlist
-                                            note(R.string.log_note_sender_approved, sender)
-                                        },
-                                        label = { Text(sender) },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Progress belongs on the screen that has the button. This row used to
-                // start a scan whose sheet only Home and Activity rendered, so the work
-                // you asked for here appeared over a screen you were not looking at.
-                val scan by vm.scanState.collectAsState()
-                val running = scan as? MainViewModel.ScanState.Running
-                ActionLine(
-                    title = stringResource(R.string.set_scan_now),
-                    value = running?.let { p ->
-                        if (p.total > 0) {
-                            stringResource(R.string.set_scan_progress, p.processed, p.total)
-                        } else {
-                            stringResource(R.string.set_scan_starting)
-                        }
-                    },
-                    detail = stringResource(R.string.set_help_scan_now),
-                    actionLabel = stringResource(
-                        if (running != null) R.string.set_scanning else R.string.set_scan
-                    ),
-                    enabled = running == null,
-                    onAction = { vm.startScan() },
-                )
-                ActionLine(
-                    title = stringResource(R.string.set_rescan_all),
-                    value = null,
-                    detail = stringResource(R.string.set_help_rescan),
-                    actionLabel = stringResource(R.string.set_rescan),
-                    enabled = running == null,
-                    onAction = { vm.startScan(full = true) },
-                )
-                if (running != null) {
-                    LinearProgressIndicator(
-                        progress = {
-                            if (running.total > 0) running.processed.toFloat() / running.total else 0f
-                        },
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        stringResource(
+                            R.string.set_fresh_start,
+                            Dates.pattern("d MMM uuuu").format(Instant.ofEpochMilli(freshStart).atZone(ZoneId.systemDefault())),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
             }
-
-            SettingsCard(stringResource(R.string.set_card_automation)) {
-                SwitchLine(
-                    title = stringResource(R.string.set_learn_corrections),
-                    checked = smartRules,
-                    onCheckedChange = {
-                        smartRules = it
-                        prefs.smartRules = it
-                        note(if (it) R.string.log_note_smart_on else R.string.log_note_smart_off)
-                    },
-                    detail = stringResource(R.string.set_help_learn),
-                )
-                SwitchLine(
-                    title = stringResource(R.string.set_confirm_transfers),
-                    checked = autoConfirmTransfers,
-                    onCheckedChange = {
-                        autoConfirmTransfers = it
-                        vm.autoConfirmTransfers = it
-                        note(if (it) R.string.log_note_autoconfirm_on else R.string.log_note_autoconfirm_off)
-                    },
-                    detail = stringResource(R.string.set_help_confirm_transfers),
+            NavRow(
+                R.drawable.ic_sym_mail_read,
+                stringResource(R.string.set_scan_now),
+                running?.let { p ->
+                    if (p.total > 0) stringResource(R.string.set_scan_progress, p.processed, p.total)
+                    else stringResource(R.string.set_scan_starting)
+                } ?: stringResource(R.string.set_scan_now_detail),
+                enabled = running == null,
+                chevron = false,
+            ) { vm.startScan() }
+            if (running != null) {
+                ScanBar(
+                    progress = if (running.total > 0) ({ running.processed.toFloat() / running.total }) else null,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                 )
             }
+            NavRow(
+                R.drawable.ic_sym_history,
+                stringResource(R.string.set_rescan_all),
+                stringResource(R.string.set_rescan_detail),
+                enabled = running == null,
+                chevron = false,
+            ) { vm.startScan(full = true) }
 
-            SettingsCard(stringResource(R.string.set_card_data)) {
-                ActionLine(
-                    title = stringResource(R.string.set_export_txns),
-                    // The count belongs to the moment you ask for the file, not to a row
-                    // you are only reading past. It is said in the confirmation instead.
-                    value = null,
-                    detail = stringResource(R.string.set_help_export),
-                    actionLabel = stringResource(R.string.action_export),
-                    onAction = { confirmExport = true },
-                )
-                ActionLine(
-                    title = stringResource(R.string.set_backup),
-                    value = null,
-                    detail = stringResource(R.string.set_help_backup),
-                    actionLabel = stringResource(R.string.action_save),
-                    onAction = onBackup,
-                )
-                SwitchLine(
-                    title = stringResource(R.string.set_backup_messages),
-                    checked = backupMessages,
-                    onCheckedChange = {
-                        backupMessages = it
-                        prefs.backupIncludeMessages = it
-                    },
-                    detail = stringResource(R.string.set_help_backup_messages),
-                )
-                ActionLine(
-                    title = stringResource(R.string.set_restore),
-                    value = null,
-                    detail = stringResource(R.string.set_help_restore),
-                    actionLabel = stringResource(R.string.action_restore),
-                    onAction = { confirmRestore = true },
-                )
-                ExpandLine(
-                    title = stringResource(R.string.set_verbose_log),
-                    value = stringResource(R.string.set_verbose_value),
-                    detail = stringResource(R.string.set_help_verbose),
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = {
-                            scope.launch { clipboard.setClipEntry(plainText(Verbose.dump())) }
-                            note(R.string.log_note_log_copied)
-                        }) { Text(stringResource(R.string.action_copy)) }
-                        TextButton(onClick = {
-                            Verbose.clear()
-                            Verbose.info(R.string.log_note_log_cleared)
-                            Verbose.flush()
-                        }) { Text(stringResource(R.string.action_clear)) }
-                    }
-                }
-                ValueLine(
-                    title = stringResource(R.string.set_where_it_lives),
-                    value = stringResource(R.string.set_this_phone_only),
-                    detail = stringResource(R.string.set_help_where_it_lives),
-                )
+            SectionLabel(R.string.set_card_money)
+            NavRow(
+                R.drawable.ic_sym_account_balance,
+                stringResource(R.string.acct_title),
+                if (accounts.isEmpty()) stringResource(R.string.an_none_yet)
+                else counted(R.plurals.count_accounts, accounts.size),
+                onClick = onOpenAccounts,
+            )
+            NavRow(
+                R.drawable.ic_sym_category,
+                stringResource(R.string.cats_title),
+                if (rules.isEmpty()) stringResource(R.string.set_categories_detail)
+                else counted(R.plurals.count_learned, rules.size),
+                onClick = onOpenCategories,
+            )
+            SwitchRow(
+                R.drawable.ic_sym_savings,
+                stringResource(R.string.budget_title),
+                if (budgetsOn && budgets.isNotEmpty()) counted(R.plurals.count_plans, budgets.size)
+                else stringResource(R.string.set_budget_detail),
+                checked = budgetsOn,
+            ) {
+                vm.budgetsEnabled = it
+                note(if (it) R.string.log_note_budget_on else R.string.log_note_budget_off)
+            }
+            SwitchRow(
+                R.drawable.ic_sym_swap,
+                stringResource(R.string.set_confirm_transfers),
+                stringResource(R.string.set_confirm_transfers_detail),
+                checked = autoConfirm,
+            ) {
+                vm.autoConfirmTransfers = it
+                note(if (it) R.string.log_note_autoconfirm_on else R.string.log_note_autoconfirm_off)
+            }
+            SwitchRow(
+                R.drawable.ic_sym_auto_awesome,
+                stringResource(R.string.set_learn_corrections),
+                stringResource(R.string.set_learn_detail),
+                checked = smartRules,
+            ) {
+                smartRules = it
+                prefs.smartRules = it
+                note(if (it) R.string.log_note_smart_on else R.string.log_note_smart_off)
             }
 
-            SettingsCard(stringResource(R.string.settings_card_app)) {
-                ValueLine(
-                    title = stringResource(R.string.settings_language),
-                    value = when (language) {
-                        Language.Choice.ARABIC -> stringResource(R.string.settings_language_arabic)
-                        Language.Choice.ENGLISH -> stringResource(R.string.settings_language_english)
-                        Language.Choice.SYSTEM -> stringResource(R.string.settings_language_system)
-                    },
-                    detail = stringResource(R.string.settings_language_help),
-                    onClick = { pickLanguage = true },
-                )
+            SectionLabel(R.string.set_card_data)
+            NavRow(
+                R.drawable.ic_sym_share,
+                stringResource(R.string.set_export_txns),
+                stringResource(R.string.set_export_detail),
+                chevron = false,
+            ) { dialog = SettingsDialog.EXPORT }
+            NavRow(
+                R.drawable.ic_sym_backup,
+                stringResource(R.string.set_backup),
+                stringResource(R.string.set_backup_detail),
+                chevron = false,
+                onClick = onBackup,
+            )
+            SwitchRow(
+                R.drawable.ic_sym_sms,
+                stringResource(R.string.set_backup_messages),
+                stringResource(R.string.set_backup_messages_detail),
+                checked = backupMessages,
+            ) {
+                backupMessages = it
+                prefs.backupIncludeMessages = it
             }
+            NavRow(
+                R.drawable.ic_sym_restore,
+                stringResource(R.string.set_restore),
+                stringResource(R.string.set_restore_detail),
+                chevron = false,
+            ) { dialog = SettingsDialog.RESTORE }
+            NavRow(
+                R.drawable.ic_sym_log,
+                stringResource(R.string.set_verbose_log),
+                stringResource(R.string.set_log_detail),
+            ) { dialog = SettingsDialog.LOG }
+            ListItem(
+                leadingContent = { Icon(painterResource(R.drawable.ic_sym_info), contentDescription = null) },
+                supportingContent = { Text(stringResource(R.string.set_this_phone_only)) },
+            ) { Text(stringResource(R.string.set_where_it_lives)) }
 
-            SettingsCard(stringResource(R.string.set_card_about)) {
-                // One row, every state. Normally it is the version you are on; when
-                // GitHub is offering a later one it becomes the way to get it. The
-                // release notes sit behind the (i) whichever way the check came out,
-                // because "what changed" is worth reading on the version you already
-                // have and not only on one you are about to install.
-                val updateState by vm.updateState.collectAsState()
-                val version = appVersion(context)
-                val known = when (val u = updateState) {
-                    is MainViewModel.UpdateState.Available -> u.release
-                    is MainViewModel.UpdateState.UpToDate -> u.release
-                    else -> null
-                }
-                val offered = (updateState as? MainViewModel.UpdateState.Available)?.release
-                val checking = updateState is MainViewModel.UpdateState.Checking
-                val notes = known?.let { plainNotes(it.notes) }?.takeIf { it.isNotBlank() }
-                // Only a check the user tapped gets an answer said out loud. The daily
-                // one in the background must stay silent.
-                var asked by remember { mutableStateOf(false) }
-                ActionLine(
-                    title = stringResource(R.string.app_name),
-                    value = when {
-                        checking -> stringResource(R.string.set_checking)
-                        offered != null ->
-                            stringResource(R.string.set_update_available, offered.tag)
-                        updateState is MainViewModel.UpdateState.UpToDate ->
-                            stringResource(R.string.set_latest, version)
-                        updateState is MainViewModel.UpdateState.Unreachable ->
-                            stringResource(R.string.set_could_not_check, version)
-                        else -> version
-                    },
-                    valueIsWarning = offered != null,
-                    detail = when {
-                        offered != null -> stringResource(
-                            R.string.set_about_update_header, version, offered.tag
-                        ) + stringResource(R.string.set_about_download)
-                        updateState is MainViewModel.UpdateState.UpToDate ->
-                            stringResource(R.string.set_about_uptodate, version)
-                        updateState is MainViewModel.UpdateState.Unreachable ->
-                            stringResource(R.string.set_about_unreachable)
-                        else -> stringResource(R.string.set_about_default)
-                    } + if (notes != null) {
-                        stringResource(R.string.set_about_whats_in, known!!.tag) + notes
-                    } else {
-                        ""
-                    },
-                    actionLabel = when {
-                        checking -> stringResource(R.string.set_checking_action)
-                        offered != null -> stringResource(R.string.set_download)
-                        else -> stringResource(R.string.set_check_now)
-                    },
-                    enabled = !checking,
-                    onAction = {
-                        if (offered == null) {
-                            asked = true
-                            note(R.string.log_note_checking)
-                            vm.checkForUpdate(version, force = true)
-                        } else if (!offered.hasApk) {
-                            note(R.string.log_note_no_apk, offered.tag)
-                        } else if (vm.downloadUpdate()) {
-                            note(R.string.log_note_downloading, offered.tag)
-                        }
-                    },
-                )
-                // A check the user asked for has someone waiting on it, so it says how
-                // it came out instead of leaving the row to be re-read.
-                LaunchedEffect(updateState) {
-                    when (val u = updateState) {
-                        is MainViewModel.UpdateState.UpToDate ->
-                            if (asked) { asked = false; note(R.string.log_note_latest, version) }
-                        is MainViewModel.UpdateState.Available ->
-                            if (asked) { asked = false; note(R.string.log_note_available, u.release.tag) }
-                        is MainViewModel.UpdateState.Unreachable ->
-                            if (asked) { asked = false; note(R.string.log_note_unreachable) }
-                        else -> Unit
-                    }
-                }
-            }
+            SectionLabel(R.string.set_card_about)
+            NavRow(
+                R.drawable.ic_sym_system_update,
+                stringResource(R.string.upd_title),
+                when (val u = updateState) {
+                    MainViewModel.UpdateState.Checking -> stringResource(R.string.set_checking)
+                    is MainViewModel.UpdateState.Available -> stringResource(R.string.set_update_available, u.release.tag)
+                    else -> stringResource(R.string.upd_app_version, appVersion(context))
+                },
+                warning = updateState is MainViewModel.UpdateState.Available,
+                onClick = onOpenUpdates,
+            )
 
-            // Kept away from the switches on purpose: this is the one control on the
-            // screen that cannot be undone by tapping it again.
-            DangerCard(onClick = { confirmWipe = true })
-
-            ToolbarSpacer()
+            // Kept away from everything else: the one control here that cannot be undone.
+            SectionLabel(R.string.set_danger_title)
+            ListItem(
+                onClick = { dialog = SettingsDialog.WIPE },
+                leadingContent = {
+                    Icon(painterResource(R.drawable.ic_sym_delete), contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                },
+                supportingContent = { Text(stringResource(R.string.set_danger_body)) },
+            ) { Text(stringResource(R.string.set_wipe_title), color = MaterialTheme.colorScheme.error) }
         }
     }
 
-    // The scan sheet is hosted here, on the screen whose button starts a scan.
+    // The scan sheet is hosted here, on the screen whose rows start a scan.
     ScanSheetHost(vm)
 
-    if (pickCurrency) {
-        PickerDialog(
-            title = stringResource(R.string.set_default_currency),
-            options = CURRENCIES,
+    val close = { dialog = SettingsDialog.NONE }
+    when (dialog) {
+        SettingsDialog.NONE -> Unit
+        SettingsDialog.LANGUAGE -> {
+            val options = listOf(
+                Language.Choice.SYSTEM to stringResource(R.string.settings_language_system),
+                Language.Choice.ENGLISH to stringResource(R.string.settings_language_english),
+                Language.Choice.ARABIC to stringResource(R.string.settings_language_arabic),
+            )
+            ChoiceDialog(
+                title = stringResource(R.string.settings_language),
+                options = options,
+                selected = language,
+                onPick = { choice ->
+                    dialog = SettingsDialog.NONE
+                    if (choice != language) {
+                        note(R.string.log_note_language, options.first { it.first == choice }.second)
+                        Language.set(choice)
+                    }
+                },
+                onDismiss = { dialog = SettingsDialog.NONE },
+            )
+        }
+        SettingsDialog.RANGE -> {
+            val since = Dates.pattern("d MMM uuuu")
+            val options = listOf(
+                Triple(1, R.drawable.ic_sym_calendar_today, stringResource(R.string.set_range_one_month)),
+                Triple(3, R.drawable.ic_sym_date_range, stringResource(R.string.set_range_months, 3)),
+                Triple(6, R.drawable.ic_sym_date_range, stringResource(R.string.set_range_months, 6)),
+                Triple(12, R.drawable.ic_sym_event, stringResource(R.string.set_range_one_year)),
+                Triple(0, R.drawable.ic_sym_all_inclusive, stringResource(R.string.set_range_everything)),
+            )
+            PresetSheet(
+                title = stringResource(R.string.set_how_far_back),
+                presets = options.map { (months, icon, label) ->
+                    Preset(
+                        icon = icon,
+                        title = label.replaceFirstChar { it.titlecase() },
+                        detail = if (months == 0) {
+                            stringResource(R.string.range_everything_detail)
+                        } else {
+                            stringResource(R.string.range_since, since.format(LocalDate.now().minusMonths(months.toLong())))
+                        },
+                        selected = months == rangeMonths,
+                    ) {
+                        dialog = SettingsDialog.NONE
+                        rangeMonths = months
+                        prefs.scanRangeMonths = months
+                        note(R.string.log_note_scan_range, label)
+                    }
+                },
+                onDismiss = { dialog = SettingsDialog.NONE },
+            )
+        }
+        SettingsDialog.CURRENCY -> CurrencyPickerSheet(
             selected = currency,
             onPick = {
-                currency = it
-                prefs.defaultCurrency = it
-                note(R.string.log_note_currency, it)
-                pickCurrency = false
+                vm.setDefaultCurrency(it)
+                dialog = SettingsDialog.NONE
             },
-            onDismiss = { pickCurrency = false },
+            onDismiss = { dialog = SettingsDialog.NONE },
         )
-    }
-
-    if (pickLanguage) {
-        val labels = mapOf(
-            Language.Choice.SYSTEM to stringResource(R.string.settings_language_system),
-            Language.Choice.ENGLISH to stringResource(R.string.settings_language_english),
-            Language.Choice.ARABIC to stringResource(R.string.settings_language_arabic),
-        )
-        PickerDialog(
-            title = stringResource(R.string.settings_language),
-            options = labels.values.toList(),
-            selected = labels.getValue(language),
-            onPick = { picked ->
-                pickLanguage = false
-                val choice = labels.entries.first { it.value == picked }.key
-                if (choice != language) {
-                    note(R.string.log_note_language, picked)
-                    Language.set(choice)
-                }
-            },
-            onDismiss = { pickLanguage = false },
-        )
-    }
-
-    if (confirmWipe) {
-        AlertDialog(
-            onDismissRequest = { confirmWipe = false },
-            title = { Text(stringResource(R.string.set_wipe_title)) },
-            text = { Text(stringResource(R.string.set_wipe_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.wipeAll()
-                    confirmWipe = false
-                }) { Text(stringResource(R.string.action_delete)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmWipe = false }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
-    }
-
-    if (confirmRestore) {
-        AlertDialog(
-            onDismissRequest = { confirmRestore = false },
-            title = { Text(stringResource(R.string.set_restore_title)) },
-            text = { Text(stringResource(R.string.set_restore_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmRestore = false
-                    onRestore()
-                }) { Text(stringResource(R.string.action_restore)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmRestore = false }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
-    }
-
-    if (confirmExport) {
-        AlertDialog(
-            onDismissRequest = { confirmExport = false },
-            title = {
-                Text(
-                    stringResource(
-                        R.string.set_export_title,
-                        counted(R.plurals.count_records, txns.size),
-                    )
-                )
-            },
-            text = {
-                Text(
-                    stringResource(
-                        if (txns.isEmpty()) R.string.set_export_empty
-                        else R.string.set_export_body
-                    ),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = txns.isNotEmpty(),
-                    onClick = {
-                        confirmExport = false
-                        onExport()
-                    },
-                ) { Text(stringResource(R.string.action_export)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmExport = false }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
+        SettingsDialog.RATES -> {
+            val overrides by vm.fxOverrides.collectAsState()
+            ExchangeRatesSheet(
+                base = currency,
+                overrides = overrides,
+                onSetRate = { code, rate -> vm.setRate(code, rate) },
+                onDismiss = { dialog = SettingsDialog.NONE },
+            )
+        }
+        SettingsDialog.LOG -> {
+            val pop = rememberDialogPop()
+            AlertDialog(
+                onDismissRequest = { pop.leave(close) },
+                modifier = Modifier.popIn(pop),
+                title = { Text(stringResource(R.string.set_verbose_log)) },
+                text = { Text(stringResource(R.string.set_help_verbose)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        scope.launch { clipboard.setClipEntry(plainText(Verbose.dump())) }
+                        note(R.string.log_note_log_copied)
+                        pop.leave(close)
+                    }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_copy)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        Verbose.clear()
+                        Verbose.info(R.string.log_note_log_cleared)
+                        Verbose.flush()
+                        pop.leave(close)
+                    }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_clear)) }
+                },
+            )
+        }
+        SettingsDialog.WIPE -> {
+            val pop = rememberDialogPop()
+            AlertDialog(
+                onDismissRequest = { pop.leave(close) },
+                modifier = Modifier.popIn(pop),
+                title = { Text(stringResource(R.string.set_wipe_title)) },
+                text = { Text(stringResource(R.string.set_wipe_body)) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            pop.leave {
+                                vm.wipeAll()
+                                close()
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        shapes = ButtonDefaults.shapes(),
+                    ) { Text(stringResource(R.string.action_delete)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pop.leave(close) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
+                },
+            )
+        }
+        SettingsDialog.RESTORE -> {
+            val pop = rememberDialogPop()
+            AlertDialog(
+                onDismissRequest = { pop.leave(close) },
+                modifier = Modifier.popIn(pop),
+                title = { Text(stringResource(R.string.set_restore_title)) },
+                text = { Text(stringResource(R.string.set_restore_body)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        pop.leave {
+                            close()
+                            onRestore()
+                        }
+                    }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_restore)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pop.leave(close) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
+                },
+            )
+        }
+        SettingsDialog.EXPORT -> {
+            val pop = rememberDialogPop()
+            AlertDialog(
+                onDismissRequest = { pop.leave(close) },
+                modifier = Modifier.popIn(pop),
+                title = { Text(stringResource(R.string.set_export_title, counted(R.plurals.count_records, txns.size))) },
+                text = {
+                    Text(stringResource(if (txns.isEmpty()) R.string.set_export_empty else R.string.set_export_body))
+                },
+                confirmButton = {
+                    TextButton(
+                        enabled = txns.isNotEmpty(),
+                        onClick = {
+                            pop.leave {
+                                close()
+                                onExport()
+                            }
+                        },
+                        shapes = ButtonDefaults.shapes(),
+                    ) { Text(stringResource(R.string.action_export)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pop.leave(close) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
+                },
+            )
+        }
     }
 }
 
-// ─────────────────────────── the state you came to check ───────────────────────────
+/** The one dialog or sheet Settings can have open at a time. */
+private enum class SettingsDialog { NONE, LANGUAGE, RANGE, CURRENCY, RATES, LOG, WIPE, RESTORE, EXPORT }
+
+/** A group's name, in the primary colour, the way the phone's own settings title one. */
+@Composable
+private fun SectionLabel(@StringRes text: Int) {
+    Text(
+        stringResource(text),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp),
+    )
+}
+
+/** A row that opens something or does something once. */
+@Composable
+private fun NavRow(
+    @DrawableRes icon: Int,
+    title: String,
+    value: String,
+    warning: Boolean = false,
+    enabled: Boolean = true,
+    chevron: Boolean = true,
+    /** Drawn before [value]: a currency's sign, where the value is a currency. */
+    valueLead: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit,
+) {
+    ListItem(
+        onClick = onClick,
+        enabled = enabled,
+        leadingContent = { Icon(painterResource(icon), contentDescription = null) },
+        supportingContent = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                valueLead?.invoke()
+                Text(
+                    value,
+                    color = if (warning) MaterialTheme.colorScheme.error else Color.Unspecified,
+                )
+            }
+        },
+        trailingContent = if (chevron) {
+            { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) }
+        } else {
+            null
+        },
+    ) { Text(title) }
+}
+
+/** A row that holds a value: the whole row toggles it, the switch shows it. */
+@Composable
+private fun SwitchRow(
+    @DrawableRes icon: Int,
+    title: String,
+    detail: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val plain = ListItemDefaults.colors()
+    ListItem(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        // Saying a setting is on is the switch's job. Left to the list item, every row that
+        // was on got filled in, and three in a row ran together into one block.
+        colors = ListItemDefaults.colors(
+            selectedContainerColor = plain.containerColor,
+            selectedContentColor = plain.contentColor,
+            selectedLeadingContentColor = plain.leadingContentColor,
+            selectedTrailingContentColor = plain.trailingContentColor,
+            selectedSupportingContentColor = plain.supportingContentColor,
+            selectedOverlineContentColor = plain.overlineContentColor,
+        ),
+        leadingContent = { Icon(painterResource(icon), contentDescription = null) },
+        supportingContent = { Text(detail) },
+        trailingContent = { Switch(checked = checked, onCheckedChange = null) },
+    ) { Text(title) }
+}
+
+/** One of a few choices, as radio buttons: the standard way to pick exactly one. */
+@Composable
+private fun <T> ChoiceDialog(
+    title: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    onPick: (T) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val pop = rememberDialogPop()
+    AlertDialog(
+        onDismissRequest = { pop.leave(onDismiss) },
+        modifier = Modifier.popIn(pop),
+        title = { Text(title) },
+        text = {
+            Column {
+                options.forEach { (value, label) ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .selectable(selected = value == selected, role = Role.RadioButton) { pop.leave { onPick(value) } }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        RadioButton(selected = value == selected, onClick = null)
+                        Text(label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
+}
 
 /**
- * What the app has actually done, before anything it can be told to do. Settings is
- * where you go to find out whether the thing is working, and a screen of switches
- * answers every question except that one.
+ * What the app has actually done, before anything it can be told to do: Settings is
+ * where people go to find out whether the thing is working.
  */
 @Composable
 private fun StatusCard(
+    scan: MainViewModel.ScanState,
     lastScanAt: Long,
     records: Int,
     accounts: Int,
     messagesRead: Int?,
 ) {
-    Card(Modifier.fillMaxWidth().popIn()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                if (lastScanAt <= 0L) {
-                    stringResource(R.string.set_no_scan_yet)
-                } else {
-                    stringResource(R.string.set_last_scan, relativeTime(lastScanAt))
-                },
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                listOfNotNull(
-                    counted(R.plurals.count_records, records),
-                    counted(R.plurals.count_accounts, accounts),
-                    messagesRead?.let {
+    val scheme = MaterialTheme.colorScheme
+    val running = scan as? MainViewModel.ScanState.Running
+    val failed = running == null && scan is MainViewModel.ScanState.Failed
+    val never = lastScanAt <= 0L
+    // One state, said once: the icon, the headline and the colour they share. Working
+    // is the quiet case; only trouble takes a colour of its own.
+    val icon = when {
+        running != null -> R.drawable.ic_sym_sync
+        failed -> R.drawable.ic_sym_error
+        never -> R.drawable.ic_sym_info
+        else -> R.drawable.ic_sym_check_circle
+    }
+    val (tone, onTone) = when {
+        failed -> scheme.errorContainer to scheme.onErrorContainer
+        never && running == null -> scheme.tertiaryContainer to scheme.onTertiaryContainer
+        else -> scheme.primaryContainer to scheme.onPrimaryContainer
+    }
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainer),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Surface(shape = CircleShape, color = tone, contentColor = onTone, modifier = Modifier.size(48.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(26.dp))
+                    }
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
                         stringResource(
-                            R.string.set_messages_read,
-                            counted(R.plurals.count_messages, it),
+                            when {
+                                running != null -> R.string.set_status_scanning
+                                failed -> R.string.set_status_failed
+                                never -> R.string.set_no_scan_yet
+                                else -> R.string.set_status_up_to_date
+                            }
+                        ),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        when {
+                            running != null && running.total > 0 ->
+                                stringResource(R.string.set_scan_progress, running.processed, running.total)
+                            running != null -> stringResource(R.string.set_scan_starting)
+                            never -> stringResource(R.string.set_status_never_body)
+                            else -> stringResource(R.string.set_last_scan, relativeTime(lastScanAt))
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (running != null) {
+                ScanBar(
+                    progress = if (running.total > 0) ({ running.processed.toFloat() / running.total }) else null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (!never) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatusPill(R.drawable.ic_sym_payments, counted(R.plurals.count_records, records))
+                    StatusPill(R.drawable.ic_sym_account_balance, counted(R.plurals.count_accounts, accounts))
+                    messagesRead?.let {
+                        StatusPill(
+                            R.drawable.ic_sym_mail_read,
+                            stringResource(R.string.set_messages_read, counted(R.plurals.count_messages, it)),
                         )
-                    },
-                ).joinToString(" · "),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+                    }
+                }
+            }
         }
     }
 }
 
-/** "2 hours ago", or the date once that stops being a useful way to say it. */
+/** One count under the status: an icon and the figure in words, on a tonal pill. */
 @Composable
-private fun relativeTime(millis: Long): String {
-    val minutes = (System.currentTimeMillis() - millis) / 60_000
-    return when {
-        minutes < 1 -> stringResource(R.string.set_just_now)
-        minutes < 60 -> stringResource(
-            R.string.set_ago,
-            counted(R.plurals.count_minutes, minutes.toInt()),
-        )
-        minutes < 60 * 24 -> stringResource(
-            R.string.set_ago,
-            counted(R.plurals.count_hours, (minutes / 60).toInt()),
-        )
-        minutes < 60 * 24 * 7 -> stringResource(
-            R.string.set_ago,
-            counted(R.plurals.count_days, (minutes / (60 * 24)).toInt()),
-        )
-        else -> stringResource(
-            R.string.set_on_date,
-            settingsDayFmt.format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())),
-        )
+private fun StatusPill(@DrawableRes icon: Int, text: String) {
+    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHighest) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                painterResource(icon),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(text, style = MaterialTheme.typography.labelLarge)
+        }
     }
 }
 
@@ -839,379 +751,3 @@ private fun rangeLabel(months: Int): String = when (months) {
     12 -> stringResource(R.string.set_range_one_year)
     else -> stringResource(R.string.set_range_months, months)
 }
-
-@Composable
-private fun senderSummary(bankOnly: Boolean, allowlistOn: Boolean, approved: Int): String = when {
-    allowlistOn && approved == 0 -> stringResource(R.string.set_senders_nobody)
-    allowlistOn -> counted(R.plurals.count_approved, approved)
-    bankOnly && approved > 0 -> stringResource(R.string.set_senders_banks_plus, approved)
-    bankOnly -> stringResource(R.string.set_senders_banks_only)
-    else -> stringResource(R.string.set_senders_any)
-}
-
-// ─────────────────────────── one line per row ───────────────────────────
-
-/**
- * The shape every row shares: a name, what it is currently set to, and the control
- * that changes it - on one line, so the screen can be read down the left edge for a
- * name and down the right edge for a value.
- *
- * [detail] is the paragraph that used to sit under the row at rest. It is one tap away
- * instead, because an explanation is read once and a setting is looked up many times.
- */
-@Composable
-private fun SettingLine(
-    title: String,
-    value: String? = null,
-    detail: String? = null,
-    valueIsWarning: Boolean = false,
-    onClick: (() -> Unit)? = null,
-    trailing: @Composable RowScope.() -> Unit,
-) {
-    var showDetail by remember { mutableStateOf(false) }
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            // One height for every row, whatever its control: a switch is taller than a
-            // line of text, and the ragged rhythm that produced is most of what made
-            // the screen read as a wall rather than a list.
-            .heightIn(min = 52.dp)
-            .padding(vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge)
-        if (detail != null) {
-            Icon(
-                Icons.Filled.Info,
-                contentDescription = stringResource(R.string.help_about, title),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .size(16.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { showDetail = true },
-            )
-        }
-        Spacer(Modifier.weight(1f))
-        if (value != null) {
-            Text(
-                value,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (valueIsWarning) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        trailing()
-    }
-
-    if (showDetail && detail != null) {
-        AlertDialog(
-            onDismissRequest = { showDetail = false },
-            title = { Text(title) },
-            // Scrollable, because one of these is now a release body written by whoever
-            // wrote it. Without this the dialog clips at the bottom of the screen with
-            // no way to reach the rest - and the part it was cutting off was the
-            // warning about the signing key, which is the one paragraph that has to be
-            // read before tapping Download.
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState())) { Text(detail) }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDetail = false }) {
-                    Text(stringResource(R.string.action_got_it))
-                }
-            },
-        )
-    }
-}
-
-@Composable
-private fun SwitchLine(
-    title: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    detail: String,
-    value: String? = null,
-) {
-    SettingLine(title = title, value = value, detail = detail) {
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}
-
-/** A row whose value is chosen elsewhere - in a dialog, or nowhere at all. */
-@Composable
-private fun ValueLine(
-    title: String,
-    value: String,
-    detail: String? = null,
-    onClick: (() -> Unit)? = null,
-) {
-    SettingLine(title = title, value = value, detail = detail, onClick = onClick) {
-        if (onClick != null) {
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
-            )
-        }
-    }
-}
-
-/** A row that leads to another page. */
-@Composable
-private fun NavLine(
-    title: String,
-    value: String? = null,
-    detail: String? = null,
-    onClick: () -> Unit,
-) {
-    SettingLine(title = title, value = value, detail = detail, onClick = onClick) {
-        Icon(
-            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(18.dp),
-        )
-    }
-}
-
-/** A row whose control does something once, rather than holding a value. */
-@Composable
-private fun ActionLine(
-    title: String,
-    value: String?,
-    detail: String,
-    actionLabel: String,
-    onAction: () -> Unit,
-    valueIsWarning: Boolean = false,
-    enabled: Boolean = true,
-) {
-    SettingLine(title = title, value = value, detail = detail, valueIsWarning = valueIsWarning) {
-        TextButton(
-            onClick = onAction,
-            enabled = enabled,
-            modifier = Modifier.pressBounce(),
-        ) { Text(actionLabel) }
-    }
-}
-
-/**
- * A row that opens into its own controls, for the settings that genuinely need more
- * than a switch - keywords, senders, the range. The screen stays a list of names and
- * values until one of them is actually being changed.
- */
-@Composable
-private fun ExpandLine(
-    title: String,
-    value: String,
-    detail: String,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    var open by remember { mutableStateOf(false) }
-    Column {
-        SettingLine(
-            title = title,
-            value = value,
-            detail = detail,
-            onClick = { open = !open },
-        ) {
-            Icon(
-                if (open) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                contentDescription = if (open) {
-                    stringResource(R.string.set_collapse, title)
-                } else {
-                    stringResource(R.string.set_expand, title)
-                },
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
-            )
-        }
-        AnimatedVisibility(
-            visible = open,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            Column(
-                Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                content = content,
-            )
-        }
-    }
-}
-
-/**
- * A line that has to be on screen because it describes the state the app is in, not
- * what a control would do - the one kind of explanation worth the vertical space.
- */
-@Composable
-private fun StateNote(text: String, action: String, onAction: () -> Unit) {
-    Column(Modifier.padding(bottom = 4.dp)) {
-        Text(
-            text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        TextButton(onClick = onAction) { Text(action) }
-    }
-}
-
-/**
- * The one irreversible control, in its own container at the end of the screen. Sitting
- * in a card of switches, it read as one more of them.
- */
-@Composable
-private fun DangerCard(onClick: () -> Unit) {
-    Card(
-        Modifier.fillMaxWidth().popIn(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-            contentColor = MaterialTheme.colorScheme.onErrorContainer,
-        ),
-    ) {
-        Row(
-            Modifier
-                .clickable(onClick = onClick)
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(20.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    stringResource(R.string.set_danger_title),
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Text(
-                    stringResource(R.string.set_danger_body),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
-    }
-}
-
-/** One value out of a short list, without a dropdown anchored to a row. */
-@Composable
-private fun PickerDialog(
-    title: String,
-    options: List<String>,
-    selected: String,
-    onPick: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                options.forEach { option ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onPick(option) }
-                            .padding(vertical = 12.dp, horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            option,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (option == selected) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
-    )
-}
-
-@Composable
-private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth().popIn()) {
-        Column(
-            Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                title,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 4.dp),
-            )
-            content()
-        }
-    }
-}
-
-@Composable
-private fun KeywordChips(items: Set<String>, onRemove: (String) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items.forEach { item ->
-            InputChip(
-                selected = false,
-                onClick = {},
-                label = { Text(item) },
-                trailingIcon = {
-                    Icon(
-                        Icons.Filled.Close,
-                        contentDescription = stringResource(R.string.set_remove_item, item),
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clickable { onRemove(item) },
-                    )
-                },
-            )
-        }
-    }
-}
-
-@Composable
-private fun AddKeywordRow(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onAdd: () -> Unit,
-    label: String? = null,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(label ?: stringResource(R.string.set_add_keyword)) },
-            singleLine = true,
-            modifier = Modifier.weight(1f),
-        )
-        FilledTonalButton(onClick = onAdd, enabled = value.isNotBlank()) {
-            Text(stringResource(R.string.action_add))
-        }
-    }
-}
-
-/**
- * A GitHub release body as something to read in a dialog.
- *
- * The body is markdown, and this dialog is a Text: "**Upgrading clears your data.**"
- * arrives with its asterisks showing and "### Accounts" with its hashes. Nothing here
- * renders markdown, so the markers are taken off rather than displayed. Emphasis is
- * lost, which is a smaller cost than a screen of punctuation.
- */
-private fun plainNotes(body: String): String = body.trim().lines().joinToString("\n") { line ->
-    line.trimEnd()
-        .replace(headingMark, "")
-        .replace(boldMark, "")
-        .replace(bulletMark, "• ")
-}
-
-private val headingMark = Regex("^#{1,6}\\s*")
-private val bulletMark = Regex("^\\s*[-*]\\s+")
-private val boldMark = Regex("\\*\\*|__")

@@ -10,23 +10,33 @@ json = "20250107"
 lifecycle = "2.10.0"
 appcompat = "1.7.1"
 material = "1.14.0"
-navigation = "2.9.8"
+# The tabs are plain fragments that MainActivity keeps and slides itself; the version
+# the rest of the graph already resolves.
+fragment = "1.6.2"
+# The version the rest of the graph already resolves (appcompat 1.7 and the chart and
+# markdown libraries pull it in); declared so screens can use BackHandler directly.
+activityCompose = "1.8.2"
 splashscreen = "1.0.1"
 composeMaterial3 = "1.5.0-alpha23"
 composeIconsCore = "1.7.8"
 vico = "3.2.3"
+# Release notes are markdown. 0.41.0 is the last release built against Kotlin 2.3,
+# which is the compiler AGP 9.2 embeds; later ones pull kotlin-stdlib 2.4.
+markdownRenderer = "0.41.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-androidx-navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment-ktx", version.ref = "navigation" }
+androidx-fragment = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragment" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "composeMaterial3" }
 compose-icons-core = { group = "androidx.compose.material", name = "material-icons-core", version.ref = "composeIconsCore" }
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
+markdown-renderer-m3 = { group = "com.mikepenz", name = "multiplatform-markdown-renderer-m3", version.ref = "markdownRenderer" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 json = { group = "org.json", name = "json", version.ref = "json" }
 

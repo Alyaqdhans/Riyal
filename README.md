@@ -18,43 +18,55 @@ Your bank is already telling you everything. Riyal just reads it.
 
 ## What it does
 
+- **Learns how your banks write.** Every bank words its messages differently,
+  so Riyal doesn't rely on a list of words. It works out each kind of message
+  your bank sends, and checks which way the money went against the balance the
+  bank quotes. Then it asks you about a few real messages. Each answer settles
+  every message written the same way, and it stops asking once its answers
+  match yours.
 - **Finds your accounts by itself.** The messages name the account and quote a
-  balance, so Riyal works out what accounts you have without being told.
+  balance, so Riyal works out what accounts you have. You confirm them, fix
+  them, or tell it a sender isn't your bank.
 - **Files your spending.** Fuel, groceries, eating out, bills, rent. When it
   guesses wrong, fix it once and it remembers that shop for next time.
+- **Counts purchases abroad in rials.** A Steam game charged in dollars counts
+  in your totals and your balance, converted at the fixed peg, and the record
+  still shows what the bank actually charged.
 - **Notices transfers between your own accounts.** Moving money from savings to
   current is not spending, and counting it as both spending and income makes a
   month look wrong in two directions at once.
 - **Asks when it is unsure.** A message it cannot read goes in a Review list
   with whatever it did understand. It never invents a number.
-- **Budgets.** Per category, per month, with how much is left.
-- **Charts.** Where the month went, and how months compare.
-- **Backup.** Everything Riyal knows, written to one file you choose. You can
-  leave the message text out of it if you would rather not carry that around.
+- **Budgets, charts and backups.** Budgets per category, where the money went
+  and how months compare, and everything saved to one file you choose.
+
+Amounts are written with the new Omani rial sign, not "OMR".
 
 ## Your data stays with you
 
-Riyal asks for two permissions, and that is the whole list:
+Riyal asks for three permissions, and that is the whole list:
 
 | Permission | What for |
 | --- | --- |
 | `READ_SMS` | Reading the bank messages already in your inbox |
-| `INTERNET` | Checking GitHub for a new version, and nothing else |
+| `INTERNET` | Checking GitHub for a new version, and downloading it when you tap Update |
+| `REQUEST_INSTALL_PACKAGES` | Opening Android's installer on that download |
 
 Some things worth knowing, because a privacy claim is only worth what you can
 check:
 
-- **Messages are read only when you ask.** There is no SMS receiver and no
-  background work. Scanning happens when you open the app or pull to refresh.
+- **Messages are read only when you open the app or ask.** There is no SMS
+  receiver and no background work.
 - **Nothing about your money leaves the phone.** No records, no amounts, no
   account numbers, no message text.
 - **All the network code is in one file.** It is
-  [`data/Updates.kt`](app/src/main/java/com/alyaqdhan/riyal/data/Updates.kt),
-  it makes one request, and that request is a GET to a public GitHub URL with
-  nothing of yours in it. You can read it in a minute rather than take anyone's
-  word for it.
-- **Nothing installs itself.** When a new version exists Riyal shows a card.
-  Downloading and installing are your decision, by hand.
+  [`data/Updates.kt`](app/src/main/java/com/alyaqdhan/riyal/data/Updates.kt).
+  It asks GitHub's public API for the list of releases, and downloads an APK
+  only when you tap Update. Neither request carries anything of yours. You can
+  read it in a minute rather than take anyone's word for it.
+- **Nothing installs itself.** Android shows its own install screen and you
+  confirm it. Android also refuses an update signed with a different key than
+  the copy you have.
 
 ## Installing it
 
@@ -62,35 +74,37 @@ Download the APK from [Releases](https://github.com/Alyaqdhans/Riyal/releases)
 and open it. Android will ask whether to allow installing from your browser or
 files app, which is normal for an app that is not on the Play Store.
 
-Riyal tells you on the home screen when a newer version is out.
+After that, Riyal updates itself on request. When a new version is out it shows
+the release notes once, and **Update** downloads it and hands it to Android to
+install. Settings › Updates has the full changelog and a beta channel.
 
 Keep installing over the top to keep your records. Uninstalling deletes them.
 
 ## How it reads a message
 
-In order, and it stops at the first step that says no:
+1. **Is this from a bank?** Senders with a bank-like name, or ones you approved
+   during setup. Phone numbers, and senders you said are not your bank, are
+   never read.
+2. **What does it say?** The amount and its currency, the balance, the account,
+   the shop or person. The quoted balance is never mistaken for the amount.
+3. **Which way did the money go?** The strongest evidence wins:
+   - what you taught Riyal about messages written like this one;
+   - the account's balance moving by exactly the amount, which proves it
+     whatever the words say;
+   - the same kind of message having been proven that way before;
+   - and only then the words.
+4. **Which account, and which category?**
 
-1. **Is this from a bank?** By default only senders whose name contains "bank",
-   "بنك" or "مصرف" are read. Anything else you approve by name.
-2. **Does it say money moved?** The message has to contain one of the words you
-   have given it, like "debited", "purchase", "credited" or "خصم". No word, no
-   record.
-3. **Is it an advert?** Banks market to you from the same number they use for
-   real alerts, and "win a prize worth OMR 2,250" has both a money word and an
-   amount in it. Adverts are dropped.
-4. **How much?** Currency tagged numbers first, and the balance the message
-   quotes is deliberately not treated as the amount.
-5. **Who to, and from which account?**
-
-If a message gets most of the way through and then stops making sense, it goes
-to Review rather than being thrown away or guessed at.
+Adverts, payment requests and declined cards are dropped. A message that gets
+most of the way through and then stops making sense goes to Review rather than
+being guessed at.
 
 Every one of those decisions is written to a log you can read in Settings, so
 when something is missing you can see exactly where it stopped.
 
 ## Building it
 
-You need the Android SDK and a JDK. Then:
+You need the Android SDK and JDK 21. Then:
 
 ```bash
 ./gradlew assembleDebug
@@ -103,28 +117,21 @@ without touching your real records.
 ./gradlew test
 ```
 
-The message parser is plain Kotlin with no Android in it, which is why it can
-be tested properly. 214 tests at the moment, and the awkward real messages that
-once broke it are all in there.
+The reading engine is plain Kotlin with no Android in it, so it can be tested
+properly: 267 tests, including the awkward real messages that once broke it.
 
-## How the code is laid out
+## More
 
-| Folder | What lives there |
-| --- | --- |
-| [`core/`](app/src/main/java/com/alyaqdhan/riyal/core/) | Money, dates, numerals, preferences, the log |
-| [`data/`](app/src/main/java/com/alyaqdhan/riyal/data/) | Reading messages, parsing them, accounts, categories, transfers, storage |
-| [`ui/`](app/src/main/java/com/alyaqdhan/riyal/ui/) | Compose screens and the bits they share |
-
-Records are kept in one JSON file in the app's private storage. It is written
-whole, to a temporary file that is then renamed, so a crash halfway through
-cannot leave you with half a file.
-
-## Releasing
-
-See [RELEASE.md](RELEASE.md). It is a checklist, and every step on it is there
-because something went wrong without it once.
+- [CHANGELOG.md](CHANGELOG.md): what changed in every version.
+- [RELEASE.md](RELEASE.md): the release checklist. Every step on it is there
+  because something went wrong without it once.
+- [CLAUDE.md](CLAUDE.md): a map of the code and the rules this project follows.
+- [docs/ux-plan.md](docs/ux-plan.md): where the interface is going.
 
 ## Built with
 
 Kotlin, Jetpack Compose and Material 3. Charts by
-[Vico](https://github.com/patrykandpatrick/vico). Minimum Android 10.
+[Vico](https://github.com/patrykandpatrick/vico), release notes by
+[multiplatform-markdown-renderer](https://github.com/mikepenz/multiplatform-markdown-renderer).
+Currency signs from Wikimedia Commons, icons from Material Symbols. Minimum
+Android 10.

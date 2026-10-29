@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12 and later: the splash screen's icon circle in the wallpaper's accent,
+         to match the icon and the app. -->
+    <color name="brand_teal">@android:color/system_accent1_600</color>
+</resources>

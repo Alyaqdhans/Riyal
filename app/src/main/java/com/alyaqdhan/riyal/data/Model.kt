@@ -230,7 +230,18 @@ data class Account(
     val color: Int = 0,
     val archived: Boolean = false,
     val needsBalance: Boolean = false,
+    /** What sort of account it is: a label and an icon, nothing in the arithmetic. */
+    val kind: AccountKind = AccountKind.CURRENT,
+    /**
+     * Other digits that turned out to be this account: numbers a bank quoted where the
+     * account usually goes, proven by the balances to be this account's messages, or
+     * an account the user merged into this one. Messages quoting them route here.
+     */
+    val aliases: Set<String> = emptySet(),
 ) {
+    /** Whether a message quoting [tail] is about this account. */
+    fun answersTo(tail: String): Boolean = last4 == tail || tail in aliases
+
     /**
      * How the account is named everywhere in the app: "Bank Muscat · 0019" - the bank
      * plus the digits it quotes, which is how a bank account is actually recognised.
@@ -279,6 +290,9 @@ data class Account(
         }
     }
 }
+
+/** The sorts of account a bank texts about. */
+enum class AccountKind { CURRENT, SAVINGS, CARD, WALLET }
 
 /**
  * One budget plan: a period plus a spending cap per expense category. The period is
@@ -357,7 +371,17 @@ data class Txn(
     val manual: Boolean = false,
     /** TRANSFER only: the ids of the two messages that were merged into this record. */
     val legIds: List<String> = emptyList(),
+    /**
+     * What the bank actually charged, when it charged another currency: a Steam game is
+     * "USD 9.99" in a message that never mentions rials. [amountMinor] and [currency]
+     * are then that figure converted into the account's own currency, which is what
+     * every total and balance counts; these keep the original so it can still be shown.
+     */
+    val originalAmountMinor: Long? = null,
+    val originalCurrency: String? = null,
 ) {
+    val isConverted: Boolean get() = originalCurrency != null && originalAmountMinor != null
+
     val isExpense: Boolean get() = type == TxnType.EXPENSE
     val isIncome: Boolean get() = type == TxnType.INCOME
     val isTransfer: Boolean get() = type == TxnType.TRANSFER

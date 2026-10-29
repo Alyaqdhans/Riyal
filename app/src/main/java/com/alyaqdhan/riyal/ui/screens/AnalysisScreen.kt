@@ -6,10 +6,21 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.Surface
+import androidx.compose.material3.CardDefaults
+import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
+import com.alyaqdhan.riyal.ui.theme.successContainer
+import com.alyaqdhan.riyal.ui.compose.iconFor
+import com.alyaqdhan.riyal.ui.compose.typeTone
+import com.alyaqdhan.riyal.ui.compose.typeIcon
+import com.alyaqdhan.riyal.ui.compose.typeLabel
+import com.alyaqdhan.riyal.ui.compose.ConnectedChoice
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,20 +43,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,20 +62,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.graphics.shapes.RoundedPolygon
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
+import com.alyaqdhan.riyal.ui.compose.MoneySign
+import com.alyaqdhan.riyal.ui.compose.MoneyText
+import com.alyaqdhan.riyal.ui.compose.MoneyAwareText
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.CategoryWheel
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.bidi
 import com.alyaqdhan.riyal.ui.compose.counted
@@ -79,7 +85,6 @@ import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
-import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import com.alyaqdhan.riyal.ui.theme.successColor
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
@@ -102,6 +107,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import com.alyaqdhan.riyal.ui.compose.categoryColor
 
 private val ChartLabelsKey = ExtraStore.Key<List<String>>()
 private val nextDueFmt: DateTimeFormatter get() = Dates.pattern("d MMM")
@@ -184,7 +190,6 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
             if (txns.isEmpty()) {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                     EmptyState(
-                        style = FaceStyle.SLEEPY,
                         title = stringResource(R.string.an_empty_title),
                         subtitle = stringResource(R.string.an_empty_subtitle),
                     )
@@ -211,6 +216,9 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                             selected = accountId == acc.id,
                             onClick = { accountId = if (accountId == acc.id) null else acc.id },
                             label = { Text(acc.displayName) },
+                            leadingIcon = {
+                                Icon(painterResource(iconFor(acc.kind)), contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
                         )
                     }
                 }
@@ -224,45 +232,15 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
             ) {
                 PeriodBar(slice = slice, onChange = { vm.setAnalysisSlice(it) }, txns = txns)
 
-                // ── the three headline numbers, each against the period before
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SummaryTile(
-                        label = stringResource(R.string.an_spent),
-                        amount = totals.spent,
-                        previous = previous.spent,
-                        currency = currency,
-                        // Spending less than last period is the good direction.
-                        upIsGood = false,
-                        modifier = Modifier.weight(1f).popIn(),
-                    )
-                    SummaryTile(
-                        label = stringResource(R.string.an_received),
-                        amount = totals.received,
-                        previous = previous.received,
-                        currency = currency,
-                        upIsGood = true,
-                        modifier = Modifier.weight(1f).popIn(50),
-                    )
-                    SummaryTile(
-                        label = stringResource(R.string.home_net),
-                        amount = totals.net,
-                        previous = previous.net,
-                        currency = currency,
-                        upIsGood = true,
-                        signed = true,
-                        modifier = Modifier.weight(1f).popIn(100),
-                    )
-                }
-                if (moved > 0) {
-                    Text(
-                        stringResource(
-                            R.string.an_moved_note,
-                            bidi(Money.format(moved, currency)),
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                // ── the headline numbers, compact: Home already makes them large, and the
+                // wheel below is what this screen is for.
+                KpiCard(
+                    net = totals.net to previous.net,
+                    spent = totals.spent to previous.spent,
+                    received = totals.received to previous.received,
+                    moved = moved,
+                    currency = currency,
+                )
 
                 // ── donut + legend, either side of the ledger
                 Card(Modifier.fillMaxWidth()) {
@@ -271,68 +249,16 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                            SegmentedButton(
-                                selected = donutType == TxnType.EXPENSE,
-                                onClick = { donutType = TxnType.EXPENSE },
-                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text(
-                                    stringResource(R.string.cats_spending),
-                                    softWrap = false,
-                                    maxLines = 1,
-                                )
-                            }
-                            SegmentedButton(
-                                selected = donutType == TxnType.INCOME,
-                                onClick = { donutType = TxnType.INCOME },
-                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text(
-                                    stringResource(R.string.cats_income),
-                                    softWrap = false,
-                                    maxLines = 1,
-                                )
-                            }
-                        }
-                        Box(contentAlignment = Alignment.Center) {
-                            val grow = remember(slices) { Animatable(0f) }
-                            LaunchedEffect(slices) {
-                                grow.animateTo(
-                                    1f,
-                                    spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessVeryLow,
-                                    ),
-                                )
-                            }
-                            // The empty track, then each category as its own arc on top
-                            // of it. The ring underneath is what draws the circle when
-                            // there is nothing to show.
-                            DonutRing(
-                                progress = { 0f },
-                                color = Color.Transparent,
-                                trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            )
-                            var startFraction = 0f
-                            slices.forEach { s ->
-                                val from = startFraction
-                                startFraction += s.fraction
-                                DonutRing(
-                                    // Each arc is turned to where its share begins and
-                                    // sweeps only its own width, so the colours sit side
-                                    // by side instead of being stacked and masked.
-                                    rotationDegrees = from * 360f + DonutGapDegrees / 2f,
-                                    progress = {
-                                        val sweep = s.fraction * 360f - DonutGapDegrees
-                                        (sweep.coerceAtLeast(1f) / 360f) * grow.value
-                                    },
-                                    color = Color(Categories.colorFor(s.categoryId)),
-                                    trackColor = Color.Transparent,
-                                )
-                            }
+                        ConnectedChoice(
+                            options = listOf(TxnType.EXPENSE, TxnType.INCOME),
+                            selected = donutType,
+                            onSelect = { donutType = it },
+                            label = { stringResource(typeLabel(it)) },
+                            icon = ::typeIcon,
+                            tone = { typeTone(it) },
+                        )
+                        // Restored to M3's own wavy indicator, held flat: one arc per category.
+                        CategoryWheel(slices = slices) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     stringResource(
@@ -342,25 +268,19 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                Text(
-                                    bidi(
-                                        Money.formatAmount(
-                                            if (donutType == TxnType.EXPENSE) totals.spent
-                                            else totals.received,
-                                            currency,
-                                        )
-                                    ),
+                                MoneyText(
+                                    if (donutType == TxnType.EXPENSE) totals.spent
+                                    else totals.received,
+                                    currency,
+                                    sign = MoneySign.NONE,
+                                    roll = true,
                                     style = MaterialTheme.typography.headlineSmall,
                                 )
                                 Text(
                                     if (slices.isEmpty()) {
-                                        stringResource(R.string.an_donut_nothing, currency)
+                                        stringResource(R.string.an_donut_nothing)
                                     } else {
-                                        stringResource(
-                                            R.string.an_donut_categories,
-                                            currency,
-                                            counted(R.plurals.count_categories, slices.size),
-                                        )
+                                        counted(R.plurals.count_categories, slices.size)
                                     },
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -374,8 +294,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
                                     .clickable { onOpenCategory(cat.id, slice) }
-                                    .padding(vertical = 4.dp)
-                                    .popIn(index * 40),
+                                    .padding(vertical = 4.dp),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -383,17 +302,16 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     Modifier
                                         .size(10.dp)
                                         .clip(CircleShape)
-                                        .background(Color(Categories.colorFor(cat.id))),
+                                        .background(categoryColor(cat.id)),
                                 )
                                 Column(Modifier.weight(1f)) {
                                     Text(cat.name, style = MaterialTheme.typography.bodyMedium)
                                     DeltaText(s.amountMinor, previousSlices[s.categoryId] ?: 0L)
                                 }
-                                Text(
-                                    // Bare figure: the donut's own centre names the
-                                    // currency directly above, so printing "OMR" again
-                                    // on all six rows is six readings of one fact.
-                                    bidi(Money.formatAmount(s.amountMinor, currency)),
+                                MoneyText(
+                                    s.amountMinor,
+                                    currency,
+                                    sign = MoneySign.NONE,
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                                 Text(
@@ -458,13 +376,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                 },
                             )
                             progress.lines.forEach { line ->
-                                com.alyaqdhan.riyal.ui.compose.BudgetBar(
-                                    categoryId = line.categoryId,
-                                    spent = line.spentMinor,
-                                    budget = line.capMinor,
-                                    currency = currency,
-                                    paceFraction = progress.elapsedFraction,
-                                )
+                                com.alyaqdhan.riyal.ui.compose.BudgetLine(line, currency)
                             }
                         }
                     }
@@ -500,7 +412,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                         Modifier
                                             .size(10.dp)
                                             .clip(CircleShape)
-                                            .background(Color(Categories.colorFor(mover.categoryId))),
+                                            .background(categoryColor(mover.categoryId)),
                                     )
                                     Text(
                                         Categories.byId(mover.categoryId).name,
@@ -508,7 +420,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                         modifier = Modifier.weight(1f),
                                     )
                                     val up = mover.deltaMinor > 0
-                                    Text(
+                                    MoneyAwareText(
                                         stringResource(
                                             if (up) R.string.an_up_amount
                                             else R.string.an_down_amount,
@@ -559,8 +471,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
-                                    Text(
-                                        bidi(Money.format(r.typicalMinor, currency)),
+                                    MoneyText(r.typicalMinor, currency,
                                         style = MaterialTheme.typography.bodyMedium,
                                     )
                                 }
@@ -578,7 +489,6 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         )
                         InsightRow(
                             R.drawable.ic_insight_bolt,
-                            MaterialShapes.SoftBurst,
                             stringResource(R.string.an_biggest_expense),
                             biggest?.let {
                                 stringResource(
@@ -590,7 +500,6 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         )
                         InsightRow(
                             R.drawable.ic_insight_calendar,
-                            MaterialShapes.Clover4Leaf,
                             stringResource(R.string.an_heaviest_day),
                             spread.busiestDayMillis?.let {
                                 stringResource(
@@ -604,7 +513,6 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                         )
                         InsightRow(
                             R.drawable.ic_insight_store,
-                            MaterialShapes.Cookie9Sided,
                             stringResource(R.string.an_normal_payment),
                             if (spread.payments == 0) {
                                 stringResource(R.string.an_none_yet)
@@ -708,24 +616,13 @@ private fun ChartsCard(
     var showTrend by remember { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = !showTrend,
-                    onClick = { showTrend = false },
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(stringResource(R.string.an_cashflow), softWrap = false, maxLines = 1)
-                }
-                SegmentedButton(
-                    selected = showTrend,
-                    onClick = { showTrend = true },
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(stringResource(R.string.an_running_total), softWrap = false, maxLines = 1)
-                }
-            }
+            ConnectedChoice(
+                options = listOf(false, true),
+                selected = showTrend,
+                onSelect = { showTrend = it },
+                label = { stringResource(if (it) R.string.an_running_total else R.string.an_cashflow) },
+                tone = { MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer },
+            )
             Text(
                 stringResource(
                     if (showTrend) R.string.an_running_total_note else R.string.an_cashflow_note
@@ -776,6 +673,9 @@ private fun ChartsCard(
                     ),
                     modelProducer = producer,
                     modifier = Modifier.fillMaxWidth().height(200.dp),
+                    // Drawn where it lands: no growing bars, no lines sweeping in.
+                    animationSpec = null,
+                    animateIn = false,
                 )
             } else {
                 val spentVals = remember(flow) { flow.map { it.spent } }
@@ -814,6 +714,9 @@ private fun ChartsCard(
                     ),
                     modelProducer = producer,
                     modifier = Modifier.fillMaxWidth().height(200.dp),
+                    // Drawn where it lands: no growing bars, no lines sweeping in.
+                    animationSpec = null,
+                    animateIn = false,
                 )
             }
 
@@ -835,89 +738,175 @@ private fun labelAxisFormatter() = CartesianValueFormatter { context, x, _ ->
 }
 
 /**
- * The gap between two neighbouring arcs, in degrees. Butt caps and a hairline of
- * background between the colours read as separate slices; rounded caps would have to
- * be pushed several times this far apart before they stopped overlapping each other.
- */
-private const val DonutGapDegrees = 2f
-
-/** One arc of the donut: a stock determinate ring, turned to where its share starts. */
-@Composable
-private fun DonutRing(
-    progress: () -> Float,
-    color: Color,
-    trackColor: Color,
-    rotationDegrees: Float = 0f,
-) {
-    CircularProgressIndicator(
-        progress = progress,
-        modifier = Modifier
-            .size(210.dp)
-            .rotate(rotationDegrees),
-        color = color,
-        strokeWidth = 16.dp,
-        trackColor = trackColor,
-        strokeCap = StrokeCap.Butt,
-        gapSize = 0.dp,
-    )
-}
-
-/**
  * One headline figure with how it compares to the equally long period before.
  *
  * The currency sits under the number rather than in front of it: three tiles side by
  * side leave each one about a third of the screen, and "OMR " ahead of the digits was
  * spending that width on a word that is the same on all three.
  */
+/**
+ * The period's three figures on one card, side by side, each with its trend pill, and
+ * what moved between the user's own accounts on a line of its own - neither spending nor
+ * income, so shown apart from both rather than as a footnote under them.
+ */
 @Composable
-private fun SummaryTile(
+private fun KpiCard(
+    net: Pair<Long, Long>,
+    spent: Pair<Long, Long>,
+    received: Pair<Long, Long>,
+    moved: Long,
+    currency: String,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainer)) {
+        Column(Modifier.padding(vertical = 12.dp)) {
+            // No intrinsic sizing here: a rolling figure is laid out by measuring its room,
+            // which cannot answer an intrinsic question - asking crashed the screen.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Kpi(
+                    label = stringResource(R.string.home_net),
+                    icon = null,
+                    amount = net.first,
+                    previous = net.second,
+                    currency = currency,
+                    ink = if (net.first < 0) scheme.error else scheme.onSurface,
+                    upIsGood = true,
+                    signed = true,
+                    modifier = Modifier.weight(1f),
+                )
+                VerticalDivider(Modifier.height(56.dp), color = scheme.outlineVariant)
+                Kpi(
+                    label = stringResource(typeLabel(TxnType.EXPENSE)),
+                    icon = typeIcon(TxnType.EXPENSE),
+                    amount = spent.first,
+                    previous = spent.second,
+                    currency = currency,
+                    ink = scheme.error,
+                    upIsGood = false,
+                    modifier = Modifier.weight(1f),
+                )
+                VerticalDivider(Modifier.height(56.dp), color = scheme.outlineVariant)
+                Kpi(
+                    label = stringResource(typeLabel(TxnType.INCOME)),
+                    icon = typeIcon(TxnType.INCOME),
+                    amount = received.first,
+                    previous = received.second,
+                    currency = currency,
+                    ink = successColor(),
+                    upIsGood = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (moved > 0) {
+                HorizontalDivider(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), color = scheme.outlineVariant)
+                Row(
+                    Modifier.padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        painterResource(typeIcon(TxnType.TRANSFER)),
+                        contentDescription = null,
+                        tint = scheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        stringResource(R.string.an_moved_label),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    MoneyText(
+                        moved,
+                        currency,
+                        sign = MoneySign.NONE,
+                        roll = true,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = scheme.onSurface,
+                    )
+                    Surface(shape = CircleShape, color = scheme.secondaryContainer, contentColor = scheme.onSecondaryContainer) {
+                        Text(
+                            stringResource(R.string.row_not_counted),
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** One figure: its name, the amount in its colour, and its trend pill. */
+@Composable
+private fun Kpi(
     label: String,
+    @DrawableRes icon: Int?,
     amount: Long,
     previous: Long,
     currency: String,
+    ink: Color,
     upIsGood: Boolean,
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
     signed: Boolean = false,
 ) {
     Column(
-        modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        modifier.padding(horizontal = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // The currency used to have a line of its own in all three tiles - one line of
-        // height each to say the same three letters. It shares the label's line, which
-        // has room to spare, rather than the figure's, which does not: a negative Net
-        // is wide enough that "OMR" beside it was cut off.
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (icon != null) {
+                Icon(painterResource(icon), contentDescription = null, tint = ink, modifier = Modifier.size(14.dp))
+            }
             Text(
                 label,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                currency,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
             )
         }
-        Text(
-            bidi(
-                (if (signed && amount < 0) "− " else "") +
-                    Money.formatAmount(abs(amount), currency)
-            ),
-            style = MaterialTheme.typography.titleMedium,
-            color = if (signed && amount < 0) MaterialTheme.colorScheme.error
-            else MaterialTheme.colorScheme.onSurface,
-            softWrap = false,
-            maxLines = 1,
+        MoneyText(
+            amount,
+            currency,
+            sign = if (signed) MoneySign.NEGATIVE else MoneySign.NONE,
+            roll = true,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = ink,
+            textAlign = TextAlign.Center,
+            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = MaterialTheme.typography.titleMedium.fontSize),
         )
-        DeltaText(amount, previous, upIsGood = upIsGood)
+        DeltaPill(amount, previous, upIsGood = upIsGood)
+    }
+}
+
+/**
+ * "▲ 18%" against the previous period, on a small pill coloured by whether that
+ * direction is welcome - spending more is red, earning more is green. A plain pill
+ * when there is no baseline, since a percentage change from nothing is not a fact.
+ */
+@Composable
+private fun DeltaPill(now: Long, previous: Long, upIsGood: Boolean) {
+    val pct = Stats.deltaPct(now, previous)
+    val flat = pct == null || abs(pct) < 0.005f
+    val good = !flat && (pct!! > 0) == upIsGood
+    val (container, content) = when {
+        flat -> MaterialTheme.colorScheme.surfaceContainerHighest to MaterialTheme.colorScheme.onSurfaceVariant
+        good -> successContainer() to onSuccessContainer()
+        else -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+    }
+    Surface(shape = CircleShape, color = container, contentColor = content) {
+        Text(
+            when {
+                pct == null -> stringResource(R.string.an_no_baseline)
+                flat -> stringResource(R.string.an_level)
+                pct > 0 -> stringResource(R.string.an_delta_up, (abs(pct) * 100).roundToInt())
+                else -> stringResource(R.string.an_delta_down, (abs(pct) * 100).roundToInt())
+            },
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+        )
     }
 }
 
@@ -985,7 +974,7 @@ private fun StatLine(label: String, value: String, color: Color = Color.Unspecif
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(
+        MoneyAwareText(
             value,
             style = MaterialTheme.typography.bodyMedium,
             color = if (color == Color.Unspecified) MaterialTheme.colorScheme.onSurface else color,
@@ -996,16 +985,14 @@ private fun StatLine(label: String, value: String, color: Color = Color.Unspecif
 @Composable
 private fun InsightRow(
     @DrawableRes iconRes: Int,
-    shape: RoundedPolygon,
     label: String,
     value: String,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        // Each insight sits on its own imperfect M3 shape, like the category badges.
         Box(
             Modifier
                 .size(38.dp)
-                .clip(shape.toShape())
+                .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.tertiaryContainer),
             contentAlignment = Alignment.Center,
         ) {
@@ -1018,7 +1005,7 @@ private fun InsightRow(
         }
         Column {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.bodyMedium)
+            MoneyAwareText(value, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

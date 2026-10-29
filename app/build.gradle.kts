@@ -18,8 +18,8 @@ android {
         applicationId = "com.alyaqdhan.riyal"
         minSdk = 29
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.7.1"
+        versionCode = 8
+        versionName = "1.8.0"
 
         androidResources {
             localeFilters += listOf("en", "ar")
@@ -78,19 +78,23 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
-    // Material Components (Views) 1.14.0: app theme + native MaterialFadeThrough/SharedAxis
-    // fragment transitions for the XML nav-graph routing.
+    // Material Components (Views) 1.14.0: the activities' theme. Pages are activities with
+    // their own layouts, so the phone's own transition plays between them.
     implementation(libs.material)
-    implementation(libs.androidx.navigation.fragment)
+    implementation(libs.androidx.fragment)
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.core.splashscreen)
     // Compose Material 3 1.5.0-alpha23: Material 3 Expressive screens rendered inside
-    // the routed fragments (MaterialExpressiveTheme, expressive MotionScheme, LoadingIndicator…).
+    // the tab fragments (MaterialExpressiveTheme, expressive MotionScheme, LoadingIndicator…).
     implementation(libs.compose.material3)
     implementation(libs.compose.icons.core)
     // Vico: proper chart library (Analysis 6-month columns), Compose + Material 3.
     implementation(libs.vico.compose.m3)
+    // Release notes in the update dialog and the changelog, rendered with Material 3
+    // typography instead of having their markdown stripped by hand.
+    implementation(libs.markdown.renderer.m3)
     testImplementation(libs.junit)
     testImplementation(libs.json)
 }
