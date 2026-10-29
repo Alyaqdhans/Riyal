@@ -376,13 +376,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                 },
                             )
                             progress.lines.forEach { line ->
-                                com.alyaqdhan.riyal.ui.compose.BudgetBar(
-                                    categoryId = line.categoryId,
-                                    spent = line.spentMinor,
-                                    budget = line.capMinor,
-                                    currency = currency,
-                                    paceFraction = progress.elapsedFraction,
-                                )
+                                com.alyaqdhan.riyal.ui.compose.BudgetLine(line, currency)
                             }
                         }
                     }

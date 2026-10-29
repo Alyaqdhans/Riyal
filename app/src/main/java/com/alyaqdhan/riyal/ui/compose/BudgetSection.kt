@@ -1,45 +1,65 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Numerals
@@ -52,29 +72,27 @@ import com.alyaqdhan.riyal.ui.theme.successColor
 import kotlin.math.roundToInt
 
 /**
- * The budget: one plan per period, a cap per expense category, and bars that say not
- * just how much is gone but whether it is going faster than the calendar. Being at 85%
- * of a cap is fine on the 28th and alarming on the 8th, so the pace marker is the part
- * that actually earns its place.
+ * The budget, on Home under the net: a cap per expense category for the period on
+ * screen, what is left of them, and whether the money is going faster than the days.
+ * Being at 85% of a cap is fine on the 28th and alarming on the 8th, so the pace is the
+ * part that earns its place.
  *
- * The period is the one the screen is already showing - Home's month selector drives it,
- * rather than a second selector of its own. A plan whose period is not that month says
- * so, and its period is changed from the editor.
+ * The period is the one Home is showing - its date tiles drive it, rather than a
+ * selector of its own. A plan made for other dates that overlap them says so.
  *
- * Switched on in Settings; the section simply isn't rendered while budgets are off.
+ * Switched on in Settings; the card isn't drawn while budgets are off.
  */
 @Composable
-fun BudgetSection(
+fun BudgetCard(
     slice: TimeSlice,
     plans: List<BudgetPlan>,
     txns: List<Txn>,
     currency: String,
-    onCreate: (label: String, start: Long, endExclusive: Long) -> Unit,
-    onCopy: (source: BudgetPlan, label: String, start: Long, endExclusive: Long) -> Unit,
-    onSetLine: (planId: String, categoryId: String, minor: Long) -> Unit,
-    onSetPeriod: (planId: String, label: String, start: Long, endExclusive: Long) -> Unit,
+    /** Saves a plan, new or edited; [copiedFrom] is the plan its caps were taken from. */
+    onSave: (plan: BudgetPlan, copiedFrom: BudgetPlan?) -> Unit,
     onDelete: (planId: String) -> Unit,
     modifier: Modifier = Modifier,
+    categoryUse: Map<String, Int> = emptyMap(),
 ) {
     // A plan belongs to the period it was made for: the one whose bounds match what the
     // user is looking at, not merely one that overlaps it.
@@ -83,101 +101,263 @@ fun BudgetSection(
             ?: plans.firstOrNull { it.overlaps(slice.start, slice.endExclusive) }
     }
     val progress = remember(plan, txns, currency) {
-        plan?.let { Stats.budgetProgress(it, txns, currency) }
+        plan?.takeIf { it.lines.isNotEmpty() }?.let { Stats.budgetProgress(it, txns, currency) }
     }
-    var showEditor by remember { mutableStateOf(false) }
-    var confirmDelete by remember { mutableStateOf(false) }
-    var showAll by remember { mutableStateOf(false) }
+    val sliceTitle = slice.title()
+    // A plan with no caps (an earlier build made them empty) is edited, not added to.
+    val draft = plan ?: BudgetPlan(
+        id = "",
+        label = sliceTitle,
+        startMillis = slice.start,
+        endExclusiveMillis = slice.endExclusive,
+    )
+    var editing by remember { mutableStateOf(false) }
 
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SectionTitle(stringResource(R.string.budget_title))
-            if (plan != null) {
-                Row {
-                    TextButton(onClick = { showEditor = true }, shapes = ButtonDefaults.shapes()) {
-                        Text(stringResource(R.string.action_edit))
-                    }
-                    TextButton(onClick = { confirmDelete = true }, shapes = ButtonDefaults.shapes()) {
-                        Text(stringResource(R.string.action_delete))
-                    }
-                }
+    Card(modifier.fillMaxWidth()) {
+        if (progress == null) {
+            val previous = remember(plans, slice) {
+                plans.firstOrNull { it.endExclusiveMillis <= slice.start && it.lines.isNotEmpty() }
             }
-        }
-
-        // Only worth saying when the plan is not the period on screen - otherwise the
-        // month selector above has already said it.
-        if (plan != null && (plan.startMillis != slice.start || plan.endExclusiveMillis != slice.endExclusive)) {
-            Text(
-                stringResource(R.string.budget_plan_runs, plan.label),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            NoBudget(
+                title = sliceTitle,
+                previous = previous,
+                onCopy = { from -> onSave(draft.copy(lines = from.lines), from) },
+                onStart = { editing = true },
             )
-        }
-
-        if (plan == null || progress == null) {
-            val sliceTitle = slice.title()
-            Text(
-                stringResource(R.string.budget_no_plan, sliceTitle),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalButton(
-                    onClick = { onCreate(sliceTitle, slice.start, slice.endExclusive) },
-                    shapes = ButtonDefaults.shapes(),
-                ) { Text(stringResource(R.string.budget_create)) }
-                val previous = plans.firstOrNull { it.endExclusiveMillis <= slice.start }
-                if (previous != null && previous.lines.isNotEmpty()) {
-                    TextButton(onClick = {
-                        onCopy(previous, sliceTitle, slice.start, slice.endExclusive)
-                    }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.budget_copy, previous.label)) }
-                }
-            }
-        } else if (plan.lines.isEmpty()) {
-            Text(
-                stringResource(R.string.budget_no_caps),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FilledTonalButton(
-                onClick = { showEditor = true },
-                shapes = ButtonDefaults.shapes(),
-            ) { Text(stringResource(R.string.budget_add_cap)) }
         } else {
-            // With one capped category the total *is* that category: drawing both said
-            // "OMR 4.500 of OMR 60.000" twice, once with an icon.
-            val sole = progress.lines.singleOrNull()
-            BudgetTotal(progress, currency, soleCategoryId = sole?.categoryId)
-            if (sole == null) {
-                // The total bar is the answer; two categories are the detail most people
-                // want, and the rest is one tap away rather than a screenful of bars.
-                //
-                // Which two matters: the plan's own order is by cap size, and showing the
-                // two biggest caps would hide a small category that is already over its
-                // limit - the one thing on this card worth interrupting someone for. So the
-                // summary shows whichever are closest to (or past) their cap.
-                val shown = remember(progress, showAll) {
-                    if (showAll) progress.lines else Stats.mostAtRisk(progress.lines, VISIBLE_LINES)
+            PlanSummary(
+                progress = progress,
+                currency = currency,
+                runs = plan?.takeIf {
+                    it.startMillis != slice.start || it.endExclusiveMillis != slice.endExclusive
+                }?.label,
+                onEdit = { editing = true },
+            )
+        }
+    }
+
+    if (editing) {
+        val before = remember(slice) { slice.shifted(back = true) }
+        BudgetEditor(
+            plan = draft,
+            currency = currency,
+            txns = txns,
+            before = before,
+            categoryUse = categoryUse,
+            onSave = { lines ->
+                editing = false
+                onSave(draft.copy(lines = lines), null)
+            },
+            onDelete = {
+                editing = false
+                onDelete(draft.id)
+            },
+            onDismiss = { editing = false },
+        )
+    }
+}
+
+/** How many category rows the card shows before "Show all". */
+private const val VISIBLE_LINES = 3
+
+private const val DAY_MS = 24L * 60 * 60 * 1000
+
+/** No caps for these dates yet: what a budget is for, and the one tap that starts it. */
+@Composable
+private fun NoBudget(
+    title: String,
+    previous: BudgetPlan?,
+    onCopy: (BudgetPlan) -> Unit,
+    onStart: () -> Unit,
+) {
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painterResource(R.drawable.ic_sym_savings),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.budget_none, title), style = MaterialTheme.typography.titleSmall)
+                Text(
+                    stringResource(R.string.budget_none_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        // Last period's caps are usually this one's too, so carrying them over is the
+        // first offer, one tap; starting afresh is the other.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (previous != null) {
+                Button(onClick = { onCopy(previous) }, shapes = ButtonDefaults.shapes()) {
+                    Text(stringResource(R.string.budget_copy_from, previous.label))
                 }
-                shown.forEach { line ->
-                    BudgetBar(
-                        categoryId = line.categoryId,
-                        spent = line.spentMinor,
-                        budget = line.capMinor,
-                        currency = currency,
-                        paceFraction = progress.elapsedFraction,
+                TextButton(onClick = onStart, shapes = ButtonDefaults.shapes()) {
+                    Text(stringResource(R.string.budget_start_fresh))
+                }
+            } else {
+                FilledTonalButton(onClick = onStart, shapes = ButtonDefaults.shapes()) {
+                    Icon(
+                        painterResource(R.drawable.ic_sym_add),
+                        contentDescription = null,
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
                     )
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text(stringResource(R.string.budget_start))
                 }
             }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+        }
+    }
+}
+
+/**
+ * A plan at a glance: what is left to spend, large, the way the net is above it; the
+ * whole plan as one bar with where it should be by now; and the categories closest to
+ * their caps.
+ */
+@Composable
+private fun PlanSummary(
+    progress: Stats.BudgetProgress,
+    currency: String,
+    /** The plan's own dates, when they are not the ones on screen. */
+    runs: String?,
+    onEdit: () -> Unit,
+) {
+    var showAll by remember { mutableStateOf(false) }
+    val motion = MaterialTheme.motionScheme
+    val plan = progress.plan
+    val now = System.currentTimeMillis()
+    val ended = now >= plan.endExclusiveMillis
+    val tone = when {
+        progress.over -> MaterialTheme.colorScheme.error
+        progress.aheadOfPace -> MaterialTheme.colorScheme.primary
+        else -> successColor()
+    }
+
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(R.string.budget_title),
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onEdit, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_edit)) }
+    }
+    Column(
+        Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column {
+            Text(
+                stringResource(if (progress.over) R.string.budget_over_label else R.string.budget_left_label),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            MoneyText(
+                if (progress.over) progress.totalSpentMinor - progress.totalCapMinor
+                else progress.totalCapMinor - progress.totalSpentMinor,
+                currency,
+                sign = MoneySign.NONE,
+                roll = true,
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                color = if (progress.over) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 18.sp,
+                    maxFontSize = MaterialTheme.typography.headlineMedium.fontSize,
+                ),
+            )
+            MoneyAwareText(
+                stringResource(R.string.budget_of_total, bidi(Money.format(progress.totalCapMinor, currency))),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (runs != null) {
+                Text(
+                    stringResource(R.string.budget_plan_runs, runs),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        PaceBar(fraction = progress.fraction, pace = if (ended) 0f else progress.elapsedFraction, color = tone)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                painterResource(paceIcon(progress)),
+                contentDescription = null,
+                tint = tone,
+                modifier = Modifier.size(16.dp),
+            )
+            val pace = when {
+                progress.over -> stringResource(R.string.budget_status_over)
+                ended -> stringResource(R.string.budget_status_within)
+                progress.aheadOfPace -> stringResource(R.string.budget_status_ahead)
+                else -> stringResource(R.string.budget_status_on_pace)
+            }
+            val days = when {
+                ended -> stringResource(R.string.budget_ended)
+                now < plan.startMillis -> stringResource(R.string.budget_not_started)
+                else -> counted(
+                    R.plurals.budget_days_left,
+                    ((plan.endExclusiveMillis - now + DAY_MS - 1) / DAY_MS).toInt(),
+                )
+            }
+            Text(
+                "$pace · $days",
+                style = MaterialTheme.typography.labelLarge,
+                color = tone,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                stringResource(R.string.budget_spent_pct, (progress.fraction * 100).roundToInt()),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        HorizontalDivider()
+        // The plan's own order is by cap size, and showing the biggest caps would hide a
+        // small category already over its limit - the one thing on this card worth
+        // interrupting someone for. So the rows first shown are the closest to their caps.
+        val shown = remember(progress) { Stats.mostAtRisk(progress.lines, VISIBLE_LINES) }
+        val rest = remember(progress, shown) { progress.lines - shown.toSet() }
+        shown.forEach { BudgetLine(it, currency) }
+        if (rest.isNotEmpty()) {
+            AnimatedVisibility(
+                visible = showAll,
+                enter = expandVertically(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
+                exit = shrinkVertically(motion.defaultSpatialSpec()) + fadeOut(motion.defaultEffectsSpec()),
             ) {
-                if (progress.lines.size > VISIBLE_LINES) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rest.forEach { BudgetLine(it, currency) }
+                }
+            }
+        }
+        if (rest.isNotEmpty() || progress.unbudgetedMinor > 0) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (progress.unbudgetedMinor > 0) {
+                    MoneyAwareText(
+                        stringResource(
+                            R.string.budget_outside,
+                            bidi(Money.format(progress.unbudgetedMinor, currency)),
+                        ),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
+                if (rest.isNotEmpty()) {
                     TextButton(onClick = { showAll = !showAll }, shapes = ButtonDefaults.shapes()) {
                         Text(
                             if (showAll) stringResource(R.string.budget_show_less)
@@ -185,379 +365,237 @@ fun BudgetSection(
                         )
                     }
                 }
-                if (progress.unbudgetedMinor > 0) {
-                    AssistChip(
-                        onClick = { showEditor = true },
-                        label = {
-                            MoneyAwareText(
-                                stringResource(
-                                    R.string.budget_uncapped,
-                                    bidi(Money.format(progress.unbudgetedMinor, currency)),
-                                )
-                            )
-                        },
-                    )
-                }
             }
         }
     }
+}
 
-    if (showEditor && plan != null) {
-        BudgetEditorDialog(
-            plan = plan,
-            currency = currency,
-            onSetLine = { categoryId, minor -> onSetLine(plan.id, categoryId, minor) },
-            onSetPeriod = { label, start, end -> onSetPeriod(plan.id, label, start, end) },
-            onDismiss = { showEditor = false },
-            // The section already has every record; no need to route the counts in
-            // from the view model to reach the same answer.
-            categoryUse = Stats.categoryUse(txns),
-        )
-    }
+@DrawableRes
+private fun paceIcon(progress: Stats.BudgetProgress): Int = when {
+    progress.over -> R.drawable.ic_sym_error
+    progress.aheadOfPace -> R.drawable.ic_sym_info
+    else -> R.drawable.ic_sym_check_circle
+}
 
-    if (confirmDelete && plan != null) {
-        val pop = rememberDialogPop()
-        AlertDialog(
-            onDismissRequest = { pop.leave { confirmDelete = false } },
-            modifier = Modifier.popIn(pop),
-            title = { Text(stringResource(R.string.budget_delete_title)) },
-            text = { Text(stringResource(R.string.budget_delete_body, plan.label)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    val id = plan.id
-                    pop.leave {
-                        onDelete(id)
-                        confirmDelete = false
-                    }
-                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_delete)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { pop.leave { confirmDelete = false } }, shapes = ButtonDefaults.shapes()) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
+/**
+ * The whole plan as one bar, with a thin mark where it would be if the money went
+ * evenly across the days: being ahead shows long before the bar is full.
+ */
+@Composable
+private fun PaceBar(fraction: Float, pace: Float, color: Color) {
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+        FlatBar(progress = { fraction.coerceIn(0f, 1f) }, color = color, modifier = Modifier.fillMaxWidth())
+        if (pace > 0.02f && pace < 0.98f) {
+            Box(Modifier.fillMaxWidth(pace), contentAlignment = Alignment.CenterEnd) {
+                Box(
+                    Modifier
+                        .width(2.dp)
+                        .height(14.dp)
+                        .background(MaterialTheme.colorScheme.onSurface, RoundedCornerShape(1.dp)),
+                )
+            }
+        }
     }
 }
 
-/** How many category bars the card shows before "Show all". */
-private const val VISIBLE_LINES = 2
-
-/** The whole plan at a glance, with the pace read that makes a percentage mean something. */
+/**
+ * One category against its cap, laid out as Home's top spending rows are: its badge,
+ * its name with what is spent of the cap, and a bar in its colour - the error colour
+ * once it is over.
+ */
 @Composable
-private fun BudgetTotal(
-    progress: Stats.BudgetProgress,
-    currency: String,
-    soleCategoryId: String? = null,
-) {
-    val used = progress.fraction
-    val color = when {
-        progress.over -> MaterialTheme.colorScheme.error
-        progress.aheadOfPace -> MaterialTheme.colorScheme.primary
-        else -> successColor()
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (soleCategoryId != null) {
-                    CategoryIcon(soleCategoryId, size = 16.dp)
-                    Text(
-                        Categories.byId(soleCategoryId).name,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
+fun BudgetLine(line: Stats.BudgetLineProgress, currency: String, modifier: Modifier = Modifier) {
+    val category = Categories.byId(line.categoryId)
+    Row(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CategoryBadge(category.id, size = 36.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    category.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
                 MoneyAwareText(
                     stringResource(
-                        R.string.budget_spent_of_cap,
-                        bidi(Money.format(progress.totalSpentMinor, currency)),
-                        bidi(Money.format(progress.totalCapMinor, currency)),
+                        R.string.budget_bar_amounts,
+                        bidi(Money.format(line.spentMinor, currency)),
+                        bidi(Money.format(line.capMinor, currency)),
                     ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (soleCategoryId != null) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (line.over) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(
-                stringResource(R.string.budget_percent, (used * 100).roundToInt()),
-                style = MaterialTheme.typography.titleMedium,
-                color = color,
-            )
-        }
-        FlatBar(
-            progress = { used.coerceIn(0f, 1f) },
-            color = color,
-            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        val elapsedPct = (progress.elapsedFraction * 100).roundToInt()
-        MoneyAwareText(
-            when {
-                progress.over -> stringResource(
-                    R.string.budget_over_by,
-                    bidi(
-                        Money.format(
-                            progress.totalSpentMinor - progress.totalCapMinor,
-                            currency,
-                        )
-                    ),
-                )
-                progress.aheadOfPace -> stringResource(
-                    R.string.budget_ahead,
-                    elapsedPct,
-                    (used * 100).roundToInt(),
-                )
-                else -> stringResource(
-                    R.string.budget_left,
-                    elapsedPct,
-                    bidi(
-                        Money.format(
-                            progress.totalCapMinor - progress.totalSpentMinor,
-                            currency,
-                        )
-                    ),
-                )
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = if (progress.over) MaterialTheme.colorScheme.error
-            else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-/**
- * One category's spend against its cap. The thin marker is where the bar *should* be if
- * the money were going evenly across the period, so being ahead is visible at a glance
- * rather than only once the bar is full.
- */
-@Composable
-fun BudgetBar(
-    categoryId: String,
-    spent: Long,
-    budget: Long,
-    currency: String,
-    paceFraction: Float? = null,
-) {
-    val cat = Categories.byId(categoryId)
-    val fraction = if (budget > 0) (spent.toFloat() / budget.toFloat()) else 0f
-    val over = spent > budget
-    val barColor = when {
-        over -> MaterialTheme.colorScheme.error
-        fraction >= 0.85f -> MaterialTheme.colorScheme.tertiary
-        else -> categoryColor(categoryId)
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            CategoryIcon(categoryId, size = 16.dp)
-            Text(cat.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            MoneyAwareText(
-                stringResource(
-                    R.string.budget_bar_amounts,
-                    bidi(Money.format(spent, currency)),
-                    bidi(Money.format(budget, currency)),
-                ),
-                style = MaterialTheme.typography.labelMedium,
-                color = if (over) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
             FlatBar(
-                progress = { fraction.coerceIn(0f, 1f) },
-                color = barColor,
-                trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                progress = { line.fraction.coerceIn(0f, 1f) },
+                color = if (line.over) MaterialTheme.colorScheme.error else categoryColor(category.id),
                 modifier = Modifier.fillMaxWidth(),
             )
-            if (paceFraction != null && paceFraction > 0.02f && paceFraction < 0.98f) {
-                Box(
-                    Modifier.fillMaxWidth(paceFraction),
-                    contentAlignment = Alignment.CenterEnd,
-                ) {
-                    Box(
-                        Modifier
-                            .width(2.dp)
-                            .height(12.dp)
-                            .background(MaterialTheme.colorScheme.onSurface),
-                    )
-                }
-            }
-        }
-        if (over) {
-            MoneyAwareText(
-                stringResource(R.string.budget_over_by, bidi(Money.format(spent - budget, currency))),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error,
-            )
         }
     }
 }
 
 /**
- * Set or clear a cap per category: pick a category chip, type an amount, add it.
- * Existing caps are listed with a remove control. Expense categories only, since income
- * isn't something you cap.
+ * The caps of one plan, set together and saved together. The category chips are the
+ * list of what is capped - tap one to cap it, again to drop it - and each capped
+ * category gets its amount field, with what went on it the period before as a guide.
  */
 @Composable
-private fun BudgetEditorDialog(
+private fun BudgetEditor(
     plan: BudgetPlan,
     currency: String,
-    onSetLine: (categoryId: String, minor: Long) -> Unit,
-    onSetPeriod: (label: String, start: Long, endExclusive: Long) -> Unit,
+    txns: List<Txn>,
+    /** The period before this one, whose spending guides each cap. */
+    before: TimeSlice,
+    categoryUse: Map<String, Int>,
+    onSave: (Map<String, Long>) -> Unit,
+    onDelete: () -> Unit,
     onDismiss: () -> Unit,
-    categoryUse: Map<String, Int> = emptyMap(),
 ) {
     val order = rememberCategoryOrder(categoryUse)
-    var selected by remember { mutableStateOf(order.sort(Categories.forType(TxnType.EXPENSE)).first().id) }
-    var amount by remember { mutableStateOf("") }
-    // Local view so the list updates live as caps are added or removed.
-    var current by remember { mutableStateOf(plan.lines) }
-    var label by remember { mutableStateOf(plan.label) }
-    var showRange by remember { mutableStateOf(false) }
-    val parsed = Numerals.decimal(amount)
+    val categories = remember(order) { order.sort(Categories.forType(TxnType.EXPENSE)) }
+    // Each capped category with what is typed for it, biggest caps first, new ones last.
+    var caps by remember {
+        mutableStateOf(
+            plan.lines.entries.sortedByDescending { it.value }
+                .map { (id, minor) -> id to Money.toMajor(minor, currency).stripTrailingZeros().toPlainString() }
+        )
+    }
+    var added by remember { mutableStateOf<String?>(null) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    val spentBefore = remember(txns, before, currency) {
+        categories.associate { it.id to Stats.categoryTotalIn(txns, it.id, before.start, before.endExclusive, currency) }
+    }
+    val beforeTitle = before.title()
+    val amounts = caps.map { (_, text) -> Numerals.decimal(text)?.takeIf { it.signum() > 0 } }
+    val complete = caps.isNotEmpty() && amounts.all { it != null }
+    val total = amounts.sumOf { it?.let { a -> Money.toMinor(a, currency) } ?: 0L }
     val pop = rememberDialogPop()
 
     AlertDialog(
         onDismissRequest = { pop.leave(onDismiss) },
         modifier = Modifier.popIn(pop),
-        title = { Text(label) },
+        title = { Text(stringResource(R.string.budget_editor_title, plan.label)) },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // A plan need not be a calendar month, so this is where a plan stops
-                // being one - the screen itself only ever steps months.
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        stringResource(R.string.label_period),
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                    TextButton(onClick = { showRange = true }, shapes = ButtonDefaults.shapes()) {
-                        Text(stringResource(R.string.action_change))
-                    }
-                }
-                if (current.isNotEmpty()) {
-                    current.entries.sortedByDescending { it.value }.forEach { (catId, minor) ->
+                Text(
+                    stringResource(R.string.budget_editor_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                CategoryRows(
+                    categories,
+                    selected = { c -> caps.any { it.first == c.id } },
+                    onClick = { c ->
+                        if (caps.any { it.first == c.id }) {
+                            caps = caps.filter { it.first != c.id }
+                        } else {
+                            caps = caps + (c.id to "")
+                            added = c.id
+                        }
+                    },
+                )
+                caps.forEach { (id, text) ->
+                    key(id) {
+                        val focus = remember { FocusRequester() }
+                        // A category just tapped goes straight to its amount.
+                        LaunchedEffect(Unit) { if (id == added) focus.requestFocus() }
                         Row(
-                            Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            CategoryIcon(catId, size = 18.dp)
-                            MoneyAwareText(
-                                stringResource(
-                                    R.string.budget_line,
-                                    Categories.byId(catId).name,
-                                    bidi(Money.format(minor, currency)),
-                                ),
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f),
+                            CategoryBadge(id, size = 36.dp)
+                            val spent = spentBefore[id] ?: 0L
+                            OutlinedTextField(
+                                value = text,
+                                onValueChange = { v -> caps = caps.map { if (it.first == id) id to v else it } },
+                                label = { Text(Categories.byId(id).name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                suffix = { CurrencySign(currency) },
+                                supportingText = if (spent > 0) {
+                                    {
+                                        MoneyAwareText(
+                                            stringResource(
+                                                R.string.budget_spent_before,
+                                                bidi(Money.format(spent, currency)),
+                                                beforeTitle,
+                                            ),
+                                        )
+                                    }
+                                } else {
+                                    null
+                                },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f).focusRequester(focus),
                             )
-                            TextButton(onClick = {
-                                onSetLine(catId, 0L)
-                                current = current - catId
-                            }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_remove)) }
+                            IconButton(onClick = { caps = caps.filter { it.first != id } }) {
+                                Icon(
+                                    painterResource(R.drawable.ic_sym_close),
+                                    contentDescription = stringResource(R.string.action_remove),
+                                )
+                            }
                         }
                     }
                 }
-                Text(
-                    stringResource(R.string.budget_add_or_change),
-                    style = MaterialTheme.typography.labelLarge,
-                )
-                CategoryChips(
-                    type = TxnType.EXPENSE,
-                    selectedId = selected,
-                    onSelect = { selected = it },
-                    order = order,
-                )
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it },
-                    label = { Text(stringResource(R.string.budget_cap_label)) },
-                    suffix = { Text(currency) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                )
+                if (caps.isNotEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            stringResource(R.string.budget_total),
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.weight(1f),
+                        )
+                        MoneyText(total, currency, sign = MoneySign.NONE, style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+                if (plan.id.isNotBlank()) DeleteButton(onClick = { confirmDelete = true })
             }
         },
         confirmButton = {
-            TextButton(
-                enabled = parsed != null && parsed.signum() > 0,
+            Button(
+                enabled = complete,
                 onClick = {
-                    val minor = Money.toMinor(parsed!!, currency)
-                    onSetLine(selected, minor)
-                    current = current + (selected to minor)
-                    amount = ""
+                    val lines = caps.zip(amounts).associate { (cap, amount) -> cap.first to Money.toMinor(amount!!, currency) }
+                    pop.leave { onSave(lines) }
                 },
                 shapes = ButtonDefaults.shapes(),
-            ) { Text(stringResource(R.string.action_add)) }
+            ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_done)) }
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) {
+                Text(stringResource(R.string.action_cancel))
+            }
         },
     )
 
-    if (showRange) {
-        val rangeState = rememberDateRangePickerState()
-        val rangeTitle = rangeState.selectedStartDateMillis?.let { start ->
-            rangeState.selectedEndDateMillis?.let { end ->
-                TimeSlice.ofDays(TimeSlice.utcDay(start), TimeSlice.utcDay(end)).title()
-            }
-        }.orEmpty()
-        val rangePop = rememberDialogPop()
-        DatePickerDialog(
-            onDismissRequest = { rangePop.leave { showRange = false } },
-            modifier = Modifier.popIn(rangePop),
+    if (confirmDelete) {
+        val confirmPop = rememberDialogPop()
+        AlertDialog(
+            onDismissRequest = { confirmPop.leave { confirmDelete = false } },
+            modifier = Modifier.popIn(confirmPop),
+            title = { Text(stringResource(R.string.budget_delete_title)) },
+            text = { Text(stringResource(R.string.budget_delete_body, plan.label)) },
             confirmButton = {
-                TextButton(
-                    enabled = rangeState.selectedStartDateMillis != null &&
-                        rangeState.selectedEndDateMillis != null,
-                    onClick = {
-                        val slice = TimeSlice.ofDays(
-                            TimeSlice.utcDay(rangeState.selectedStartDateMillis!!),
-                            TimeSlice.utcDay(rangeState.selectedEndDateMillis!!),
-                        )
-                        val title = rangeTitle
-                        rangePop.leave {
-                            onSetPeriod(title, slice.start, slice.endExclusive)
-                            label = title
-                            showRange = false
-                        }
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) { Text(stringResource(R.string.action_apply)) }
+                TextButton(onClick = {
+                    // The question goes, then the editor it was asked over.
+                    confirmPop.leave {
+                        confirmDelete = false
+                        pop.leave(onDelete)
+                    }
+                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { rangePop.leave { showRange = false } }, shapes = ButtonDefaults.shapes()) {
+                TextButton(onClick = { confirmPop.leave { confirmDelete = false } }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
-        ) {
-            DateRangePicker(state = rangeState, modifier = Modifier.height(460.dp))
-        }
+        )
     }
-}
-
-/** Small colored dot used by legends and budget rows. */
-@Composable
-fun ColorDot(color: Color, size: androidx.compose.ui.unit.Dp = 10.dp) {
-    Box(
-        Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(color),
-    )
 }

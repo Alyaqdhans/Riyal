@@ -136,6 +136,13 @@ is attached there.
 - **Home is a dashboard:** net for the period, large, with expense and income as pills
   under it; one "needs your attention" list; top spending; and the period's latest
   records, which change with the dates above them.
+- **The budget sits under the net** (when switched on in Settings), as one card: what is
+  left to spend, large, of the whole plan; a bar with a mark where spending should be by
+  now, and whether it is on pace, with the days left; then the categories closest to
+  their caps, laid out like top spending, the rest a tap away. A period without one
+  offers last period's caps in one tap. Its editor sets every cap at once: tap the
+  categories to cap, type what each may spend, with what went on it the period before as
+  a guide, and Save; deleting the plan is at the end of the form.
 - **Dates are tiles.** Every period choice - Home, Analysis, How far back, the welcome
   screen - is a sheet of equal tiles, each with an icon and the dates it covers.
 - Records are standard list rows with circular category icons. Swipe one open and tap
@@ -145,7 +152,7 @@ is attached there.
 - The welcome screen shows the app's mark instead of the coin face, and its buttons,
   like setup's, float over the page.
 - Dialogs pop in, and leave quickly.
-- Headline figures - Home's net and its pills, Analysis totals, account balances - roll
+- Headline figures - Home's net and its pills, the budget left, Analysis totals, account balances - roll
   like an odometer, the way firePOS's figures do: in from zero when the app starts and
   when a scan or a refresh lands, and to each new value while you watch. A tab switch or
   a scroll shows them as they are. Each digit turns through the

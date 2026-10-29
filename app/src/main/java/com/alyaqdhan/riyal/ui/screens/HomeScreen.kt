@@ -58,7 +58,7 @@ import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.ui.MainViewModel
-import com.alyaqdhan.riyal.ui.compose.BudgetSection
+import com.alyaqdhan.riyal.ui.compose.BudgetCard
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.FlatBar
@@ -190,27 +190,25 @@ fun HomeScreen(
                     )
                 }
                 item(key = "summary") { SummaryCard(totals, currency) }
+                if (budgetsOn) {
+                    item(key = "budget") {
+                        BudgetCard(
+                            slice = slice,
+                            plans = budgets,
+                            txns = txns,
+                            currency = currency,
+                            onSave = { plan, from -> vm.saveBudget(plan, from) },
+                            onDelete = { vm.deleteBudget(it) },
+                            categoryUse = categoryUse,
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                    }
+                }
                 if (!hasPerm) {
                     item(key = "permission") { PermissionCard(onRequestPermission) }
                 }
                 if (attention.isNotEmpty()) {
                     item(key = "attention") { AttentionCard(attention) }
-                }
-                if (budgetsOn) {
-                    item(key = "budget") {
-                        BudgetSection(
-                            slice = slice,
-                            plans = budgets,
-                            txns = txns,
-                            currency = currency,
-                            onCreate = { label, start, end -> vm.addBudget(label, start, end) },
-                            onCopy = { source, label, start, end -> vm.copyBudget(source, label, start, end) },
-                            onSetLine = { planId, categoryId, minor -> vm.setBudgetLine(planId, categoryId, minor) },
-                            onSetPeriod = { planId, label, start, end -> vm.setBudgetPeriod(planId, label, start, end) },
-                            onDelete = { vm.deleteBudget(it) },
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                        )
-                    }
                 }
                 if (topSpending.isNotEmpty()) {
                     item(key = "top") { TopSpendingCard(topSpending, currency, onOpenAnalysis) }

@@ -606,19 +606,6 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         persistLocked()
     }
 
-    /** Sets or clears one category cap inside a plan. A zero cap removes the line. */
-    suspend fun setBudgetLine(planId: String, categoryId: String, minor: Long) = mutex.withLock {
-        _budgets.value = _budgets.value.map { plan ->
-            if (plan.id != planId) plan
-            else plan.copy(
-                lines = plan.lines.toMutableMap().apply {
-                    if (minor > 0) this[categoryId] = minor else remove(categoryId)
-                },
-            )
-        }
-        persistLocked()
-    }
-
     // ─────────────────────────── user edits ───────────────────────────
 
     /**

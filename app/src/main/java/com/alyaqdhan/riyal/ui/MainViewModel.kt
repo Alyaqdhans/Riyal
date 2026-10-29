@@ -618,27 +618,30 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openInstallPermission() = ApkInstaller.openInstallPermission(getApplication())
 
-    fun addBudget(label: String, startMillis: Long, endExclusiveMillis: Long) =
+    /**
+     * Saves a plan as the editor, or a copy of last period's caps, left it: a new one is
+     * added, an existing one has its caps replaced. Each cap that changed is logged.
+     */
+    fun saveBudget(plan: BudgetPlan, copiedFrom: BudgetPlan? = null) =
         viewModelScope.launch(Dispatchers.IO) {
-            store.addBudget(
-                BudgetPlan(
-                    id = BudgetPlan.ID_PREFIX + UUID.randomUUID().toString().take(8),
-                    label = label,
-                    startMillis = startMillis,
-                    endExclusiveMillis = endExclusiveMillis,
-                )
-            )
-            Verbose.ok(R.string.log_budget_created, label)
-            Verbose.flush()
-        }
-
-    fun setBudgetLine(planId: String, categoryId: String, minor: Long) =
-        viewModelScope.launch(Dispatchers.IO) {
-            store.setBudgetLine(planId, categoryId, minor)
-            if (minor > 0) {
-                Verbose.info(R.string.log_budget_set, Categories.byId(categoryId).name, minor)
+            val before = budgets.value.firstOrNull { plan.id.isNotBlank() && it.id == plan.id }
+            if (before == null) {
+                store.addBudget(plan.copy(id = BudgetPlan.ID_PREFIX + UUID.randomUUID().toString().take(8)))
             } else {
-                Verbose.info(R.string.log_budget_removed, Categories.byId(categoryId).name)
+                store.updateBudget(plan)
+            }
+            when {
+                copiedFrom != null -> Verbose.ok(R.string.log_budget_copied, copiedFrom.label, plan.label)
+                before == null -> Verbose.ok(R.string.log_budget_created, plan.label)
+            }
+            val old = before?.lines.orEmpty()
+            plan.lines.forEach { (categoryId, minor) ->
+                if (old[categoryId] != minor) {
+                    Verbose.info(R.string.log_budget_set, Categories.byId(categoryId).name, minor)
+                }
+            }
+            (old.keys - plan.lines.keys).forEach {
+                Verbose.info(R.string.log_budget_removed, Categories.byId(it).name)
             }
             Verbose.flush()
         }
@@ -649,40 +652,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.info(R.string.log_budget_deleted, label)
         Verbose.flush()
     }
-
-    /**
-     * Moves a plan to a different period, which is how a plan stops being a calendar
-     * month: the screens step months, the plan carries its own bounds.
-     */
-    fun setBudgetPeriod(planId: String, label: String, startMillis: Long, endExclusiveMillis: Long) =
-        viewModelScope.launch(Dispatchers.IO) {
-            val plan = budgets.value.firstOrNull { it.id == planId } ?: return@launch
-            store.updateBudget(
-                plan.copy(
-                    label = label,
-                    startMillis = startMillis,
-                    endExclusiveMillis = endExclusiveMillis,
-                )
-            )
-            Verbose.info(R.string.log_budget_period, plan.label, label)
-            Verbose.flush()
-        }
-
-    /** Copies an existing plan's caps into a new period, the usual month-to-month move. */
-    fun copyBudget(source: BudgetPlan, label: String, startMillis: Long, endExclusiveMillis: Long) =
-        viewModelScope.launch(Dispatchers.IO) {
-            store.addBudget(
-                BudgetPlan(
-                    id = BudgetPlan.ID_PREFIX + UUID.randomUUID().toString().take(8),
-                    label = label,
-                    startMillis = startMillis,
-                    endExclusiveMillis = endExclusiveMillis,
-                    lines = source.lines,
-                )
-            )
-            Verbose.ok(R.string.log_budget_copied, source.label, label)
-            Verbose.flush()
-        }
 
     // ─────────────────────────── user edits ───────────────────────────
 
