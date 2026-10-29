@@ -150,6 +150,8 @@ is attached there.
 - Expense, Income and Transfer are named the same everywhere - the Transactions filter
   (with Home's arrows and colours), Review, setup, keywords - instead of "Out", "Money
   out" and the like. The Add form's kinds wrap to two rows on a narrow phone.
+- The new-category and keyword dialogs choose Expense or Income on the same connected
+  buttons as the Add form, instead of the older segmented row.
 - Transactions' bar is a filter icon that counts the filters on, without the export
   button (export is in Settings). The filter sheet shows accounts with their icons and
   categories in the same level rows as everywhere else.

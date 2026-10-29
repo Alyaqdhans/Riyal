@@ -38,9 +38,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -77,12 +74,16 @@ import com.alyaqdhan.riyal.ui.compose.FlatBar
 import com.alyaqdhan.riyal.ui.compose.HelpAction
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.CategoryChips
+import com.alyaqdhan.riyal.ui.compose.ConnectedChoice
 import com.alyaqdhan.riyal.ui.compose.CategoryVisuals
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.compose.rememberCategoryOrder
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
+import com.alyaqdhan.riyal.ui.compose.typeIcon
+import com.alyaqdhan.riyal.ui.compose.typeLabel
+import com.alyaqdhan.riyal.ui.compose.typeTone
 import com.alyaqdhan.riyal.ui.theme.successColor
 import kotlin.math.roundToInt
 
@@ -506,38 +507,17 @@ private fun KeywordRuleDialog(
                     singleLine = true,
                     isError = blocked,
                 )
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    SegmentedButton(
-                        selected = !income,
-                        onClick = {
-                            income = false
-                            categoryId = Categories.defaultFor(TxnType.EXPENSE)
-                        },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(
-                            stringResource(R.string.label_expense),
-                            softWrap = false,
-                            maxLines = 1,
-                        )
-                    }
-                    SegmentedButton(
-                        selected = income,
-                        onClick = {
-                            income = true
-                            categoryId = Categories.defaultFor(TxnType.INCOME)
-                        },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(
-                            stringResource(R.string.label_income),
-                            softWrap = false,
-                            maxLines = 1,
-                        )
-                    }
-                }
+                ConnectedChoice(
+                    options = SIDES,
+                    selected = type,
+                    onSelect = {
+                        income = it == TxnType.INCOME
+                        categoryId = Categories.defaultFor(it)
+                    },
+                    label = { stringResource(typeLabel(it)) },
+                    icon = ::typeIcon,
+                    tone = { typeTone(it) },
+                )
                 CategoryChips(
                     type = type,
                     selectedId = categoryId,
@@ -626,32 +606,14 @@ private fun CategoryEditorDialog(
                 if (isNew) {
                     // Which side of the ledger a category lives on decides which pickers
                     // offer it, so it is fixed once records start using it.
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = !income,
-                            onClick = { income = false },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(
-                                stringResource(R.string.label_expense),
-                                softWrap = false,
-                                maxLines = 1,
-                            )
-                        }
-                        SegmentedButton(
-                            selected = income,
-                            onClick = { income = true },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(
-                                stringResource(R.string.label_income),
-                                softWrap = false,
-                                maxLines = 1,
-                            )
-                        }
-                    }
+                    ConnectedChoice(
+                        options = SIDES,
+                        selected = if (income) TxnType.INCOME else TxnType.EXPENSE,
+                        onSelect = { income = it == TxnType.INCOME },
+                        label = { stringResource(typeLabel(it)) },
+                        icon = ::typeIcon,
+                        tone = { typeTone(it) },
+                    )
                 }
                 // Shown above the swatches because the icon is what the badge reads as
                 // at a glance in a list; the colour only tells it apart from its
@@ -744,6 +706,9 @@ private fun CategoryEditorDialog(
         },
     )
 }
+
+/** The two sides a category or a keyword can be on, as the Add form names them. */
+private val SIDES = listOf(TxnType.EXPENSE, TxnType.INCOME)
 
 /**
  * The categories worth a row, most spent first, with the empty ones dropped unless
