@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The Omani rial's own sign, white, centred inside the adaptive icon's safe circle.
      Path data from Wikimedia Commons (public domain), the same as ic_cur_omr. Also the
-     monochrome layer, and the splash screen's icon on its teal circle. -->
+     monochrome layer; LaunchSplash traces the same path when the app opens. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"

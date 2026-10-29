@@ -117,6 +117,10 @@ is attached there.
 - **Pages open the way your phone opens screens.** Setup, Review, categories, updates
   and the rest are screens of their own, so your phone's own transition plays going in
   and coming back.
+- **Opening the app** draws the rial sign as a line, the way firePOS's splash does, for as
+  long as your records are loading; then it fills in and lifts, and Home's figures roll
+  in on a phone with nothing else to do. The scan on launch starts after they have, so
+  the roll is smooth on a cold start.
 - A new icon: the Omani rial sign. On Android 12 and later it takes the wallpaper's
   colours, as the app does; on older phones it is teal.
 - **Home is a dashboard:** net for the period, large, with expense and income as pills

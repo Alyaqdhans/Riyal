@@ -38,6 +38,10 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   Analysis's category wheel fills clockwise with the same timing each time its tab is
   shown (`LocalTabShows`), on a scan or refresh, and when its slices change.
   Setup's last step: a tick that draws itself, then the app opens on its own after 2 s.
+  The app opens on `LaunchSplash` (after firePOS's splash): the rial sign traced as a
+  line, looping until the store has loaded (`vm.storeReady`), then filled, then lifted;
+  the system splash has no icon so the two read as one. Home's figures roll as it lifts
+  (`Rolls.replay`), and the launch scan and building the other tabs wait for the roll.
 - **Choices of dates are tiles** (`ui/compose/Presets.kt`: `PresetSheet`/`PresetGrid`),
   never a plain list of words. Each tile says what it covers, and all tiles are one size.
 - **Exact versions.** `androidx.compose.material3:material3:1.5.0-alpha23` with

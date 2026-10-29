@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Looper
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.PathInterpolator
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
@@ -52,6 +53,9 @@ import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.Words
 import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
+import com.alyaqdhan.riyal.ui.compose.SPIN_MS
+import com.alyaqdhan.riyal.ui.compose.Rolls
+import com.alyaqdhan.riyal.ui.compose.LaunchSplash
 import com.alyaqdhan.riyal.ui.compose.UpdateDialogHost
 import com.alyaqdhan.riyal.ui.nav.AccountsFragment
 import com.alyaqdhan.riyal.ui.nav.AnalysisFragment
@@ -107,20 +111,28 @@ class MainActivity : AppCompatActivity() {
         // Back from another tab goes Home, and back from Home leaves.
         onBackPressedDispatcher.addCallback(this, backToHome)
         backToHome.isEnabled = currentTab.value != Tab.HOME
-        // The other tabs are built soon after the app opens, one whenever the main thread
-        // has nothing else to do, so even the first switch to each is instant. Not at once:
-        // Home's figures are rolling in for the first moment.
-        window.decorView.postDelayed({
-            Looper.myQueue().addIdleHandler {
-                if (isDestroyed) return@addIdleHandler false
-                if (supportFragmentManager.isStateSaved) return@addIdleHandler true
-                val next = Tab.entries.firstOrNull { supportFragmentManager.findFragmentByTag(it.name) == null }
-                    ?: return@addIdleHandler false
-                addTab(next)
-                true
+        // A fresh start opens on the drawn splash, which lifts once the records are read;
+        // only then do Home's figures roll, on a phone with nothing else to do. The scan
+        // on launch and building the other tabs wait until they have.
+        val fresh = savedInstanceState == null
+        val splash = findViewById<ComposeView>(R.id.launch_splash)
+        if (fresh) {
+            splash.setContent {
+                RiyalTheme {
+                    LaunchSplash(
+                        ready = { vm.storeReady.value },
+                        onLeaving = { Rolls.replay() },
+                        onGone = {
+                            splash.post { (splash.parent as? ViewGroup)?.removeView(splash) }
+                            settle(fresh = true)
+                        },
+                    )
+                }
             }
-        }, PREWARM_DELAY_MS)
-        vm.autoScanOnLaunch(fresh = savedInstanceState == null)
+        } else {
+            (splash.parent as? ViewGroup)?.removeView(splash)
+            settle(fresh = false)
+        }
         // Once a day at most, only when "check on start" is on, and silent unless it
         // finds something. An empty version string parses to nothing, which is never
         // newer than anything, so a phone that cannot report its own version is simply
@@ -173,6 +185,27 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * What waits for the app to be open and still: the scan on launch, and building the
+     * other tabs one whenever the main thread has nothing else to do, so even the first
+     * switch to each is instant. After a fresh start, not until Home's figures have
+     * rolled in.
+     */
+    private fun settle(fresh: Boolean) {
+        window.decorView.postDelayed({
+            if (isDestroyed) return@postDelayed
+            vm.autoScanOnLaunch(fresh)
+            Looper.myQueue().addIdleHandler {
+                if (isDestroyed) return@addIdleHandler false
+                if (supportFragmentManager.isStateSaved) return@addIdleHandler true
+                val next = Tab.entries.firstOrNull { supportFragmentManager.findFragmentByTag(it.name) == null }
+                    ?: return@addIdleHandler false
+                addTab(next)
+                true
+            }
+        }, if (fresh) SPIN_MS + 300L else 0L)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -245,7 +278,6 @@ class MainActivity : AppCompatActivity() {
     private companion object {
         const val KEY_TAB = "tab"
         const val SLIDE_MS = 250L
-        const val PREWARM_DELAY_MS = 2_000L
 
         /** Material's standard easing: quick to start, settling gently, no overshoot. */
         val EASING = PathInterpolator(0.2f, 0f, 0f, 1f)

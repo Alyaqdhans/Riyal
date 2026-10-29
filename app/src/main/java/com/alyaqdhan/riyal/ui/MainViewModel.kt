@@ -147,8 +147,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val hasSmsPermission: StateFlow<Boolean> = _hasSmsPermission
     private var lastLoggedPermission: Boolean? = null
 
+    private val _storeReady = MutableStateFlow(false)
+
+    /** Once the store has been read from disk. The launch splash stays until then. */
+    val storeReady: StateFlow<Boolean> = _storeReady
+
     init {
         refreshPermission()
+        viewModelScope.launch {
+            store.awaitLoaded()
+            _storeReady.value = true
+        }
     }
 
     fun refreshPermission() {

@@ -8,9 +8,9 @@
 
     <style name="Theme.Riyal.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-        <!-- The sign is white, so it sits on the icon's own teal. -->
-        <item name="windowSplashScreenIconBackgroundColor">@color/brand_teal</item>
+        <!-- No icon: LaunchSplash draws the sign over this same background as soon as
+             the app's first frame is up, so there is one opening rather than two. -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_blank</item>
         <item name="postSplashScreenTheme">@style/Theme.Riyal</item>
     </style>
 </resources>
