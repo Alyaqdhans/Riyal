@@ -310,7 +310,8 @@ object AccountDiscovery {
      * the shorter, an account's last digits being shorter than a branch.
      *
      * Every masked number's [Observation.accountTail] becomes its account's group.
-     * Numbers nothing decides keep the parser's first answer.
+     * Numbers nothing decides keep the parser's first answer: an account whose numbers
+     * share no group at all among them.
      */
     fun resolveMaskedTails(observations: List<Observation>): List<Observation> {
         val out = observations.toMutableList()
@@ -334,10 +335,19 @@ object AccountDiscovery {
                 if (ra != rb) parent[ra] = rb
             }
             keyOf.values.forEach { parent.putIfAbsent(it, it) }
-            // One balance line is one account, whatever its numbers look like.
+            // One balance line is one account, whatever its numbers look like - though a
+            // number sharing no group with the one the line quotes most is someone else's,
+            // quoted on a transfer, and is left to itself.
             idx.filter { observations[it].line != null }
                 .groupBy { observations[it].line!! }
-                .values.forEach { members -> members.map(keyOf::getValue).distinct().zipWithNext(::union) }
+                .values.forEach { members ->
+                    val keys = members.map(keyOf::getValue)
+                    val top = keys.groupingBy { it }.eachCount().maxBy { it.value }.key
+                    val topGroups = top.split("|")
+                    keys.distinct()
+                        .filter { k -> k != top && k.split("|").any { it in topGroups } }
+                        .forEach { union(it, top) }
+                }
 
             fun clusters() = keyOf.values.distinct().groupBy(::find)
             fun common(keys: List<String>) = keys.map { it.split("|").toSet() }.reduce { a, b -> a intersect b }
@@ -371,6 +381,8 @@ object AccountDiscovery {
             val identity = commons.mapValues { (root, shared) ->
                 val own = shared.filter { g -> commons.none { (other, s) -> other != root && g in s } }
                 when {
+                    // Numbers joined by their balance that share no group: nothing decides.
+                    shared.isEmpty() -> null
                     shared.size == 1 -> shared.single()
                     own.size == 1 -> own.single()
                     else -> (own.ifEmpty { shared.toList() }).let { candidates ->

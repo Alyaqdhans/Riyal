@@ -415,6 +415,21 @@ class AccountDiscoveryTest {
     }
 
     @Test
+    fun `someone else's number on an account's balance line is left to itself`() {
+        // A transfer quoting only the other party's number, at another branch, sits on
+        // the account's balance line by the balance it carries. Joining the two left an
+        // account whose numbers share no group, and choosing between none stopped the scan.
+        val own = List(4) { masked("0350", "0019", at = it.toLong() * 2, line = 1) }
+        val theirs = masked("0630", "0022", at = 3L, line = 1)
+        assertEquals(List(4) { "0019" } + "0022", AccountDiscovery.resolveMaskedTails(own + theirs).map { it.accountTail })
+        // Two numbers each sharing a different group with the line's own: nothing
+        // decides, so every number keeps the parser's answer.
+        val branch = masked("0350", "0777", at = 5L, line = 1)
+        val end = masked("0630", "0019", at = 7L, line = 1)
+        assertEquals(List(4) { "0019" } + "0777" + "0019", AccountDiscovery.resolveMaskedTails(own + branch + end).map { it.accountTail })
+    }
+
+    @Test
     fun `a sender is one bank however it is spelled`() {
         val main = AccountDiscovery.propose(oneLine).single()
         val spelled = main.copy(senderIds = setOf("BankNizwa"))

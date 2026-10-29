@@ -60,7 +60,10 @@ is attached there.
   as its groups of digits; numbers whose balances run on from one another are one
   account, and so are runs that share a group and never overlap in time (the account
   renumbered). The account is the group all its numbers share - and two accounts at one
-  branch are told apart by their ends, never by the branch they share.
+  branch are told apart by their ends, never by the branch they share. A number on an
+  account's balance line that shares no group with it, such as the other party's on a
+  transfer, is left to itself; on test builds it stopped every scan with "Unknown
+  error".
 - **The majority decides.** Within one bank, the account most messages name is the main
   one. Any other is folded into it - named or not - unless it shows a balance of its own,
   never shared with the main account, over the same months: the other party's number on
