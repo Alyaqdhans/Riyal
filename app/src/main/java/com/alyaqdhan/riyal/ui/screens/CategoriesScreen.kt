@@ -57,6 +57,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.ui.compose.DeleteButton
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
 import com.alyaqdhan.riyal.ui.compose.bidi
@@ -682,6 +683,7 @@ private fun CategoryEditorDialog(
                         }
                     }
                 }
+                if (onDelete != null) DeleteButton(onClick = { pop.leave(onDelete) })
             }
         },
         confirmButton = {
@@ -697,12 +699,7 @@ private fun CategoryEditorDialog(
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            Row {
-                if (onDelete != null) {
-                    TextButton(onClick = { pop.leave(onDelete) }) { Text(stringResource(R.string.action_delete)) }
-                }
-                TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
-            }
+            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

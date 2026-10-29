@@ -8,6 +8,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material3.ListItem
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -59,6 +61,8 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -402,5 +406,29 @@ fun relativeTime(millis: Long): String {
             R.string.set_on_date,
             relativeDayFmt.format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())),
         )
+    }
+}
+
+/**
+ * Deleting what an editor is open on: at the end of its form, the whole width, in the
+ * error colour, well away from Cancel and Save, so it is never the button a thumb meant
+ * for one of them.
+ */
+@Composable
+fun DeleteButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val error = MaterialTheme.colorScheme.error
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().padding(top = 8.dp),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = error),
+        border = BorderStroke(1.dp, error.copy(alpha = 0.5f)),
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_sym_delete),
+            contentDescription = null,
+            modifier = Modifier.size(ButtonDefaults.IconSize),
+        )
+        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+        Text(stringResource(R.string.action_delete))
     }
 }

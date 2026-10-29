@@ -143,7 +143,8 @@ is attached there.
   large. Currency fields and Settings show the currency's sign instead of its flag.
 - A record's sheet asks one question about the name's other records - just this one,
   same category, or ask each time - instead of a switch and a button that overlapped.
-  An account's "closed" is a plain switch row.
+  An account's "closed" is a plain switch row. Delete in the account and category
+  editors is a red button at the end of the form, no longer beside Cancel.
 - Currency signs are drawn as heavy as the text beside them, whatever font the phone
   uses: the font's strokes and the sign's are measured, and the sign thinned or
   thickened to match. Home's net is bold.

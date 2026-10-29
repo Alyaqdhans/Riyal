@@ -2,6 +2,7 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import com.alyaqdhan.riyal.ui.compose.DeleteButton
 import com.alyaqdhan.riyal.ui.compose.MenuChoice
 import com.alyaqdhan.riyal.ui.compose.ChoiceMenu
 import androidx.compose.foundation.layout.Arrangement
@@ -510,6 +511,7 @@ internal fun AccountEditorDialog(
                     supportingContent = { Text(stringResource(R.string.acct_archived_detail)) },
                     trailingContent = { Switch(checked = archived, onCheckedChange = null) },
                 ) { Text(stringResource(R.string.acct_archived)) }
+                if (!isNew) DeleteButton(onClick = { pop.leave(onDelete) })
             }
         },
         confirmButton = {
@@ -540,17 +542,7 @@ internal fun AccountEditorDialog(
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            Row {
-                if (!isNew) {
-                    TextButton(
-                        onClick = { pop.leave(onDelete) },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error,
-                        ),
-                    ) { Text(stringResource(R.string.action_delete)) }
-                }
-                TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
-            }
+            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 
