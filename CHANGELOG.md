@@ -145,6 +145,8 @@ is attached there.
   same category, or ask each time - instead of a switch and a button that overlapped.
   An account's "closed" is a plain switch row. Delete in the account and category
   editors is a red button at the end of the form, no longer beside Cancel.
+- Save is a filled button in every dialog that has one - Add, accounts, categories,
+  keywords, exchange rates - instead of a word.
 - Currency signs are drawn as heavy as the text beside them, whatever font the phone
   uses: the font's strokes and the sign's are measured, and the sign thinned or
   thickened to match. Home's net is bold.

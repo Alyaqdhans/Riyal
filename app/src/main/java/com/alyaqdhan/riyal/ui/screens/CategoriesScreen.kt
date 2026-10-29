@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
@@ -553,7 +554,7 @@ private fun KeywordRuleDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 enabled = pattern.isNotBlank() && !blocked,
                 onClick = {
                     val word = pattern
@@ -687,7 +688,7 @@ private fun CategoryEditorDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 enabled = name.isNotBlank(),
                 onClick = {
                     val chosen = name.trim()

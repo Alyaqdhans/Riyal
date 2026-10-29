@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -342,7 +343,7 @@ private fun RateDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 enabled = value != null && value.signum() > 0,
                 onClick = {
                     val rate = value!!

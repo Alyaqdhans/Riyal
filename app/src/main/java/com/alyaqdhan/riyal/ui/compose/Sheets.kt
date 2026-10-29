@@ -764,7 +764,7 @@ fun ManualTxnDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 enabled = parsed != null && parsed.signum() > 0 && transferValid,
                 onClick = {
                     val minor = Money.toMinor(parsed!!, currency)

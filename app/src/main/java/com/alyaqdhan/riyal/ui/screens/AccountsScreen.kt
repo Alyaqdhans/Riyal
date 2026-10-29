@@ -515,7 +515,7 @@ internal fun AccountEditorDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 enabled = name.isNotBlank() || bankName.isNotBlank() || last4.isNotBlank(),
                 onClick = {
                     val minor = parsedBalance?.let { Money.toMinor(it, currency) } ?: 0L
