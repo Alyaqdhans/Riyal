@@ -137,6 +137,8 @@ is attached there.
   are drawn, not rebuilt, as they turn, so a screen of rolling figures stays smooth.
 - Analysis's category wheel fills in clockwise, slice by slice, each time you open the
   tab, when a scan or a refresh lands, and when you change the period.
+- Pull to refresh shows Material 3 Expressive's loading indicator, a shape that morphs
+  while the scan runs, instead of a spinning arc.
 - Settings opens on a status card: up to date, reading, or what went wrong, when it last
   read, and what it holds.
 - Category choices are every category in three level rows that scroll sideways, Other
