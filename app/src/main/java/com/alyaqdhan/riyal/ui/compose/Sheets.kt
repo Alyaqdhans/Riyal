@@ -64,6 +64,8 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
@@ -873,25 +875,30 @@ fun CategoryRows(
     LaunchedEffect(selectedAt != null) {
         selectedAt?.let { scroll.scrollTo((it - gutter).coerceAtLeast(0)) }
     }
-    Column(
-        modifier.fillMaxWidth().horizontalScroll(scroll),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { cat ->
-                    val on = selected(cat)
-                    FilterChip(
-                        selected = on,
-                        onClick = { onClick(cat) },
-                        label = { Text(cat.name, maxLines = 1) },
-                        leadingIcon = { CategoryIcon(cat.id) },
-                        modifier = if (on && selectedAt == null) {
-                            Modifier.onPlaced { selectedAt = it.positionInParent().x.toInt() }
-                        } else {
-                            Modifier
-                        },
-                    )
+    // The chips are packed at their drawn height: each one's 48 dp touch frame left a
+    // 16 dp band between rows, and three rows of it pushed the Add form into a scroll.
+    // A chip is still a wide, 32 dp tall target, and the rows keep a gap between them.
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+        Column(
+            modifier.fillMaxWidth().horizontalScroll(scroll),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            rows.forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { cat ->
+                        val on = selected(cat)
+                        FilterChip(
+                            selected = on,
+                            onClick = { onClick(cat) },
+                            label = { Text(cat.name, maxLines = 1) },
+                            leadingIcon = { CategoryIcon(cat.id) },
+                            modifier = if (on && selectedAt == null) {
+                                Modifier.onPlaced { selectedAt = it.positionInParent().x.toInt() }
+                            } else {
+                                Modifier
+                            },
+                        )
+                    }
                 }
             }
         }

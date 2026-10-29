@@ -137,7 +137,8 @@ is attached there.
 - Settings opens on a status card: up to date, reading, or what went wrong, when it last
   read, and what it holds.
 - Category choices are every category in three level rows that scroll sideways, Other
-  last, instead of a handful and "More".
+  last, instead of a handful and "More". The rows sit close, so the Add form fits
+  without scrolling.
 - The Add form names its kinds as Home does - Expense, Income, Transfer - on Material 3
   Expressive's connected buttons, in Home's colours and arrows, and writes the amount
   large. Currency fields and Settings show the currency's sign instead of its flag.
