@@ -846,7 +846,9 @@ fun CategoryChips(
 /**
  * Category chips in three rows that scroll sideways together. Each chip goes on whichever
  * row is shortest so far, so the rows end level instead of stepping down like stairs,
- * and Other always closes. The first selected chip is scrolled into view when they open.
+ * and Other always closes. A chip already selected when they open is scrolled into view,
+ * so re-filing a record shows where it sits; one tapped afterwards is already on screen,
+ * and the rows stay still.
  */
 @Composable
 fun CategoryRows(
@@ -872,6 +874,9 @@ fun CategoryRows(
         lines.filter { it.isNotEmpty() }
     }
     val scroll = rememberScrollState()
+    // Only the selection the rows opened with: scrolling to a chip as it was tapped
+    // jumped the rows sideways under the finger.
+    val opening = remember { categories.firstOrNull(selected)?.id }
     var selectedAt by remember { mutableStateOf<Int?>(null) }
     val gutter = with(density) { 24.dp.roundToPx() }
     LaunchedEffect(selectedAt != null) {
@@ -894,7 +899,7 @@ fun CategoryRows(
                             onClick = { onClick(cat) },
                             label = { Text(cat.name, maxLines = 1) },
                             leadingIcon = { CategoryIcon(cat.id) },
-                            modifier = if (on && selectedAt == null) {
+                            modifier = if (cat.id == opening && selectedAt == null) {
                                 Modifier.onPlaced { selectedAt = it.positionInParent().x.toInt() }
                             } else {
                                 Modifier
