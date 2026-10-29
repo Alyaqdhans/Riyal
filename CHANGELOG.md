@@ -133,7 +133,8 @@ is attached there.
   like an odometer, the way firePOS's figures do: in from zero when the app starts and
   when a scan or a refresh lands, and to each new value while you watch. A tab switch or
   a scroll shows them as they are. Each digit turns through the
-  ones between, and a figure that gains digits grows leftwards from its decimals.
+  ones between, and a figure that gains digits grows leftwards from its decimals. The digits
+  are drawn, not rebuilt, as they turn, so a screen of rolling figures stays smooth.
 - Settings opens on a status card: up to date, reading, or what went wrong, when it last
   read, and what it holds.
 - Category choices are every category in three level rows that scroll sideways, Other

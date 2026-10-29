@@ -2,11 +2,8 @@ package com.alyaqdhan.riyal.ui.compose
 
 import androidx.compose.ui.semantics.semantics
 import androidx.annotation.DrawableRes
-import kotlin.math.roundToInt
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.SideEffect
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.Box
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.core.MutableTransitionState
@@ -29,12 +26,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -292,10 +292,12 @@ private fun RollingDigits(minor: Long, number: String, zero: String, style: Text
         widest = maxOf(widest, number.length)
         turn++
     }
+    // The ten digits are laid out once, and the wheels only draw them: a roll redraws,
+    // and never recomposes or measures text, frame after frame.
     val measurer = rememberTextMeasurer()
-    val cell = remember(style) { measurer.measure("0", style).size }
-    val width = with(LocalDensity.current) { cell.width.toDp() }
-    val height = with(LocalDensity.current) { cell.height.toDp() }
+    val digits = remember(style) { List(10) { measurer.measure(it.toString(), style) } }
+    val width = with(LocalDensity.current) { digits[0].size.width.toDp() }
+    val height = with(LocalDensity.current) { digits[0].size.height.toDp() }
     Row {
         for (place in widest - 1 downTo 0) {
             key(place) {
@@ -306,6 +308,7 @@ private fun RollingDigits(minor: Long, number: String, zero: String, style: Text
                     rising = rising,
                     lap = higherPlaces(before, place) != higherPlaces(shown, place),
                     style = style,
+                    digits = digits,
                     width = width,
                     height = height,
                 )
@@ -320,7 +323,17 @@ private fun higherPlaces(s: String, place: Int): String =
 
 /** One place: opens when the figure gains it, closes when it loses it. */
 @Composable
-private fun RollingPlace(c: Char?, arrive: Boolean, turn: Int, rising: Boolean, lap: Boolean, style: TextStyle, width: Dp, height: Dp) {
+private fun RollingPlace(
+    c: Char?,
+    arrive: Boolean,
+    turn: Int,
+    rising: Boolean,
+    lap: Boolean,
+    style: TextStyle,
+    digits: List<TextLayoutResult>,
+    width: Dp,
+    height: Dp,
+) {
     val held = remember { mutableStateOf(c ?: '0') }
     SideEffect { if (c != null) held.value = c }
     // A place that is simply there starts open and its wheel at its digit.
@@ -336,16 +349,28 @@ private fun RollingPlace(c: Char?, arrive: Boolean, turn: Int, rising: Boolean, 
     ) {
         val ch = c ?: held.value
         if (ch.isDigit()) {
-            DigitWheel(ch.digitToInt(), spinIn, turn, rising, lap, style, width, height)
+            DigitWheel(ch.digitToInt(), spinIn, turn, rising, lap, digits, width, height)
         } else {
             Text(ch.toString(), style = style, maxLines = 1, softWrap = false)
         }
     }
 }
 
-/** A wheel of 0-9 behind a one-digit window, turned to [digit]. */
+/**
+ * A wheel of 0-9 behind a one-digit window, turned to [digit]. Its position is read only
+ * while drawing, so a turning wheel costs a redraw of its two visible digits per frame.
+ */
 @Composable
-private fun DigitWheel(digit: Int, spinIn: Boolean, turn: Int, rising: Boolean, lap: Boolean, style: TextStyle, width: Dp, height: Dp) {
+private fun DigitWheel(
+    digit: Int,
+    spinIn: Boolean,
+    turn: Int,
+    rising: Boolean,
+    lap: Boolean,
+    digits: List<TextLayoutResult>,
+    width: Dp,
+    height: Dp,
+) {
     val wheel = remember { Animatable(if (spinIn) 0f else digit.toFloat()) }
     LaunchedEffect(turn) {
         val from = wheel.value
@@ -355,20 +380,19 @@ private fun DigitWheel(digit: Int, spinIn: Boolean, turn: Int, rising: Boolean, 
         if (delta != 0f) wheel.animateTo(from + delta, tween(SPIN_MS, easing = spinEasing))
         wheel.snapTo(digit.toFloat())
     }
-    val position = wheel.value
-    val base = kotlin.math.floor(position)
-    Box(Modifier.size(width, height).clipToBounds()) {
-        for (k in 0..1) {
-            val shownDigit = (((base.toInt() + k) % 10) + 10) % 10
-            Text(
-                shownDigit.toString(),
-                style = style,
-                maxLines = 1,
-                softWrap = false,
-                modifier = Modifier.offset { IntOffset(0, ((base + k - wheel.value) * height.toPx()).roundToInt()) },
-            )
-        }
-    }
+    Spacer(
+        Modifier
+            .size(width, height)
+            .clipToBounds()
+            .drawBehind {
+                val position = wheel.value
+                val base = kotlin.math.floor(position)
+                for (k in 0..1) {
+                    val shown = (((base.toInt() + k) % 10) + 10) % 10
+                    drawText(digits[shown], topLeft = Offset(0f, (base + k - position) * size.height))
+                }
+            },
+    )
 }
 
 /**
