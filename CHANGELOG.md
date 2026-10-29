@@ -151,10 +151,11 @@ is attached there.
   tab, when a scan or a refresh lands, and when you change the period.
 - Pull to refresh shows Material 3 Expressive's loading indicator, a shape that morphs
   while the scan runs, instead of a spinning arc.
-- **Needs a category** opens one name at a time, sliding open with its categories right
-  under the name, and scrolls it into view. The records are behind "Choose records" (five
-  at first, then all), and filing a whole name opens the next one. "Always ask for this
-  name" is a switch.
+- **Needs a category** opens one name at a time, sliding open in place with its
+  categories right under the name. A tap picks a category and **Save** files the records,
+  so nothing disappears on a stray tap. The records are behind "Choose records" (five at
+  first, then all), and saving a whole name opens the next one. "Always ask for this name"
+  is a switch.
 - **Review**'s cards: the message quoted in a box that slides open, "Remember for
   similar messages" as a switch, Expense and Income as buttons in Home's colours and
   arrows, and Add manually as the filled answer. A proposed transfer shows its two

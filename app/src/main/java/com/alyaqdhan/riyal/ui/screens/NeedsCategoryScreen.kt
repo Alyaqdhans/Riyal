@@ -11,19 +11,16 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Switch
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import com.alyaqdhan.riyal.ui.compose.typeIcon
 import com.alyaqdhan.riyal.ui.compose.typeLabel
 import com.alyaqdhan.riyal.ui.compose.typeTone
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -41,6 +38,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -148,8 +146,6 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
     // One card open at a time: opening a name folds the last one, so its categories are
     // never pushed down by another card's.
     var openKey by rememberSaveable { mutableStateOf<String?>(null) }
-    val list = rememberLazyListState()
-    val scope = rememberCoroutineScope()
 
     if (confirmLeave) {
         LeaveAsOtherDialog(
@@ -183,7 +179,6 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
     ) { padding ->
         ScanRefresh(vm, Modifier.padding(padding)) {
         LazyColumn(
-            state = list,
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -235,13 +230,10 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                     marked = UserRule.patternOf(group.merchant) in askEachTime,
                     order = order,
                     open = openKey == key,
-                    onToggle = {
-                        openKey = if (openKey == key) null else key
-                        // Brought to the top as it opens, so its categories are on screen.
-                        if (openKey == key) scope.launch { list.animateScrollToItem(index + 1) }
-                    },
+                    // Opens where it is: the list never scrolls out from under a tap.
+                    onToggle = { openKey = if (openKey == key) null else key },
                     onFile = { categoryId, ids ->
-                        // Filing the whole name takes its card away; the next one opens
+                        // Saving the whole name takes its card away; the next one opens
                         // in its place, so a backlog is worked through without hunting.
                         if (ids.size == group.count) openKey = groups.getOrNull(index + 1)?.let(::keyOf)
                         vm.fileMerchant(group, categoryId, ids)
@@ -320,9 +312,9 @@ private fun LeaveAsOtherDialog(
 /**
  * One decision: who, how many, how much, and the categories to put them in.
  *
- * Folded, it is a row of the ranking. Opened (one card at a time - see the screen), the
- * categories come straight under its name, so the answer is one tap below the question
- * however many records the name has. The records themselves are behind "Choose records":
+ * Folded, it is a row of the ranking. Opened (one card at a time, in place - see the
+ * screen), the categories come straight under its name: a tap picks one, and Save at the
+ * end of the card files the records, so nothing vanishes on a stray tap. The records themselves are behind "Choose records":
  * all of them are filed unless some are unticked, which is the answer nearly every
  * time, and a long list of them in the way of the categories was the screen's problem.
  * Filing part of a name saves no rule - see [MainViewModel.fileMerchant].
@@ -356,6 +348,8 @@ private fun MerchantCard(
     var showing by rememberSaveable(cardKey) { mutableStateOf(listOf<String>()) }
     var choosing by rememberSaveable(cardKey) { mutableStateOf(false) }
     var everyRecord by rememberSaveable(cardKey) { mutableStateOf(false) }
+    // The category picked for this name, waiting for Save.
+    var picked by rememberSaveable(cardKey) { mutableStateOf<String?>(null) }
     val chosen = remember(group.txnIds, excluded) { group.txnIds.filter { it !in excluded } }
     val motion = MaterialTheme.motionScheme
     val turn by animateFloatAsState(if (open) 180f else 0f, motion.defaultSpatialSpec())
@@ -437,8 +431,8 @@ private fun MerchantCard(
                     // Nothing is preselected: the category it currently carries is
                     // the fallback, and showing it as a choice already made is how
                     // a backlog gets "confirmed" without being read.
-                    selectedId = "",
-                    onSelect = { if (chosen.isNotEmpty()) onFile(it, chosen.toSet()) },
+                    selectedId = picked ?: "",
+                    onSelect = { picked = it },
                 )
                 Text(
                     when {
@@ -525,6 +519,14 @@ private fun MerchantCard(
                     contentPadding = PaddingValues(0.dp),
                     trailingContent = { Switch(checked = marked, onCheckedChange = null) },
                 ) { Text(stringResource(R.string.needs_always_ask_name)) }
+                // A category tapped is only picked; nothing is filed until this.
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(
+                        onClick = { picked?.let { onFile(it, chosen.toSet()) } },
+                        enabled = picked != null && chosen.isNotEmpty(),
+                        shapes = ButtonDefaults.shapes(),
+                    ) { Text(stringResource(R.string.action_save)) }
+                }
             }
         }
     }
