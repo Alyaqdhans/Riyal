@@ -274,7 +274,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                                     ),
                                     style = MaterialTheme.typography.titleSmall,
                                 )
-                                TextButton(onClick = { showDismissed = !showDismissed }) {
+                                TextButton(onClick = { showDismissed = !showDismissed }, shapes = ButtonDefaults.shapes()) {
                                     Text(
                                         stringResource(
                                             if (showDismissed) R.string.action_hide
@@ -407,9 +407,10 @@ private fun TransferCard(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
-                TextButton(onClick = onReject) { Text(stringResource(R.string.review_keep_both)) }
+                TextButton(onClick = onReject, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.review_keep_both)) }
                 Button(
                     onClick = onAccept,
+                    shapes = ButtonDefaults.shapes(),
                 ) { Text(stringResource(R.string.review_yes_transfer)) }
             }
         }
@@ -512,13 +513,15 @@ private fun ReviewCard(
                     FilledTonalButton(
                         onClick = { onTeach(MessageKind.OUT) },
                         modifier = Modifier.weight(1f),
+                        shapes = ButtonDefaults.shapes(),
                     ) { Text(stringResource(R.string.label_expense)) }
                     FilledTonalButton(
                         onClick = { onTeach(MessageKind.IN) },
                         modifier = Modifier.weight(1f),
+                        shapes = ButtonDefaults.shapes(),
                     ) { Text(stringResource(R.string.label_income)) }
                 }
-                TextButton(onClick = { onTeach(MessageKind.NONE) }) {
+                TextButton(onClick = { onTeach(MessageKind.NONE) }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.setup_kind_none))
                 }
             }
@@ -526,12 +529,13 @@ private fun ReviewCard(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
-                TextButton(onClick = { onDismiss(rememberChoice) }) {
+                TextButton(onClick = { onDismiss(rememberChoice) }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_dismiss))
                 }
                 if (!item.directionOnly) {
                     FilledTonalButton(
                         onClick = { onResolve(rememberChoice) },
+                        shapes = ButtonDefaults.shapes(),
                     ) {
                         Text(stringResource(R.string.review_add_manually))
                     }
@@ -573,7 +577,7 @@ private fun DismissedCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            TextButton(onClick = onRestore) { Text(stringResource(R.string.action_restore)) }
+            TextButton(onClick = onRestore, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_restore)) }
         }
     }
 }

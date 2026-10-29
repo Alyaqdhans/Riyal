@@ -361,7 +361,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                 )
                 TextButton(onClick = {
                     scope.launch { clipboard.setClipEntry(plainText(Verbose.dump())) }
-                }) {
+                }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_copy))
                 }
             }
@@ -384,6 +384,7 @@ fun ScanSheetHost(vm: MainViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp),
+                shapes = ButtonDefaults.shapes(),
             ) {
                 Text(
                     stringResource(
@@ -477,6 +478,7 @@ fun TxnEditSheet(
                     Button(
                         onClick = onSplitTransfer,
                         modifier = Modifier.fillMaxWidth(),
+                        shapes = ButtonDefaults.shapes(),
                     ) {
                         Text(
                             stringResource(
@@ -559,7 +561,7 @@ fun TxnEditSheet(
                 val otherAccounts = live.filter { it.id != txn.accountId }
                 if (onMarkTransfer != null && !txn.isTransfer && otherAccounts.isNotEmpty()) {
                     if (!transferTarget) {
-                        TextButton(onClick = { transferTarget = true }) {
+                        TextButton(onClick = { transferTarget = true }, shapes = ButtonDefaults.shapes()) {
                             Text(stringResource(R.string.sheet_was_transfer))
                         }
                     } else {
@@ -776,10 +778,11 @@ fun ManualTxnDialog(
                     val to = if (type == TxnType.EXPENSE) null else toAccount?.id
                     pop.leave { onSave(minor, chosenCurrency, chosenType, name, category, from, to) }
                 },
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

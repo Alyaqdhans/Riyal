@@ -5,6 +5,7 @@ package com.alyaqdhan.riyal.ui.screens
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Badge
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChipDefaults
 import com.alyaqdhan.riyal.ui.compose.typeIcon
 import com.alyaqdhan.riyal.ui.compose.typeLabel
@@ -194,6 +195,7 @@ fun TransactionsScreen(vm: MainViewModel) {
                 TextButton(
                     onClick = { showArchived = !showArchived },
                     modifier = Modifier.padding(start = 8.dp),
+                    shapes = ButtonDefaults.shapes(),
                 ) {
                     Text(
                         if (showArchived) {
@@ -228,7 +230,7 @@ fun TransactionsScreen(vm: MainViewModel) {
                         TextButton(onClick = {
                             vm.prefs.swipeHintSeen = true
                             swipeHintSeen = true
-                        }) { Text(stringResource(R.string.action_got_it)) }
+                        }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_got_it)) }
                     }
                 }
             }

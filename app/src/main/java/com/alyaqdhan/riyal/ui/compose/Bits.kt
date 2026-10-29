@@ -13,6 +13,8 @@ import androidx.compose.foundation.background
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -61,7 +63,9 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateOf
@@ -359,7 +363,7 @@ fun HelpAction(title: String, help: String) {
             title = { Text(title) },
             text = { Text(help) },
             confirmButton = {
-                TextButton(onClick = { pop.leave { open = false } }) {
+                TextButton(onClick = { pop.leave { open = false } }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_got_it))
                 }
             },
@@ -422,6 +426,7 @@ fun DeleteButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth().padding(top = 8.dp),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = error),
         border = BorderStroke(1.dp, error.copy(alpha = 0.5f)),
+        shapes = ButtonDefaults.shapes(),
     ) {
         Icon(
             painterResource(R.drawable.ic_sym_delete),
@@ -430,5 +435,37 @@ fun DeleteButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
         Text(stringResource(R.string.action_delete))
+    }
+}
+
+/**
+ * A screen's own action - Add account, New category - as Material 3 Expressive's medium
+ * button: taller than a plain one, led by its icon, and its corners square off while it
+ * is pressed and spring back after, so the press is felt.
+ */
+@Composable
+fun ActionButton(
+    text: String,
+    @DrawableRes icon: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    tonal: Boolean = false,
+) {
+    val height = ButtonDefaults.MediumContainerHeight
+    val content: @Composable RowScope.() -> Unit = {
+        Icon(
+            painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier.size(ButtonDefaults.iconSizeFor(height)),
+        )
+        Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(height)))
+        Text(text, style = ButtonDefaults.textStyleFor(height))
+    }
+    val shapes = ButtonDefaults.shapesFor(height)
+    val padding = ButtonDefaults.contentPaddingFor(height, hasStartIcon = true)
+    if (tonal) {
+        FilledTonalButton(onClick, shapes, modifier.heightIn(min = height), contentPadding = padding, content = content)
+    } else {
+        Button(onClick, shapes, modifier.heightIn(min = height), contentPadding = padding, content = content)
     }
 }

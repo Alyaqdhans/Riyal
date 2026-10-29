@@ -15,6 +15,7 @@ import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -299,6 +300,9 @@ private fun RiyalToolbar(
                 FilledIconToggleButton(
                     checked = isSelected,
                     onCheckedChange = { onSelect(tab) },
+                    // Squares off under the finger and springs back round, as the
+                    // app's buttons do; the tab you are on stays a circle.
+                    shapes = IconButtonDefaults.toggleableShapes(checkedShape = CircleShape),
                     colors = IconButtonDefaults.filledIconToggleButtonColors(
                         containerColor = Color.Transparent,
                         contentColor = LocalContentColor.current,

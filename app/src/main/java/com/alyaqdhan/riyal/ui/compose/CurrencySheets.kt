@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -338,7 +339,7 @@ private fun RateDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )
                 if (Currencies.isOverridden(info.code)) {
-                    TextButton(onClick = { pop.leave(onReset) }) { Text(stringResource(R.string.cur_rate_reset)) }
+                    TextButton(onClick = { pop.leave(onReset) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.cur_rate_reset)) }
                 }
             }
         },
@@ -349,10 +350,11 @@ private fun RateDialog(
                     val rate = value!!
                     pop.leave { onSave(rate) }
                 },
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -229,7 +230,7 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
             item(key = "leave") {
                 Column(Modifier.padding(top = 8.dp)) {
                     HorizontalDivider()
-                    TextButton(onClick = { confirmLeave = true }) {
+                    TextButton(onClick = { confirmLeave = true }, shapes = ButtonDefaults.shapes()) {
                         Text(stringResource(R.string.needs_leave_button))
                     }
                 }
@@ -266,10 +267,10 @@ private fun LeaveAsOtherDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = { pop.leave(onConfirm) }) { Text(stringResource(R.string.needs_leave_confirm)) }
+            TextButton(onClick = { pop.leave(onConfirm) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.needs_leave_confirm)) }
         },
         dismissButton = {
-            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }
@@ -390,7 +391,7 @@ private fun MerchantCard(
                     }
                     // Only worth a control once there is a mixed state to get out of.
                     if (excluded.isNotEmpty()) {
-                        TextButton(onClick = { excluded = emptyList() }) {
+                        TextButton(onClick = { excluded = emptyList() }, shapes = ButtonDefaults.shapes()) {
                             Text(stringResource(R.string.needs_select_all, group.count))
                         }
                     }
@@ -430,6 +431,7 @@ private fun MerchantCard(
                     TextButton(
                         onClick = { onAskEachTime(!marked) },
                         contentPadding = PaddingValues(horizontal = 4.dp),
+                        shapes = ButtonDefaults.shapes(),
                     ) {
                         Text(
                             stringResource(

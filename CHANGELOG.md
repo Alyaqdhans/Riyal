@@ -147,6 +147,9 @@ is attached there.
   editors is a red button at the end of the form, no longer beside Cancel.
 - Save is a filled button in every dialog that has one - Add, accounts, categories,
   keywords, exchange rates - instead of a word.
+- Buttons answer a press: Material 3 Expressive's shapes, whose corners square off
+  under the finger and spring back - every button, and the toolbar's tabs. Add account,
+  New category and Add keyword are its taller buttons, with a + icon.
 - Currency signs are drawn as heavy as the text beside them, whatever font the phone
   uses: the font's strokes and the sign's are measured, and the sign thinned or
   thickened to match. Home's net is bold.

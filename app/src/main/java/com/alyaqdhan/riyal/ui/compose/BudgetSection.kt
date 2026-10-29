@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -97,10 +98,10 @@ fun BudgetSection(
             SectionTitle(stringResource(R.string.budget_title))
             if (plan != null) {
                 Row {
-                    TextButton(onClick = { showEditor = true }) {
+                    TextButton(onClick = { showEditor = true }, shapes = ButtonDefaults.shapes()) {
                         Text(stringResource(R.string.action_edit))
                     }
-                    TextButton(onClick = { confirmDelete = true }) {
+                    TextButton(onClick = { confirmDelete = true }, shapes = ButtonDefaults.shapes()) {
                         Text(stringResource(R.string.action_delete))
                     }
                 }
@@ -127,12 +128,13 @@ fun BudgetSection(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(
                     onClick = { onCreate(sliceTitle, slice.start, slice.endExclusive) },
+                    shapes = ButtonDefaults.shapes(),
                 ) { Text(stringResource(R.string.budget_create)) }
                 val previous = plans.firstOrNull { it.endExclusiveMillis <= slice.start }
                 if (previous != null && previous.lines.isNotEmpty()) {
                     TextButton(onClick = {
                         onCopy(previous, sliceTitle, slice.start, slice.endExclusive)
-                    }) { Text(stringResource(R.string.budget_copy, previous.label)) }
+                    }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.budget_copy, previous.label)) }
                 }
             }
         } else if (plan.lines.isEmpty()) {
@@ -143,6 +145,7 @@ fun BudgetSection(
             )
             FilledTonalButton(
                 onClick = { showEditor = true },
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.budget_add_cap)) }
         } else {
             // With one capped category the total *is* that category: drawing both said
@@ -175,7 +178,7 @@ fun BudgetSection(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (progress.lines.size > VISIBLE_LINES) {
-                    TextButton(onClick = { showAll = !showAll }) {
+                    TextButton(onClick = { showAll = !showAll }, shapes = ButtonDefaults.shapes()) {
                         Text(
                             if (showAll) stringResource(R.string.budget_show_less)
                             else stringResource(R.string.budget_show_all, progress.lines.size),
@@ -226,10 +229,10 @@ fun BudgetSection(
                         onDelete(id)
                         confirmDelete = false
                     }
-                }) { Text(stringResource(R.string.action_delete)) }
+                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { pop.leave { confirmDelete = false } }) {
+                TextButton(onClick = { pop.leave { confirmDelete = false } }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -442,7 +445,7 @@ private fun BudgetEditorDialog(
                         stringResource(R.string.label_period),
                         style = MaterialTheme.typography.labelLarge,
                     )
-                    TextButton(onClick = { showRange = true }) {
+                    TextButton(onClick = { showRange = true }, shapes = ButtonDefaults.shapes()) {
                         Text(stringResource(R.string.action_change))
                     }
                 }
@@ -466,7 +469,7 @@ private fun BudgetEditorDialog(
                             TextButton(onClick = {
                                 onSetLine(catId, 0L)
                                 current = current - catId
-                            }) { Text(stringResource(R.string.action_remove)) }
+                            }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_remove)) }
                         }
                     }
                 }
@@ -499,10 +502,11 @@ private fun BudgetEditorDialog(
                     current = current + (selected to minor)
                     amount = ""
                 },
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.action_add)) }
         },
         dismissButton = {
-            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_done)) }
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_done)) }
         },
     )
 
@@ -533,10 +537,11 @@ private fun BudgetEditorDialog(
                             showRange = false
                         }
                     },
+                    shapes = ButtonDefaults.shapes(),
                 ) { Text(stringResource(R.string.action_apply)) }
             },
             dismissButton = {
-                TextButton(onClick = { rangePop.leave { showRange = false } }) {
+                TextButton(onClick = { rangePop.leave { showRange = false } }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },

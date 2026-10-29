@@ -31,9 +31,9 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -58,6 +58,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.ui.compose.ActionButton
 import com.alyaqdhan.riyal.ui.compose.DeleteButton
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
@@ -199,6 +200,7 @@ fun CategoriesScreen(
                     TextButton(
                         onClick = { showEmpty = !showEmpty },
                         modifier = Modifier.padding(top = 4.dp),
+                        shapes = ButtonDefaults.shapes(),
                     ) {
                         Text(
                             if (showEmpty) stringResource(R.string.cats_hide_empty)
@@ -224,10 +226,12 @@ fun CategoriesScreen(
             }
 
             item(key = "add") {
-                FilledTonalButton(
+                ActionButton(
+                    text = stringResource(R.string.cats_add),
+                    icon = R.drawable.ic_sym_add,
                     onClick = { editing = Category(id = "", name = "", color = Categories.PALETTE.random()) },
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                ) { Text(stringResource(R.string.cats_add)) }
+                )
             }
 
             // What the app has been taught, and the only place it can be untaught. A
@@ -249,10 +253,13 @@ fun CategoriesScreen(
                 )
             }
             item(key = "learned-add") {
-                FilledTonalButton(
+                ActionButton(
+                    text = stringResource(R.string.cats_add_keyword),
+                    icon = R.drawable.ic_sym_add,
                     onClick = { addingKeyword = true },
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                ) { Text(stringResource(R.string.cats_add_keyword)) }
+                    tonal = true,
+                )
             }
             val sortedRules = rules.sortedBy { it.pattern }
             items(sortedRules, key = { "rule-" + it.pattern + "-" + it.categoryId }) { rule ->
@@ -338,10 +345,10 @@ fun CategoriesScreen(
                         vm.deleteCategory(cat.id)
                         confirmDelete = null
                     }
-                }) { Text(stringResource(R.string.action_delete)) }
+                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { pop.leave { confirmDelete = null } }) {
+                TextButton(onClick = { pop.leave { confirmDelete = null } }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -381,7 +388,7 @@ private fun CategoryRow(
                         modifier = Modifier.weight(1f),
                     )
                     if (onEdit != null) {
-                        TextButton(onClick = onEdit) { Text(stringResource(R.string.action_edit)) }
+                        TextButton(onClick = onEdit, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_edit)) }
                     }
                 }
                 Text(
@@ -459,7 +466,7 @@ private fun LearnedRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            TextButton(onClick = onAction) { Text(actionLabel) }
+            TextButton(onClick = onAction, shapes = ButtonDefaults.shapes()) { Text(actionLabel) }
         }
     }
 }
@@ -561,10 +568,11 @@ private fun KeywordRuleDialog(
                     val category = categoryId
                     pop.leave { onSave(word, category) }
                 },
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }
@@ -697,10 +705,11 @@ private fun CategoryEditorDialog(
                     val glyph = icon
                     pop.leave { onSave(chosen, isIncome, tint, glyph) }
                 },
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

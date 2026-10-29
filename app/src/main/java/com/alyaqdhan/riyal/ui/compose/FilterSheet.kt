@@ -3,6 +3,7 @@
 package com.alyaqdhan.riyal.ui.compose
 
 import androidx.compose.ui.res.painterResource
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.horizontalScroll
@@ -71,7 +72,7 @@ fun FilterSheet(
                     modifier = Modifier.weight(1f),
                 )
                 if (selectedCategoryId != null || selectedAccountId != null) {
-                    TextButton(onClick = onClearAll) { Text(stringResource(R.string.action_clear)) }
+                    TextButton(onClick = onClearAll, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_clear)) }
                 }
             }
 

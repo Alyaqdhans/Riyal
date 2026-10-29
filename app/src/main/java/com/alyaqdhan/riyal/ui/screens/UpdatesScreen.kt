@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -130,7 +131,7 @@ fun UpdatesScreen(vm: MainViewModel, onBack: () -> Unit, onOpenChangelog: () -> 
                 ListItem(
                     supportingContent = { Text(skipped.sorted().joinToString(", ")) },
                     trailingContent = {
-                        TextButton(onClick = { vm.clearSkippedUpdates() }) { Text(stringResource(R.string.action_clear)) }
+                        TextButton(onClick = { vm.clearSkippedUpdates() }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_clear)) }
                     },
                 ) { Text(stringResource(R.string.upd_skipped)) }
             }
@@ -218,6 +219,7 @@ private fun StatusCard(
             Button(
                 onClick = { if (state is UpdateState.Available) onUpdate(state.release) else onCheck() },
                 enabled = state != UpdateState.Checking,
+                shapes = ButtonDefaults.shapes(),
             ) {
                 Text(
                     stringResource(
@@ -276,7 +278,7 @@ fun ChangelogScreen(vm: MainViewModel, onBack: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(stringResource(R.string.upd_changelog_failed), style = MaterialTheme.typography.bodyLarge)
-                Button(onClick = { vm.loadReleases() }) { Text(stringResource(R.string.upd_try_again)) }
+                Button(onClick = { vm.loadReleases() }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.upd_try_again)) }
             }
             list == null -> Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
                 FlatWheel()

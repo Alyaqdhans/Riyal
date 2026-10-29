@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -153,7 +154,7 @@ fun UpdateDialogHost(vm: MainViewModel) {
         },
         confirmButton = {
             when (state) {
-                is DownloadState.Downloading -> TextButton(onClick = {}, enabled = false) {
+                is DownloadState.Downloading -> TextButton(onClick = {}, enabled = false, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.upd_percent, (state.fraction * 100).roundToInt()))
                 }
                 is DownloadState.Ready -> TextButton(onClick = {
@@ -165,24 +166,24 @@ fun UpdateDialogHost(vm: MainViewModel) {
                         MainViewModel.InstallResult.STARTED -> pop.leave { vm.dismissUpdatePrompt() }
                         MainViewModel.InstallResult.FAILED -> openOnGitHub()
                     }
-                }) { Text(stringResource(R.string.upd_install)) }
-                is DownloadState.Failed -> TextButton(onClick = { vm.startDownload(release) }) {
+                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.upd_install)) }
+                is DownloadState.Failed -> TextButton(onClick = { vm.startDownload(release) }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.upd_retry))
                 }
                 else -> if (release.hasApk) {
-                    TextButton(onClick = { vm.startDownload(release) }) { Text(stringResource(R.string.upd_update)) }
+                    TextButton(onClick = { vm.startDownload(release) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.upd_update)) }
                 } else {
-                    TextButton(onClick = { openOnGitHub() }) { Text(stringResource(R.string.upd_open_github)) }
+                    TextButton(onClick = { openOnGitHub() }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.upd_open_github)) }
                 }
             }
         },
         dismissButton = {
             Row {
                 if (state is DownloadState.Downloading) {
-                    TextButton(onClick = { vm.cancelDownload() }) { Text(stringResource(R.string.action_cancel)) }
+                    TextButton(onClick = { vm.cancelDownload() }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
                 } else {
-                    TextButton(onClick = { pop.leave { vm.skipUpdate(release) } }) { Text(stringResource(R.string.upd_skip)) }
-                    TextButton(onClick = { pop.leave { vm.dismissUpdatePrompt() } }) { Text(stringResource(R.string.upd_later)) }
+                    TextButton(onClick = { pop.leave { vm.skipUpdate(release) } }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.upd_skip)) }
+                    TextButton(onClick = { pop.leave { vm.dismissUpdatePrompt() } }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.upd_later)) }
                 }
             }
         },

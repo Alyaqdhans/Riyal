@@ -16,6 +16,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.animateFloatingActionButton
@@ -130,7 +131,7 @@ fun SetupScreen(vm: MainViewModel, onFinished: () -> Unit) {
                 // the way of the answers at the bottom.
                 actions = {
                     if (step == SetupStep.QUESTIONS) {
-                        TextButton(onClick = { vm.finishSetup() }) { Text(stringResource(R.string.setup_skip)) }
+                        TextButton(onClick = { vm.finishSetup() }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.setup_skip)) }
                     }
                 },
             )
@@ -242,7 +243,7 @@ private fun AccountsStep(vm: MainViewModel) {
                             Icon(painterResource(R.drawable.ic_sym_account_balance), contentDescription = null)
                         },
                         trailingContent = {
-                            TextButton(onClick = { dropping = sender }) {
+                            TextButton(onClick = { dropping = sender }, shapes = ButtonDefaults.shapes()) {
                                 Text(stringResource(R.string.setup_not_my_bank))
                             }
                         },
@@ -349,10 +350,10 @@ private fun AccountsStep(vm: MainViewModel) {
                         vm.excludeSender(sender)
                         dropping = null
                     }
-                }) { Text(stringResource(R.string.setup_not_my_bank)) }
+                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.setup_not_my_bank)) }
             },
             dismissButton = {
-                TextButton(onClick = { pop.leave { dropping = null } }) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(onClick = { pop.leave { dropping = null } }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }
@@ -608,14 +609,14 @@ private fun Correction(
                     }
                 }
             } else {
-                TextButton(onClick = { choosingKind = true }) {
+                TextButton(onClick = { choosingKind = true }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.setup_kind_wrong, stringResource(labelFor(question.guess))))
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
-                Button(onClick = { onSave(kind, category.takeIf { type != null }) }) {
+                TextButton(onClick = onCancel, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
+                Button(onClick = { onSave(kind, category.takeIf { type != null }) }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.setup_save_answer))
                 }
             }

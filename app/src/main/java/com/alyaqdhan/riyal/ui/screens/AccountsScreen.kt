@@ -2,6 +2,7 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import com.alyaqdhan.riyal.ui.compose.ActionButton
 import com.alyaqdhan.riyal.ui.compose.DeleteButton
 import com.alyaqdhan.riyal.ui.compose.MenuChoice
 import com.alyaqdhan.riyal.ui.compose.ChoiceMenu
@@ -48,7 +49,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -146,9 +146,11 @@ fun AccountsScreen(vm: MainViewModel, onBack: (() -> Unit)?) {
                         Modifier.fillMaxWidth().padding(16.dp),
                         horizontalArrangement = Arrangement.Center,
                     ) {
-                        FilledTonalButton(
+                        ActionButton(
+                            text = stringResource(R.string.acct_add),
+                            icon = R.drawable.ic_sym_add,
                             onClick = { editing = blankAccount(vm.prefs.defaultCurrency) },
-                        ) { Text(stringResource(R.string.acct_add)) }
+                        )
                     }
                 }
                 return@Column
@@ -178,10 +180,12 @@ fun AccountsScreen(vm: MainViewModel, onBack: (() -> Unit)?) {
                     )
                 }
                 item(key = "add") {
-                    FilledTonalButton(
+                    ActionButton(
+                        text = stringResource(R.string.acct_add),
+                        icon = R.drawable.ic_sym_add,
                         onClick = { editing = blankAccount(vm.prefs.defaultCurrency) },
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text(stringResource(R.string.acct_add)) }
+                    )
                 }
             }
         }
@@ -224,10 +228,10 @@ fun AccountsScreen(vm: MainViewModel, onBack: (() -> Unit)?) {
                         vm.deleteAccount(account.id)
                         confirmDelete = null
                     }
-                }) { Text(stringResource(R.string.action_delete)) }
+                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { pop.leave { confirmDelete = null } }) {
+                TextButton(onClick = { pop.leave { confirmDelete = null } }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -270,6 +274,7 @@ private fun ConfirmBanner(count: Int, anyMissingBalance: Boolean, onConfirm: () 
             Button(
                 onClick = onConfirm,
                 modifier = Modifier.fillMaxWidth(),
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.acct_confirm_button)) }
         }
     }
@@ -462,7 +467,7 @@ internal fun AccountEditorDialog(
                 // of those became an account, this is how it is put back.
                 if (!isNew && mergeTargets.isNotEmpty()) {
                     Box {
-                        OutlinedButton(onClick = { pickingMerge = true }) {
+                        OutlinedButton(onClick = { pickingMerge = true }, shapes = ButtonDefaults.shapes()) {
                             Icon(
                                 painterResource(R.drawable.ic_sym_merge),
                                 contentDescription = null,
@@ -539,10 +544,11 @@ internal fun AccountEditorDialog(
                     )
                     pop.leave { onSave(edited) }
                 },
+                shapes = ButtonDefaults.shapes(),
             ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 
@@ -560,10 +566,10 @@ internal fun AccountEditorDialog(
                         merging = null
                         pop.leave { onMerge(target) }
                     }
-                }) { Text(stringResource(R.string.acct_merge)) }
+                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.acct_merge)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmPop.leave { merging = null } }) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(onClick = { confirmPop.leave { merging = null } }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }

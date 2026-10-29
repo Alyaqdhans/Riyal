@@ -207,7 +207,7 @@ fun SettingsScreen(
                             prefs.scanSinceMillis = 0L
                             freshStart = 0L
                             note(R.string.log_note_fresh_start_lifted)
-                        }) { Text(stringResource(R.string.set_read_older)) }
+                        }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.set_read_older)) }
                     },
                 ) {
                     Text(
@@ -438,7 +438,7 @@ fun SettingsScreen(
                         scope.launch { clipboard.setClipEntry(plainText(Verbose.dump())) }
                         note(R.string.log_note_log_copied)
                         pop.leave(close)
-                    }) { Text(stringResource(R.string.action_copy)) }
+                    }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_copy)) }
                 },
                 dismissButton = {
                     TextButton(onClick = {
@@ -446,7 +446,7 @@ fun SettingsScreen(
                         Verbose.info(R.string.log_note_log_cleared)
                         Verbose.flush()
                         pop.leave(close)
-                    }) { Text(stringResource(R.string.action_clear)) }
+                    }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_clear)) }
                 },
             )
         }
@@ -466,10 +466,11 @@ fun SettingsScreen(
                             }
                         },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        shapes = ButtonDefaults.shapes(),
                     ) { Text(stringResource(R.string.action_delete)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { pop.leave(close) }) { Text(stringResource(R.string.action_cancel)) }
+                    TextButton(onClick = { pop.leave(close) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
                 },
             )
         }
@@ -486,10 +487,10 @@ fun SettingsScreen(
                             close()
                             onRestore()
                         }
-                    }) { Text(stringResource(R.string.action_restore)) }
+                    }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_restore)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { pop.leave(close) }) { Text(stringResource(R.string.action_cancel)) }
+                    TextButton(onClick = { pop.leave(close) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
                 },
             )
         }
@@ -511,10 +512,11 @@ fun SettingsScreen(
                                 onExport()
                             }
                         },
+                        shapes = ButtonDefaults.shapes(),
                     ) { Text(stringResource(R.string.action_export)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { pop.leave(close) }) { Text(stringResource(R.string.action_cancel)) }
+                    TextButton(onClick = { pop.leave(close) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
                 },
             )
         }
@@ -630,7 +632,7 @@ private fun <T> ChoiceDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { pop.leave(onDismiss) }) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

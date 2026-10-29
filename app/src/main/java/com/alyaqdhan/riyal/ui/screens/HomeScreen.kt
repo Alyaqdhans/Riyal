@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.size
 import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
 import com.alyaqdhan.riyal.ui.theme.successContainer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.foundation.shape.CircleShape
 import androidx.annotation.DrawableRes
@@ -304,7 +305,7 @@ private fun SectionHeader(title: String, action: String? = null, onAction: () ->
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-        if (action != null) TextButton(onClick = onAction) { Text(action) }
+        if (action != null) TextButton(onClick = onAction, shapes = ButtonDefaults.shapes()) { Text(action) }
     }
 }
 
@@ -420,7 +421,7 @@ private fun PermissionCard(onRequestPermission: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = onRequestPermission, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = onRequestPermission, modifier = Modifier.fillMaxWidth(), shapes = ButtonDefaults.shapes()) {
                 Text(stringResource(R.string.home_sms_allow))
             }
         }
@@ -457,7 +458,7 @@ private fun TopSpendingCard(slices: List<Stats.Slice>, currency: String, onOpenA
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(stringResource(R.string.home_top_spending), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-            TextButton(onClick = onOpenAnalysis) { Text(stringResource(R.string.home_see_all)) }
+            TextButton(onClick = onOpenAnalysis, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.home_see_all)) }
         }
         Column(
             Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),

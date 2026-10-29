@@ -13,6 +13,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -71,7 +72,7 @@ fun PeriodBar(
         }
         // The period is a button that looks like one, not a title that happens to open
         // something when tapped.
-        FilledTonalButton(onClick = { showPicker = true }) {
+        FilledTonalButton(onClick = { showPicker = true }, shapes = ButtonDefaults.shapes()) {
             Icon(
                 painterResource(R.drawable.ic_sym_calendar_month),
                 contentDescription = null,
@@ -148,10 +149,11 @@ fun PeriodBar(
                             showRange = false
                         }
                     },
+                    shapes = ButtonDefaults.shapes(),
                 ) { Text(stringResource(R.string.action_apply)) }
             },
             dismissButton = {
-                TextButton(onClick = { pop.leave { showRange = false } }) {
+                TextButton(onClick = { pop.leave { showRange = false } }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
