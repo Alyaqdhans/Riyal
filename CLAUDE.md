@@ -35,6 +35,8 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   on app start and when a scan or refresh lands (`Rolls`), never on a tab switch or scroll;
   and to every new value while on screen. Home's net and
   pills, Analysis totals, Accounts balances. List rows never roll.
+  Analysis's category wheel fills clockwise with the same timing each time its tab is
+  shown (`LocalTabShows`), on a scan or refresh, and when its slices change.
   Setup's last step: a tick that draws itself, then the app opens on its own after 2 s.
 - **Choices of dates are tiles** (`ui/compose/Presets.kt`: `PresetSheet`/`PresetGrid`),
   never a plain list of words. Each tile says what it covers, and all tiles are one size.

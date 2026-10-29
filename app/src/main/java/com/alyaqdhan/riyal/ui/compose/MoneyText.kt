@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -254,8 +255,8 @@ private fun RollingAmount(
 }
 
 /** NumberFlow's own timing: 900 ms, easing out hard so a spin settles rather than stops. */
-private const val SPIN_MS = 900
-private val spinEasing = CubicBezierEasing(0.25f, 1f, 0.5f, 1f)
+internal const val SPIN_MS = 900
+internal val spinEasing = CubicBezierEasing(0.25f, 1f, 0.5f, 1f)
 
 /**
  * The digits of [number], rolling to it the way firePOS's NumberFlow (with its
@@ -394,6 +395,13 @@ private fun DigitWheel(
             },
     )
 }
+
+/**
+ * How many times the tab holding this has been brought into view: 0 while it is first
+ * built, then one more for every switch to it. What should play again whenever its tab
+ * is shown (the category wheel filling) keys on it; the tabs stay built between switches.
+ */
+val LocalTabShows = compositionLocalOf { 0 }
 
 /**
  * When figures roll in from zero: for a moment after the app starts, and after each scan

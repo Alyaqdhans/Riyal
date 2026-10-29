@@ -194,6 +194,7 @@ class MainActivity : AppCompatActivity() {
         currentTab.value = tab
         backToHome.isEnabled = tab != Tab.HOME
         slide(outgoing?.view, incoming.view ?: return, forward = tab.ordinal > from.ordinal)
+        (incoming as? ScreenFragment)?.onShown()
     }
 
     private fun addTab(tab: Tab): Fragment {

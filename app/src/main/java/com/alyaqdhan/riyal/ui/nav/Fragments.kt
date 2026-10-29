@@ -6,6 +6,8 @@ import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.LayoutRes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
@@ -15,6 +17,7 @@ import com.alyaqdhan.riyal.Tab
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.riyalViewModel
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.LocalTabShows
 import com.alyaqdhan.riyal.ui.screens.AccountsScreen
 import com.alyaqdhan.riyal.ui.screens.AnalysisScreen
 import com.alyaqdhan.riyal.ui.screens.HomeScreen
@@ -33,6 +36,13 @@ abstract class ScreenFragment(@LayoutRes layout: Int) : Fragment(layout) {
 
     protected val vm: MainViewModel get() = requireContext().riyalViewModel
 
+    private val shows = mutableIntStateOf(0)
+
+    /** Called each time a switch brings this tab into view ([LocalTabShows]). */
+    internal fun onShown() {
+        shows.intValue++
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         // Every tab stays built once made; only the one showing is visible, and the rest
@@ -43,7 +53,11 @@ abstract class ScreenFragment(@LayoutRes layout: Int) : Fragment(layout) {
             // Named Screen(), not Content(): inside apply {} the ComposeView is the innermost
             // receiver, so an unqualified Content() would resolve to ComposeView.Content() and
             // recurse into the composition forever (StackOverflowError on launch).
-            setContent { RiyalTheme { Screen() } }
+            setContent {
+                RiyalTheme {
+                    CompositionLocalProvider(LocalTabShows provides shows.intValue) { Screen() }
+                }
+            }
         }
     }
 

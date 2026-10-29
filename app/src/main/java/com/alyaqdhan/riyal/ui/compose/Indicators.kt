@@ -2,6 +2,8 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.size
@@ -11,9 +13,12 @@ import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -118,6 +123,11 @@ internal fun wheelAngles(fractions: List<Float>, minDegrees: Float): List<Float>
  * The category wheel on Analysis: one flat [CircularWavyProgressIndicator] per category,
  * each turned to where its share begins and sweeping only its own width, over a track
  * drawn by the same component. The middle is free for [center].
+ *
+ * It fills clockwise from the top, slice after slice, with the rolling figures' timing:
+ * when it is first drawn, each time its tab is brought into view ([LocalTabShows]), when
+ * a scan or refresh lands ([Rolls]) and when its slices change. The fill is read only
+ * while drawing, so it costs a redraw a frame.
  */
 @Composable
 fun CategoryWheel(
@@ -136,6 +146,11 @@ fun CategoryWheel(
     val capDegrees = (thickness.value / radius) * (180f / PI.toFloat())
     val gapDegrees = (3f / radius) * (180f / PI.toFloat())
     val angles = wheelAngles(slices.map { it.fraction }, minDegrees = capDegrees + gapDegrees + 0.5f)
+    val fill = remember { Animatable(0f) }
+    LaunchedEffect(LocalTabShows.current, Rolls.generation, slices) {
+        fill.snapTo(0f)
+        fill.animateTo(1f, tween(SPIN_MS, easing = spinEasing))
+    }
 
     Box(modifier.size(size), contentAlignment = Alignment.Center) {
         CircularWavyProgressIndicator(
@@ -152,7 +167,7 @@ fun CategoryWheel(
         if (slices.size == 1) {
             // One category is the whole circle: a ring, with no ends to round.
             CircularWavyProgressIndicator(
-                progress = { 1f },
+                progress = { fill.value },
                 modifier = Modifier.matchParentSize(),
                 color = Color(Categories.colorFor(slices[0].categoryId)),
                 trackColor = Color.Transparent,
@@ -167,11 +182,16 @@ fun CategoryWheel(
             slices.forEachIndexed { i, s ->
                 val angle = angles[i]
                 val sweep = (angle - capDegrees - gapDegrees).coerceAtLeast(0.01f)
+                val from = start + (capDegrees + gapDegrees) / 2f
+                // How much of this slice the fill has reached; one it has not reached yet
+                // is hidden, so its round end is not left as a dot ahead of the fill.
+                fun shown() = (fill.value * 360f - from).coerceIn(0f, sweep)
                 CircularWavyProgressIndicator(
-                    progress = { sweep / 360f },
+                    progress = { shown() / 360f },
                     modifier = Modifier
                         .matchParentSize()
-                        .rotate(start + (capDegrees + gapDegrees) / 2f),
+                        .graphicsLayer { alpha = if (shown() > 0f) 1f else 0f }
+                        .rotate(from),
                     color = Color(Categories.colorFor(s.categoryId)),
                     trackColor = Color.Transparent,
                     stroke = Stroke(width = strokePx, cap = StrokeCap.Round),

@@ -135,6 +135,8 @@ is attached there.
   a scroll shows them as they are. Each digit turns through the
   ones between, and a figure that gains digits grows leftwards from its decimals. The digits
   are drawn, not rebuilt, as they turn, so a screen of rolling figures stays smooth.
+- Analysis's category wheel fills in clockwise, slice by slice, each time you open the
+  tab, when a scan or a refresh lands, and when you change the period.
 - Settings opens on a status card: up to date, reading, or what went wrong, when it last
   read, and what it holds.
 - Category choices are every category in three level rows that scroll sideways, Other
