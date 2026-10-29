@@ -7,8 +7,6 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,13 +20,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -37,6 +33,17 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.FilledIconToggleButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -52,7 +59,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -607,12 +613,32 @@ private fun CategoryEditorDialog(
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.label_name)) },
-                    singleLine = true,
-                )
+                // The category as it will look, beside its name, changing with each pick.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(
+                        Modifier
+                            .size(56.dp)
+                            .background(Color(color).copy(alpha = 0.2f), MaterialShapes.Cookie9Sided.toShape()),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painterResource(CategoryVisuals.byKey(icon)),
+                            contentDescription = null,
+                            tint = Color(color),
+                            modifier = Modifier.size(28.dp),
+                        )
+                    }
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(stringResource(R.string.label_name)) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 if (isNew) {
                     // Which side of the ledger a category lives on decides which pickers
                     // offer it, so it is fixed once records start using it.
@@ -625,69 +651,57 @@ private fun CategoryEditorDialog(
                         tone = { typeTone(it) },
                     )
                 }
-                // Shown above the swatches because the icon is what the badge reads as
-                // at a glance in a list; the colour only tells it apart from its
-                // neighbours.
-                Text(stringResource(R.string.label_icon), style = MaterialTheme.typography.labelLarge)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    CategoryVisuals.KEYS.forEach { key ->
-                        val picked = key == icon
-                        Box(
-                            Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (picked) Color(color).copy(alpha = 0.24f)
-                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                // Both pickers are Expressive toggle buttons: the one picked fills with
+                // the category's colour and morphs from a circle to a rounded square,
+                // so it reads as chosen whatever the colour. Packed at their drawn size
+                // so the icons fit three rows that scroll sideways and the colours two.
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                    Text(stringResource(R.string.label_icon), style = MaterialTheme.typography.labelLarge)
+                    val icons = CategoryVisuals.KEYS
+                    LazyHorizontalGrid(
+                        rows = GridCells.Fixed(ICON_ROWS),
+                        state = rememberLazyGridState(
+                            initialFirstVisibleItemIndex = icons.indexOf(icon).coerceAtLeast(0) / ICON_ROWS * ICON_ROWS,
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(PICK_SIZE * ICON_ROWS + PICK_GAP * (ICON_ROWS - 1)),
+                        horizontalArrangement = Arrangement.spacedBy(PICK_GAP),
+                        verticalArrangement = Arrangement.spacedBy(PICK_GAP),
+                    ) {
+                        items(icons, key = { it }) { key ->
+                            PickToggle(
+                                checked = key == icon,
+                                onPick = { icon = key },
+                                fill = Color(color),
+                            ) {
+                                Icon(
+                                    painterResource(CategoryVisuals.byKey(key)),
+                                    contentDescription = key,
+                                    modifier = Modifier.size(22.dp),
                                 )
-                                // The tint alone is not enough to say which one is
-                                // picked: it is the colour being chosen next to it, and
-                                // some of the palette sits close to the theme's own
-                                // grey. The ring does not depend on that colour.
-                                .then(
-                                    if (picked) Modifier.border(
-                                        2.dp,
-                                        MaterialTheme.colorScheme.primary,
-                                        CircleShape,
-                                    ) else Modifier
-                                )
-                                .clickable { icon = key },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painterResource(CategoryVisuals.byKey(key)),
-                                contentDescription = key,
-                                tint = if (picked) Color(color)
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(22.dp),
-                            )
+                            }
                         }
                     }
-                }
-                Text(stringResource(R.string.label_colour), style = MaterialTheme.typography.labelLarge)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Categories.PALETTE.forEach { swatch ->
-                        Box(
-                            Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color(swatch))
-                                .clickable { color = swatch },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (swatch == color) {
-                                Icon(
-                                    Icons.Filled.Check,
-                                    contentDescription = stringResource(R.string.cats_selected),
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp),
-                                )
+                    Text(stringResource(R.string.label_colour), style = MaterialTheme.typography.labelLarge)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(PICK_GAP),
+                        verticalArrangement = Arrangement.spacedBy(PICK_GAP),
+                    ) {
+                        Categories.PALETTE.forEach { swatch ->
+                            PickToggle(
+                                checked = swatch == color,
+                                onPick = { color = swatch },
+                                fill = Color(swatch),
+                                rest = Color(swatch),
+                            ) {
+                                if (swatch == color) {
+                                    Icon(
+                                        painterResource(R.drawable.ic_sym_check),
+                                        contentDescription = stringResource(R.string.cats_selected),
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
                             }
                         }
                     }
@@ -711,6 +725,38 @@ private fun CategoryEditorDialog(
         dismissButton = {
             TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
         },
+    )
+}
+
+/** The pickers' buttons: their size, the gap between them, and the icons' rows. */
+private val PICK_SIZE = 40.dp
+private val PICK_GAP = 8.dp
+private const val ICON_ROWS = 3
+
+/**
+ * One choice of the editor's icon or colour: Material 3 Expressive's toggle button,
+ * [rest] until picked, then [fill] in its checked shape.
+ */
+@Composable
+private fun PickToggle(
+    checked: Boolean,
+    onPick: () -> Unit,
+    fill: Color,
+    rest: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    content: @Composable () -> Unit,
+) {
+    FilledIconToggleButton(
+        checked = checked,
+        onCheckedChange = { onPick() },
+        shapes = IconButtonDefaults.toggleableShapes(),
+        modifier = Modifier.size(PICK_SIZE),
+        colors = IconButtonDefaults.filledIconToggleButtonColors(
+            containerColor = rest,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            checkedContainerColor = fill,
+            checkedContentColor = Color.White,
+        ),
+        content = content,
     )
 }
 

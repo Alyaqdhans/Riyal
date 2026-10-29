@@ -160,6 +160,10 @@ is attached there.
   out" and the like. The Add form's kinds wrap to two rows on a narrow phone.
 - The new-category and keyword dialogs choose Expense or Income on the same connected
   buttons as the Add form, instead of the older segmented row.
+- The category editor shows the category as it will look beside its name, and picks
+  its icon and colour on Material 3 Expressive toggle buttons: the one picked fills with
+  the colour and turns from a circle into a rounded square. Icons sit in three rows that
+  scroll sideways.
 - Transactions' bar is a filter icon that counts the filters on, without the export
   button (export is in Settings). The filter sheet shows accounts with their icons and
   categories in the same level rows as everywhere else.
