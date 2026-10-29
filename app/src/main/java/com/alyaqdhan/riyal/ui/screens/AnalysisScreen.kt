@@ -107,6 +107,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import com.alyaqdhan.riyal.ui.compose.categoryColor
 
 private val ChartLabelsKey = ExtraStore.Key<List<String>>()
 private val nextDueFmt: DateTimeFormatter get() = Dates.pattern("d MMM")
@@ -301,7 +302,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     Modifier
                                         .size(10.dp)
                                         .clip(CircleShape)
-                                        .background(Color(Categories.colorFor(cat.id))),
+                                        .background(categoryColor(cat.id)),
                                 )
                                 Column(Modifier.weight(1f)) {
                                     Text(cat.name, style = MaterialTheme.typography.bodyMedium)
@@ -417,7 +418,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                         Modifier
                                             .size(10.dp)
                                             .clip(CircleShape)
-                                            .background(Color(Categories.colorFor(mover.categoryId))),
+                                            .background(categoryColor(mover.categoryId)),
                                     )
                                     Text(
                                         Categories.byId(mover.categoryId).name,

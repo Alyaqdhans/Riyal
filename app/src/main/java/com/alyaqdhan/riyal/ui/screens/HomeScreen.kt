@@ -74,6 +74,7 @@ import com.alyaqdhan.riyal.ui.compose.iconFor
 import com.alyaqdhan.riyal.ui.compose.localDateOf
 import com.alyaqdhan.riyal.ui.compose.toolbarSpace
 import com.alyaqdhan.riyal.ui.theme.successColor
+import com.alyaqdhan.riyal.ui.compose.categoryColor
 
 /**
  * The dashboard, laid out the way people already read one in every finance app they
@@ -475,7 +476,7 @@ private fun TopSpendingCard(slices: List<Stats.Slice>, currency: String, onOpenA
                         }
                         FlatBar(
                             progress = { s.fraction },
-                            color = Color(Categories.colorFor(category.id)),
+                            color = categoryColor(category.id),
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }

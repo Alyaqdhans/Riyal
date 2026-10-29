@@ -148,6 +148,9 @@ everything.
   `MainActivity` starts fresh, and a page restored after process death checks
   `vm.setupActive` before trusting its saved state.
 - Store JSON field `alias` (account aliases) is optional like the others.
+- Draw category and account colours through `categoryColor(id)`, `rememberBadgeColours`
+  or `legible(...)` (ui/theme/Contrast.kt), never `Color(Categories.colorFor(id))`: the raw
+  palette falls under 3:1 on light cards. `ContrastTest` holds every colour to it.
 - Never read an animated value during composition in something that animates often.
   `DigitWheel` reads its wheel only in `drawBehind` and draws ten digits measured once;
   reading it in composition recomposed and re-laid-out text every frame for every digit,

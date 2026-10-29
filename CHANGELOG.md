@@ -121,6 +121,12 @@ is attached there.
   long as your records are loading; then it fills in and lifts, and Home's figures roll
   in on a phone with nothing else to do. The scan on launch starts after they have, so
   the roll is smooth on a cold start.
+- **Colours you can read in the light theme.** Category colours were picked on white, and
+  on light cards most of them faded - amber and lime icons and bars under 1.5:1. Each is
+  now darkened just enough, its hue kept, to stand 3.5:1 on the cards (and lightened in
+  the dark theme where the deep ones sank), and badge icons are fitted to their own tinted
+  circle. Money-in green is dark enough to read as text on cards. Ticks on colour swatches
+  are black or white, whichever shows.
 - A new icon: the Omani rial sign. On Android 12 and later it takes the wallpaper's
   colours, as the app does; on older phones it is teal.
 - **Home is a dashboard:** net for the period, large, with expense and income as pills

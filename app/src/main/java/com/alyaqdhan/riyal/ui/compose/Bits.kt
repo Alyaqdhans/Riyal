@@ -301,9 +301,9 @@ fun LogRow(line: LogLine) {
     val color = when (line.kind) {
         LogLine.Kind.OK -> MaterialTheme.colorScheme.primary
         LogLine.Kind.FAIL -> MaterialTheme.colorScheme.error
-        LogLine.Kind.SKIP -> MaterialTheme.colorScheme.outline
+        LogLine.Kind.SKIP -> MaterialTheme.colorScheme.onSurfaceVariant
         LogLine.Kind.SCAN -> MaterialTheme.colorScheme.tertiary
-        LogLine.Kind.INFO -> MaterialTheme.colorScheme.onSurfaceVariant
+        LogLine.Kind.INFO -> MaterialTheme.colorScheme.onSurface
     }
     Text(
         bidi("[${line.time}]") + " " + line.text,

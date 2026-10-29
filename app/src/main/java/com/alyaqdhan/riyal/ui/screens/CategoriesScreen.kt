@@ -95,6 +95,10 @@ import com.alyaqdhan.riyal.ui.compose.typeLabel
 import com.alyaqdhan.riyal.ui.compose.typeTone
 import com.alyaqdhan.riyal.ui.theme.successColor
 import kotlin.math.roundToInt
+import com.alyaqdhan.riyal.ui.compose.categoryColor
+import com.alyaqdhan.riyal.ui.compose.rememberBadgeColours
+import com.alyaqdhan.riyal.ui.theme.inkFor
+import com.alyaqdhan.riyal.ui.theme.legible
 
 /**
  * Every category, split into what you spend and what you earn, each showing what it
@@ -414,7 +418,7 @@ private fun CategoryRow(
                 if (used) {
                     FlatBar(
                         progress = { fraction.coerceIn(0f, 1f) },
-                        color = Color(Categories.colorFor(category.id)),
+                        color = categoryColor(category.id),
                         trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -618,16 +622,17 @@ private fun CategoryEditorDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    val (circle, ink) = rememberBadgeColours(color)
                     Box(
                         Modifier
                             .size(56.dp)
-                            .background(Color(color).copy(alpha = 0.2f), MaterialShapes.Cookie9Sided.toShape()),
+                            .background(circle, MaterialShapes.Cookie9Sided.toShape()),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             painterResource(CategoryVisuals.byKey(icon)),
                             contentDescription = null,
-                            tint = Color(color),
+                            tint = ink,
                             modifier = Modifier.size(28.dp),
                         )
                     }
@@ -673,7 +678,7 @@ private fun CategoryEditorDialog(
                             PickToggle(
                                 checked = key == icon,
                                 onPick = { icon = key },
-                                fill = Color(color),
+                                fill = legible(Color(color)),
                             ) {
                                 Icon(
                                     painterResource(CategoryVisuals.byKey(key)),
@@ -692,8 +697,8 @@ private fun CategoryEditorDialog(
                             PickToggle(
                                 checked = swatch == color,
                                 onPick = { color = swatch },
-                                fill = Color(swatch),
-                                rest = Color(swatch),
+                                fill = legible(Color(swatch)),
+                                rest = legible(Color(swatch)),
                             ) {
                                 if (swatch == color) {
                                     Icon(
@@ -754,7 +759,7 @@ private fun PickToggle(
             containerColor = rest,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             checkedContainerColor = fill,
-            checkedContentColor = Color.White,
+            checkedContentColor = inkFor(fill),
         ),
         content = content,
     )

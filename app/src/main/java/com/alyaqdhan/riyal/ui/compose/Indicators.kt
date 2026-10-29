@@ -169,7 +169,7 @@ fun CategoryWheel(
             CircularWavyProgressIndicator(
                 progress = { fill.value },
                 modifier = Modifier.matchParentSize(),
-                color = Color(Categories.colorFor(slices[0].categoryId)),
+                color = categoryColor(slices[0].categoryId),
                 trackColor = Color.Transparent,
                 stroke = Stroke(width = strokePx, cap = StrokeCap.Butt),
                 trackStroke = Stroke(width = strokePx, cap = StrokeCap.Butt),
@@ -192,7 +192,7 @@ fun CategoryWheel(
                         .matchParentSize()
                         .graphicsLayer { alpha = if (shown() > 0f) 1f else 0f }
                         .rotate(from),
-                    color = Color(Categories.colorFor(s.categoryId)),
+                    color = categoryColor(s.categoryId),
                     trackColor = Color.Transparent,
                     stroke = Stroke(width = strokePx, cap = StrokeCap.Round),
                     trackStroke = Stroke(width = strokePx, cap = StrokeCap.Round),

@@ -350,7 +350,7 @@ fun BudgetBar(
     val barColor = when {
         over -> MaterialTheme.colorScheme.error
         fraction >= 0.85f -> MaterialTheme.colorScheme.tertiary
-        else -> Color(Categories.colorFor(categoryId))
+        else -> categoryColor(categoryId)
     }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(

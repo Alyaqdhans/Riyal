@@ -16,6 +16,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.data.Categories
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.toArgb
+import com.alyaqdhan.riyal.ui.theme.badgeColours
+import com.alyaqdhan.riyal.ui.theme.legible
 
 /**
  * Every category gets an official Material Symbols vector drawable (the pre-made XML
@@ -96,21 +101,34 @@ object CategoryVisuals {
     fun byKey(key: String): Int = BY_KEY[key] ?: R.drawable.ic_cat_other
 }
 
+/** A category's colour as this theme can show it: its own, shifted just enough to stand out. */
+@Composable
+fun categoryColor(categoryId: String): Color = legible(Color(Categories.colorFor(categoryId)))
+
+/** A badge's circle and icon colours for [color] ([badgeColours]), on this theme's cards. */
+@Composable
+fun rememberBadgeColours(color: Int): Pair<Color, Color> {
+    val card = MaterialTheme.colorScheme.surfaceContainerHighest
+    return remember(color, card) {
+        badgeColours(color, card.toArgb()).let { (circle, icon) -> Color(circle) to Color(icon) }
+    }
+}
+
 /** The category's icon on a circle of its own colour: the badge at the head of a row. */
 @Composable
 fun CategoryBadge(categoryId: String, modifier: Modifier = Modifier, size: Dp = 44.dp) {
-    val color = Color(Categories.colorFor(categoryId))
+    val (circle, ink) = rememberBadgeColours(Categories.colorFor(categoryId))
     Box(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(color.copy(alpha = 0.18f)),
+            .background(circle),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             painterResource(CategoryVisuals.iconFor(categoryId)),
             contentDescription = null,
-            tint = color,
+            tint = ink,
             modifier = Modifier.size(size / 2),
         )
     }
@@ -122,7 +140,7 @@ fun CategoryIcon(categoryId: String, modifier: Modifier = Modifier, size: Dp = 1
     Icon(
         painterResource(CategoryVisuals.iconFor(categoryId)),
         contentDescription = null,
-        tint = Color(Categories.colorFor(categoryId)),
+        tint = categoryColor(categoryId),
         modifier = modifier.size(size),
     )
 }

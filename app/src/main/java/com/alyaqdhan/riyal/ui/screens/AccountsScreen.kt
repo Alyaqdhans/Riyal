@@ -94,6 +94,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import com.alyaqdhan.riyal.ui.theme.legible
 
 private val asOfFmt: DateTimeFormatter get() = Dates.pattern("dd MMM uuuu, h:mm a")
 
@@ -319,7 +320,7 @@ private fun AccountCard(
                 Icon(
                     painterResource(iconFor(account.kind)),
                     contentDescription = null,
-                    tint = Color(if (account.color != 0) account.color else Categories.colorFor("other")),
+                    tint = legible(Color(if (account.color != 0) account.color else Categories.colorFor("other"))),
                 )
             },
             supportingContent = {
