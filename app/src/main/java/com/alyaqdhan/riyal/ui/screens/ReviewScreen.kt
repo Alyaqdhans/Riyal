@@ -76,6 +76,7 @@ import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.compose.MoneyText
 import com.alyaqdhan.riyal.ui.compose.MoneyAwareText
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.ConnectedChoice
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.bidi
 import com.alyaqdhan.riyal.ui.compose.counted
@@ -454,6 +455,29 @@ private fun TransferLeg(type: TxnType, text: String) {
  * answered in one tap - Expense or Income, in Home's colours - and the answer is about
  * every message written like it. Anything else is added by hand or dismissed.
  */
+/** What a message that only lacked its direction can be, in the order the card offers it. */
+private val KINDS: List<MessageKind?> = listOf(MessageKind.OUT, MessageKind.IN, MessageKind.NONE)
+
+private fun kindLabel(kind: MessageKind) = when (kind) {
+    MessageKind.OUT -> typeLabel(TxnType.EXPENSE)
+    MessageKind.IN -> typeLabel(TxnType.INCOME)
+    else -> R.string.setup_kind_none
+}
+
+private fun kindIcon(kind: MessageKind) = when (kind) {
+    MessageKind.OUT -> typeIcon(TxnType.EXPENSE)
+    MessageKind.IN -> typeIcon(TxnType.INCOME)
+    else -> R.drawable.ic_sym_block
+}
+
+/** Home's colours for money out and in; "not a transaction" in the neutral one. */
+@Composable
+private fun kindTone(kind: MessageKind) = when (kind) {
+    MessageKind.OUT -> typeTone(TxnType.EXPENSE)
+    MessageKind.IN -> typeTone(TxnType.INCOME)
+    else -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+}
+
 @Composable
 private fun ReviewCard(
     item: ReviewItem,
@@ -549,43 +573,33 @@ private fun ReviewCard(
             }
             // One question, and the answer is about every message written like this
             // one: it teaches the kind, and the inbox is read again with it, so the
-            // others like it are answered in the same moment.
+            // others like it are answered in the same moment. Picked first, saved second,
+            // so a stray tap never sends the card away.
+            var kind by remember { mutableStateOf<MessageKind?>(null) }
             if (item.directionOnly) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    listOf(TxnType.EXPENSE to MessageKind.OUT, TxnType.INCOME to MessageKind.IN).forEach { (type, kind) ->
-                        val (bg, fg) = typeTone(type)
-                        Button(
-                            onClick = { onTeach(kind) },
-                            modifier = Modifier.weight(1f),
-                            shapes = ButtonDefaults.shapes(),
-                            colors = ButtonDefaults.buttonColors(containerColor = bg, contentColor = fg),
-                        ) {
-                            Icon(
-                                painterResource(typeIcon(type)),
-                                contentDescription = null,
-                                modifier = Modifier.size(ButtonDefaults.IconSize),
-                            )
-                            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                            Text(stringResource(typeLabel(type)))
-                        }
-                    }
-                }
+                ConnectedChoice(
+                    options = KINDS,
+                    selected = kind,
+                    onSelect = { kind = it },
+                    label = { stringResource(kindLabel(it!!)) },
+                    icon = { kindIcon(it!!) },
+                    tone = { kindTone(it!!) },
+                )
             }
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (item.directionOnly) {
-                    TextButton(onClick = { onTeach(MessageKind.NONE) }, shapes = ButtonDefaults.shapes()) {
-                        Text(stringResource(R.string.setup_kind_none))
-                    }
-                }
                 TextButton(onClick = { onDismiss(rememberChoice) }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_dismiss))
+                }
+                if (item.directionOnly) {
+                    Button(
+                        onClick = { kind?.let(onTeach) },
+                        enabled = kind != null,
+                        shapes = ButtonDefaults.shapes(),
+                    ) { Text(stringResource(R.string.action_save)) }
                 }
                 if (!item.directionOnly) {
                     Button(

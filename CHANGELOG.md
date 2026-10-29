@@ -157,8 +157,9 @@ is attached there.
   first, then all), and saving a whole name opens the next one. "Always ask for this name"
   is a switch.
 - **Review**'s cards: the message quoted in a box that slides open, "Remember for
-  similar messages" as a switch, Expense and Income as buttons in Home's colours and
-  arrows, and Add manually as the filled answer. A proposed transfer shows its two
+  similar messages" as a switch, and Add manually as the filled answer. A message that
+  only lacked its direction offers Expense, Income or Not a transaction, in Home's colours
+  and arrows, and **Save** sends the answer, rather than the first tap. A proposed transfer shows its two
   sides with Home's arrows. Answered cards slide out, and the rest close up.
 - Settings opens on a status card: up to date, reading, or what went wrong, when it last
   read, and what it holds.
