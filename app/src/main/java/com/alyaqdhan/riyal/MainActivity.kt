@@ -15,6 +15,9 @@ import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -298,17 +301,37 @@ private fun RiyalToolbar(
                 tooltip = { PlainTooltip { Text(stringResource(tab.label)) } },
                 state = rememberTooltipState(),
             ) {
+                // The tab you are on widens into a pill on a spring as its fill fades
+                // in, while the one you left narrows back: the indicator moves rather
+                // than blinking from one tab to the next.
+                val motion = MaterialTheme.motionScheme
+                val width by animateDpAsState(
+                    IconButtonDefaults.smallContainerSize(
+                        if (isSelected) IconButtonDefaults.IconButtonWidthOption.Wide
+                        else IconButtonDefaults.IconButtonWidthOption.Uniform
+                    ).width,
+                    motion.fastSpatialSpec(),
+                )
+                val fill by animateColorAsState(
+                    if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    motion.fastEffectsSpec(),
+                )
+                val ink by animateColorAsState(
+                    if (isSelected) MaterialTheme.colorScheme.onPrimary else LocalContentColor.current,
+                    motion.fastEffectsSpec(),
+                )
                 FilledIconToggleButton(
                     checked = isSelected,
                     onCheckedChange = { onSelect(tab) },
                     // Squares off under the finger and springs back round, as the
-                    // app's buttons do; the tab you are on stays a circle.
+                    // app's buttons do; the tab you are on stays fully rounded.
                     shapes = IconButtonDefaults.toggleableShapes(checkedShape = CircleShape),
+                    modifier = Modifier.width(width),
                     colors = IconButtonDefaults.filledIconToggleButtonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = LocalContentColor.current,
-                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = fill,
+                        contentColor = ink,
+                        checkedContainerColor = fill,
+                        checkedContentColor = ink,
                     ),
                 ) {
                     BadgedBox(badge = { if (tab in badges) Badge() }) {

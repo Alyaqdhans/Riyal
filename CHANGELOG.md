@@ -112,6 +112,8 @@ is attached there.
   Tabs slide sideways into one another in the toolbar's order, starting the moment you
   tap: each tab stays built once open (the rest are built while the app is idle), so a
   switch only moves it into view, and every tab keeps its place.
+  The tab you are on widens into a filled pill as you switch, and the one you left
+  narrows back, instead of the highlight jumping.
 - **Pages open the way your phone opens screens.** Setup, Review, categories, updates
   and the rest are screens of their own, so your phone's own transition plays going in
   and coming back.
