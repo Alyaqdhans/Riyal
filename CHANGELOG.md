@@ -109,7 +109,9 @@ is attached there.
 
 - Material 3 Expressive's floating toolbar: five tabs (Home, Transactions, Analysis,
   Accounts and Settings, named on a long press) and the Add button attached at its end.
-  Tabs slide sideways into one another in the toolbar's order.
+  Tabs slide sideways into one another in the toolbar's order, starting the moment you
+  tap: each tab stays built once open (the rest are built while the app is idle), so a
+  switch only moves it into view, and every tab keeps its place.
 - **Pages open the way your phone opens screens.** Setup, Review, categories, updates
   and the rest are screens of their own, so your phone's own transition plays going in
   and coming back.

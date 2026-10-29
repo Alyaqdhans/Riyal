@@ -21,8 +21,10 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   its wave.
 - **Pages are activities, each with its own `res/layout`.** The phone's own transition
   plays between them (the owner's MyBattery app is the reference). Never set a window
-  animation or `overridePendingTransition`. The five tabs are fragments that slide
-  sideways in the toolbar's order (`TabSlide`).
+  animation or `overridePendingTransition`. The five tabs are fragments that stay built
+  once made (the rest are built while the app is idle, after launch); a switch only
+  slides two already-drawn views sideways in the toolbar's order
+  (`MainActivity.openTab`), so the highlight and the slide start on the same frame.
 - **No decorative motion.** No pop-in or bounce on content, and `MotionScheme.standard()`.
   Charts use `animationSpec = null, animateIn = false`. The owner's exceptions: the tab
   slide, and every dialog's pop-in with a quick close (`ui/compose/DialogPop.kt`: put
@@ -80,9 +82,8 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `data/TransferMatcher.kt` | Pairs an expense and an income across your own accounts |
 | `data/Updates.kt` | **All network code**: GitHub releases list + APK download. `ApkInstaller.kt` hands the file to Android via FileProvider |
 | `ui/MainViewModel.kt` | One VM for every screen, owned by `RiyalApp` (`Context.riyalViewModel`): scanning, setup flow, updates, edits |
-| `ui/nav/Fragments.kt` + `res/navigation/nav_graph.xml` | The five tabs: fragments of the nav graph, each with its `fragment_*.xml` layout |
+| `ui/nav/Fragments.kt` | The five tabs (`Tab` in `MainActivity.kt`): fragments, each with its `fragment_*.xml` layout; hidden ones stay laid out but `INVISIBLE` |
 | `ui/nav/Pages.kt` | `PageActivity` and every page opened from a tab (onboarding, setup, review, categories, updates, changelog), each with its `activity_*.xml` layout |
-| `ui/nav/TabSlide.kt` | The tabs' sideways slide; `MainActivity`'s destination listener sets its direction (`TabMotion`) |
 | `MainActivity.kt` | The tabs, the floating toolbar (`HorizontalFloatingToolbar` + Add FAB), global dialogs (update prompt, manual add); sends a first run to `OnboardingActivity` |
 | `ui/screens/*` | Home, Transactions, Analysis, Accounts, Settings (tabs); Setup, Review, Updates, Changelog, Categories… (pages) |
 | `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs at the text's measured stroke weight), `SwipeRow` (swipe to reveal Archive/Remove, on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips) |

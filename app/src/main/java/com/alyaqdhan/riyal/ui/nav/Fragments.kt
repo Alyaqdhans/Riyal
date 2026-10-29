@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import com.alyaqdhan.riyal.MainActivity
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.Tab
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.riyalViewModel
 import com.alyaqdhan.riyal.ui.MainViewModel
@@ -23,28 +24,20 @@ import com.alyaqdhan.riyal.ui.theme.RiyalTheme
 import java.time.LocalDate
 
 /**
- * The five tabs of res/navigation/nav_graph.xml, each inflating its own layout from
- * res/layout and rendering its screen with Compose Material 3 inside it. They switch in
- * place under the floating toolbar; anything opened from one of them is a page of its
- * own ([PageActivity]), which the phone opens with its own transition.
+ * The five tabs ([Tab]), each inflating its own layout from res/layout and rendering its
+ * screen with Compose Material 3 inside it. They slide in place under the floating
+ * toolbar; anything opened from one of them is a page of its own ([PageActivity]),
+ * which the phone opens with its own transition.
  */
 abstract class ScreenFragment(@LayoutRes layout: Int) : Fragment(layout) {
 
     protected val vm: MainViewModel get() = requireContext().riyalViewModel
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        // Tabs slide sideways into one another, in the toolbar's order (TabSlide).
-        TabSlide().let {
-            enterTransition = it
-            exitTransition = it
-            reenterTransition = it
-            returnTransition = it
-        }
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        // Every tab stays built once made; only the one showing is visible, and the rest
+        // stay laid out, unseen, so switching to them is instant (MainActivity.openTab).
+        if ((activity as? MainActivity)?.isShowing(this) == false) view.visibility = View.INVISIBLE
         view.findViewById<ComposeView>(R.id.compose_view).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             // Named Screen(), not Content(): inside apply {} the ComposeView is the innermost
@@ -64,8 +57,8 @@ abstract class ScreenFragment(@LayoutRes layout: Int) : Fragment(layout) {
     protected abstract fun Screen()
 
     /** Switches to a top-level screen the way the toolbar does. */
-    protected fun openTab(destination: Int) {
-        (activity as? MainActivity)?.openTab(destination)
+    internal fun openTab(tab: Tab) {
+        (activity as? MainActivity)?.openTab(tab)
     }
 
     protected fun open(page: Class<out PageActivity>) {
@@ -96,9 +89,9 @@ class HomeFragment : ScreenFragment(R.layout.fragment_home) {
             onOpenSetup = { open(SetupActivity::class.java) },
             // Accounts, Transactions and Analysis are tabs rather than pages, so these go
             // through the same switch the toolbar uses.
-            onOpenAccounts = { openTab(R.id.accountsFragment) },
-            onOpenTransactions = { openTab(R.id.transactionsFragment) },
-            onOpenAnalysis = { openTab(R.id.analysisFragment) },
+            onOpenAccounts = { openTab(Tab.ACCOUNTS) },
+            onOpenTransactions = { openTab(Tab.TRANSACTIONS) },
+            onOpenAnalysis = { openTab(Tab.ANALYSIS) },
         )
     }
 }
@@ -166,7 +159,7 @@ class SettingsFragment : ScreenFragment(R.layout.fragment_settings) {
     override fun Screen() {
         SettingsScreen(
             vm,
-            onOpenAccounts = { openTab(R.id.accountsFragment) },
+            onOpenAccounts = { openTab(Tab.ACCOUNTS) },
             onOpenCategories = { open(CategoriesActivity::class.java) },
             onOpenUpdates = { open(UpdatesActivity::class.java) },
             onOpenSetup = { open(SetupActivity::class.java) },

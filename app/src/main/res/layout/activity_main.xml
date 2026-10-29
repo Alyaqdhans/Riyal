@@ -1,18 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- The five tabs. Every other page is an activity with a layout of its own, so the
-         phone moves between them with its own transition. -->
+    <!-- The five tabs (MainActivity's Tab), each a fragment that stays here once built.
+         Every other page is an activity with a layout of its own, so the phone moves
+         between them with its own transition. -->
     <androidx.fragment.app.FragmentContainerView
-        android:id="@+id/nav_host"
-        android:name="androidx.navigation.fragment.NavHostFragment"
+        android:id="@+id/tabs"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:defaultNavHost="true"
-        app:navGraph="@navigation/nav_graph" />
+        android:layout_height="match_parent" />
 
     <!-- Material 3 Expressive floating toolbar and its Add button, hovering over the
          content at the bottom centre rather than taking a row of its own. The tabs

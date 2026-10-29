@@ -5,9 +5,12 @@ package com.alyaqdhan.riyal
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Looper
+import android.view.View
+import android.view.animation.PathInterpolator
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.DrawableRes
-import androidx.annotation.IdRes
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -38,9 +41,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.navigation.NavController
-import androidx.navigation.fragment.NavHostFragment
-import androidx.navigation.navOptions
+import androidx.fragment.app.Fragment
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Language
 import com.alyaqdhan.riyal.core.Verbose
@@ -48,27 +49,39 @@ import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.Words
 import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
 import com.alyaqdhan.riyal.ui.compose.UpdateDialogHost
+import com.alyaqdhan.riyal.ui.nav.AccountsFragment
+import com.alyaqdhan.riyal.ui.nav.AnalysisFragment
+import com.alyaqdhan.riyal.ui.nav.HomeFragment
 import com.alyaqdhan.riyal.ui.nav.OnboardingActivity
-import com.alyaqdhan.riyal.ui.nav.TabMotion
+import com.alyaqdhan.riyal.ui.nav.ScreenFragment
+import com.alyaqdhan.riyal.ui.nav.SettingsFragment
+import com.alyaqdhan.riyal.ui.nav.TransactionsFragment
 import com.alyaqdhan.riyal.ui.theme.RiyalTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * The five tabs and the floating toolbar that switches between them. The tabs are
- * fragments of res/navigation/nav_graph.xml, swapped in place under the toolbar; every
- * page opened from one of them is an activity of its own (ui/nav/Pages.kt), so the
- * phone opens and closes it with its own transition.
+ * fragments ([Tab]) that slide in place under the toolbar; every page opened from one
+ * of them is an activity of its own (ui/nav/Pages.kt), so the phone opens and closes it
+ * with its own transition.
  */
 class MainActivity : AppCompatActivity() {
 
     private val vm: MainViewModel get() = riyalViewModel
-    private val currentDestination = MutableStateFlow(0)
+    private val currentTab = MutableStateFlow(Tab.HOME)
+    private val backToHome = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() = openTab(Tab.HOME)
+    }
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(Language.latinDigits(newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Before the fragments come back, so each knows whether it is the one showing.
+        savedInstanceState?.getString(KEY_TAB)?.let { name ->
+            Tab.entries.firstOrNull { it.name == name }?.let { currentTab.value = it }
+        }
         installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -85,20 +98,24 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(R.layout.activity_main)
 
-        val navHost = supportFragmentManager.findFragmentById(R.id.nav_host) as NavHostFragment
-        val navController = navHost.navController
-        // Called as a switch begins and before its fragments move, so this is where the
-        // slide learns which way to go. The first call is the tab the screen opens on, which
-        // does not slide in from anywhere.
-        var lastTab: Int? = null
-        navController.addOnDestinationChangedListener { _, destination, _ ->
-            val from = Tab.entries.indexOfFirst { it.destination == lastTab }
-            val to = Tab.entries.indexOfFirst { it.destination == destination.id }
-            TabMotion.armed = from >= 0 && to >= 0 && from != to
-            TabMotion.forward = to > from
-            lastTab = destination.id
-            currentDestination.value = destination.id
-        }
+        // A screen rebuilt in place gets its tabs back from the fragment manager.
+        if (supportFragmentManager.findFragmentByTag(currentTab.value.name) == null) addTab(currentTab.value)
+        // Back from another tab goes Home, and back from Home leaves.
+        onBackPressedDispatcher.addCallback(this, backToHome)
+        backToHome.isEnabled = currentTab.value != Tab.HOME
+        // The other tabs are built soon after the app opens, one whenever the main thread
+        // has nothing else to do, so even the first switch to each is instant. Not at once:
+        // Home's figures are rolling in for the first moment.
+        window.decorView.postDelayed({
+            Looper.myQueue().addIdleHandler {
+                if (isDestroyed) return@addIdleHandler false
+                if (supportFragmentManager.isStateSaved) return@addIdleHandler true
+                val next = Tab.entries.firstOrNull { supportFragmentManager.findFragmentByTag(it.name) == null }
+                    ?: return@addIdleHandler false
+                addTab(next)
+                true
+            }
+        }, PREWARM_DELAY_MS)
         vm.autoScanOnLaunch(fresh = savedInstanceState == null)
         // Once a day at most, only when "check on start" is on, and silent unless it
         // finds something. An empty version string parses to nothing, which is never
@@ -115,7 +132,7 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<ComposeView>(R.id.bottom_bar).setContent {
             RiyalTheme {
-                val selected by currentDestination.collectAsState()
+                val selected by currentTab.collectAsState()
                 val update by vm.updateState.collectAsState()
                 RiyalToolbar(
                     selected = selected,
@@ -124,7 +141,7 @@ class MainActivity : AppCompatActivity() {
                     badges = buildSet {
                         if (update is MainViewModel.UpdateState.Available) add(Tab.SETTINGS)
                     },
-                    onSelect = { destId -> switchTab(navController, destId) },
+                    onSelect = ::openTab,
                     onAdd = { vm.requestManualAdd() },
                 )
 
@@ -154,42 +171,94 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Switches to a top-level screen from somewhere other than the toolbar - Home's
-     * accounts card, Settings' accounts row - the same move the toolbar makes, so the
-     * screen is never stacked on top of the one it came from.
-     */
-    fun openTab(@IdRes destination: Int) {
-        val navHost = supportFragmentManager.findFragmentById(R.id.nav_host) as NavHostFragment
-        switchTab(navHost.navController, destination)
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(KEY_TAB, currentTab.value.name)
     }
 
-    private fun switchTab(navController: NavController, destId: Int) {
-        if (navController.currentDestination?.id == destId) return
-        navController.navigate(
-            destId,
-            null,
-            navOptions {
-                launchSingleTop = true
-                restoreState = true
-                popUpTo(R.id.homeFragment) { saveState = true }
-            },
-        )
+    /** Whether [fragment] is the tab on screen; the others stay laid out but unseen. */
+    internal fun isShowing(fragment: Fragment): Boolean = fragment.tag == currentTab.value.name
+
+    /**
+     * Switches tabs, from the toolbar or from inside a screen (Home's accounts card,
+     * Settings' accounts row). Every tab stays built once made, so a switch only slides
+     * two views that are already drawn: the toolbar's highlight and the slide start on
+     * the same frame, and each tab keeps its scroll.
+     */
+    internal fun openTab(tab: Tab) {
+        val from = currentTab.value
+        if (tab == from || supportFragmentManager.isStateSaved) return
+        val incoming = supportFragmentManager.findFragmentByTag(tab.name) ?: addTab(tab)
+        val outgoing = supportFragmentManager.findFragmentByTag(from.name)
+        currentTab.value = tab
+        backToHome.isEnabled = tab != Tab.HOME
+        slide(outgoing?.view, incoming.view ?: return, forward = tab.ordinal > from.ordinal)
+    }
+
+    private fun addTab(tab: Tab): Fragment {
+        val fragment = tab.make()
+        supportFragmentManager.beginTransaction()
+            .setReorderingAllowed(true)
+            .add(R.id.tabs, fragment, tab.name)
+            .commitNow()
+        return fragment
+    }
+
+    /**
+     * The whole width of the screen, the way pages of one thing move: a tab further
+     * along the toolbar comes in from its end and the one it replaces leaves by the
+     * start, and the other way going back. The end is the left in Arabic, as the
+     * toolbar's order is.
+     */
+    private fun slide(outgoing: View?, incoming: View, forward: Boolean) {
+        val width = findViewById<View>(R.id.tabs).width.toFloat()
+        val towardsEnd = if (forward != (window.decorView.layoutDirection == View.LAYOUT_DIRECTION_RTL)) 1f else -1f
+        // A tab passed over in a quick run of switches is put away where it stands.
+        supportFragmentManager.fragments.mapNotNull { it.view }
+            .filter { it !== outgoing && it !== incoming }
+            .forEach {
+                it.animate().cancel()
+                it.translationX = 0f
+                it.visibility = View.INVISIBLE
+            }
+        incoming.animate().cancel()
+        // One still on its way out comes back from where it is.
+        if (incoming.visibility != View.VISIBLE) incoming.translationX = towardsEnd * width
+        incoming.visibility = View.VISIBLE
+        incoming.animate().translationX(0f).setDuration(SLIDE_MS).setInterpolator(EASING).withLayer().start()
+        outgoing?.let { view ->
+            view.animate().cancel()
+            view.animate().translationX(-towardsEnd * width).setDuration(SLIDE_MS).setInterpolator(EASING).withLayer()
+                .withEndAction {
+                    view.visibility = View.INVISIBLE
+                    view.translationX = 0f
+                }
+                .start()
+        }
+    }
+
+    private companion object {
+        const val KEY_TAB = "tab"
+        const val SLIDE_MS = 250L
+        const val PREWARM_DELAY_MS = 2_000L
+
+        /** Material's standard easing: quick to start, settling gently, no overshoot. */
+        val EASING = PathInterpolator(0.2f, 0f, 0f, 1f)
     }
 }
 
 /** The five top-level screens, in the toolbar's order. */
-private enum class Tab(
-    @param:IdRes val destination: Int,
+internal enum class Tab(
+    val make: () -> ScreenFragment,
     @param:DrawableRes val icon: Int,
     @param:DrawableRes val selectedIcon: Int,
     @param:StringRes val label: Int,
 ) {
-    HOME(R.id.homeFragment, R.drawable.ic_nav_home, R.drawable.ic_nav_home_fill, R.string.tab_home_a11y),
-    TRANSACTIONS(R.id.transactionsFragment, R.drawable.ic_nav_records, R.drawable.ic_nav_records_fill, R.string.tab_transactions),
-    ANALYSIS(R.id.analysisFragment, R.drawable.ic_nav_analysis, R.drawable.ic_nav_analysis_fill, R.string.tab_analysis),
-    ACCOUNTS(R.id.accountsFragment, R.drawable.ic_nav_accounts, R.drawable.ic_nav_accounts_fill, R.string.acct_title),
-    SETTINGS(R.id.settingsFragment, R.drawable.ic_nav_settings, R.drawable.ic_nav_settings_fill, R.string.tab_settings),
+    HOME(::HomeFragment, R.drawable.ic_nav_home, R.drawable.ic_nav_home_fill, R.string.tab_home_a11y),
+    TRANSACTIONS(::TransactionsFragment, R.drawable.ic_nav_records, R.drawable.ic_nav_records_fill, R.string.tab_transactions),
+    ANALYSIS(::AnalysisFragment, R.drawable.ic_nav_analysis, R.drawable.ic_nav_analysis_fill, R.string.tab_analysis),
+    ACCOUNTS(::AccountsFragment, R.drawable.ic_nav_accounts, R.drawable.ic_nav_accounts_fill, R.string.acct_title),
+    SETTINGS(::SettingsFragment, R.drawable.ic_nav_settings, R.drawable.ic_nav_settings_fill, R.string.tab_settings),
 }
 
 /**
@@ -200,9 +269,9 @@ private enum class Tab(
  */
 @Composable
 private fun RiyalToolbar(
-    selected: Int,
+    selected: Tab,
     badges: Set<Tab>,
-    onSelect: (Int) -> Unit,
+    onSelect: (Tab) -> Unit,
     onAdd: () -> Unit,
 ) {
     HorizontalFloatingToolbar(
@@ -221,7 +290,7 @@ private fun RiyalToolbar(
         colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
     ) {
         Tab.entries.forEach { tab ->
-            val isSelected = selected == tab.destination
+            val isSelected = selected == tab
             TooltipBox(
                 positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
                 tooltip = { PlainTooltip { Text(stringResource(tab.label)) } },
@@ -229,7 +298,7 @@ private fun RiyalToolbar(
             ) {
                 FilledIconToggleButton(
                     checked = isSelected,
-                    onCheckedChange = { onSelect(tab.destination) },
+                    onCheckedChange = { onSelect(tab) },
                     colors = IconButtonDefaults.filledIconToggleButtonColors(
                         containerColor = Color.Transparent,
                         contentColor = LocalContentColor.current,

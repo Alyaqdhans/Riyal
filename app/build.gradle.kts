@@ -81,13 +81,13 @@ dependencies {
     // Material Components (Views) 1.14.0: the activities' theme. Pages are activities with
     // their own layouts, so the phone's own transition plays between them.
     implementation(libs.material)
-    implementation(libs.androidx.navigation.fragment)
+    implementation(libs.androidx.fragment)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.core.splashscreen)
     // Compose Material 3 1.5.0-alpha23: Material 3 Expressive screens rendered inside
-    // the routed fragments (MaterialExpressiveTheme, expressive MotionScheme, LoadingIndicator…).
+    // the tab fragments (MaterialExpressiveTheme, expressive MotionScheme, LoadingIndicator…).
     implementation(libs.compose.material3)
     implementation(libs.compose.icons.core)
     // Vico: proper chart library (Analysis 6-month columns), Compose + Material 3.
