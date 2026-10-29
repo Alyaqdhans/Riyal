@@ -801,6 +801,7 @@
     <string name="log_scan_no_permission">طُلب الفحص، لكن إذن READ_SMS غير ممنوح، فلم يُقرأ شيء</string>
     <string name="log_scan_aborted_permission">أُلغي الفحص: رفض النظام قراءة الرسائل (هل سُحب الإذن؟)</string>
     <string name="log_scan_failed">فشل الفحص: %1$s: %2$s</string>
+    <string name="log_scan_failed_at">    · في %1$s (%2$s)</string>
     <string name="log_account_added">أضفت حساباً: %1$s · الرصيد الافتتاحي %2$s</string>
     <string name="log_account_updated">عدَّلت حساباً: %1$s · الرصيد الافتتاحي %2$s</string>
     <string name="log_account_deleted">حذفت حساب \"%1$s\" · سجلاته محفوظة، وصارت بلا حساب</string>

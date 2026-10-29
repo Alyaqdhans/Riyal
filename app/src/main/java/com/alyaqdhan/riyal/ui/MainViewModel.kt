@@ -237,6 +237,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
             } catch (e: Exception) {
                 Verbose.fail(R.string.log_scan_failed, e.javaClass.simpleName, e.message)
+                // Where in Riyal's own code it stopped: a copied log then says what broke,
+                // where "NoSuchElementException: null" alone said nothing.
+                e.stackTrace.filter { it.className.startsWith("com.alyaqdhan.riyal") }.take(3).forEach {
+                    Verbose.fail(R.string.log_scan_failed_at, "${it.fileName}:${it.lineNumber}", it.methodName)
+                }
                 Verbose.flush()
                 val unknown = getApplication<Application>().getString(R.string.scan_unknown_error)
                 _scanState.value = ScanState.Failed(e.message ?: unknown)

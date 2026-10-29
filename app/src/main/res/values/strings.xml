@@ -729,6 +729,7 @@
     <string name="log_scan_no_permission">scan requested, but READ_SMS is not granted, nothing was read</string>
     <string name="log_scan_aborted_permission">scan aborted: the system refused the SMS read (permission revoked?)</string>
     <string name="log_scan_failed">scan failed: %1$s: %2$s</string>
+    <string name="log_scan_failed_at">    · at %1$s (%2$s)</string>
     <string name="log_account_added">account added by you: %1$s · opening %2$s</string>
     <string name="log_account_updated">account updated by you: %1$s · opening %2$s</string>
     <string name="log_account_deleted">account deleted by you: \"%1$s\" · its records kept, now unassigned</string>
