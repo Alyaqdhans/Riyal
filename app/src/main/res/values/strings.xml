@@ -401,6 +401,10 @@
     <string name="needs_always_ask_name">Always ask for this name</string>
     <string name="needs_hide_message">Hide the message</string>
     <string name="needs_read_message">Read the message</string>
+    <string name="needs_file_as">File as</string>
+    <string name="needs_choose_records">Choose records</string>
+    <string name="needs_chosen_of">%1$d of %2$d ticked</string>
+    <string name="needs_show_all">Show all %d</string>
 
     <string name="acct_generic_name">Account</string>
     <string name="bank_muscat">Bank Muscat</string>

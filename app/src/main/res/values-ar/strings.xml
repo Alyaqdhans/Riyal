@@ -453,6 +453,10 @@
     <string name="needs_always_ask_name">اسألني دائماً عن هذا الاسم</string>
     <string name="needs_hide_message">إخفاء الرسالة</string>
     <string name="needs_read_message">قراءة الرسالة</string>
+    <string name="needs_file_as">صنِّفها تحت</string>
+    <string name="needs_choose_records">اختيار السجلات</string>
+    <string name="needs_chosen_of">%1$d من %2$d محدَّدة</string>
+    <string name="needs_show_all">عرض الكل (%d)</string>
 
     <string name="acct_generic_name">حساب</string>
     <string name="bank_muscat">بنك مسقط</string>

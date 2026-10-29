@@ -2,6 +2,28 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import com.alyaqdhan.riyal.ui.compose.typeIcon
+import com.alyaqdhan.riyal.ui.compose.typeLabel
+import com.alyaqdhan.riyal.ui.compose.typeTone
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -17,7 +39,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -75,6 +96,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private val recordFmt: DateTimeFormatter get() = Dates.pattern("d MMM uu")
+
+/** A name's card, the same across rescans: its name and the side it is on. */
+private fun keyOf(group: Stats.MerchantGroup) = group.merchant.lowercase() + "|" + group.type
 private val recordClockFmt: DateTimeFormatter get() = Dates.pattern("h:mm a")
 
 /**
@@ -121,6 +145,11 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
     val waiting = remember(txns, deferred) { txns.count { it.id in deferred } }
 
     var confirmLeave by rememberSaveable { mutableStateOf(false) }
+    // One card open at a time: opening a name folds the last one, so its categories are
+    // never pushed down by another card's.
+    var openKey by rememberSaveable { mutableStateOf<String?>(null) }
+    val list = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     if (confirmLeave) {
         LeaveAsOtherDialog(
@@ -154,6 +183,7 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
     ) { padding ->
         ScanRefresh(vm, Modifier.padding(padding)) {
         LazyColumn(
+            state = list,
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -198,12 +228,24 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                 }
             }
 
-            items(groups, key = { it.merchant.lowercase() + "|" + it.type }) { group ->
+            itemsIndexed(groups, key = { _, group -> keyOf(group) }) { index, group ->
+                val key = keyOf(group)
                 MerchantCard(
                     group = group,
                     marked = UserRule.patternOf(group.merchant) in askEachTime,
                     order = order,
-                    onFile = { categoryId, ids -> vm.fileMerchant(group, categoryId, ids) },
+                    open = openKey == key,
+                    onToggle = {
+                        openKey = if (openKey == key) null else key
+                        // Brought to the top as it opens, so its categories are on screen.
+                        if (openKey == key) scope.launch { list.animateScrollToItem(index + 1) }
+                    },
+                    onFile = { categoryId, ids ->
+                        // Filing the whole name takes its card away; the next one opens
+                        // in its place, so a backlog is worked through without hunting.
+                        if (ids.size == group.count) openKey = groups.getOrNull(index + 1)?.let(::keyOf)
+                        vm.fileMerchant(group, categoryId, ids)
+                    },
                     onAskEachTime = { vm.setAskEachTime(group.merchant, it) },
                 )
             }
@@ -276,14 +318,14 @@ private fun LeaveAsOtherDialog(
 }
 
 /**
- * One decision: who, how many, how much, and the categories to put them in. The chips
- * stay folded until asked for, so the list reads as a ranking of what is waiting rather
- * than a wall of every category repeated per row.
+ * One decision: who, how many, how much, and the categories to put them in.
  *
- * Opening it also lists the records themselves, each with a tick. They all start
- * ticked, because "all of them" is the answer nearly every time and the fast path must
- * stay one tap; untick the odd one out and the answer covers the rest. Filing part of
- * a name saves no rule - see [MainViewModel.fileMerchant].
+ * Folded, it is a row of the ranking. Opened (one card at a time - see the screen), the
+ * categories come straight under its name, so the answer is one tap below the question
+ * however many records the name has. The records themselves are behind "Choose records":
+ * all of them are filed unless some are unticked, which is the answer nearly every
+ * time, and a long list of them in the way of the categories was the screen's problem.
+ * Filing part of a name saves no rule - see [MainViewModel.fileMerchant].
  *
  * A [marked] name is still one decision - four records from one person still need a
  * category, and one tap is still better than four. What it loses is the memory: the
@@ -295,10 +337,11 @@ private fun MerchantCard(
     group: Stats.MerchantGroup,
     marked: Boolean,
     order: CategoryOrder,
+    open: Boolean,
+    onToggle: () -> Unit,
     onFile: (String, Set<String>) -> Unit,
     onAskEachTime: (Boolean) -> Unit,
 ) {
-    var open by rememberSaveable(group.merchant, group.type) { mutableStateOf(false) }
     // Keyed on the ids, so a card whose records changed under it starts from "all of
     // them" again rather than holding a selection of records that are no longer there.
     //
@@ -311,142 +354,184 @@ private fun MerchantCard(
     // Which messages are open. Several at once, because deciding between two records
     // usually means reading both.
     var showing by rememberSaveable(cardKey) { mutableStateOf(listOf<String>()) }
+    var choosing by rememberSaveable(cardKey) { mutableStateOf(false) }
+    var everyRecord by rememberSaveable(cardKey) { mutableStateOf(false) }
     val chosen = remember(group.txnIds, excluded) { group.txnIds.filter { it !in excluded } }
+    val motion = MaterialTheme.motionScheme
+    val turn by animateFloatAsState(if (open) 180f else 0f, motion.defaultSpatialSpec())
+    val (toneBg, toneFg) = typeTone(group.type)
 
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(
-                Modifier.fillMaxWidth().clickable { open = !open },
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggle)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier.size(40.dp).background(toneBg, CircleShape),
+                contentAlignment = Alignment.Center,
             ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        group.merchant,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
+                Icon(
+                    painterResource(typeIcon(group.type)),
+                    contentDescription = null,
+                    tint = toneFg,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    group.merchant,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    if (marked) {
+                        stringResource(R.string.needs_always_asked)
+                    } else {
                         stringResource(
                             R.string.needs_group_line,
                             counted(R.plurals.count_records, group.count),
-                            stringResource(
-                                if (group.type == TxnType.INCOME) R.string.label_income
-                                else R.string.label_expense
-                            ),
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    MoneyText(
-                        group.amountMinor,
-                        group.currency,
-                        sign = MoneySign.NONE,
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                }
-                Icon(
-                    if (open) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                    contentDescription = stringResource(
-                        if (open) R.string.needs_hide_records else R.string.needs_show_records
-                    ),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            if (marked) {
-                Text(
-                    stringResource(R.string.needs_always_asked),
+                            stringResource(typeLabel(group.type)),
+                        )
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            MoneyText(
+                group.amountMinor,
+                group.currency,
+                sign = MoneySign.NONE,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Icon(
+                Icons.Filled.KeyboardArrowDown,
+                contentDescription = stringResource(
+                    if (open) R.string.needs_hide_records else R.string.needs_show_records
+                ),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.rotate(turn),
+            )
+        }
 
-            if (open) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    HorizontalDivider()
-                    for (txn in group.txns) {
-                        RecordRow(
-                            txn = txn,
-                            checked = txn.id !in excluded,
-                            showing = txn.id in showing,
-                            onToggle = {
-                                excluded = if (txn.id in excluded) {
-                                    excluded - txn.id
-                                } else {
-                                    excluded + txn.id
-                                }
-                            },
-                            onShow = {
-                                showing = if (txn.id in showing) {
-                                    showing - txn.id
-                                } else {
-                                    showing + txn.id
-                                }
-                            },
+        AnimatedVisibility(
+            visible = open,
+            enter = expandVertically(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
+            exit = shrinkVertically(motion.defaultSpatialSpec()) + fadeOut(motion.defaultEffectsSpec()),
+        ) {
+            Column(
+                Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    stringResource(R.string.needs_file_as),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                CategoryChips(
+                    type = group.type,
+                    order = order,
+                    // Nothing is preselected: the category it currently carries is
+                    // the fallback, and showing it as a choice already made is how
+                    // a backlog gets "confirmed" without being read.
+                    selectedId = "",
+                    onSelect = { if (chosen.isNotEmpty()) onFile(it, chosen.toSet()) },
+                )
+                Text(
+                    when {
+                        chosen.isEmpty() -> stringResource(R.string.needs_nothing_ticked)
+                        chosen.size < group.count -> stringResource(
+                            R.string.needs_files_some, chosen.size, group.count
                         )
-                    }
-                    // Only worth a control once there is a mixed state to get out of.
-                    if (excluded.isNotEmpty()) {
-                        TextButton(onClick = { excluded = emptyList() }, shapes = ButtonDefaults.shapes()) {
-                            Text(stringResource(R.string.needs_select_all, group.count))
+                        marked -> stringResource(R.string.needs_files_all_asked, group.count)
+                        else -> stringResource(R.string.needs_files_all_future, group.count)
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (chosen.isEmpty()) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+                HorizontalDivider()
+                val plain = ListItemDefaults.colors(containerColor = Color.Transparent)
+                val chooseTurn by animateFloatAsState(if (choosing) 180f else 0f, motion.defaultSpatialSpec())
+                ListItem(
+                    onClick = { choosing = !choosing },
+                    colors = plain,
+                    contentPadding = PaddingValues(0.dp),
+                    supportingContent = {
+                        Text(stringResource(R.string.needs_chosen_of, chosen.size, group.count))
+                    },
+                    trailingContent = {
+                        Icon(
+                            Icons.Filled.KeyboardArrowDown,
+                            contentDescription = null,
+                            modifier = Modifier.rotate(chooseTurn),
+                        )
+                    },
+                ) { Text(stringResource(R.string.needs_choose_records)) }
+                AnimatedVisibility(
+                    visible = choosing,
+                    enter = expandVertically(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
+                    exit = shrinkVertically(motion.defaultSpatialSpec()) + fadeOut(motion.defaultEffectsSpec()),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        val listed = if (everyRecord) group.txns else group.txns.take(RECORDS_AT_FIRST)
+                        for (txn in listed) {
+                            RecordRow(
+                                txn = txn,
+                                checked = txn.id !in excluded,
+                                showing = txn.id in showing,
+                                onToggle = {
+                                    excluded = if (txn.id in excluded) excluded - txn.id else excluded + txn.id
+                                },
+                                onShow = {
+                                    showing = if (txn.id in showing) showing - txn.id else showing + txn.id
+                                },
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (!everyRecord && group.txns.size > RECORDS_AT_FIRST) {
+                                TextButton(onClick = { everyRecord = true }, shapes = ButtonDefaults.shapes()) {
+                                    Text(stringResource(R.string.needs_show_all, group.count))
+                                }
+                            }
+                            // Only worth a control once there is a mixed state to get out of.
+                            if (excluded.isNotEmpty()) {
+                                TextButton(onClick = { excluded = emptyList() }, shapes = ButtonDefaults.shapes()) {
+                                    Text(stringResource(R.string.needs_select_all, group.count))
+                                }
+                            }
                         }
                     }
-                    HorizontalDivider()
-
-                    CategoryChips(
-                        type = group.type,
-                        order = order,
-                        // Nothing is preselected: the category it currently carries is
-                        // the fallback, and showing it as a choice already made is how
-                        // a backlog gets "confirmed" without being read.
-                        selectedId = "",
-                        onSelect = { if (chosen.isNotEmpty()) onFile(it, chosen.toSet()) },
-                    )
-                    // One short line, and only the part that is not already obvious
-                    // from the ticks above it. The reasoning moved into the help.
-                    Text(
-                        when {
-                            chosen.isEmpty() -> stringResource(R.string.needs_nothing_ticked)
-                            chosen.size < group.count -> stringResource(
-                                R.string.needs_files_some, chosen.size, group.count
-                            )
-                            marked -> stringResource(
-                                R.string.needs_files_all_asked, group.count
-                            )
-                            else -> stringResource(
-                                R.string.needs_files_all_future, group.count
-                            )
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    // Marking someone while working the backlog, rather than having to
-                    // file them first and undo it afterwards. Inside the card, because
-                    // it is the rarer of the two things to do with a name and it was
-                    // costing a line of text on every row at rest.
-                    TextButton(
-                        onClick = { onAskEachTime(!marked) },
-                        contentPadding = PaddingValues(horizontal = 4.dp),
-                        shapes = ButtonDefaults.shapes(),
-                    ) {
-                        Text(
-                            stringResource(
-                                if (marked) R.string.needs_remember_name
-                                else R.string.needs_always_ask_name
-                            )
-                        )
-                    }
                 }
+                // Marking someone while working the backlog, rather than having to file
+                // them first and undo it afterwards: a switch row, like every other
+                // setting that stays on.
+                ListItem(
+                    checked = marked,
+                    onCheckedChange = onAskEachTime,
+                    colors = ListItemDefaults.colors(
+                        containerColor = Color.Transparent,
+                        selectedContainerColor = Color.Transparent,
+                        selectedContentColor = plain.contentColor,
+                        selectedSupportingContentColor = plain.supportingContentColor,
+                        selectedTrailingContentColor = plain.trailingContentColor,
+                    ),
+                    contentPadding = PaddingValues(0.dp),
+                    trailingContent = { Switch(checked = marked, onCheckedChange = null) },
+                ) { Text(stringResource(R.string.needs_always_ask_name)) }
             }
-
-
         }
     }
 }
+
+/** Records listed when a card's records are first opened; the rest are one tap away. */
+private const val RECORDS_AT_FIRST = 5
 
 /**
  * One record inside a merchant's card: enough to recognise it, a tick to leave it out,
@@ -515,7 +600,12 @@ private fun RecordRow(
             )
         }
 
-        if (showing) {
+        val motion = MaterialTheme.motionScheme
+        AnimatedVisibility(
+            visible = showing,
+            enter = expandVertically(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
+            exit = shrinkVertically(motion.defaultSpatialSpec()) + fadeOut(motion.defaultEffectsSpec()),
+        ) {
             // Quoted, not restated: the bank's own words, in a block of their own, with
             // no attempt to tidy the mixed Arabic and English the message arrived in.
             //
