@@ -584,6 +584,9 @@ private fun ReviewCard(
                     label = { stringResource(kindLabel(it!!)) },
                     icon = { kindIcon(it!!) },
                     tone = { kindTone(it!!) },
+                    // Money out and in side by side; "not a transaction" is a different
+                    // kind of answer, so it has the row under them to itself.
+                    perRow = 2,
                 )
             }
             Row(

@@ -142,7 +142,8 @@ fun typeTone(type: TxnType): Pair<Color, Color> = when (type) {
 /**
  * One of a few, as Material 3 Expressive's connected button group: the chosen one fills
  * in [tone] and rounds fully, the others stay quiet. Replaces segmented buttons, which
- * read as a row of boxes.
+ * read as a row of boxes. [perRow] fixes how many sit on a row; left out, they share one
+ * row when every label fits and go two to a row when not.
  */
 @Composable
 fun <T> ConnectedChoice(
@@ -155,6 +156,7 @@ fun <T> ConnectedChoice(
     tone: @Composable (T) -> Pair<Color, Color> = {
         MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
     },
+    perRow: Int? = null,
 ) {
     val labels = options.map { label(it) }
     val measurer = rememberTextMeasurer()
@@ -169,9 +171,9 @@ fun <T> ConnectedChoice(
                 options.size * (16.dp + if (icon != null) 24.dp else 0.dp).roundToPx() +
                 (options.size - 1) * ButtonGroupDefaults.ConnectedSpaceBetween.roundToPx()
         }
-        val perRow = if (needed <= constraints.maxWidth) options.size else 2
+        val inRow = perRow ?: if (needed <= constraints.maxWidth) options.size else 2
         Column(verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
-            options.indices.chunked(perRow).forEach { row ->
+            options.indices.chunked(inRow).forEach { row ->
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
