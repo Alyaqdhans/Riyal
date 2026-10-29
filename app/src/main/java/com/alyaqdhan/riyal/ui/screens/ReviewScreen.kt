@@ -3,8 +3,22 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.ui.res.painterResource
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextDirection
+import com.alyaqdhan.riyal.ui.compose.typeIcon
+import com.alyaqdhan.riyal.ui.compose.typeLabel
+import com.alyaqdhan.riyal.ui.compose.typeTone
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -23,10 +37,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -191,6 +203,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                             TransferCard(
                                 proposal = proposal,
                                 accounts = accounts,
+                                modifier = Modifier.animateItem(),
                                 onAccept = {
                                     vm.acceptTransfer(proposal)
                                     scope.launch { snackbar.showSnackbar(merged) }
@@ -230,6 +243,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                     items(pending, key = { it.id }) { item ->
                         ReviewCard(
                             item = item,
+                            modifier = Modifier.animateItem(),
                             rememberDefault = vm.prefs.smartRules,
                             onResolve = { learn -> resolving = Resolving(item, learn) },
                             onTeach = { kind ->
@@ -295,6 +309,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                             items(dismissed, key = { "d-" + it.id }) { item ->
                                 DismissedCard(
                                     item = item,
+                                    modifier = Modifier.animateItem(),
                                     onRestore = {
                                         vm.restoreReview(item)
                                         scope.launch { snackbar.showSnackbar(restored) }
@@ -383,24 +398,24 @@ private fun TransferCard(
                     )
                 }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                MoneyAwareText(
-                    stringResource(
+            // The two messages it would merge, each with the arrow and colour Home gives
+            // money out and money in.
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                TransferLeg(
+                    type = TxnType.EXPENSE,
+                    text = stringResource(
                         R.string.review_left_account,
                         bidi("− " + Money.format(proposal.amountMinor, proposal.currency)),
                         name(proposal.fromAccountId),
                     ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
                 )
-                MoneyAwareText(
-                    stringResource(
+                TransferLeg(
+                    type = TxnType.INCOME,
+                    text = stringResource(
                         R.string.review_arrived_account,
                         bidi("+ " + Money.format(proposal.amountMinor, proposal.currency)),
                         name(proposal.toAccountId),
                     ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = successColor(),
                 )
             }
             Row(
@@ -417,6 +432,28 @@ private fun TransferCard(
     }
 }
 
+/** One side of a proposed transfer: its arrow in Home's tone, and what happened. */
+@Composable
+private fun TransferLeg(type: TxnType, text: String) {
+    val (bg, fg) = typeTone(type)
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(28.dp).background(bg, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(painterResource(typeIcon(type)), contentDescription = null, tint = fg, modifier = Modifier.size(16.dp))
+        }
+        MoneyAwareText(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+        )
+    }
+}
+
+/**
+ * One message the app could not read on its own: who sent it and when, why it stopped,
+ * the bank's own words, and the answers. A message that only lacked its direction is
+ * answered in one tap - Expense or Income, in Home's colours - and the answer is about
+ * every message written like it. Anything else is added by hand or dismissed.
+ */
 @Composable
 private fun ReviewCard(
     item: ReviewItem,
@@ -426,43 +463,42 @@ private fun ReviewCard(
     onDismiss: (alsoSimilar: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val motion = MaterialTheme.motionScheme
     Card(modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    painterResource(R.drawable.ic_sym_mail_read),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp),
-                )
+                Box(
+                    Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painterResource(R.drawable.ic_sym_mail_read),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
                 Column(Modifier.weight(1f)) {
-                    if (item.directionOnly) {
-                        MoneyText(item.amountMinor!!, item.currency ?: "",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Text(
-                            stringResource(
-                                R.string.row_account_time,
-                                item.sender,
-                                reviewDateFmt.format(
-                                    Instant.ofEpochMilli(item.atMillis)
-                                        .atZone(ZoneId.systemDefault())
-                                ),
-                            ),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        Text(item.sender, style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            reviewDateFmt.format(Instant.ofEpochMilli(item.atMillis).atZone(ZoneId.systemDefault())),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    Text(
+                        item.sender,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        reviewDateFmt.format(Instant.ofEpochMilli(item.atMillis).atZone(ZoneId.systemDefault())),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (item.directionOnly) {
+                    MoneyText(
+                        item.amountMinor!!, item.currency ?: "",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
                 }
             }
             SummaryPill(
@@ -472,35 +508,44 @@ private fun ReviewCard(
                 if (item.directionOnly) MaterialTheme.colorScheme.onSecondaryContainer
                 else MaterialTheme.colorScheme.onErrorContainer,
             )
+            // The bank's words, quoted as the backlog quotes them: three lines, and the
+            // rest slides open on a tap.
             var expanded by remember { mutableStateOf(false) }
-            Text(
-                item.body,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = if (expanded) Int.MAX_VALUE else 3,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                ) { expanded = !expanded },
-            )
+            Surface(
+                onClick = { expanded = !expanded },
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                shape = MaterialTheme.shapes.medium,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    item.body,
+                    style = MaterialTheme.typography.bodySmall.copy(textDirection = TextDirection.Content),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = if (expanded) Int.MAX_VALUE else 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .animateContentSize(motion.defaultSpatialSpec())
+                        .padding(12.dp),
+                )
+            }
             var rememberChoice by remember { mutableStateOf(rememberDefault) }
             if (!item.directionOnly) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                        ) { rememberChoice = !rememberChoice },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(checked = rememberChoice, onCheckedChange = { rememberChoice = it })
-                    Text(
-                        stringResource(R.string.review_remember_similar),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                val plain = ListItemDefaults.colors(containerColor = Color.Transparent)
+                ListItem(
+                    checked = rememberChoice,
+                    onCheckedChange = { rememberChoice = it },
+                    colors = ListItemDefaults.colors(
+                        containerColor = Color.Transparent,
+                        selectedContainerColor = Color.Transparent,
+                        selectedContentColor = plain.contentColor,
+                        selectedSupportingContentColor = plain.supportingContentColor,
+                        selectedTrailingContentColor = plain.trailingContentColor,
+                    ),
+                    contentPadding = PaddingValues(0.dp),
+                    trailingContent = { Switch(checked = rememberChoice, onCheckedChange = null) },
+                ) { Text(stringResource(R.string.review_remember_similar), style = MaterialTheme.typography.bodyMedium) }
             }
             // One question, and the answer is about every message written like this
             // one: it teaches the kind, and the inbox is read again with it, so the
@@ -510,33 +555,50 @@ private fun ReviewCard(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    FilledTonalButton(
-                        onClick = { onTeach(MessageKind.OUT) },
-                        modifier = Modifier.weight(1f),
-                        shapes = ButtonDefaults.shapes(),
-                    ) { Text(stringResource(R.string.label_expense)) }
-                    FilledTonalButton(
-                        onClick = { onTeach(MessageKind.IN) },
-                        modifier = Modifier.weight(1f),
-                        shapes = ButtonDefaults.shapes(),
-                    ) { Text(stringResource(R.string.label_income)) }
-                }
-                TextButton(onClick = { onTeach(MessageKind.NONE) }, shapes = ButtonDefaults.shapes()) {
-                    Text(stringResource(R.string.setup_kind_none))
+                    listOf(TxnType.EXPENSE to MessageKind.OUT, TxnType.INCOME to MessageKind.IN).forEach { (type, kind) ->
+                        val (bg, fg) = typeTone(type)
+                        Button(
+                            onClick = { onTeach(kind) },
+                            modifier = Modifier.weight(1f),
+                            shapes = ButtonDefaults.shapes(),
+                            colors = ButtonDefaults.buttonColors(containerColor = bg, contentColor = fg),
+                        ) {
+                            Icon(
+                                painterResource(typeIcon(type)),
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.IconSize),
+                            )
+                            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                            Text(stringResource(typeLabel(type)))
+                        }
+                    }
                 }
             }
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                if (item.directionOnly) {
+                    TextButton(onClick = { onTeach(MessageKind.NONE) }, shapes = ButtonDefaults.shapes()) {
+                        Text(stringResource(R.string.setup_kind_none))
+                    }
+                }
                 TextButton(onClick = { onDismiss(rememberChoice) }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_dismiss))
                 }
                 if (!item.directionOnly) {
-                    FilledTonalButton(
+                    Button(
                         onClick = { onResolve(rememberChoice) },
                         shapes = ButtonDefaults.shapes(),
+                        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     ) {
+                        Icon(
+                            painterResource(R.drawable.ic_sym_add),
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                         Text(stringResource(R.string.review_add_manually))
                     }
                 }
@@ -545,39 +607,28 @@ private fun ReviewCard(
     }
 }
 
+/** A dismissed message: a plain row, one tap from coming back. */
 @Composable
 private fun DismissedCard(
     item: ReviewItem,
     onRestore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-    ) {
-        Row(
-            Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(item.sender, style = MaterialTheme.typography.titleSmall)
-                Text(
-                    reviewDateFmt.format(Instant.ofEpochMilli(item.atMillis).atZone(ZoneId.systemDefault())),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    item.body,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+    ListItem(
+        modifier = modifier.fillMaxWidth(),
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        supportingContent = {
+            Text(
+                reviewDateFmt.format(Instant.ofEpochMilli(item.atMillis).atZone(ZoneId.systemDefault())) +
+                    "\n" + item.body,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        trailingContent = {
+            TextButton(onClick = onRestore, shapes = ButtonDefaults.shapes()) {
+                Text(stringResource(R.string.action_restore))
             }
-            TextButton(onClick = onRestore, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_restore)) }
-        }
-    }
+        },
+    ) { Text(item.sender, maxLines = 1, overflow = TextOverflow.Ellipsis) }
 }
