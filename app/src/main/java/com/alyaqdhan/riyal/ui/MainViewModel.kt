@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
@@ -43,6 +44,7 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -465,8 +467,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
             if (force) _updateState.value = UpdateState.Checking
+            val askedAt = SystemClock.uptimeMillis()
 
             val list = UpdateApi.releases()
+            // A tap is answered after a second at least: a check that came back at once
+            // flashed its spinner too quickly to read as having checked anything.
+            if (force) delay(MIN_CHECK_MS - (SystemClock.uptimeMillis() - askedAt))
             if (list == null) {
                 // Nothing is stamped on purpose, so the next launch tries again.
                 if (force) _updateState.value = UpdateState.Unreachable
@@ -1446,5 +1452,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         val UNSAFE_FILE_CHARS = Regex("[^A-Za-z0-9._-]")
+
+        /** The shortest a check someone asked for shows that it is checking. */
+        const val MIN_CHECK_MS = 1_000L
     }
 }

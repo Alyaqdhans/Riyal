@@ -102,7 +102,7 @@ is attached there.
   notes. **Update** downloads it with progress shown on the button, then **Install**
   hands it to Android's installer. **Skip this version** skips that version only.
 - Settings › Updates has a status card, "check on start", beta releases and skipped
-  versions.
+  versions. A check you ask for shows that it is checking for a second at least.
 - **Changelog** lists every release, with its notes and its APK.
 
 ### A layout that is easy to get around
