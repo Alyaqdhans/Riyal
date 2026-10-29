@@ -126,7 +126,8 @@ is attached there.
   now darkened just enough, its hue kept, to stand 3.5:1 on the cards (and lightened in
   the dark theme where the deep ones sank), and badge icons are fitted to their own tinted
   circle. Money-in green is dark enough to read as text on cards. Ticks on colour swatches
-  are black or white, whichever shows.
+  are black or white, whichever shows. The dark theme met the same bars already; the splash's
+  name is now lightened there to read as text does.
 - A new icon: the Omani rial sign. On Android 12 and later it takes the wallpaper's
   colours, as the app does; on older phones it is teal.
 - **Home is a dashboard:** net for the period, large, with expense and income as pills

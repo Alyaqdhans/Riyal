@@ -34,6 +34,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.ui.theme.legibleOn
+import com.alyaqdhan.riyal.ui.theme.TEXT_CONTRAST
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.min
@@ -104,7 +108,13 @@ fun LaunchSplash(ready: () -> Boolean, onLeaving: () -> Unit, onGone: () -> Unit
         onGone()
     }
 
-    val teal = colorResource(R.color.brand_teal)
+    // The brand teal, lightened on the dark splash (3.5:1 as it comes) or darkened on a
+    // light wallpaper colour, until the name reads as text does: 4.5:1.
+    val background = colorResource(R.color.splash_background)
+    val brandTeal = colorResource(R.color.brand_teal)
+    val teal = remember(brandTeal, background) {
+        Color(legibleOn(brandTeal.toArgb(), background.toArgb(), TEXT_CONTRAST))
+    }
     val pen = Brush.linearGradient(
         listOf(teal, MaterialTheme.colorScheme.tertiary),
         start = Offset(bounds.left, bounds.top),
@@ -119,7 +129,7 @@ fun LaunchSplash(ready: () -> Boolean, onLeaving: () -> Unit, onGone: () -> Unit
                 scaleX = s
                 scaleY = s
             }
-            .background(colorResource(R.color.splash_background)),
+            .background(background),
         contentAlignment = Alignment.Center,
     ) {
         Column(
