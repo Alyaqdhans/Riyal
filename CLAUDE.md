@@ -10,6 +10,12 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   cut from `master`. The owner merges it. Don't push or open PRs unless asked.
 - **No attribution in commits.** No `Co-Authored-By` or similar trailers. Commit style:
   `area: a plain-English sentence` subject, and a body that explains *why*.
+- **No real data in commits, changelogs or code.** The repo is public. Nothing from the
+  owner's or testers' messages, exports or screenshots goes into a commit message,
+  CHANGELOG.md, a comment or a test: no message text, masked names, amounts, balances,
+  account digits, references or shop names. Explain with made-up data in the same shape
+  ("accepted for AAAA####BBBB", "OMR 10.000", "007 ###### 00470", "at Example Cafe"). SMS
+  exports and screenshots are never committed.
 - **Never run an emulator.** Verify with `assembleDebug` + unit tests. The owner tests on
   a real phone from Android Studio, where the debug build installs beside the real app.
 - **Native components only.** Use stock Material 3 parts (`ListItem`,
