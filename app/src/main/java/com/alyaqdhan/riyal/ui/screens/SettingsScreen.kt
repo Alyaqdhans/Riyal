@@ -67,6 +67,7 @@ import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
+import com.alyaqdhan.riyal.ui.compose.ConfirmDeleteButton
 import com.alyaqdhan.riyal.ui.compose.CurrencyPickerSheet
 import com.alyaqdhan.riyal.ui.compose.ExchangeRatesSheet
 import com.alyaqdhan.riyal.ui.compose.ScanBar
@@ -462,16 +463,12 @@ fun SettingsScreen(
                 title = { Text(stringResource(R.string.set_wipe_title)) },
                 text = { Text(stringResource(R.string.set_wipe_body)) },
                 confirmButton = {
-                    TextButton(
-                        onClick = {
-                            pop.leave {
-                                close()
-                                onWipe()
-                            }
-                        },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        shapes = ButtonDefaults.shapes(),
-                    ) { Text(stringResource(R.string.action_delete)) }
+                    ConfirmDeleteButton(stringResource(R.string.action_delete)) {
+                        pop.leave {
+                            close()
+                            onWipe()
+                        }
+                    }
                 },
                 dismissButton = {
                     TextButton(onClick = { pop.leave(close) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }

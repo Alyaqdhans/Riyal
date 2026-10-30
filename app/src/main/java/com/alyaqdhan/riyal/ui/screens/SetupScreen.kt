@@ -81,6 +81,7 @@ import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.MainViewModel.SetupStep
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
+import com.alyaqdhan.riyal.ui.compose.ConfirmDeleteButton
 import com.alyaqdhan.riyal.ui.compose.CategoryChips
 import com.alyaqdhan.riyal.ui.compose.CategoryIcon
 import com.alyaqdhan.riyal.ui.compose.FlatBar
@@ -345,12 +346,12 @@ private fun AccountsStep(vm: MainViewModel) {
             title = { Text(stringResource(R.string.setup_not_my_bank_title, sender)) },
             text = { Text(stringResource(R.string.setup_not_my_bank_body)) },
             confirmButton = {
-                TextButton(onClick = {
+                ConfirmDeleteButton(stringResource(R.string.setup_not_my_bank)) {
                     pop.leave {
                         vm.excludeSender(sender)
                         dropping = null
                     }
-                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.setup_not_my_bank)) }
+                }
             },
             dismissButton = {
                 TextButton(onClick = { pop.leave { dropping = null } }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }

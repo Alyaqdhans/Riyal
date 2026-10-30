@@ -3,6 +3,7 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import com.alyaqdhan.riyal.ui.compose.ActionButton
+import com.alyaqdhan.riyal.ui.compose.ConfirmDeleteButton
 import com.alyaqdhan.riyal.ui.compose.DeleteButton
 import com.alyaqdhan.riyal.ui.compose.MenuChoice
 import com.alyaqdhan.riyal.ui.compose.ChoiceMenu
@@ -224,12 +225,12 @@ fun AccountsScreen(vm: MainViewModel, onBack: (() -> Unit)?) {
             },
             text = { Text(stringResource(R.string.acct_delete_body)) },
             confirmButton = {
-                TextButton(onClick = {
+                ConfirmDeleteButton(stringResource(R.string.action_delete)) {
                     pop.leave {
                         vm.deleteAccount(account.id)
                         confirmDelete = null
                     }
-                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_delete)) }
+                }
             },
             dismissButton = {
                 TextButton(onClick = { pop.leave { confirmDelete = null } }, shapes = ButtonDefaults.shapes()) {

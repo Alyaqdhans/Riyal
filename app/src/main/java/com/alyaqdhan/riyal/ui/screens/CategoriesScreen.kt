@@ -67,6 +67,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.ui.compose.ActionButton
+import com.alyaqdhan.riyal.ui.compose.ConfirmDeleteButton
 import com.alyaqdhan.riyal.ui.compose.DeleteButton
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
@@ -291,12 +292,12 @@ fun CategoriesScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
+                ConfirmDeleteButton(stringResource(R.string.action_delete)) {
                     pop.leave {
                         vm.deleteCategory(cat.id)
                         confirmDelete = null
                     }
-                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_delete)) }
+                }
             },
             dismissButton = {
                 TextButton(onClick = { pop.leave { confirmDelete = null } }, shapes = ButtonDefaults.shapes()) {

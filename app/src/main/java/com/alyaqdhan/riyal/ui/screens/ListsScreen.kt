@@ -60,6 +60,7 @@ import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.ActionButton
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.ChoiceMenu
+import com.alyaqdhan.riyal.ui.compose.ConfirmDeleteButton
 import com.alyaqdhan.riyal.ui.compose.MenuChoice
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.counted
@@ -295,12 +296,12 @@ private fun SendersList(vm: MainViewModel) {
             title = { Text(stringResource(R.string.setup_not_my_bank_title, sender)) },
             text = { Text(stringResource(R.string.setup_not_my_bank_body)) },
             confirmButton = {
-                TextButton(onClick = {
+                ConfirmDeleteButton(stringResource(R.string.lists_choice_ignore)) {
                     pop.leave {
                         confirming = null
                         vm.ignoreSender(sender)
                     }
-                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.lists_choice_ignore)) }
+                }
             },
             dismissButton = {
                 TextButton(onClick = { pop.leave { confirming = null } }, shapes = ButtonDefaults.shapes()) {
