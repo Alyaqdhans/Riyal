@@ -996,19 +996,40 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             root.optJSONArray("ignored")?.let { a ->
                 for (i in 0 until a.length()) ignored.add(a.getString(i))
             }
-            // Labels from a different template shape no longer match anything; they are
-            // dropped rather than kept as keys that can never be looked up again.
-            if (root.optInt("skeleton", Skeleton.VERSION) == Skeleton.VERSION) {
-                root.optJSONObject("labels")?.let { o ->
-                    _labels.value = buildMap {
-                        for (key in o.keys()) {
-                            val l = o.optJSONObject(key) ?: continue
-                            val kind = runCatching { MessageKind.valueOf(l.getString("k")) }.getOrNull() ?: continue
-                            put(key, TemplateLabel(kind, l.optLong("at")))
-                        }
+            val labels = root.optJSONObject("labels")?.let { o ->
+                buildMap {
+                    for (key in o.keys()) {
+                        val l = o.optJSONObject(key) ?: continue
+                        val kind = runCatching { MessageKind.valueOf(l.getString("k")) }.getOrNull() ?: continue
+                        put(key, TemplateLabel(kind, l.optLong("at")))
                     }
                 }
-                _templates.value = root.optJSONArray("templates").toListOf(::templateFromJson)
+            }.orEmpty()
+            val templates = root.optJSONArray("templates").toListOf(::templateFromJson)
+            when (root.optInt("skeleton", Skeleton.VERSION)) {
+                Skeleton.VERSION -> {
+                    _labels.value = labels
+                    _templates.value = templates
+                }
+                // The shape before shop names were set aside. What was taught is carried
+                // over through the stored messages it applies to - each kind of message's
+                // sample, every record and every Review item - instead of being dropped;
+                // the templates themselves are rebuilt by the next scan, which reads
+                // everything because the shape is in its fingerprint.
+                Skeleton.LEGACY_VERSION -> {
+                    _labels.value = Skeleton.carryOver(
+                        labels,
+                        templates.asSequence().map { it.sender to it.sampleBody } +
+                            rawTxns.asSequence().map { it.sender to it.body } +
+                            _reviews.value.asSequence().map { it.sender to it.body },
+                    )
+                    if (labels.isNotEmpty()) {
+                        Verbose.info(R.string.log_labels_carried, _labels.value.size, labels.size)
+                    }
+                }
+                // Older shapes no longer match anything; their labels are dropped rather
+                // than kept as keys that can never be looked up again.
+                else -> Unit
             }
             root.optJSONObject("summary")?.let { s ->
                 _lastSummary.value = ScanSummary(

@@ -68,9 +68,14 @@ object Skeleton {
     /**
      * Bumped whenever what a template looks like changes. Labels are keyed by template,
      * so a change here detaches every one the user taught - which is why it is its own
-     * number and not the parser's.
+     * number and not the parser's - unless they are carried over ([carryOver]).
+     *
+     * 3: the shop after "at" is a name whatever its case.
      */
-    const val VERSION = 2
+    const val VERSION = 3
+
+    /** The shape before this one, whose labels [carryOver] moves to this one. */
+    const val LEGACY_VERSION = 2
 
     private val amountWithCurrency = Regex(
         "(?i)(?:(?:${SmsParser.CUR})\\s*\\d[\\d,]*(?:\\.\\d+)?|\\d[\\d,]*(?:\\.\\d+)?\\s*(?:${SmsParser.CUR})(?![\\p{L}\\d]))"
@@ -90,6 +95,19 @@ object Skeleton {
      * Masking "ATM" would make a withdrawal look like a card purchase.
      */
     private val KEEP = setOf("ATM", "POS", "CDM", "ACH", "MBI", "OTP", "SMS", "IBAN", "SWIFT", "VAT", "PIN")
+
+    /**
+     * Where a message names the shop: "at" and the words after it, up to where the
+     * sentence carries on - "on" a date, "Avl Bal", the end of the clause - which is where
+     * the parser ends a shop's name too. Card networks write the shop in any case
+     * ("GOOGLE *Some Game Studio"), so case cannot tell it from the template's own words,
+     * and every shop was a template of its own: a purchase taught as money out taught
+     * nothing about the next shop.
+     */
+    private val shopAfterAt = Regex(
+        "(?i)\\bat\\s+((?:(?!(?:on|dated|date|ref|reference|txn|trx|transaction|no|number|a/c|acc|account|" +
+            "avl|available|bal|balance|ur|your|card|ending|has|was|is|from|using)\\b)[^\\s.,;¤#@]+\\s*)+)"
+    )
 
     private val separators = Regex("[^\\p{L}¤#@]+")
 
@@ -126,23 +144,55 @@ object Skeleton {
      * Deterministic from the message alone, so the same message gives the same key on
      * every scan and a label taught once keeps applying.
      */
-    fun of(sender: String, body: String): String {
+    fun of(sender: String, body: String): String = build(sender, body, shops = true)
+
+    /**
+     * The fingerprint as [LEGACY_VERSION] made it, with a shop's words left in whenever
+     * they were not in capitals. Only for carrying labels over.
+     */
+    fun legacyOf(sender: String, body: String): String = build(sender, body, shops = false)
+
+    /**
+     * Labels taught under [LEGACY_VERSION], moved to this fingerprint through the messages
+     * they apply to: each message is fingerprinted both ways, and the label on its old
+     * key goes to its new one. Several shops' templates are one now, so where their
+     * labels disagree the one taught last wins.
+     */
+    fun carryOver(
+        labels: Map<String, TemplateLabel>,
+        messages: Sequence<Pair<String, String>>,
+    ): Map<String, TemplateLabel> {
+        if (labels.isEmpty()) return emptyMap()
+        val out = HashMap<String, TemplateLabel>()
+        for ((sender, body) in messages) {
+            if (body.isBlank()) continue
+            val label = labels[legacyOf(sender, body)] ?: continue
+            val key = of(sender, body)
+            val held = out[key]
+            if (held == null || label.atMillis > held.atMillis) out[key] = label
+        }
+        return out
+    }
+
+    private fun build(sender: String, body: String, shops: Boolean): String {
         var s = Numerals.latin(body).replace(hashMask, "")
         s = amountWithCurrency.replace(s, " ¤ ")
         s = cardField.replace(s, " @ ")
         s = withDigit.replace(s, " # ")
-        s = if (s.any(::isArabicLetter)) {
-            latinRun.replace(s) { m -> maskNames(m.value) }
-        } else {
-            val letters = s.count { it.isLetter() }
-            val upper = s.count { it.isUpperCase() }
+        val arabic = s.any(::isArabicLetter)
+        // Counted before the shop is masked, so whether a message counts as written in
+        // capitals does not depend on how its shop is spelled.
+        val letters = s.count { it.isLetter() }
+        val upper = s.count { it.isUpperCase() }
+        if (shops && !arabic) {
+            s = shopAfterAt.replace(s) { m -> m.value.take(2) + maskNames(m.groupValues[1].trim()) }
+        }
+        s = when {
+            arabic -> latinRun.replace(s) { m -> maskNames(m.value) }
+            letters > 0 && upper.toFloat() / letters < 0.6f -> capsRun.replace(s) { m -> maskNames(m.value) }
             // A message written entirely in capitals has no case to tell names apart by,
             // so it keeps its words; its names then make templates of their own.
-            if (letters > 0 && upper.toFloat() / letters < 0.6f) {
-                capsRun.replace(s) { m -> maskNames(m.value) }
-            } else {
-                s
-            }
+            else -> s
         }
         val tokens = s.lowercase().split(separators).filter { it.isNotEmpty() }
         val collapsed = ArrayList<String>(tokens.size)

@@ -100,8 +100,10 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
    skipped (unless approved during setup).
 2. `SmsParser.parse` extracts the facts. Messages with an amount but no direction words
    still get their facts through `parseAs`.
-3. `Skeleton.of(sender, body)` gives the template key. Labels the user taught (stored in
-   `Store.labels`) apply to every message with that key.
+3. `Skeleton.of(sender, body)` gives the template key: masks, amounts, numbers and names
+   set aside, including the shop after "at" whatever its case (ATM, POS and the like
+   kept). Labels the user taught (stored in `Store.labels`) apply to every message with
+   that key, and Review's "remember for similar" dismissals (`Store.muted`) use it too.
 4. `BalanceChain` proves directions; `TemplateInference` marks templates with two or
    more agreeing proofs and none against as *proven*, and spreads their direction.
 5. Accounts follow the balance, not the digits. `BalanceChain` joins each message to the
@@ -148,6 +150,10 @@ everything.
   `MainActivity` starts fresh, and a page restored after process death checks
   `vm.setupActive` before trusting its saved state.
 - Store JSON field `alias` (account aliases) is optional like the others.
+- Bumping `Skeleton.VERSION` changes every template key. Labels are keyed by it, so
+  `Store.loadLocked` carries the previous shape's labels over (`Skeleton.carryOver`,
+  through stored samples, records and Review items) and muted kinds are re-keyed from
+  their sample; keep `legacyOf` producing the previous shape exactly.
 - Draw category and account colours through `categoryColor(id)`, `rememberBadgeColours`
   or `legible(...)` (ui/theme/Contrast.kt), never `Color(Categories.colorFor(id))`: the raw
   palette falls under 3:1 on light cards. `ContrastTest` holds every colour to it.

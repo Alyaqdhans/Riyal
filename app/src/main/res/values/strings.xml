@@ -167,6 +167,7 @@
     <string name="set_restore_detail">Replace everything with a backup file</string>
     <string name="set_log_detail">Every step Riyal took while reading</string>
     <string name="log_taught">%1$s · messages written like this are %2$s (%3$d more like it)</string>
+    <string name="log_labels_carried">what you taught carried over: %2$d kinds of message are %1$d now that a shop\'s name is no longer part of one</string>
     <string name="log_sender_excluded">%1$s is not your bank · its messages are no longer read</string>
     <string name="log_sender_included">%1$s will be read as a bank</string>
     <plurals name="count_banks">

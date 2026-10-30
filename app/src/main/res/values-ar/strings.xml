@@ -167,6 +167,7 @@
     <string name="set_restore_detail">استبدال كل شيء بملف نسخة احتياطية</string>
     <string name="set_log_detail">كل خطوة قام بها ريال أثناء القراءة</string>
     <string name="log_taught">%1$s · الرسائل المكتوبة بهذا الشكل %2$s (و%3$d مثلها)</string>
+    <string name="log_labels_carried">نُقل ما علّمته: %2$d نوعًا من الرسائل صارت %1$d بعد أن لم يعد اسم المتجر جزءًا من النوع</string>
     <string name="log_sender_excluded">%1$s ليس بنكك · لن تُقرأ رسائله بعد الآن</string>
     <string name="log_sender_included">سيُقرأ %1$s كبنك</string>
     <plurals name="count_banks">

@@ -13,6 +13,13 @@ is attached there.
   a payment to another were different kinds of message: dismissing one left the rest in
   Review, one by one. It now uses the same fingerprint as teaching, which sets the names
   and numbers a bank fills in aside. Kinds dismissed before are matched the new way too.
+- **Teaching one card purchase teaches them all.** A message's kind kept the shop's name
+  whenever the shop was not written in capitals, so "at GOOGLE *Some Game" and "at
+  Talabat Oman" were kinds of their own: answering Expense for one Google purchase
+  answered nothing about the next, and none of them shared what the balances had proven
+  about the bank's other purchases. The shop after "at" is now set aside whatever its
+  case; an ATM stays an ATM. What you taught before is carried over, not lost, and the
+  first scan reads everything again.
 
 ## 1.8.0 — 2026-10-29
 
