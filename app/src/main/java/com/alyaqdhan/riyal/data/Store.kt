@@ -359,9 +359,12 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
 
     // ─────────────────────────── learning ───────────────────────────
 
-    /** Teaches what a kind of message means. The next scan re-reads with it. */
-    suspend fun setLabel(key: String, kind: MessageKind) = mutex.withLock {
-        _labels.value = _labels.value + (key to TemplateLabel(kind, System.currentTimeMillis()))
+    /**
+     * Teaches what a kind of message means, and with [accountId] which account its money
+     * moved in. The next scan re-reads with it.
+     */
+    suspend fun setLabel(key: String, kind: MessageKind, accountId: String? = null) = mutex.withLock {
+        _labels.value = _labels.value + (key to TemplateLabel(kind, System.currentTimeMillis(), accountId))
         persistLocked()
     }
 
@@ -524,6 +527,8 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             }
         }
         for ((k, v) in accountOverrides.toMap()) if (v == id) accountOverrides.remove(k)
+        // A kind of message taught to go to it goes nowhere in particular again.
+        _labels.value = _labels.value.mapValues { (_, l) -> if (l.accountId == id) l.copy(accountId = null) else l }
         recomputeTxnsLocked()
         persistLocked()
     }
@@ -563,6 +568,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             )
         }
         for ((k, v) in accountOverrides.toMap()) if (v == fromId) accountOverrides[k] = intoId
+        _labels.value = _labels.value.mapValues { (_, l) -> if (l.accountId == fromId) l.copy(accountId = intoId) else l }
         recomputeTxnsLocked()
         persistLocked()
     }
@@ -1049,7 +1055,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
                     for (key in o.keys()) {
                         val l = o.optJSONObject(key) ?: continue
                         val kind = runCatching { MessageKind.valueOf(l.getString("k")) }.getOrNull() ?: continue
-                        put(key, TemplateLabel(kind, l.optLong("at")))
+                        put(key, TemplateLabel(kind, l.optLong("at"), l.optString("acc").ifBlank { null }))
                     }
                 }
             }.orEmpty()
@@ -1142,7 +1148,11 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             root.put("skeleton", Skeleton.VERSION)
             root.put("labels", JSONObject().apply {
                 _labels.value.forEach { (key, l) ->
-                    put(key, JSONObject().apply { put("k", l.kind.name); put("at", l.atMillis) })
+                    put(key, JSONObject().apply {
+                        put("k", l.kind.name)
+                        put("at", l.atMillis)
+                        l.accountId?.let { put("acc", it) }
+                    })
                 }
             })
             root.put("templates", JSONArray().apply { _templates.value.forEach { put(templateToJson(it)) } })

@@ -109,6 +109,9 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
    set aside, including the shop after "at" whatever its case (ATM, POS and the like
    kept). Labels the user taught (stored in `Store.labels`) apply to every message with
    that key, and Review's "remember for similar" dismissals (`Store.muted`) use it too.
+   A label can also carry an account (`TemplateLabel.accountId`), asked in Review when the
+   sender holds none of the user's accounts: its messages route there, pass the "not your
+   bank" check, and found no account for their sender (their observations carry it).
 4. `BalanceChain` proves directions; `TemplateInference` marks templates with two or
    more agreeing proofs and none against as *proven*, and spreads their direction.
 5. Accounts follow the balance, not the digits. `BalanceChain` joins each message to the

@@ -1,9 +1,16 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 
 package com.alyaqdhan.riyal.ui.screens
 
 import androidx.compose.ui.res.painterResource
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -66,6 +73,7 @@ import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Account
+import com.alyaqdhan.riyal.data.AccountDiscovery
 import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.MessageKind
 import com.alyaqdhan.riyal.data.Skeleton
@@ -84,6 +92,7 @@ import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.HelpAction
 import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
+import com.alyaqdhan.riyal.ui.compose.iconFor
 import com.alyaqdhan.riyal.ui.compose.SiftBar
 import com.alyaqdhan.riyal.ui.compose.SummaryPill
 import com.alyaqdhan.riyal.ui.compose.rememberSifting
@@ -252,11 +261,12 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                     items(pending, key = { it.id }) { item ->
                         ReviewCard(
                             item = item,
+                            accounts = accounts,
                             modifier = Modifier.animateItem(),
                             rememberDefault = vm.prefs.smartRules,
                             onResolve = { learn -> resolving = Resolving(item, learn) },
-                            onTeach = { kind ->
-                                vm.teach(item, kind)
+                            onTeach = { kind, accountId ->
+                                vm.teach(item, kind, accountId)
                                 scope.launch { snackbar.showSnackbar(taught) }
                             },
                             onDismiss = { alsoSimilar ->
@@ -492,9 +502,10 @@ internal fun kindTone(kind: MessageKind) = when (kind) {
 @Composable
 private fun ReviewCard(
     item: ReviewItem,
+    accounts: List<Account>,
     rememberDefault: Boolean,
     onResolve: (learnSimilar: Boolean) -> Unit,
-    onTeach: (MessageKind) -> Unit,
+    onTeach: (kind: MessageKind, accountId: String?) -> Unit,
     onDismiss: (alsoSimilar: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -600,6 +611,62 @@ private fun ReviewCard(
                     perRow = 2,
                 )
             }
+            // Where the money moved, asked only of a sender that holds none of your
+            // accounts: a bank writing that a payment was released to you is money arriving
+            // in an account at another bank. Left to the scan, the sender became a bank of
+            // its own, with an account nobody has. "New account" is that, chosen.
+            val live = remember(accounts) { accounts.filter { !it.archived } }
+            val asksAccount = item.directionOnly &&
+                (kind == MessageKind.IN || kind == MessageKind.OUT) &&
+                live.isNotEmpty() && !AccountDiscovery.isKnownSender(accounts, item.sender)
+            var account by remember { mutableStateOf<String?>(null) }
+            var newAccount by remember { mutableStateOf(false) }
+            AnimatedVisibility(
+                visible = asksAccount,
+                enter = expandVertically(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
+                exit = shrinkVertically(motion.defaultSpatialSpec()) + fadeOut(motion.defaultEffectsSpec()),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        stringResource(
+                            if (kind == MessageKind.OUT) R.string.review_account_from
+                            else R.string.review_account_into
+                        ),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                    Text(
+                        stringResource(R.string.review_account_why, item.sender),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        live.forEach { acc ->
+                            FilterChip(
+                                selected = account == acc.id,
+                                onClick = {
+                                    account = acc.id
+                                    newAccount = false
+                                },
+                                label = { Text(acc.displayName) },
+                                leadingIcon = {
+                                    Icon(painterResource(iconFor(acc.kind)), contentDescription = null, modifier = Modifier.size(18.dp))
+                                },
+                            )
+                        }
+                        FilterChip(
+                            selected = newAccount,
+                            onClick = {
+                                newAccount = true
+                                account = null
+                            },
+                            label = { Text(stringResource(R.string.review_account_new)) },
+                            leadingIcon = {
+                                Icon(painterResource(R.drawable.ic_sym_add), contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
+                        )
+                    }
+                }
+            }
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
@@ -610,8 +677,8 @@ private fun ReviewCard(
                 }
                 if (item.directionOnly) {
                     Button(
-                        onClick = { kind?.let(onTeach) },
-                        enabled = kind != null,
+                        onClick = { kind?.let { k -> onTeach(k, account.takeIf { asksAccount && !newAccount }) } },
+                        enabled = kind != null && (!asksAccount || account != null || newAccount),
                         shapes = ButtonDefaults.shapes(),
                     ) { Text(stringResource(R.string.action_save)) }
                 }

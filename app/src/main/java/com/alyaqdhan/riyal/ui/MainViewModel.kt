@@ -1340,8 +1340,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * Review's "this is money out" outside the setup: the same lesson, about the whole
      * template, and a read of the inbox so every message like it is answered at once.
      */
-    fun teach(item: ReviewItem, kind: MessageKind) = viewModelScope.launch(Dispatchers.IO) {
-        store.setLabel(Skeleton.of(item.sender, item.body), kind)
+    /**
+     * What a kind of message is, answered in Review, and - for a sender that holds none of
+     * the user's accounts - which account its money moved in ([accountId]); null leaves
+     * the scan to give the sender an account of its own, as it would anyway.
+     */
+    fun teach(item: ReviewItem, kind: MessageKind, accountId: String? = null) = viewModelScope.launch(Dispatchers.IO) {
+        store.setLabel(Skeleton.of(item.sender, item.body), kind, accountId)
         Verbose.ok(
             R.string.log_taught,
             item.sender,
@@ -1355,6 +1360,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             ),
             0,
         )
+        accountId?.let { id ->
+            Verbose.ok(R.string.log_taught_account, accounts.value.firstOrNull { it.id == id }?.displayName ?: id)
+        }
         Verbose.flush()
         startScan(showSheet = false, full = true)
     }

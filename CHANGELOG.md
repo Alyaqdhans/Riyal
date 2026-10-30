@@ -20,6 +20,12 @@ is attached there.
   about the bank's other purchases. The shop after "at" is now set aside whatever its
   case; an ATM stays an ATM. What you taught before is carried over, not lost, and the
   first scan reads everything again.
+- **A bank that holds none of your accounts no longer becomes one.** Answering Income
+  for a bank's notice that a payment to you was released made an account at that bank,
+  though the money arrived in an account at another one. Answering Income or Expense
+  for a sender that holds none of your accounts now asks which account the money moved
+  in, or whether it is a new one; messages written the same way go there too, and the
+  entry in Lists › Keywords says where.
 
 ### Settings
 

@@ -144,6 +144,10 @@
     <string name="setup_done_title">ريال يعرف بنوكك الآن</string>
     <string name="setup_done_body">الرسائل المكتوبة مثل التي أجبت عنها تُقرأ بطريقتك من الآن. يمكنك إعادة هذا من الإعدادات.</string>
     <string name="review_taught">ستُقرأ الرسائل المشابهة بهذه الطريقة من الآن</string>
+    <string name="review_account_into">إلى أي حساب دخل؟</string>
+    <string name="review_account_from">من أي حساب خرج؟</string>
+    <string name="review_account_why">لا يحمل %1$s أيّاً من حساباتك. الرسائل المكتوبة مثل هذه ستذهب إلى الحساب الذي تختاره.</string>
+    <string name="review_account_new">حساب جديد</string>
     <string name="acct_kind">النوع</string>
     <string name="acct_kind_current">جاري</string>
     <string name="acct_kind_savings">توفير</string>
@@ -171,6 +175,8 @@
     <string name="lists_taught_title">أنواع الرسائل التي علّمتها</string>
     <string name="lists_taught_intro">كل رسالة مكتوبة مثل واحدة من هذه تُقرأ كما أجبت. انسَ واحدة ليعود ريال إلى استنتاجها بنفسه.</string>
     <string name="lists_taught_empty">لا شيء بعد. تظهر هنا إجاباتك في المراجعة وفي الإعداد.</string>
+    <string name="lists_taught_into">إلى %1$s</string>
+    <string name="lists_taught_from">من %1$s</string>
     <string name="lists_senders_intro">كل من راسلك. يقرأ ريال مصارفك ويترك الباقي؛ اضغط على مرسل لتغيير ذلك.</string>
     <string name="lists_senders_empty">يظهر المرسلون هنا بعد أول قراءة لصندوق رسائلك.</string>
     <string name="lists_search">ابحث في المرسلين</string>
@@ -204,6 +210,7 @@
     <string name="set_restore_detail">النسخة كلها أو جزء منها، مثل تصنيفات صديق</string>
     <string name="set_log_detail">كل خطوة قام بها ريال أثناء القراءة</string>
     <string name="log_taught">%1$s · الرسائل المكتوبة بهذا الشكل %2$s (و%3$d مثلها)</string>
+    <string name="log_taught_account">الرسائل المكتوبة هكذا تذهب إلى %1$s</string>
     <string name="log_labels_carried">نُقل ما علّمته: %2$d نوعًا من الرسائل صارت %1$d بعد أن لم يعد اسم المتجر جزءًا من النوع</string>
     <string name="log_sender_excluded">%1$s ليس بنكك · لن تُقرأ رسائله بعد الآن</string>
     <string name="log_sender_included">سيُقرأ %1$s كبنك</string>

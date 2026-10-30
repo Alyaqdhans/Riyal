@@ -40,8 +40,14 @@ enum class MessageKind {
 /**
  * A template's meaning as the user taught it. Stored, and the strongest evidence there
  * is: nothing the inbox says overrides it.
+ *
+ * [accountId] is where its money moved, when the user said: a bank that holds none of
+ * their accounts writing that a payment was released to them ("Transfer of OMR 10.000
+ * has been released by order of ABC TRADING") is money arriving in an account at another
+ * bank. Without it, such a sender would be taken for a bank of the user's own and given
+ * an account.
  */
-data class TemplateLabel(val kind: MessageKind, val atMillis: Long)
+data class TemplateLabel(val kind: MessageKind, val atMillis: Long, val accountId: String? = null)
 
 /**
  * What one scan learned about one template: how many messages use it, one to show, and

@@ -144,6 +144,10 @@
     <string name="setup_done_title">Riyal knows your banks</string>
     <string name="setup_done_body">Messages written like the ones you answered are read your way from now on. You can run this again from Settings.</string>
     <string name="review_taught">Messages like this will be read that way from now on</string>
+    <string name="review_account_into">Which account did it go into?</string>
+    <string name="review_account_from">Which account did it leave?</string>
+    <string name="review_account_why">%1$s holds none of your accounts. Messages written like this one will go to the account you pick.</string>
+    <string name="review_account_new">New account</string>
     <string name="acct_kind">Type</string>
     <string name="acct_kind_current">Current</string>
     <string name="acct_kind_savings">Savings</string>
@@ -171,6 +175,8 @@
     <string name="lists_taught_title">Kinds of message you taught</string>
     <string name="lists_taught_intro">Every message written like one of these is read the way you answered. Forget one and Riyal works it out again.</string>
     <string name="lists_taught_empty">Nothing yet. Your answers in Review and in the setup show here.</string>
+    <string name="lists_taught_into">into %1$s</string>
+    <string name="lists_taught_from">from %1$s</string>
     <string name="lists_senders_intro">Everyone who has texted you. Riyal reads your banks and leaves the rest out; tap a sender to change that.</string>
     <string name="lists_senders_empty">Senders show here after the first read of your inbox.</string>
     <string name="lists_search">Search senders</string>
@@ -204,6 +210,7 @@
     <string name="set_restore_detail">All of a backup or only part of it, such as a friend’s categories</string>
     <string name="set_log_detail">Every step Riyal took while reading</string>
     <string name="log_taught">%1$s · messages written like this are %2$s (%3$d more like it)</string>
+    <string name="log_taught_account">messages written like this go to %1$s</string>
     <string name="log_labels_carried">what you taught carried over: %2$d kinds of message are %1$d now that a shop\'s name is no longer part of one</string>
     <string name="log_sender_excluded">%1$s is not your bank · its messages are no longer read</string>
     <string name="log_sender_included">%1$s will be read as a bank</string>

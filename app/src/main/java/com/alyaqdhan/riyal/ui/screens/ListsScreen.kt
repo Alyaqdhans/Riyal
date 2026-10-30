@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.data.Categories
+import com.alyaqdhan.riyal.data.MessageKind
 import com.alyaqdhan.riyal.data.SenderLists
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.ActionButton
@@ -165,6 +166,7 @@ private fun KeywordsList(vm: MainViewModel, tour: SwipeTour?) {
     val categoryUse by vm.categoryUse.collectAsState()
     val labels by vm.labels.collectAsState()
     val templates by vm.templates.collectAsState()
+    val accounts by vm.accounts.collectAsState()
     var adding by remember { mutableStateOf(false) }
     val samples = remember(templates) { templates.associateBy { it.key } }
     val taught = remember(labels) { labels.entries.sortedByDescending { it.value.atMillis } }
@@ -243,6 +245,13 @@ private fun KeywordsList(vm: MainViewModel, tour: SwipeTour?) {
                 detail = listOfNotNull(
                     sample?.sender ?: key.substringBefore('|'),
                     stringResource(kindLabel(label.kind)),
+                    // The account it was taught to go to, for a sender that holds none.
+                    label.accountId?.let { id -> accounts.firstOrNull { it.id == id } }?.let {
+                        stringResource(
+                            if (label.kind == MessageKind.OUT) R.string.lists_taught_from else R.string.lists_taught_into,
+                            it.displayName,
+                        )
+                    },
                     sample?.count?.takeIf { it > 0 }?.let { counted(R.plurals.count_messages, it) },
                 ).joinToString(" · "),
                 leading = { Badge(kindIcon(label.kind), container, content) },
