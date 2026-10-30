@@ -37,6 +37,14 @@ is attached there.
 - A sender you asked to be read (in the setup, or here) stays read. Every scan used to
   drop such senders when they did not look like a bank, as clean-up after an old
   version that approved senders by itself; that clean-up now runs once.
+- **Backups are made of parts.** Saving one asks what goes in - records and accounts,
+  categories, learned categories, lists, budgets - and whether message text does. A file
+  of categories and lists can be given to someone else: importing shows what a file
+  holds and brings in what you choose. Records and accounts replace yours; everything
+  else is added to what you have - a category of the same name is the one you have,
+  learned names you already have keep your answer, and imported rules and budgets bring
+  the categories they use. Restoring used to replace everything, and kept parts of what
+  was there before mixed in.
 - **Delete everything starts over.** After deleting, Riyal goes back to the welcome and
   then the setup, as on the day it was installed, instead of leaving an empty app behind.
 

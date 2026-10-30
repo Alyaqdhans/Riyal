@@ -163,7 +163,7 @@ class SettingsFragment : ScreenFragment(R.layout.fragment_settings) {
 
     private val openBackup = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
-            vm.restore(uri)
+            vm.openImport(uri)
         } else {
             Verbose.info(R.string.log_restore_cancelled)
             Verbose.flush()

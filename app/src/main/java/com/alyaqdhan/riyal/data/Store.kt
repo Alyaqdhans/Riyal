@@ -891,6 +891,14 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     }
 
     suspend fun wipe() = mutex.withLock {
+        clearLocked()
+        file.delete()
+        Verbose.info(R.string.log_store_wiped)
+        Verbose.flush()
+    }
+
+    /** Everything in memory back to empty, the file left alone. */
+    private fun clearLocked() {
         rawTxns = emptyList()
         _txns.value = emptyList()
         _reviews.value = emptyList()
@@ -916,39 +924,60 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         _deferredIds.value = emptySet()
         manualTransfers.clear()
         ignored.clear()
-        file.delete()
-        Verbose.info(R.string.log_store_wiped)
-        Verbose.flush()
     }
 
-    suspend fun backupJson(includeMessages: Boolean): String = mutex.withLock {
+    /** The store's file as it stands now, for [Backup.write]. */
+    suspend fun fileJson(): String = mutex.withLock {
         persistLocked()
-        Backup.of(file.readText(), includeMessages)
+        if (file.exists()) file.readText() else JSONObject().put("v", SCHEMA_VERSION).toString()
     }
 
-    suspend fun restoreFrom(json: String): Boolean = mutex.withLock {
+    /** Whether [json] is a backup this version reads; says why not in the log. */
+    fun canImport(json: String): Boolean {
         val version = try {
             Backup.versionOf(json)
         } catch (e: Exception) {
             Verbose.fail(R.string.log_restore_unreadable, e.message)
             Verbose.flush()
-            return@withLock false
+            return false
         }
         if (version != SCHEMA_VERSION) {
             Verbose.fail(R.string.log_restore_wrong_version, version, SCHEMA_VERSION)
             Verbose.flush()
-            return@withLock false
+            return false
+        }
+        return true
+    }
+
+    /**
+     * Brings [parts] of the backup [json] in, as [Backup.merge] decides: its records
+     * replace these, the rest is added to what is here. [settings] are the
+     * [Backup.SETTINGS_KEYS] as they stand; they come back as they should be after the
+     * import, for the caller to write. Null when the file could not be read.
+     */
+    suspend fun importFrom(json: String, parts: Set<Backup.Part>, settings: JSONObject): JSONObject? = mutex.withLock {
+        if (!canImport(json)) return@withLock null
+        persistLocked()
+        val mine = if (file.exists()) JSONObject(file.readText()) else JSONObject().put("v", SCHEMA_VERSION)
+        for (key in settings.keys()) mine.put(key, settings.get(key))
+        // Built-ins in English and in the language on screen: a friend's "Food" is ours.
+        val builtIn = Categories.BUILTIN + Categories.ALL.filter { !it.custom }
+        val merged = Backup.merge(mine, JSONObject(json), parts, builtIn)
+        val after = JSONObject()
+        for (key in Backup.SETTINGS_KEYS) {
+            merged.opt(key)?.let { after.put(key, it) }
+            merged.remove(key)
         }
         val tmp = File(file.parentFile, file.name + ".tmp")
-        tmp.writeText(json)
+        tmp.writeText(merged.toString())
         if (!tmp.renameTo(file)) {
             file.delete()
             tmp.renameTo(file)
         }
+        // What was in memory goes first: loading only adds to some of it.
+        clearLocked()
         loadLocked()
-        Verbose.ok(R.string.log_restore_done, Verbose.count(R.plurals.count_records, rawTxns.size))
-        Verbose.flush()
-        true
+        after
     }
 
     // ─────────────────────────── persistence ───────────────────────────

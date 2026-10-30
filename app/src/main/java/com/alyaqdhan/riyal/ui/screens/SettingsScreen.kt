@@ -16,6 +16,7 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,6 +31,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +59,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.data.Backup
 import com.alyaqdhan.riyal.core.Currencies
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Language
@@ -121,7 +125,6 @@ fun SettingsScreen(
     var freshStart by remember { mutableStateOf(prefs.scanSinceMillis) }
     var scanOnLaunch by remember { mutableStateOf(prefs.scanOnLaunch) }
     var smartRules by remember { mutableStateOf(prefs.smartRules) }
-    var backupMessages by remember { mutableStateOf(prefs.backupIncludeMessages) }
     var dialog by remember { mutableStateOf(SettingsDialog.NONE) }
     val language = Language.current()
 
@@ -309,23 +312,15 @@ fun SettingsScreen(
                 stringResource(R.string.set_backup),
                 stringResource(R.string.set_backup_detail),
                 chevron = false,
-                onClick = onBackup,
-            )
-            SwitchRow(
-                R.drawable.ic_sym_sms,
-                stringResource(R.string.set_backup_messages),
-                stringResource(R.string.set_backup_messages_detail),
-                checked = backupMessages,
-            ) {
-                backupMessages = it
-                prefs.backupIncludeMessages = it
-            }
+            ) { dialog = SettingsDialog.BACKUP }
+            // Nothing changes on picking a file: what is in it is offered first.
             NavRow(
                 R.drawable.ic_sym_restore,
                 stringResource(R.string.set_restore),
                 stringResource(R.string.set_restore_detail),
                 chevron = false,
-            ) { dialog = SettingsDialog.RESTORE }
+                onClick = onRestore,
+            )
             NavRow(
                 R.drawable.ic_sym_log,
                 stringResource(R.string.set_verbose_log),
@@ -483,20 +478,56 @@ fun SettingsScreen(
                 },
             )
         }
-        SettingsDialog.RESTORE -> {
+        SettingsDialog.BACKUP -> {
+            var parts by remember { mutableStateOf(vm.backupParts) }
+            var withMessages by remember { mutableStateOf(prefs.backupIncludeMessages) }
             val pop = rememberDialogPop()
             AlertDialog(
                 onDismissRequest = { pop.leave(close) },
                 modifier = Modifier.popIn(pop),
-                title = { Text(stringResource(R.string.set_restore_title)) },
-                text = { Text(stringResource(R.string.set_restore_body)) },
-                confirmButton = {
-                    TextButton(onClick = {
-                        pop.leave {
-                            close()
-                            onRestore()
+                title = { Text(stringResource(R.string.backup_save_title)) },
+                text = {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        Text(
+                            stringResource(R.string.backup_save_intro),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                        Backup.Part.entries.forEach { part ->
+                            PartRow(
+                                title = stringResource(part.label),
+                                detail = stringResource(part.detail),
+                                checked = part in parts,
+                                onChange = { parts = if (it) parts + part else parts - part },
+                            )
                         }
-                    }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_restore)) }
+                        // Message text is in the records and in what was dismissed; a file
+                        // of categories alone has none to leave out.
+                        if (Backup.Part.RECORDS in parts || Backup.Part.LISTS in parts) {
+                            PartRow(
+                                title = stringResource(R.string.set_backup_messages),
+                                detail = stringResource(R.string.set_backup_messages_detail),
+                                checked = withMessages,
+                                onChange = { withMessages = it },
+                                switch = true,
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        enabled = parts.isNotEmpty(),
+                        onClick = {
+                            vm.backupParts = parts
+                            prefs.backupIncludeMessages = withMessages
+                            pop.leave {
+                                close()
+                                onBackup()
+                            }
+                        },
+                        shapes = ButtonDefaults.shapes(),
+                    ) { Text(stringResource(R.string.action_save)) }
                 },
                 dismissButton = {
                     TextButton(onClick = { pop.leave(close) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
@@ -530,10 +561,86 @@ fun SettingsScreen(
             )
         }
     }
+
+    // A backup picked to import from: what is in it, to choose from before anything changes.
+    val offer by vm.importOffer.collectAsState()
+    offer?.let { o ->
+        var parts by remember(o) { mutableStateOf(o.contents.keys) }
+        val pop = rememberDialogPop()
+        AlertDialog(
+            onDismissRequest = { pop.leave { vm.dismissImport() } },
+            modifier = Modifier.popIn(pop),
+            title = { Text(stringResource(R.string.backup_import_title)) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        stringResource(R.string.backup_import_intro),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                    o.contents.forEach { (part, count) ->
+                        PartRow(
+                            title = stringResource(R.string.backup_part_count, stringResource(part.label), count),
+                            detail = stringResource(part.detail),
+                            checked = part in parts,
+                            onChange = { parts = if (it) parts + part else parts - part },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = parts.isNotEmpty(),
+                    onClick = {
+                        val chosen = parts
+                        pop.leave { vm.importParts(chosen) }
+                    },
+                    shapes = ButtonDefaults.shapes(),
+                ) { Text(stringResource(R.string.backup_import_action)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pop.leave { vm.dismissImport() } }, shapes = ButtonDefaults.shapes()) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+}
+
+/**
+ * One part of a backup to save or bring in: the whole row is its checkbox (or, for the
+ * message text, its switch), and stays plain when on.
+ */
+@Composable
+private fun PartRow(
+    title: String,
+    detail: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+    switch: Boolean = false,
+) {
+    val plain = ListItemDefaults.colors(containerColor = Color.Transparent)
+    ListItem(
+        checked = checked,
+        onCheckedChange = onChange,
+        colors = ListItemDefaults.colors(
+            containerColor = Color.Transparent,
+            selectedContainerColor = Color.Transparent,
+            selectedContentColor = plain.contentColor,
+            selectedSupportingContentColor = plain.supportingContentColor,
+            selectedTrailingContentColor = plain.trailingContentColor,
+            selectedLeadingContentColor = plain.leadingContentColor,
+        ),
+        contentPadding = PaddingValues(0.dp),
+        leadingContent = if (switch) null else ({ Checkbox(checked = checked, onCheckedChange = null) }),
+        trailingContent = if (switch) ({ Switch(checked = checked, onCheckedChange = null) }) else null,
+        supportingContent = { Text(detail) },
+    ) { Text(title) }
 }
 
 /** The one dialog or sheet Settings can have open at a time. */
-private enum class SettingsDialog { NONE, LANGUAGE, RANGE, CURRENCY, RATES, LOG, WIPE, RESTORE, EXPORT }
+private enum class SettingsDialog { NONE, LANGUAGE, RANGE, CURRENCY, RATES, LOG, WIPE, BACKUP, EXPORT }
 
 /** A group's name, in the primary colour, the way the phone's own settings title one. */
 @Composable
