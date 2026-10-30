@@ -10,6 +10,20 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   cut from `master`. The owner merges it. Don't push or open PRs unless asked.
 - **No attribution in commits.** No `Co-Authored-By` or similar trailers. Commit style:
   `area: a plain-English sentence` subject, and a body that explains *why*.
+- **No real data in commits, changelogs or code.** The repo is public. Nothing from the
+  owner's or testers' messages, exports or screenshots goes into a commit message,
+  CHANGELOG.md, a comment or a test: no message text, masked names, amounts, balances,
+  account digits, references or shop names. Explain with made-up data in the same shape
+  ("accepted for AAAA####BBBB", "OMR 10.000", "007 ###### 00470", "at Example Cafe"). SMS
+  exports and screenshots are never committed.
+- **Release notes are a summary, shaped like YTDLnis's.** The GitHub release body (which
+  the app's Changelog page shows) is not CHANGELOG.md: `# What's Changed`, then a `##`
+  heading per headline feature with a short paragraph in plain words, then `## Other
+  stuff` with one line per smaller change or fix, and last `**Full Changelog**:
+  https://github.com/Alyaqdhans/Riyal/compare/<previous tag>...<new tag>` with the real
+  tag names (`gh release list`; recent ones are `V1.8.0`). Anything that costs the user
+  something - a wipe, a permission, an uninstall - gets the first section. A hotfix is
+  `# Hotfix` and its bullets. Written to `release/Riyal-vX.Y.Z-notes.md` (gitignored).
 - **Never run an emulator.** Verify with `assembleDebug` + unit tests. The owner tests on
   a real phone from Android Studio, where the debug build installs beside the real app.
 - **Native components only.** Use stock Material 3 parts (`ListItem`,
@@ -17,8 +31,9 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   chips, `FloatingActionButton`) and real libraries (Vico for charts, the markdown
   renderer for release notes). Don't hand-draw widgets. Wavy progress indicators stay
   wavy components with `amplitude = 0` (`FlatWheel`/`FlatBar` in
-  `ui/compose/Indicators.kt`), except `ScanBar`: the owner wants a scan's bar to keep
-  its wave.
+  `ui/compose/Indicators.kt`), except `ScanBar` and `SiftBar`: the owner wants a scan's
+  bar, and the bar over Needs review and Needs a category that fills as the pile is
+  worked through, to keep their wave.
 - **Pages are activities, each with its own `res/layout`.** The phone's own transition
   plays between them (the owner's MyBattery app is the reference). Never set a window
   animation or `overridePendingTransition`. The five tabs are fragments that stay built
@@ -27,7 +42,10 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   (`MainActivity.openTab`), so the highlight and the slide start on the same frame.
 - **No decorative motion.** No pop-in or bounce on content, and `MotionScheme.standard()`.
   Charts use `animationSpec = null, animateIn = false`. The owner's exceptions: the tab
-  slide, and every dialog's pop-in with a quick close (`ui/compose/DialogPop.kt`: put
+  slide, Lists' tabs (a `HorizontalPager`: a tab slides to its list, a finger drags
+  between them), the swipe tours (the first time Transactions or Lists is seen, one row
+  opens by itself under a tooltip saying what its swipe uncovers: `SwipeTour`, shown only
+  while the tab is in view, `LocalTabInView`), and every dialog's pop-in with a quick close (`ui/compose/DialogPop.kt`: put
   `Modifier.popIn(pop)` on the dialog and send every way of closing it through
   `pop.leave { … }`). Bottom sheets keep their own slide. And headline figures roll their
   digits (`MoneyText(roll = true)`: odometer wheels after firePOS's NumberFlow with its
@@ -84,15 +102,16 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `data/Learning.kt` | `Skeleton` (message → template key), `BalanceChain` (direction proven by balance deltas), `TemplateInference`, `Tutor` (setup questions + stopping rule) |
 | `data/ScanEngine.kt` | One pass: read → decide (taught label > balance proof > proven template > words) → accounts → records (with FX conversion) → transfers → store |
 | `data/Store.kt` | One JSON file, written atomically. Records, accounts, rules, labels, template stats. **Bumping `SCHEMA_VERSION` wipes user data** |
+| `data/SenderLists.kt` | Whether each sender is read, as the scan's sender gate decides (Settings › Lists) |
 | `data/AccountDiscovery.kt` | Banks list, accounts proposed from messages, routing a message to an account |
 | `data/TransferMatcher.kt` | Pairs an expense and an income across your own accounts |
 | `data/Updates.kt` | **All network code**: GitHub releases list + APK download. `ApkInstaller.kt` hands the file to Android via FileProvider |
 | `ui/MainViewModel.kt` | One VM for every screen, owned by `RiyalApp` (`Context.riyalViewModel`): scanning, setup flow, updates, edits |
 | `ui/nav/Fragments.kt` | The five tabs (`Tab` in `MainActivity.kt`): fragments, each with its `fragment_*.xml` layout; hidden ones stay laid out but `INVISIBLE` |
-| `ui/nav/Pages.kt` | `PageActivity` and every page opened from a tab (onboarding, setup, review, categories, updates, changelog), each with its `activity_*.xml` layout |
+| `ui/nav/Pages.kt` | `PageActivity` and every page opened from a tab (onboarding, setup, review, categories, lists, updates, changelog), each with its `activity_*.xml` layout |
 | `MainActivity.kt` | The tabs, the floating toolbar (`HorizontalFloatingToolbar` + Add FAB), global dialogs (update prompt, manual add); sends a first run to `OnboardingActivity` |
 | `ui/screens/*` | Home, Transactions, Analysis, Accounts, Settings (tabs); Setup, Review, Updates, Changelog, Categories… (pages) |
-| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs at the text's measured stroke weight), `SwipeRow` (swipe to reveal Archive/Remove, on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips), `BudgetSection` (Home's budget card under the net, and its editor) |
+| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs at the text's measured stroke weight), `SwipeRow` (a swipe uncovers an action - a record's Archive/Remove, a list entry's Forget/Restore - and a tap on it confirms; `SwipeTour` shows it once; on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips), `BudgetSection` (Home's budget card under the net, and its editor) |
 
 ## How a message is read (1.8.0+)
 
@@ -100,8 +119,13 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
    skipped (unless approved during setup).
 2. `SmsParser.parse` extracts the facts. Messages with an amount but no direction words
    still get their facts through `parseAs`.
-3. `Skeleton.of(sender, body)` gives the template key. Labels the user taught (stored in
-   `Store.labels`) apply to every message with that key.
+3. `Skeleton.of(sender, body)` gives the template key: masks, amounts, numbers and names
+   set aside, including the shop after "at" whatever its case (ATM, POS and the like
+   kept). Labels the user taught (stored in `Store.labels`) apply to every message with
+   that key, and Review's "remember for similar" dismissals (`Store.muted`) use it too.
+   A label can also carry an account (`TemplateLabel.accountId`), asked in Review when the
+   sender holds none of the user's accounts: its messages route there, pass the "not your
+   bank" check, and found no account for their sender (their observations carry it).
 4. `BalanceChain` proves directions; `TemplateInference` marks templates with two or
    more agreeing proofs and none against as *proven*, and spreads their direction.
 5. Accounts follow the balance, not the digits. `BalanceChain` joins each message to the
@@ -148,6 +172,10 @@ everything.
   `MainActivity` starts fresh, and a page restored after process death checks
   `vm.setupActive` before trusting its saved state.
 - Store JSON field `alias` (account aliases) is optional like the others.
+- Bumping `Skeleton.VERSION` changes every template key. Labels are keyed by it, so
+  `Store.loadLocked` carries the previous shape's labels over (`Skeleton.carryOver`,
+  through stored samples, records and Review items) and muted kinds are re-keyed from
+  their sample; keep `legacyOf` producing the previous shape exactly.
 - Draw category and account colours through `categoryColor(id)`, `rememberBadgeColours`
   or `legible(...)` (ui/theme/Contrast.kt), never `Color(Categories.colorFor(id))`: the raw
   palette falls under 3:1 on light cards. `ContrastTest` holds every colour to it.

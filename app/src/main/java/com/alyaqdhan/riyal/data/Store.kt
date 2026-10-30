@@ -359,9 +359,12 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
 
     // ─────────────────────────── learning ───────────────────────────
 
-    /** Teaches what a kind of message means. The next scan re-reads with it. */
-    suspend fun setLabel(key: String, kind: MessageKind) = mutex.withLock {
-        _labels.value = _labels.value + (key to TemplateLabel(kind, System.currentTimeMillis()))
+    /**
+     * Teaches what a kind of message means, and with [accountId] which account its money
+     * moved in. The next scan re-reads with it.
+     */
+    suspend fun setLabel(key: String, kind: MessageKind, accountId: String? = null) = mutex.withLock {
+        _labels.value = _labels.value + (key to TemplateLabel(kind, System.currentTimeMillis(), accountId))
         persistLocked()
     }
 
@@ -524,6 +527,8 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             }
         }
         for ((k, v) in accountOverrides.toMap()) if (v == id) accountOverrides.remove(k)
+        // A kind of message taught to go to it goes nowhere in particular again.
+        _labels.value = _labels.value.mapValues { (_, l) -> if (l.accountId == id) l.copy(accountId = null) else l }
         recomputeTxnsLocked()
         persistLocked()
     }
@@ -563,6 +568,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             )
         }
         for ((k, v) in accountOverrides.toMap()) if (v == fromId) accountOverrides[k] = intoId
+        _labels.value = _labels.value.mapValues { (_, l) -> if (l.accountId == fromId) l.copy(accountId = intoId) else l }
         recomputeTxnsLocked()
         persistLocked()
     }
@@ -808,13 +814,13 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
      * were dismissed alongside.
      */
     suspend fun dismissReview(item: ReviewItem, smart: Boolean): Int = mutex.withLock {
-        val template = MsgTemplate.of(item.sender, item.body)
+        val template = Skeleton.of(item.sender, item.body)
         var extra = 0
         _reviews.value = _reviews.value.map { r ->
             when {
                 r.id == item.id -> r.copy(state = ReviewItem.STATE_DISMISSED)
                 smart && r.state == ReviewItem.STATE_PENDING &&
-                    MsgTemplate.of(r.sender, r.body) == template -> {
+                    Skeleton.of(r.sender, r.body) == template -> {
                     extra++
                     r.copy(state = ReviewItem.STATE_DISMISSED)
                 }
@@ -835,7 +841,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
      * hidden as one decision, it is restored as one). Returns how many others returned.
      */
     suspend fun restoreReview(item: ReviewItem): Int = mutex.withLock {
-        val template = MsgTemplate.of(item.sender, item.body)
+        val template = Skeleton.of(item.sender, item.body)
         val wasMuted = _muted.value.any { it.template == template }
         if (wasMuted) _muted.value = _muted.value.filter { it.template != template }
         var extra = 0
@@ -843,7 +849,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             when {
                 r.id == item.id -> r.copy(state = ReviewItem.STATE_PENDING)
                 wasMuted && r.state == ReviewItem.STATE_DISMISSED &&
-                    MsgTemplate.of(r.sender, r.body) == template -> {
+                    Skeleton.of(r.sender, r.body) == template -> {
                     extra++
                     r.copy(state = ReviewItem.STATE_PENDING)
                 }
@@ -854,12 +860,31 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         extra
     }
 
+    /**
+     * Lifts a dismissal for good: the kind is no longer muted, and every message of it
+     * that was set aside comes back to Review. Returns how many came back.
+     */
+    suspend fun unmute(template: String): Int = mutex.withLock {
+        _muted.value = _muted.value.filter { it.template != template }
+        var back = 0
+        _reviews.value = _reviews.value.map { r ->
+            if (r.state == ReviewItem.STATE_DISMISSED && Skeleton.of(r.sender, r.body) == template) {
+                back++
+                r.copy(state = ReviewItem.STATE_PENDING)
+            } else {
+                r
+            }
+        }
+        persistLocked()
+        back
+    }
+
     suspend fun resolveReview(reviewId: String, txn: Txn, learn: Boolean = true) = mutex.withLock {
         val item = if (learn) _reviews.value.firstOrNull { it.id == reviewId } else null
         if (item != null) {
             // Recording it is the opposite signal of dismissing: this kind of message
             // matters, keep showing similar ones and drop any mute on them.
-            val template = MsgTemplate.of(item.sender, item.body)
+            val template = Skeleton.of(item.sender, item.body)
             _needed.value = _needed.value + template
             _muted.value = _muted.value.filter { it.template != template }
         }
@@ -872,6 +897,14 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     }
 
     suspend fun wipe() = mutex.withLock {
+        clearLocked()
+        file.delete()
+        Verbose.info(R.string.log_store_wiped)
+        Verbose.flush()
+    }
+
+    /** Everything in memory back to empty, the file left alone. */
+    private fun clearLocked() {
         rawTxns = emptyList()
         _txns.value = emptyList()
         _reviews.value = emptyList()
@@ -897,39 +930,60 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         _deferredIds.value = emptySet()
         manualTransfers.clear()
         ignored.clear()
-        file.delete()
-        Verbose.info(R.string.log_store_wiped)
-        Verbose.flush()
     }
 
-    suspend fun backupJson(includeMessages: Boolean): String = mutex.withLock {
+    /** The store's file as it stands now, for [Backup.write]. */
+    suspend fun fileJson(): String = mutex.withLock {
         persistLocked()
-        Backup.of(file.readText(), includeMessages)
+        if (file.exists()) file.readText() else JSONObject().put("v", SCHEMA_VERSION).toString()
     }
 
-    suspend fun restoreFrom(json: String): Boolean = mutex.withLock {
+    /** Whether [json] is a backup this version reads; says why not in the log. */
+    fun canImport(json: String): Boolean {
         val version = try {
             Backup.versionOf(json)
         } catch (e: Exception) {
             Verbose.fail(R.string.log_restore_unreadable, e.message)
             Verbose.flush()
-            return@withLock false
+            return false
         }
         if (version != SCHEMA_VERSION) {
             Verbose.fail(R.string.log_restore_wrong_version, version, SCHEMA_VERSION)
             Verbose.flush()
-            return@withLock false
+            return false
+        }
+        return true
+    }
+
+    /**
+     * Brings [parts] of the backup [json] in, as [Backup.merge] decides: its records
+     * replace these, the rest is added to what is here. [settings] are the
+     * [Backup.SETTINGS_KEYS] as they stand; they come back as they should be after the
+     * import, for the caller to write. Null when the file could not be read.
+     */
+    suspend fun importFrom(json: String, parts: Set<Backup.Part>, settings: JSONObject): JSONObject? = mutex.withLock {
+        if (!canImport(json)) return@withLock null
+        persistLocked()
+        val mine = if (file.exists()) JSONObject(file.readText()) else JSONObject().put("v", SCHEMA_VERSION)
+        for (key in settings.keys()) mine.put(key, settings.get(key))
+        // Built-ins in English and in the language on screen: a friend's "Food" is ours.
+        val builtIn = Categories.BUILTIN + Categories.ALL.filter { !it.custom }
+        val merged = Backup.merge(mine, JSONObject(json), parts, builtIn)
+        val after = JSONObject()
+        for (key in Backup.SETTINGS_KEYS) {
+            merged.opt(key)?.let { after.put(key, it) }
+            merged.remove(key)
         }
         val tmp = File(file.parentFile, file.name + ".tmp")
-        tmp.writeText(json)
+        tmp.writeText(merged.toString())
         if (!tmp.renameTo(file)) {
             file.delete()
             tmp.renameTo(file)
         }
+        // What was in memory goes first: loading only adds to some of it.
+        clearLocked()
         loadLocked()
-        Verbose.ok(R.string.log_restore_done, Verbose.count(R.plurals.count_records, rawTxns.size))
-        Verbose.flush()
-        true
+        after
     }
 
     // ─────────────────────────── persistence ───────────────────────────
@@ -957,7 +1011,11 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             _rules.value = root.optJSONArray("rules").toListOf(::ruleFromJson)
             _askEachTime.value = root.optJSONArray("askEachTime").toStringSet()
             _senders.value = root.optJSONArray("senders").toStringSet()
+            // Keyed afresh from the message each time: a kind dismissed under an older
+            // fingerprint (names and all) still matches its messages under this one.
             _muted.value = root.optJSONArray("muted").toListOf(::mutedFromJson)
+                .map { m -> if (m.sample.isBlank()) m else m.copy(template = Skeleton.of(m.sender, m.sample)) }
+                .distinctBy { it.template }
             _needed.value = root.optJSONArray("needed").toStringSet()
             _categories.value = root.optJSONArray("categories").toListOf(::categoryFromJson)
             Categories.setCustom(_categories.value)
@@ -992,19 +1050,40 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             root.optJSONArray("ignored")?.let { a ->
                 for (i in 0 until a.length()) ignored.add(a.getString(i))
             }
-            // Labels from a different template shape no longer match anything; they are
-            // dropped rather than kept as keys that can never be looked up again.
-            if (root.optInt("skeleton", Skeleton.VERSION) == Skeleton.VERSION) {
-                root.optJSONObject("labels")?.let { o ->
-                    _labels.value = buildMap {
-                        for (key in o.keys()) {
-                            val l = o.optJSONObject(key) ?: continue
-                            val kind = runCatching { MessageKind.valueOf(l.getString("k")) }.getOrNull() ?: continue
-                            put(key, TemplateLabel(kind, l.optLong("at")))
-                        }
+            val labels = root.optJSONObject("labels")?.let { o ->
+                buildMap {
+                    for (key in o.keys()) {
+                        val l = o.optJSONObject(key) ?: continue
+                        val kind = runCatching { MessageKind.valueOf(l.getString("k")) }.getOrNull() ?: continue
+                        put(key, TemplateLabel(kind, l.optLong("at"), l.optString("acc").ifBlank { null }))
                     }
                 }
-                _templates.value = root.optJSONArray("templates").toListOf(::templateFromJson)
+            }.orEmpty()
+            val templates = root.optJSONArray("templates").toListOf(::templateFromJson)
+            when (root.optInt("skeleton", Skeleton.VERSION)) {
+                Skeleton.VERSION -> {
+                    _labels.value = labels
+                    _templates.value = templates
+                }
+                // The shape before shop names were set aside. What was taught is carried
+                // over through the stored messages it applies to - each kind of message's
+                // sample, every record and every Review item - instead of being dropped;
+                // the templates themselves are rebuilt by the next scan, which reads
+                // everything because the shape is in its fingerprint.
+                Skeleton.LEGACY_VERSION -> {
+                    _labels.value = Skeleton.carryOver(
+                        labels,
+                        templates.asSequence().map { it.sender to it.sampleBody } +
+                            rawTxns.asSequence().map { it.sender to it.body } +
+                            _reviews.value.asSequence().map { it.sender to it.body },
+                    )
+                    if (labels.isNotEmpty()) {
+                        Verbose.info(R.string.log_labels_carried, _labels.value.size, labels.size)
+                    }
+                }
+                // Older shapes no longer match anything; their labels are dropped rather
+                // than kept as keys that can never be looked up again.
+                else -> Unit
             }
             root.optJSONObject("summary")?.let { s ->
                 _lastSummary.value = ScanSummary(
@@ -1069,7 +1148,11 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             root.put("skeleton", Skeleton.VERSION)
             root.put("labels", JSONObject().apply {
                 _labels.value.forEach { (key, l) ->
-                    put(key, JSONObject().apply { put("k", l.kind.name); put("at", l.atMillis) })
+                    put(key, JSONObject().apply {
+                        put("k", l.kind.name)
+                        put("at", l.atMillis)
+                        l.accountId?.let { put("acc", it) }
+                    })
                 }
             })
             root.put("templates", JSONArray().apply { _templates.value.forEach { put(templateToJson(it)) } })

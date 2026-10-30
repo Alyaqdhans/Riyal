@@ -154,6 +154,9 @@ class ScanEngine(
         val parsedMsgs = LinkedHashMap<String, ParsedMsg>()
         // Messages of a kind the user taught are moves between their own accounts.
         val taughtTransfers = HashSet<String>()
+        // Messages of a kind the user taught to land in one account: a sender holding none
+        // of theirs, writing about money that moved in one of them.
+        val taughtAccounts = HashMap<String, String>()
         val reviews = ArrayList<ReviewItem>()
         var skipped = 0
         var matched = 0
@@ -201,8 +204,10 @@ class ScanEngine(
         // An earlier version auto-approved any sender whose message happened to parse,
         // which put every telecom in the allowlist - and an allowlisted sender skips
         // the bank gate. Drop the ones that hold no account and look nothing like a
-        // bank, or the gate below can never take effect on this device.
-        if (allowlist.isNotEmpty()) {
+        // bank, or the gate below can never take effect on this device. Once only:
+        // since then a sender is approved by the user (the setup, Settings › Lists),
+        // and one they asked to be read is not quietly dropped at the next scan.
+        if (allowlist.isNotEmpty() && !prefs.allowlistCleaned) {
             val bogus = allowlist.filterNot { name ->
                 Banks.looksLikeBank(name) || AccountDiscovery.isKnownSender(existingAccounts, name)
             }
@@ -216,6 +221,7 @@ class ScanEngine(
                 )
             }
         }
+        prefs.allowlistCleaned = true
 
         // ── stage 1: read every message ───────────────────────────────────
         //
@@ -244,7 +250,7 @@ class ScanEngine(
             }
             // Banks send from named sender IDs ("BankMuscat"), people send from phone
             // numbers. Numeric senders are never read unless explicitly approved.
-            if (isPhoneNumber(msg.sender) && msg.sender.lowercase() !in allowlist) {
+            if (SenderLists.isPhoneNumber(msg.sender) && msg.sender.lowercase() !in allowlist) {
                 skipped++
                 logSkip(Verbose.str(R.string.scanlog_skip_numeric, msg.sender))
                 return@forEachIndexed
@@ -337,9 +343,14 @@ class ScanEngine(
             val template = templates[r.key]?.takeIf { TemplateInference.isProven(it) }
                 ?: earlier[r.key]?.takeIf { TemplateInference.isProven(it) }
                 ?: templates[r.key]
-            val result = decide(r, labels[r.key], proven[r.id], template, parser)
-            if (labels[r.key]?.kind == MessageKind.TRANSFER && result is SmsParser.Result.Parsed) {
+            val label = labels[r.key]
+            val result = decide(r, label, proven[r.id], template, parser)
+            if (label?.kind == MessageKind.TRANSFER && result is SmsParser.Result.Parsed) {
                 taughtTransfers += msgId
+            }
+            val taughtAccount = label?.accountId?.takeIf { id -> existingAccounts.any { it.id == id } }
+            if (taughtAccount != null && result is SmsParser.Result.Parsed) {
+                taughtAccounts[msgId] = taughtAccount
             }
             when (result) {
                 is SmsParser.Result.Skipped -> {
@@ -348,7 +359,7 @@ class ScanEngine(
                 }
 
                 is SmsParser.Result.NeedsReview -> {
-                    val template = MsgTemplate.of(msg.sender, msg.body)
+                    val template = r.key
                     if (!r.trusted && template !in neededTemplates) {
                         skipped++
                         logSkip(Verbose.str(R.string.scanlog_skip_unparsable, msg.sender))
@@ -410,7 +421,12 @@ class ScanEngine(
         // the balance line it is on: what decides which digits are an account.
         val observations = AccountDiscovery.resolveMaskedTails(
             parsedMsgs.values.map { pm ->
-                observationOf(pm.msg.sender, pm.msg.atMillis, pm.result, pm.result.direction, chains.lineOf[pm.id])
+                // One taught to an account is placed already, so it founds no account of
+                // its sender's.
+                observationOf(
+                    pm.msg.sender, pm.msg.atMillis, pm.result, pm.result.direction, chains.lineOf[pm.id],
+                    taughtAccounts[pm.id],
+                )
             } + anchors.map { a ->
                 observationOf(
                     a.txn.sender, a.txn.atMillis, a.facts,
@@ -515,10 +531,14 @@ class ScanEngine(
             }
             built++
             val result = pm.result
+            // Where the user said this kind of message moves money, as long as that
+            // account is still here.
+            val taughtAccount = taughtAccounts[pm.id]?.takeIf { id -> accounts.any { it.id == id } }
             // A sender that owns none of the user's accounts cannot have moved their
-            // money, whatever its text says. Oman TV offering "cash prizes up to 60,000
-            // OMR" was the single biggest expense in the whole history.
-            if (accounts.isNotEmpty() && !AccountDiscovery.isKnownSender(accounts, pm.msg.sender)) {
+            // money, whatever its text says - unless the user said which account it wrote
+            // about. Oman TV offering "cash prizes up to 60,000 OMR" was the single
+            // biggest expense in the whole history.
+            if (taughtAccount == null && accounts.isNotEmpty() && !AccountDiscovery.isKnownSender(accounts, pm.msg.sender)) {
                 logRecord(
                     Verbose.str(
                         R.string.scanlog_msg_header,
@@ -531,8 +551,8 @@ class ScanEngine(
                 continue
             }
             val tail = settledTail[pm.id] ?: result.accountTail
-            val accountId = tail?.takeUnless { result.tailIsCard }
-                ?.let { AccountDiscovery.ownerOf(accounts, pm.msg.sender, it) }
+            val accountId = taughtAccount
+                ?: tail?.takeUnless { result.tailIsCard }?.let { AccountDiscovery.ownerOf(accounts, pm.msg.sender, it) }
                 ?: chains.lineOf[pm.id]?.let { lineAccounts[it] }
                 ?: AccountDiscovery.routeTo(accounts, pm.msg.sender, tail, result.tailIsCard)
             if (accountId == null) unrouted++
@@ -781,7 +801,8 @@ class ScanEngine(
         "excluded=" + prefs.excludedSenders.map { it.lowercase() }.sorted().joinToString(","),
         // What the user taught. Hashed, because there can be hundreds of templates.
         "taught=" + store.labels.value.entries.sortedBy { it.key }
-            .joinToString(",") { it.key + "=" + it.value.kind }.hashCode().toString(16),
+            .joinToString(",") { it.key + "=" + it.value.kind + (it.value.accountId?.let { id -> "@$id" } ?: "") }
+            .hashCode().toString(16),
     ).joinToString("|")
 
     /** One message the reader got to, with what is needed to decide what it was. */
@@ -906,9 +927,6 @@ class ScanEngine(
         accounts.firstOrNull { it.id == id }?.displayName
             ?: Verbose.str(R.string.review_unassigned_account)
 
-    /** "+96891234567", "9123 4567"… anything that's just a phone number. */
-    private fun isPhoneNumber(sender: String): Boolean =
-        sender.isNotBlank() && sender.all { it.isDigit() || it in "+ -()" }
 
     /**
      * The identity of a message: same sender, same instant, same text, same record.

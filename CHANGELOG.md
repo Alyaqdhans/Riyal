@@ -4,7 +4,82 @@ Every release of Riyal, newest first. Released versions are condensed from their
 [GitHub release notes](https://github.com/Alyaqdhans/Riyal/releases); the APK for each
 is attached there.
 
-## 1.8.0 — unreleased (branch `1.8.0`)
+## 1.8.1 — unreleased (branch `1.8.1`)
+
+### Riyal learns from fewer answers
+
+- **Dismissing with "Remember for similar messages" catches every message written the
+  same way.** It used to compare messages names and all, so a payment to one person and
+  a payment to another were different kinds of message: dismissing one left the rest in
+  Review, one by one. It now uses the same fingerprint as teaching, which sets the names
+  and numbers a bank fills in aside. Kinds dismissed before are matched the new way too.
+- **Teaching one card purchase teaches them all.** A message's kind kept the shop's name
+  whenever the shop was not written in capitals, so "at GOOGLE *Some Game" and "at
+  Talabat Oman" were kinds of their own: answering Expense for one Google purchase
+  answered nothing about the next, and none of them shared what the balances had proven
+  about the bank's other purchases. The shop after "at" is now set aside whatever its
+  case; an ATM stays an ATM. What you taught before is carried over, not lost, and the
+  first scan reads everything again.
+- **A bank that holds none of your accounts no longer becomes one.** Answering Income
+  for a bank's notice that a payment to you was released made an account at that bank,
+  though the money arrived in an account at another one. Answering Income or Expense
+  for a sender that holds none of your accounts now asks which account the money moved
+  in, or whether it is a new one; messages written the same way go there too, and the
+  entry in Lists › Keywords says where.
+
+### Settings
+
+- **Settings › Lists** gathers what Riyal reads by, each list a tab and every entry one
+  you can add to or take back:
+  - **Keywords:** names filed under a category without asking (learned, or added
+    yourself), names always asked about, and the kinds of message you taught in Review
+    or the setup, each with a message it was taught on - forget one and Riyal works it
+    out again. These used to be at the bottom of Categories, which now links here.
+  - **Senders:** everyone who has texted you, and whether each is read: your banks, the
+    ones you added, and the rest left out. Tap one to read it, leave it out or ignore
+    it; ignoring a bank that holds accounts asks first, as they go too.
+  - **Ignored:** the senders never read, and the kinds of message dismissed for good,
+    each a tap from coming back.
+- A sender you asked to be read (in the setup, or here) stays read. Every scan used to
+  drop such senders when they did not look like a bank, as clean-up after an old
+  version that approved senders by itself; that clean-up now runs once.
+- **Backups are made of parts.** Saving one asks what goes in - records and accounts,
+  categories, learned categories, lists, budgets - and whether message text does. A file
+  of categories and lists can be given to someone else: importing shows what a file
+  holds and brings in what you choose. Records and accounts replace yours; everything
+  else is added to what you have - a category of the same name is the one you have,
+  learned names you already have keep your answer, and imported rules and budgets bring
+  the categories they use. Restoring used to replace everything, and kept parts of what
+  was there before mixed in.
+- **Delete everything starts over.** After deleting, Riyal goes back to the welcome and
+  then the setup, as on the day it was installed, instead of leaving an empty app behind.
+- **Lists slide.** Its three tabs lie side by side: a tab slides over to its list, and a
+  finger can drag from one to the next. Each entry's Forget or Restore now waits behind
+  a swipe to the left, as a record's Remove does, and only the tap on it takes the entry
+  back.
+- In the backup and import dialogs, the checkboxes and the message-text switch are no
+  longer cut off at the corners when they are ticked or pressed.
+
+### Around the app
+
+- **Swipes show themselves once.** The first time Transactions is on screen, its first
+  record opens to the left by itself under a bubble saying what the button there does;
+  close the bubble and it opens to the right, onto Archive, with a second one. Lists does
+  the same on its first entry. The line of text that used to sit over Transactions is
+  gone.
+- **Needs review and Needs a category show how far you have got.** A wavy bar at the top
+  fills as the cards go, with how many are done and how many are left under it, and
+  turns green when the pile is gone.
+- **A category opened from one bank stays on that bank.** Picking a bank on Analysis and
+  then tapping a category listed every bank's records in it. The category's page now
+  keeps the bank, with the same account chips to change it.
+- Questions whose yes takes something away - deleting a category, an account, a budget
+  plan or everything, "Not my bank", ignoring a sender that holds accounts - answer with a
+  filled red button instead of plain text.
+- The Changelog page shows Material's scroll thumb while it scrolls, so a long list of
+  releases says how far down it you are.
+
+## 1.8.0 — 2026-10-29
 
 ### Before you install
 

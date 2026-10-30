@@ -18,10 +18,13 @@ import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.ApkInstaller
 import com.alyaqdhan.riyal.data.reasonText
 import com.alyaqdhan.riyal.data.AccountDiscovery
+import com.alyaqdhan.riyal.data.Banks
+import com.alyaqdhan.riyal.data.Backup
 import com.alyaqdhan.riyal.data.BudgetPlan
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.MessageKind
+import com.alyaqdhan.riyal.data.MutedTemplate
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.ScanEngine
 import com.alyaqdhan.riyal.data.Stats
@@ -53,6 +56,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -226,6 +232,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     _scanState.value = ScanState.Running(p.processed, p.total, p.phase, p.noun)
                 }
                 prefs.lastScanAt = summary.at
+                refreshSenderLists()
                 _scanState.value = ScanState.Done(summary)
                 // The figures roll again, changed or not: a refresh should be seen to land.
                 com.alyaqdhan.riyal.ui.compose.Rolls.replay()
@@ -1211,6 +1218,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val key = sender.trim().lowercase()
         prefs.excludedSenders = prefs.excludedSenders + sender.trim()
         prefs.senderAllowlist = prefs.senderAllowlist.filterNot { it.trim().lowercase() == key }.toSet()
+        refreshSenderLists()
         accounts.value.filter { a -> a.senderIds.any { it.trim().lowercase() == key } }
             .forEach { store.deleteAccount(it.id) }
         Verbose.info(R.string.log_sender_excluded, sender)
@@ -1222,7 +1230,97 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val key = sender.trim().lowercase()
         prefs.excludedSenders = prefs.excludedSenders.filterNot { it.trim().lowercase() == key }.toSet()
         prefs.senderAllowlist = prefs.senderAllowlist + sender.trim()
+        refreshSenderLists()
         Verbose.info(R.string.log_sender_included, sender)
+        Verbose.flush()
+    }
+
+    // ─────────────────────────── lists ───────────────────────────
+
+    /** Senders the user ignored, and those they asked to be read: Settings › Lists. */
+    private val _ignoredSenders = MutableStateFlow(prefs.excludedSenders)
+    val ignoredSenders: StateFlow<Set<String>> = _ignoredSenders
+
+    private val _addedSenders = MutableStateFlow(prefs.senderAllowlist)
+    val addedSenders: StateFlow<Set<String>> = _addedSenders
+
+    val labels = store.labels
+    val templates = store.templates
+    val muted = store.muted
+
+    private fun refreshSenderLists() {
+        _ignoredSenders.value = prefs.excludedSenders
+        _addedSenders.value = prefs.senderAllowlist
+    }
+
+    private var readAgain: Job? = null
+
+    /**
+     * A list changed what is read: the inbox is read again once the changes settle, so
+     * a few quick ones cost one read. Changing them is in the scan's fingerprint, so
+     * that read is a full one.
+     */
+    private fun readAgainSoon() {
+        readAgain?.cancel()
+        readAgain = viewModelScope.launch {
+            delay(READ_AGAIN_AFTER_MS)
+            scanState.first { it !is ScanState.Running }
+            startScan(showSheet = false)
+        }
+    }
+
+    /** Settings › Lists: never read [sender] again; its accounts go with it. */
+    fun ignoreSender(sender: String) {
+        excludeSender(sender)
+        readAgainSoon()
+    }
+
+    /** Settings › Lists: read [sender], ignored or not a bank. */
+    fun readSender(sender: String) {
+        val key = sender.trim().lowercase()
+        prefs.excludedSenders = prefs.excludedSenders.filterNot { it.trim().lowercase() == key }.toSet()
+        if (!Banks.looksLikeBank(sender) && !AccountDiscovery.isKnownSender(accounts.value, sender)) {
+            prefs.senderAllowlist = prefs.senderAllowlist + sender.trim()
+        }
+        refreshSenderLists()
+        Verbose.info(R.string.log_sender_included, sender)
+        Verbose.flush()
+        readAgainSoon()
+    }
+
+    /** Settings › Lists: no longer ignored, so read or left out as the gate decides. */
+    fun restoreSender(sender: String) {
+        val key = sender.trim().lowercase()
+        prefs.excludedSenders = prefs.excludedSenders.filterNot { it.trim().lowercase() == key }.toSet()
+        refreshSenderLists()
+        Verbose.info(R.string.log_sender_restored, sender)
+        Verbose.flush()
+        readAgainSoon()
+    }
+
+    /** Settings › Lists: back to what the gate decides by itself - not read, not a bank. */
+    fun leaveOutSender(sender: String) {
+        val key = sender.trim().lowercase()
+        prefs.excludedSenders = prefs.excludedSenders.filterNot { it.trim().lowercase() == key }.toSet()
+        prefs.senderAllowlist = prefs.senderAllowlist.filterNot { it.trim().lowercase() == key }.toSet()
+        refreshSenderLists()
+        Verbose.info(R.string.log_sender_left_out, sender)
+        Verbose.flush()
+        readAgainSoon()
+    }
+
+    /** Settings › Lists: forget what was taught about a kind of message. */
+    fun forgetTaught(key: String) = viewModelScope.launch(Dispatchers.IO) {
+        store.clearLabel(key)
+        Verbose.info(R.string.log_taught_forgotten, key.substringBefore('|'))
+        Verbose.flush()
+        readAgainSoon()
+    }
+
+    /** Settings › Lists: a kind of message dismissed for good comes back to Review. */
+    fun undismissKind(kind: MutedTemplate) = viewModelScope.launch(Dispatchers.IO) {
+        val back = store.unmute(kind.template)
+        Verbose.info(R.string.log_kind_undismissed, kind.sender, back)
         Verbose.flush()
     }
 
@@ -1242,8 +1340,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * Review's "this is money out" outside the setup: the same lesson, about the whole
      * template, and a read of the inbox so every message like it is answered at once.
      */
-    fun teach(item: ReviewItem, kind: MessageKind) = viewModelScope.launch(Dispatchers.IO) {
-        store.setLabel(Skeleton.of(item.sender, item.body), kind)
+    /**
+     * What a kind of message is, answered in Review, and - for a sender that holds none of
+     * the user's accounts - which account its money moved in ([accountId]); null leaves
+     * the scan to give the sender an account of its own, as it would anyway.
+     */
+    fun teach(item: ReviewItem, kind: MessageKind, accountId: String? = null) = viewModelScope.launch(Dispatchers.IO) {
+        store.setLabel(Skeleton.of(item.sender, item.body), kind, accountId)
         Verbose.ok(
             R.string.log_taught,
             item.sender,
@@ -1257,6 +1360,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             ),
             0,
         )
+        accountId?.let { id ->
+            Verbose.ok(R.string.log_taught_account, accounts.value.firstOrNull { it.id == id }?.displayName ?: id)
+        }
         Verbose.flush()
         startScan(showSheet = false, full = true)
     }
@@ -1350,15 +1456,34 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
     }
 
-    fun wipeAll() = viewModelScope.launch(Dispatchers.IO) {
+    /**
+     * Deletes everything and starts over: the records, what was learned, and the settings
+     * with them, down to having been welcomed. [then] runs on the main thread once it is
+     * all gone; that is where the app is sent back to the welcome, as on a first run.
+     */
+    fun wipeAll(then: () -> Unit = {}) = viewModelScope.launch(Dispatchers.IO) {
+        setupJob?.cancel()
+        setupJob = null
         store.wipe()
         prefs.wipe()
+        // The view model outlives the wipe, so everything it keeps from the settings is
+        // read again from settings that are now the defaults.
         _budgetsOn.value = prefs.budgetsEnabled
         _autoConfirmOn.value = prefs.autoConfirmTransfers
         store.setAutoConfirmTransfers(prefs.autoConfirmTransfers)
         _accountsConfirmed.value = prefs.accountsConfirmed
+        _setupDone.value = prefs.setupDone
+        _defaultCurrency.value = prefs.defaultCurrency
+        _fxOverrides.value = emptyMap()
+        Currencies.setOverrides(emptyMap())
+        _checkOnStart.value = prefs.checkUpdatesOnStart
+        _includeBeta.value = prefs.updateIncludeBeta
+        _skipped.value = prefs.skippedUpdates
+        _lastUpdateCheck.value = prefs.lastUpdateCheckAt
+        refreshSenderLists()
         Verbose.info(R.string.log_wiped)
         Verbose.flush()
+        withContext(Dispatchers.Main) { then() }
     }
 
     fun exportCsv(uri: Uri) = viewModelScope.launch(Dispatchers.IO) {
@@ -1399,15 +1524,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
     }
 
+    /** What Settings' backup saves, chosen in its dialog before the file is picked. */
+    var backupParts: Set<Backup.Part> = Backup.Part.entries.toSet()
+
+    /** The settings that travel with a backup's parts. */
+    private fun backupSettings(): JSONObject = JSONObject()
+        .put(Backup.IGNORED_SENDERS, JSONArray(prefs.excludedSenders.toList()))
+        .put(Backup.ADDED_SENDERS, JSONArray(prefs.senderAllowlist.toList()))
+        .put(Backup.BUDGETS_ON, prefs.budgetsEnabled)
+
+    private fun partsText(parts: Set<Backup.Part>): String =
+        Backup.Part.entries.filter { it in parts }.joinToString(", ") { Verbose.str(it.label) }
+
     fun backup(uri: Uri) = viewModelScope.launch(Dispatchers.IO) {
         val withMessages = prefs.backupIncludeMessages
+        val parts = backupParts
         try {
-            val json = store.backupJson(withMessages)
+            val json = Backup.write(store.fileJson(), backupSettings(), parts, withMessages)
             getApplication<Application>().contentResolver.openOutputStream(uri)
                 ?.bufferedWriter()?.use { it.write(json) }
             Verbose.ok(
                 if (withMessages) R.string.log_backup_saved else R.string.log_backup_saved_bare,
-                Verbose.count(R.plurals.count_records, txns.value.size),
+                partsText(parts),
             )
         } catch (e: Exception) {
             Verbose.fail(R.string.log_backup_failed, e.message)
@@ -1415,20 +1553,67 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
     }
 
-    fun restore(uri: Uri) = viewModelScope.launch(Dispatchers.IO) {
+    /** A backup picked to import from, and what is in it, waiting for the user to choose. */
+    data class ImportOffer(val json: String, val contents: Map<Backup.Part, Int>)
+
+    private val _importOffer = MutableStateFlow<ImportOffer?>(null)
+    val importOffer: StateFlow<ImportOffer?> = _importOffer
+
+    /** Reads a backup and offers what is in it; nothing changes until the user chooses. */
+    fun openImport(uri: Uri) = viewModelScope.launch(Dispatchers.IO) {
         try {
             val json = getApplication<Application>().contentResolver.openInputStream(uri)
                 ?.bufferedReader()?.use { it.readText() }
-            if (json.isNullOrBlank()) {
-                Verbose.fail(R.string.log_restore_empty)
-                Verbose.flush()
-            } else if (store.restoreFrom(json)) {
-                _accountsConfirmed.value = prefs.accountsConfirmed
+            when {
+                json.isNullOrBlank() -> Verbose.fail(R.string.log_restore_empty)
+                !store.canImport(json) -> Unit
+                else -> {
+                    val contents = Backup.contents(json)
+                    if (contents.isEmpty()) Verbose.fail(R.string.log_import_nothing)
+                    else _importOffer.value = ImportOffer(json, contents)
+                }
             }
         } catch (e: Exception) {
             Verbose.fail(R.string.log_restore_unreadable, e.message)
-            Verbose.flush()
         }
+        Verbose.flush()
+    }
+
+    fun dismissImport() {
+        _importOffer.value = null
+        Verbose.info(R.string.log_restore_cancelled)
+        Verbose.flush()
+    }
+
+    /** Brings the chosen [parts] of the offered backup in. */
+    fun importParts(parts: Set<Backup.Part>) = viewModelScope.launch(Dispatchers.IO) {
+        val offer = _importOffer.value ?: return@launch
+        _importOffer.value = null
+        val after = try {
+            store.importFrom(offer.json, parts, backupSettings())
+        } catch (e: Exception) {
+            Verbose.fail(R.string.log_restore_unreadable, e.message)
+            null
+        }
+        if (after == null) {
+            Verbose.flush()
+            return@launch
+        }
+        fun strings(key: String): Set<String>? = after.optJSONArray(key)?.let { a ->
+            (0 until a.length()).mapNotNull { a.optString(it).takeIf { s -> s.isNotBlank() } }.toSet()
+        }
+        strings(Backup.IGNORED_SENDERS)?.let { prefs.excludedSenders = it }
+        strings(Backup.ADDED_SENDERS)?.let { prefs.senderAllowlist = it }
+        if (after.has(Backup.BUDGETS_ON)) {
+            prefs.budgetsEnabled = after.getBoolean(Backup.BUDGETS_ON)
+            _budgetsOn.value = prefs.budgetsEnabled
+        }
+        refreshSenderLists()
+        _accountsConfirmed.value = prefs.accountsConfirmed
+        Verbose.ok(R.string.log_import_done, partsText(parts))
+        Verbose.flush()
+        // Taught kinds and ignored senders change how the inbox reads.
+        if (Backup.Part.LISTS in parts) readAgainSoon()
     }
 
     private fun csv(s: String) = "\"" + s.replace("\"", "\"\"") + "\""
@@ -1438,5 +1623,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
         /** The shortest a check someone asked for shows that it is checking. */
         const val MIN_CHECK_MS = 1_000L
+
+        /** How long Lists waits for more changes before reading the inbox again. */
+        const val READ_AGAIN_AFTER_MS = 1_500L
     }
 }

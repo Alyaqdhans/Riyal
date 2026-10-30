@@ -439,6 +439,23 @@ fun DeleteButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 /**
+ * The yes to "Delete this?" and every question like it, where saying yes takes something
+ * away: filled, in the error colour, so the answer that cannot be undone is the one that
+ * looks it, and Cancel beside it stays plain.
+ */
+@Composable
+fun ConfirmDeleteButton(text: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.error,
+            contentColor = MaterialTheme.colorScheme.onError,
+        ),
+        shapes = ButtonDefaults.shapes(),
+    ) { Text(text) }
+}
+
+/**
  * A screen's own action - Add account, New category - as Material 3 Expressive's medium
  * button: taller than a plain one, led by its icon, and its corners square off while it
  * is pressed and spring back after, so the press is felt.

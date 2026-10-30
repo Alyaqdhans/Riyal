@@ -23,6 +23,7 @@ import com.alyaqdhan.riyal.ui.Words
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.screens.CategoriesScreen
 import com.alyaqdhan.riyal.ui.screens.CategoryDetailScreen
+import com.alyaqdhan.riyal.ui.screens.ListsScreen
 import com.alyaqdhan.riyal.ui.screens.ChangelogScreen
 import com.alyaqdhan.riyal.ui.screens.NeedsCategoryScreen
 import com.alyaqdhan.riyal.ui.screens.OnboardingScreen
@@ -157,11 +158,22 @@ class CategoriesActivity : PageActivity() {
             vm,
             onBack = { finish() },
             onOpenCategory = { id, slice -> openCategory(this, id, slice) },
+            onOpenLists = { openPage(ListsActivity::class.java) },
         )
     }
 }
 
-/** One category's records. The id and the period travel in the intent. */
+/** Settings › Lists: keywords, senders, and what is ignored. */
+class ListsActivity : PageActivity() {
+    override val layout get() = R.layout.activity_lists
+
+    @Composable
+    override fun Page() {
+        ListsScreen(vm, onBack = { finish() })
+    }
+}
+
+/** One category's records. The id, the period and the account travel in the intent. */
 class CategoryDetailActivity : PageActivity() {
     override val layout get() = R.layout.activity_category_detail
 
@@ -171,6 +183,7 @@ class CategoryDetailActivity : PageActivity() {
             vm,
             categoryId = intent.getStringExtra(ARG_CATEGORY_ID).orEmpty(),
             initialSlice = intent.extras.sliceArg(),
+            initialAccountId = intent.getStringExtra(ARG_ACCOUNT_ID),
             onBack = { finish() },
         )
     }
@@ -241,16 +254,19 @@ const val ARG_SLICE_START = "sliceStart"
 const val ARG_SLICE_END = "sliceEnd"
 const val ARG_SLICE_LABEL = "sliceLabel"
 const val ARG_SLICE_MONTH = "sliceMonth"
+const val ARG_ACCOUNT_ID = "accountId"
 
 /**
- * Opens a category with the period the caller was looking at. Sending the id alone
- * dropped it: tapping August's biggest category answered for the current month, and
- * the reader had to walk back to the month they had already chosen.
+ * Opens a category with the period the caller was looking at, and the account when it
+ * was narrowed to one. Sending the id alone dropped them: tapping August's biggest
+ * category answered for the current month, and a category opened from one bank's
+ * Analysis listed every bank's records.
  */
-fun openCategory(context: Context, categoryId: String, slice: TimeSlice) {
+fun openCategory(context: Context, categoryId: String, slice: TimeSlice, accountId: String? = null) {
     context.startActivity(
         Intent(context, CategoryDetailActivity::class.java)
             .putExtra(ARG_CATEGORY_ID, categoryId)
+            .putExtra(ARG_ACCOUNT_ID, accountId)
             .putExtra(ARG_SLICE_START, slice.start)
             .putExtra(ARG_SLICE_END, slice.endExclusive)
             .putExtra(

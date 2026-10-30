@@ -589,13 +589,13 @@ private fun BudgetEditor(
             title = { Text(stringResource(R.string.budget_delete_title)) },
             text = { Text(stringResource(R.string.budget_delete_body, plan.label)) },
             confirmButton = {
-                TextButton(onClick = {
+                ConfirmDeleteButton(stringResource(R.string.action_delete)) {
                     // The question goes, then the editor it was asked over.
                     confirmPop.leave {
                         confirmDelete = false
                         pop.leave(onDelete)
                     }
-                }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_delete)) }
+                }
             },
             dismissButton = {
                 TextButton(onClick = { confirmPop.leave { confirmDelete = false } }, shapes = ButtonDefaults.shapes()) {

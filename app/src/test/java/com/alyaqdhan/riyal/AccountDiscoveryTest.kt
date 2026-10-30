@@ -210,6 +210,19 @@ class AccountDiscoveryTest {
     }
 
     @Test
+    fun `a bank's message placed in another bank's account founds no account of its own`() {
+        // NBO writing that a payment was released to you: money arriving at another
+        // bank. Answered in Review with the account it went to, it names that account,
+        // and NBO - which holds none of yours - must not become a bank of its own.
+        val existing = AccountDiscovery.propose(listOf(obs("BANK NIZWA", "0019", 350_250, base, -12_500)))
+        val released = obs("NBO", null, null, base + hours(3), 10_000)
+        assertEquals(1, AccountDiscovery.proposeMissing(existing, listOf(released)).size)
+        assertTrue(
+            AccountDiscovery.proposeMissing(existing, listOf(released.copy(accountId = existing.single().id))).isEmpty()
+        )
+    }
+
+    @Test
     fun `messages that land in an account we already have add nothing`() {
         val existing = AccountDiscovery.propose(
             listOf(obs("BankMuscat", "0019", 350_250, base, -12_500))

@@ -126,13 +126,21 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putBoolean("auto_confirm_transfers", v).apply()
 
     /**
-     * Whether the transactions list has already explained that its rows can be swiped. The
+     * Whether the transactions list has shown, once, what its rows' swipes uncover: a row
+     * slides open by itself each way with a bubble saying what the button does. The
      * gesture is the only way to archive or remove a record and nothing on screen says
-     * so, which leaves it undiscoverable until someone swipes by accident.
+     * so, which leaves it undiscoverable until someone swipes by accident. A new key: the
+     * line of text it replaces was "swipe_hint_seen", and those who closed that have still
+     * never seen a row open.
      */
-    var swipeHintSeen: Boolean
-        get() = sp.getBoolean("swipe_hint_seen", false)
-        set(v) = sp.edit().putBoolean("swipe_hint_seen", v).apply()
+    var swipeTourSeen: Boolean
+        get() = sp.getBoolean("swipe_tour_seen", false)
+        set(v) = sp.edit().putBoolean("swipe_tour_seen", v).apply()
+
+    /** The same, once, for Settings › Lists, whose entries hide Forget and Restore the same way. */
+    var listsTourSeen: Boolean
+        get() = sp.getBoolean("lists_tour_seen", false)
+        set(v) = sp.edit().putBoolean("lists_tour_seen", v).apply()
 
     var backupIncludeMessages: Boolean
         get() = sp.getBoolean("backup_include_messages", true)
@@ -145,6 +153,14 @@ class Prefs(context: Context) {
     var senderAllowlist: Set<String>
         get() = sp.getStringSet("sender_allowlist", emptySet())!!.toSet()
         set(v) = sp.edit().putStringSet("sender_allowlist", v.toSet()).apply()
+
+    /**
+     * Whether the scan has dropped the senders an earlier version approved by itself.
+     * Done once: every sender approved since was approved by the user.
+     */
+    var allowlistCleaned: Boolean
+        get() = sp.getBoolean("allowlist_cleaned", false)
+        set(v) = sp.edit().putBoolean("allowlist_cleaned", v).apply()
 
     /**
      * Senders the user said are not their bank - a telecom that quotes a balance, a shop
@@ -252,11 +268,13 @@ class Prefs(context: Context) {
         sp.edit().remove("kw_expense").remove("kw_income").apply()
     }
 
+    /**
+     * Every setting back to its default, having been welcomed included: deleting
+     * everything starts the app over from the welcome, as on a first run.
+     */
     fun wipe() {
-        val onboarding = onboardingDone
         val backupMessages = backupIncludeMessages
-        sp.edit().clear().apply()
-        onboardingDone = onboarding
+        sp.edit().clear().commit()
         backupIncludeMessages = backupMessages
     }
 

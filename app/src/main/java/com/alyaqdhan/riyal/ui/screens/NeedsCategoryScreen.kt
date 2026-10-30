@@ -86,7 +86,9 @@ import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.HelpAction
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
+import com.alyaqdhan.riyal.ui.compose.SiftBar
 import com.alyaqdhan.riyal.ui.compose.localDateOf
+import com.alyaqdhan.riyal.ui.compose.rememberSifting
 import com.alyaqdhan.riyal.ui.compose.rememberCategoryOrder
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import java.time.Instant
@@ -138,6 +140,11 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
         Stats.unfiled(txns, archived, deferred).filter { it.merchant.isNullOrBlank() }
     }
     val records = remember(groups) { groups.sumOf { it.count } }
+    // Every record still waiting, for the bar that fills as names are filed: one answer
+    // can file dozens of records, and the bar jumps by all of them.
+    val sifting = rememberSifting(
+        remember(groups, unnamed) { groups.flatMapTo(HashSet()) { it.txnIds } + unnamed.map { it.id } }
+    )
     // Only the ones still here. A deferred id whose record has since been re-parsed
     // away would otherwise inflate the count on the empty state.
     val waiting = remember(txns, deferred) { txns.count { it.id in deferred } }
@@ -178,6 +185,9 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
         },
     ) { padding ->
         ScanRefresh(vm, Modifier.padding(padding)) {
+        Column {
+        // Above the list, so what is left stays in sight while the cards go.
+        SiftBar(sifting)
         LazyColumn(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -269,6 +279,7 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                     }
                 }
             }
+        }
         }
         }
     }
