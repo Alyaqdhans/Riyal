@@ -25,6 +25,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -76,6 +77,7 @@ fun CategoryDetailScreen(
     categoryId: String,
     onBack: () -> Unit,
     initialSlice: TimeSlice? = null,
+    initialAccountId: String? = null,
 ) {
     val txns by vm.txns.collectAsState()
     val accounts by vm.accounts.collectAsState()
@@ -85,6 +87,9 @@ fun CategoryDetailScreen(
     // The period the caller was reading, not today's: this page is opened by tapping a
     // figure that belongs to a month, and answering for a different one is a wrong answer.
     var slice by remember { mutableStateOf(initialSlice ?: TimeSlice.thisMonth()) }
+    // And the account, for the same reason: opened from one bank's Analysis, every
+    // bank's records here would add up to a figure the tap never showed.
+    var accountId by rememberSaveable { mutableStateOf(initialAccountId) }
     var sort by rememberSaveable { mutableStateOf(TxnSort.NEWEST.name) }
     var editing by remember { mutableStateOf<Txn?>(null) }
     val snackbar = remember { SnackbarHostState() }
@@ -92,16 +97,25 @@ fun CategoryDetailScreen(
     val archivedIds by vm.archivedIds.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
 
+    LaunchedEffect(accounts) {
+        if (accountId != null && accounts.none { it.id == accountId }) accountId = null
+    }
+
     val order = TxnSort.valueOf(sort)
-    val inCategory = remember(txns, categoryId, slice, order) {
-        order.applyTo(txns.filter { it.categoryId == categoryId && slice.contains(it.atMillis) })
+    val inCategory = remember(txns, categoryId, slice, accountId, order) {
+        order.applyTo(
+            txns.filter {
+                it.categoryId == categoryId && slice.contains(it.atMillis) &&
+                    accountId.let { id -> id == null || it.touches(id) }
+            }
+        )
     }
     val total = remember(inCategory, currency) {
         inCategory.filter { it.currency == currency }.sumOf { it.amountMinor }
     }
-    val previousTotal = remember(txns, categoryId, slice, currency) {
+    val previousTotal = remember(txns, categoryId, slice, accountId, currency) {
         val (prevStart, prevEnd) = Stats.previousWindow(slice.start, slice.endExclusive)
-        Stats.categoryTotalIn(txns, categoryId, prevStart, prevEnd, currency)
+        Stats.categoryTotalIn(txns, categoryId, prevStart, prevEnd, currency, accountId)
     }
     val merchants = remember(inCategory) {
         inCategory.filter { !it.merchant.isNullOrBlank() && it.currency == currency }
@@ -129,6 +143,8 @@ fun CategoryDetailScreen(
         },
     ) { padding ->
         ScanRefresh(vm, Modifier.padding(padding)) {
+        Column {
+        AccountChips(accounts, accountId, onSelect = { accountId = it })
         LazyColumn(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -206,10 +222,11 @@ fun CategoryDetailScreen(
                         onRemove = { removeForGood(vm, snackbar, scope, txn) },
                                     removeLabel = removeLabelOf(txn),
                     ) {
-                        TxnRow(txn, onClick = { editing = txn }, accounts = accounts)
+                        TxnRow(txn, onClick = { editing = txn }, accounts = accounts, showAccount = accountId == null)
                     }
                 }
             }
+        }
         }
         }
     }

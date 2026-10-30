@@ -173,7 +173,7 @@ class ListsActivity : PageActivity() {
     }
 }
 
-/** One category's records. The id and the period travel in the intent. */
+/** One category's records. The id, the period and the account travel in the intent. */
 class CategoryDetailActivity : PageActivity() {
     override val layout get() = R.layout.activity_category_detail
 
@@ -183,6 +183,7 @@ class CategoryDetailActivity : PageActivity() {
             vm,
             categoryId = intent.getStringExtra(ARG_CATEGORY_ID).orEmpty(),
             initialSlice = intent.extras.sliceArg(),
+            initialAccountId = intent.getStringExtra(ARG_ACCOUNT_ID),
             onBack = { finish() },
         )
     }
@@ -253,16 +254,19 @@ const val ARG_SLICE_START = "sliceStart"
 const val ARG_SLICE_END = "sliceEnd"
 const val ARG_SLICE_LABEL = "sliceLabel"
 const val ARG_SLICE_MONTH = "sliceMonth"
+const val ARG_ACCOUNT_ID = "accountId"
 
 /**
- * Opens a category with the period the caller was looking at. Sending the id alone
- * dropped it: tapping August's biggest category answered for the current month, and
- * the reader had to walk back to the month they had already chosen.
+ * Opens a category with the period the caller was looking at, and the account when it
+ * was narrowed to one. Sending the id alone dropped them: tapping August's biggest
+ * category answered for the current month, and a category opened from one bank's
+ * Analysis listed every bank's records.
  */
-fun openCategory(context: Context, categoryId: String, slice: TimeSlice) {
+fun openCategory(context: Context, categoryId: String, slice: TimeSlice, accountId: String? = null) {
     context.startActivity(
         Intent(context, CategoryDetailActivity::class.java)
             .putExtra(ARG_CATEGORY_ID, categoryId)
+            .putExtra(ARG_ACCOUNT_ID, accountId)
             .putExtra(ARG_SLICE_START, slice.start)
             .putExtra(ARG_SLICE_END, slice.endExclusive)
             .putExtra(

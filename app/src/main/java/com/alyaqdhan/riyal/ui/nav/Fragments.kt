@@ -134,7 +134,7 @@ class AnalysisFragment : ScreenFragment(R.layout.fragment_analysis) {
     override fun Screen() {
         AnalysisScreen(
             vm,
-            onOpenCategory = { id, slice -> openCategory(requireContext(), id, slice) },
+            onOpenCategory = { id, slice, account -> openCategory(requireContext(), id, slice, account) },
         )
     }
 }

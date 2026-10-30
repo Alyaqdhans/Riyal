@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
+import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.TxnType
@@ -122,7 +123,7 @@ private val dayFmt: DateTimeFormatter get() = Dates.pattern("d MMM")
  * because a number with nothing to compare it to is just a number.
  */
 @Composable
-fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Unit) {
+fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice, String?) -> Unit) {
     val txns by vm.txns.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val budgets by vm.budgets.collectAsState()
@@ -199,30 +200,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
 
             // The account filter sits outside the scroll: it scopes everything below,
             // so it should never scroll out of sight while you read the numbers.
-            if (accounts.size > 1) {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    item {
-                        FilterChip(
-                            selected = accountId == null,
-                            onClick = { accountId = null },
-                            label = { Text(stringResource(R.string.an_all_accounts)) },
-                        )
-                    }
-                    items(accounts) { acc ->
-                        FilterChip(
-                            selected = accountId == acc.id,
-                            onClick = { accountId = if (accountId == acc.id) null else acc.id },
-                            label = { Text(acc.displayName) },
-                            leadingIcon = {
-                                Icon(painterResource(iconFor(acc.kind)), contentDescription = null, modifier = Modifier.size(18.dp))
-                            },
-                        )
-                    }
-                }
-            }
+            AccountChips(accounts, accountId, onSelect = { accountId = it })
 
             Column(
                 Modifier
@@ -293,7 +271,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                 Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
-                                    .clickable { onOpenCategory(cat.id, slice) }
+                                    .clickable { onOpenCategory(cat.id, slice, accountId) }
                                     .padding(vertical = 4.dp),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -403,7 +381,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                                     Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(10.dp))
-                                        .clickable { onOpenCategory(mover.categoryId, slice) }
+                                        .clickable { onOpenCategory(mover.categoryId, slice, accountId) }
                                         .padding(vertical = 4.dp),
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -598,6 +576,37 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice) -> Uni
                 ToolbarSpacer()
             }
         }
+        }
+    }
+}
+
+/**
+ * All accounts, or one: the filter over Analysis, and over a category's page opened from
+ * it, which keeps the account picked here. Shown only when there is more than one.
+ */
+@Composable
+internal fun AccountChips(accounts: List<Account>, selected: String?, onSelect: (String?) -> Unit) {
+    if (accounts.size <= 1) return
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item {
+            FilterChip(
+                selected = selected == null,
+                onClick = { onSelect(null) },
+                label = { Text(stringResource(R.string.an_all_accounts)) },
+            )
+        }
+        items(accounts) { acc ->
+            FilterChip(
+                selected = selected == acc.id,
+                onClick = { onSelect(if (selected == acc.id) null else acc.id) },
+                label = { Text(acc.displayName) },
+                leadingIcon = {
+                    Icon(painterResource(iconFor(acc.kind)), contentDescription = null, modifier = Modifier.size(18.dp))
+                },
+            )
         }
     }
 }
