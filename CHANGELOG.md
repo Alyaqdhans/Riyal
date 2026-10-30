@@ -21,6 +21,11 @@ is attached there.
   case; an ATM stays an ATM. What you taught before is carried over, not lost, and the
   first scan reads everything again.
 
+### Settings
+
+- **Delete everything starts over.** After deleting, Riyal goes back to the welcome and
+  then the setup, as on the day it was installed, instead of leaving an empty app behind.
+
 ## 1.8.0 — 2026-10-29
 
 ### Before you install

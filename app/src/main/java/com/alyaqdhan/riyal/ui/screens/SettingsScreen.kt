@@ -95,6 +95,8 @@ fun SettingsScreen(
     onRestore: () -> Unit,
     onOpenUpdates: () -> Unit,
     onOpenSetup: () -> Unit,
+    /** Delete everything, then start over from the welcome. */
+    onWipe: () -> Unit,
 ) {
     val context = LocalContext.current
     val prefs = vm.prefs
@@ -461,8 +463,8 @@ fun SettingsScreen(
                     TextButton(
                         onClick = {
                             pop.leave {
-                                vm.wipeAll()
                                 close()
+                                onWipe()
                             }
                         },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),

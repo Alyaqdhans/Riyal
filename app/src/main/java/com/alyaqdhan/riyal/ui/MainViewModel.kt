@@ -53,6 +53,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -1350,15 +1351,33 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
     }
 
-    fun wipeAll() = viewModelScope.launch(Dispatchers.IO) {
+    /**
+     * Deletes everything and starts over: the records, what was learned, and the settings
+     * with them, down to having been welcomed. [then] runs on the main thread once it is
+     * all gone; that is where the app is sent back to the welcome, as on a first run.
+     */
+    fun wipeAll(then: () -> Unit = {}) = viewModelScope.launch(Dispatchers.IO) {
+        setupJob?.cancel()
+        setupJob = null
         store.wipe()
         prefs.wipe()
+        // The view model outlives the wipe, so everything it keeps from the settings is
+        // read again from settings that are now the defaults.
         _budgetsOn.value = prefs.budgetsEnabled
         _autoConfirmOn.value = prefs.autoConfirmTransfers
         store.setAutoConfirmTransfers(prefs.autoConfirmTransfers)
         _accountsConfirmed.value = prefs.accountsConfirmed
+        _setupDone.value = prefs.setupDone
+        _defaultCurrency.value = prefs.defaultCurrency
+        _fxOverrides.value = emptyMap()
+        Currencies.setOverrides(emptyMap())
+        _checkOnStart.value = prefs.checkUpdatesOnStart
+        _includeBeta.value = prefs.updateIncludeBeta
+        _skipped.value = prefs.skippedUpdates
+        _lastUpdateCheck.value = prefs.lastUpdateCheckAt
         Verbose.info(R.string.log_wiped)
         Verbose.flush()
+        withContext(Dispatchers.Main) { then() }
     }
 
     fun exportCsv(uri: Uri) = viewModelScope.launch(Dispatchers.IO) {

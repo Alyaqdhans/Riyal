@@ -252,11 +252,13 @@ class Prefs(context: Context) {
         sp.edit().remove("kw_expense").remove("kw_income").apply()
     }
 
+    /**
+     * Every setting back to its default, having been welcomed included: deleting
+     * everything starts the app over from the welcome, as on a first run.
+     */
     fun wipe() {
-        val onboarding = onboardingDone
         val backupMessages = backupIncludeMessages
-        sp.edit().clear().apply()
-        onboardingDone = onboarding
+        sp.edit().clear().commit()
         backupIncludeMessages = backupMessages
     }
 

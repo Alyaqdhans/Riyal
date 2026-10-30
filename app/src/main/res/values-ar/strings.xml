@@ -747,7 +747,7 @@
     <string name="set_checking">جارٍ التحقق…</string>
     <string name="set_update_available">%1$s متاح</string>
     <string name="set_wipe_title">حذف كل شيء؟</string>
-    <string name="set_wipe_body">ستُمحى كل المعاملات المسجَّلة والقواعد وعناصر المراجعة والإعدادات. أما صندوق رسائلك فلا يُمس، فهذا التطبيق لا يعدّل الرسائل أبداً.</string>
+    <string name="set_wipe_body">ستُمحى كل المعاملات المسجَّلة والقواعد وعناصر المراجعة والإعدادات، ويبدأ ريال من جديد من شاشة الترحيب كما في يوم تثبيته. أما صندوق رسائلك فلا يُمس، فهذا التطبيق لا يعدّل الرسائل أبداً.</string>
     <string name="set_export_title">تصدير %1$s؟</string>
     <string name="set_export_empty">لا شيء مُسجَّل بعد، فسيكون الملف فارغاً. افحص رسائلك أولاً.</string>
     <string name="set_export_body">كل سجل لدى ريال يذهب إلى ملف CSV واحد، وأنت تختار أين يُكتب. ولا يغادر الهاتف شيء من تلقاء نفسه.</string>
@@ -762,7 +762,7 @@
     <string name="set_ago">قبل %1$s</string>
     <string name="set_on_date">في %1$s</string>
     <string name="set_danger_title">حذف كل بيانات التطبيق</string>
-    <string name="set_danger_body">السجلات والقواعد والإعدادات. وصندوق رسائلك لا يُمس.</string>
+    <string name="set_danger_body">السجلات والقواعد والإعدادات، ثم البدء من جديد. وصندوق رسائلك لا يُمس.</string>
     <plurals name="count_minutes">
         <item quantity="zero">أقل من دقيقة</item>
         <item quantity="one">دقيقة واحدة</item>

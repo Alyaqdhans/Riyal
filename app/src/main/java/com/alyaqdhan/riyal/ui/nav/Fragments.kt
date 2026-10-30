@@ -1,6 +1,7 @@
 package com.alyaqdhan.riyal.ui.nav
 
 import android.Manifest
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
@@ -177,6 +178,17 @@ class SettingsFragment : ScreenFragment(R.layout.fragment_settings) {
             onOpenCategories = { open(CategoriesActivity::class.java) },
             onOpenUpdates = { open(UpdatesActivity::class.java) },
             onOpenSetup = { open(SetupActivity::class.java) },
+            onWipe = {
+                // Nothing is left to go back to: the app starts over from the welcome, in a
+                // task of its own, as on the day it was installed.
+                val app = requireContext().applicationContext
+                vm.wipeAll {
+                    app.startActivity(
+                        Intent(app, OnboardingActivity::class.java)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    )
+                }
+            },
             onExport = { exportCsv.launch("riyal-transactions.csv") },
             onBackup = { saveBackup.launch("riyal-backup-" + LocalDate.now() + ".json") },
             onRestore = { openBackup.launch(BACKUP_TYPES) },

@@ -687,7 +687,7 @@
     <string name="set_checking">checking…</string>
     <string name="set_update_available">%1$s available</string>
     <string name="set_wipe_title">Delete everything?</string>
-    <string name="set_wipe_body">All recorded transactions, rules, review items and settings will be erased. Your SMS inbox itself is untouched, this app never modifies messages.</string>
+    <string name="set_wipe_body">All recorded transactions, rules, review items and settings will be erased, and Riyal starts over from the welcome, as on the day you installed it. Your SMS inbox itself is untouched, this app never modifies messages.</string>
     <string name="set_export_title">Export %1$s?</string>
     <string name="set_export_empty">There is nothing recorded yet, so the file would be empty. Scan your messages first.</string>
     <string name="set_export_body">Every record Riyal holds goes into one CSV file, and you choose where it is written. Nothing leaves the phone on its own.</string>
@@ -702,7 +702,7 @@
     <string name="set_ago">%1$s ago</string>
     <string name="set_on_date">on %1$s</string>
     <string name="set_danger_title">Delete all app data</string>
-    <string name="set_danger_body">Records, rules and settings. Your inbox is untouched.</string>
+    <string name="set_danger_body">Records, rules and settings, then start over. Your inbox is untouched.</string>
     <plurals name="count_minutes">
         <item quantity="one">%d minute</item>
         <item quantity="other">%d minutes</item>
