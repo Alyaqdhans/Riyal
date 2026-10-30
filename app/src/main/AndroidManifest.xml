@@ -64,6 +64,10 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
         <activity
+            android:name=".ui.nav.ListsActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
             android:name=".ui.nav.CategoryDetailActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />

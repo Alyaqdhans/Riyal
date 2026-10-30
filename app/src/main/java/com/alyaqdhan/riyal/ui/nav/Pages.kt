@@ -23,6 +23,7 @@ import com.alyaqdhan.riyal.ui.Words
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.screens.CategoriesScreen
 import com.alyaqdhan.riyal.ui.screens.CategoryDetailScreen
+import com.alyaqdhan.riyal.ui.screens.ListsScreen
 import com.alyaqdhan.riyal.ui.screens.ChangelogScreen
 import com.alyaqdhan.riyal.ui.screens.NeedsCategoryScreen
 import com.alyaqdhan.riyal.ui.screens.OnboardingScreen
@@ -157,7 +158,18 @@ class CategoriesActivity : PageActivity() {
             vm,
             onBack = { finish() },
             onOpenCategory = { id, slice -> openCategory(this, id, slice) },
+            onOpenLists = { openPage(ListsActivity::class.java) },
         )
+    }
+}
+
+/** Settings › Lists: keywords, senders, and what is ignored. */
+class ListsActivity : PageActivity() {
+    override val layout get() = R.layout.activity_lists
+
+    @Composable
+    override fun Page() {
+        ListsScreen(vm, onBack = { finish() })
     }
 }
 

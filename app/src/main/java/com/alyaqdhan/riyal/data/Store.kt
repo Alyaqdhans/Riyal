@@ -854,6 +854,25 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         extra
     }
 
+    /**
+     * Lifts a dismissal for good: the kind is no longer muted, and every message of it
+     * that was set aside comes back to Review. Returns how many came back.
+     */
+    suspend fun unmute(template: String): Int = mutex.withLock {
+        _muted.value = _muted.value.filter { it.template != template }
+        var back = 0
+        _reviews.value = _reviews.value.map { r ->
+            if (r.state == ReviewItem.STATE_DISMISSED && Skeleton.of(r.sender, r.body) == template) {
+                back++
+                r.copy(state = ReviewItem.STATE_PENDING)
+            } else {
+                r
+            }
+        }
+        persistLocked()
+        back
+    }
+
     suspend fun resolveReview(reviewId: String, txn: Txn, learn: Boolean = true) = mutex.withLock {
         val item = if (learn) _reviews.value.firstOrNull { it.id == reviewId } else null
         if (item != null) {

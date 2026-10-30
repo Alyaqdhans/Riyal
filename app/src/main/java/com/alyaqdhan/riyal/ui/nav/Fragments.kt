@@ -176,6 +176,7 @@ class SettingsFragment : ScreenFragment(R.layout.fragment_settings) {
             vm,
             onOpenAccounts = { openTab(Tab.ACCOUNTS) },
             onOpenCategories = { open(CategoriesActivity::class.java) },
+            onOpenLists = { open(ListsActivity::class.java) },
             onOpenUpdates = { open(UpdatesActivity::class.java) },
             onOpenSetup = { open(SetupActivity::class.java) },
             onWipe = {

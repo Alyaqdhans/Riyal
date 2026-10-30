@@ -201,8 +201,10 @@ class ScanEngine(
         // An earlier version auto-approved any sender whose message happened to parse,
         // which put every telecom in the allowlist - and an allowlisted sender skips
         // the bank gate. Drop the ones that hold no account and look nothing like a
-        // bank, or the gate below can never take effect on this device.
-        if (allowlist.isNotEmpty()) {
+        // bank, or the gate below can never take effect on this device. Once only:
+        // since then a sender is approved by the user (the setup, Settings › Lists),
+        // and one they asked to be read is not quietly dropped at the next scan.
+        if (allowlist.isNotEmpty() && !prefs.allowlistCleaned) {
             val bogus = allowlist.filterNot { name ->
                 Banks.looksLikeBank(name) || AccountDiscovery.isKnownSender(existingAccounts, name)
             }
@@ -216,6 +218,7 @@ class ScanEngine(
                 )
             }
         }
+        prefs.allowlistCleaned = true
 
         // ── stage 1: read every message ───────────────────────────────────
         //
@@ -244,7 +247,7 @@ class ScanEngine(
             }
             // Banks send from named sender IDs ("BankMuscat"), people send from phone
             // numbers. Numeric senders are never read unless explicitly approved.
-            if (isPhoneNumber(msg.sender) && msg.sender.lowercase() !in allowlist) {
+            if (SenderLists.isPhoneNumber(msg.sender) && msg.sender.lowercase() !in allowlist) {
                 skipped++
                 logSkip(Verbose.str(R.string.scanlog_skip_numeric, msg.sender))
                 return@forEachIndexed
@@ -906,9 +909,6 @@ class ScanEngine(
         accounts.firstOrNull { it.id == id }?.displayName
             ?: Verbose.str(R.string.review_unassigned_account)
 
-    /** "+96891234567", "9123 4567"… anything that's just a phone number. */
-    private fun isPhoneNumber(sender: String): Boolean =
-        sender.isNotBlank() && sender.all { it.isDigit() || it in "+ -()" }
 
     /**
      * The identity of a message: same sender, same instant, same text, same record.

@@ -458,24 +458,27 @@ private fun TransferLeg(type: TxnType, text: String) {
 /** What a message that only lacked its direction can be, in the order the card offers it. */
 private val KINDS: List<MessageKind?> = listOf(MessageKind.OUT, MessageKind.IN, MessageKind.NONE)
 
-private fun kindLabel(kind: MessageKind) = when (kind) {
+internal fun kindLabel(kind: MessageKind) = when (kind) {
     MessageKind.OUT -> typeLabel(TxnType.EXPENSE)
     MessageKind.IN -> typeLabel(TxnType.INCOME)
-    else -> R.string.setup_kind_none
+    MessageKind.TRANSFER -> typeLabel(TxnType.TRANSFER)
+    MessageKind.NONE -> R.string.setup_kind_none
 }
 
-private fun kindIcon(kind: MessageKind) = when (kind) {
+internal fun kindIcon(kind: MessageKind) = when (kind) {
     MessageKind.OUT -> typeIcon(TxnType.EXPENSE)
     MessageKind.IN -> typeIcon(TxnType.INCOME)
-    else -> R.drawable.ic_sym_block
+    MessageKind.TRANSFER -> typeIcon(TxnType.TRANSFER)
+    MessageKind.NONE -> R.drawable.ic_sym_block
 }
 
 /** Home's colours for money out and in; "not a transaction" in the neutral one. */
 @Composable
-private fun kindTone(kind: MessageKind) = when (kind) {
+internal fun kindTone(kind: MessageKind) = when (kind) {
     MessageKind.OUT -> typeTone(TxnType.EXPENSE)
     MessageKind.IN -> typeTone(TxnType.INCOME)
-    else -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+    MessageKind.TRANSFER -> typeTone(TxnType.TRANSFER)
+    MessageKind.NONE -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
 }
 
 @Composable

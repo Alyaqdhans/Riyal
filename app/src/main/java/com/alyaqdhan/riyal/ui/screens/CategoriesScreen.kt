@@ -31,6 +31,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -112,19 +114,16 @@ fun CategoriesScreen(
     vm: MainViewModel,
     onBack: () -> Unit,
     onOpenCategory: (String, TimeSlice) -> Unit,
+    onOpenLists: () -> Unit,
 ) {
     val txns by vm.txns.collectAsState()
     // Read so a create/rename/delete recomposes the list built from the registry.
     val custom by vm.categories.collectAsState()
-    val rules by vm.rules.collectAsState()
-    val askEachTime by vm.askEachTime.collectAsState()
-    val categoryUse by vm.categoryUse.collectAsState()
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
     var slice by remember { mutableStateOf(TimeSlice.thisMonth()) }
     var editing by remember { mutableStateOf<Category?>(null) }
     var showEmpty by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf<Category?>(null) }
-    var addingKeyword by remember { mutableStateOf(false) }
 
     val expenses = remember(txns, slice, currency, custom) {
         Stats.breakdownIn(txns, slice.start, slice.endExclusive, currency, type = TxnType.EXPENSE)
@@ -244,78 +243,20 @@ fun CategoriesScreen(
                 )
             }
 
-            // What the app has been taught, and the only place it can be untaught. A
-            // rule re-files past records as well as future ones, which is too much to
-            // do invisibly: it should be possible to read back every name that was
-            // learned and take any of them away.
-            item(key = "learned-title") {
-                SectionTitle(stringResource(R.string.cats_learned_title))
-            }
-            item(key = "learned-intro") {
-                Text(
-                    stringResource(
-                        if (rules.isEmpty() && askEachTime.isEmpty()) R.string.cats_learned_empty
-                        else R.string.cats_learned_intro
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                )
-            }
-            item(key = "learned-add") {
-                ActionButton(
-                    text = stringResource(R.string.cats_add_keyword),
-                    icon = R.drawable.ic_sym_add,
-                    onClick = { addingKeyword = true },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    tonal = true,
-                )
-            }
-            val sortedRules = rules.sortedBy { it.pattern }
-            items(sortedRules, key = { "rule-" + it.pattern + "-" + it.categoryId }) { rule ->
-                LearnedRow(
-                    name = rule.pattern,
-                    detail = stringResource(
-                        R.string.cats_filed_as,
-                        Categories.byId(rule.categoryId).name,
-                    ),
-                    categoryId = rule.categoryId,
-                    actionLabel = stringResource(R.string.cats_forget),
-                    onAction = { vm.removeRule(rule.pattern) },
-                )
-            }
-            if (askEachTime.isNotEmpty()) {
-                item(key = "asked-title") {
-                    Text(
-                        stringResource(R.string.cats_asked_every_time),
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
-                    )
-                }
-                items(askEachTime.sorted(), key = { "ask-$it" }) { name ->
-                    LearnedRow(
-                        name = name,
-                        detail = stringResource(R.string.cats_never_rule),
-                        categoryId = null,
-                        actionLabel = stringResource(R.string.action_remove),
-                        onAction = { vm.setAskEachTime(name, false) },
-                    )
-                }
+            // What the app has been taught lives in Settings › Lists now, with the
+            // senders and what is ignored; this page keeps a way there.
+            item(key = "learned") {
+                ListItem(
+                    onClick = onOpenLists,
+                    modifier = Modifier.padding(top = 12.dp),
+                    leadingContent = { Icon(painterResource(R.drawable.ic_sym_filter_list), contentDescription = null) },
+                    supportingContent = { Text(stringResource(R.string.cats_learned_in_lists)) },
+                    trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                ) { Text(stringResource(R.string.cats_learned_title)) }
             }
         }
         }
-    }
-
-    if (addingKeyword) {
-        KeywordRuleDialog(
-            askEachTime = askEachTime,
-            categoryUse = categoryUse,
-            onSave = { pattern, categoryId ->
-                vm.addRule(pattern, categoryId)
-                addingKeyword = false
-            },
-            onDismiss = { addingKeyword = false },
-        )
     }
 
     editing?.let { cat ->
@@ -445,43 +386,6 @@ private fun CategoryRow(
 }
 
 /**
- * One thing the app has learned: the name, what it does, and how to undo it. Used for
- * both halves of the list, because "a rule" and "a name to ask about" are the same kind
- * of thing to the reader - something remembered about a counterparty.
- */
-@Composable
-private fun LearnedRow(
-    name: String,
-    detail: String,
-    categoryId: String?,
-    actionLabel: String,
-    onAction: () -> Unit,
-) {
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            Modifier.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (categoryId != null) CategoryBadge(categoryId, size = 32.dp)
-            Column(Modifier.weight(1f)) {
-                Text(name, style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    detail,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            TextButton(onClick = onAction, shapes = ButtonDefaults.shapes()) { Text(actionLabel) }
-        }
-    }
-}
-
-/**
  * Teaches a keyword by hand, rather than waiting to correct a record and leaving
  * "Always" on. It writes exactly the same [UserRule] that switch does, so there is one
  * mechanism and one list, not two.
@@ -490,7 +394,7 @@ private fun LearnedRow(
  * pay you and be paid, and a category chosen for one direction must not file the other.
  */
 @Composable
-private fun KeywordRuleDialog(
+internal fun KeywordRuleDialog(
     askEachTime: Set<String>,
     categoryUse: Map<String, Int>,
     onSave: (pattern: String, categoryId: String) -> Unit,

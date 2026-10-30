@@ -84,12 +84,13 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `data/Learning.kt` | `Skeleton` (message → template key), `BalanceChain` (direction proven by balance deltas), `TemplateInference`, `Tutor` (setup questions + stopping rule) |
 | `data/ScanEngine.kt` | One pass: read → decide (taught label > balance proof > proven template > words) → accounts → records (with FX conversion) → transfers → store |
 | `data/Store.kt` | One JSON file, written atomically. Records, accounts, rules, labels, template stats. **Bumping `SCHEMA_VERSION` wipes user data** |
+| `data/SenderLists.kt` | Whether each sender is read, as the scan's sender gate decides (Settings › Lists) |
 | `data/AccountDiscovery.kt` | Banks list, accounts proposed from messages, routing a message to an account |
 | `data/TransferMatcher.kt` | Pairs an expense and an income across your own accounts |
 | `data/Updates.kt` | **All network code**: GitHub releases list + APK download. `ApkInstaller.kt` hands the file to Android via FileProvider |
 | `ui/MainViewModel.kt` | One VM for every screen, owned by `RiyalApp` (`Context.riyalViewModel`): scanning, setup flow, updates, edits |
 | `ui/nav/Fragments.kt` | The five tabs (`Tab` in `MainActivity.kt`): fragments, each with its `fragment_*.xml` layout; hidden ones stay laid out but `INVISIBLE` |
-| `ui/nav/Pages.kt` | `PageActivity` and every page opened from a tab (onboarding, setup, review, categories, updates, changelog), each with its `activity_*.xml` layout |
+| `ui/nav/Pages.kt` | `PageActivity` and every page opened from a tab (onboarding, setup, review, categories, lists, updates, changelog), each with its `activity_*.xml` layout |
 | `MainActivity.kt` | The tabs, the floating toolbar (`HorizontalFloatingToolbar` + Add FAB), global dialogs (update prompt, manual add); sends a first run to `OnboardingActivity` |
 | `ui/screens/*` | Home, Transactions, Analysis, Accounts, Settings (tabs); Setup, Review, Updates, Changelog, Categories… (pages) |
 | `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs at the text's measured stroke weight), `SwipeRow` (swipe to reveal Archive/Remove, on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips), `BudgetSection` (Home's budget card under the net, and its editor) |

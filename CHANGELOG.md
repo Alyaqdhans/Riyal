@@ -23,6 +23,20 @@ is attached there.
 
 ### Settings
 
+- **Settings › Lists** gathers what Riyal reads by, each list a tab and every entry one
+  you can add to or take back:
+  - **Keywords:** names filed under a category without asking (learned, or added
+    yourself), names always asked about, and the kinds of message you taught in Review
+    or the setup, each with a message it was taught on - forget one and Riyal works it
+    out again. These used to be at the bottom of Categories, which now links here.
+  - **Senders:** everyone who has texted you, and whether each is read: your banks, the
+    ones you added, and the rest left out. Tap one to read it, leave it out or ignore
+    it; ignoring a bank that holds accounts asks first, as they go too.
+  - **Ignored:** the senders never read, and the kinds of message dismissed for good,
+    each a tap from coming back.
+- A sender you asked to be read (in the setup, or here) stays read. Every scan used to
+  drop such senders when they did not look like a bank, as clean-up after an old
+  version that approved senders by itself; that clean-up now runs once.
 - **Delete everything starts over.** After deleting, Riyal goes back to the welcome and
   then the setup, as on the day it was installed, instead of leaving an empty app behind.
 

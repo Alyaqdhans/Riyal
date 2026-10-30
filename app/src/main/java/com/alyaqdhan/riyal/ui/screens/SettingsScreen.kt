@@ -90,6 +90,7 @@ fun SettingsScreen(
     vm: MainViewModel,
     onOpenAccounts: () -> Unit,
     onOpenCategories: () -> Unit,
+    onOpenLists: () -> Unit,
     onExport: () -> Unit,
     onBackup: () -> Unit,
     onRestore: () -> Unit,
@@ -259,6 +260,12 @@ fun SettingsScreen(
                 if (rules.isEmpty()) stringResource(R.string.set_categories_detail)
                 else counted(R.plurals.count_learned, rules.size),
                 onClick = onOpenCategories,
+            )
+            NavRow(
+                R.drawable.ic_sym_filter_list,
+                stringResource(R.string.set_lists),
+                stringResource(R.string.set_lists_detail),
+                onClick = onOpenLists,
             )
             SwitchRow(
                 R.drawable.ic_sym_savings,

@@ -147,6 +147,14 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putStringSet("sender_allowlist", v.toSet()).apply()
 
     /**
+     * Whether the scan has dropped the senders an earlier version approved by itself.
+     * Done once: every sender approved since was approved by the user.
+     */
+    var allowlistCleaned: Boolean
+        get() = sp.getBoolean("allowlist_cleaned", false)
+        set(v) = sp.edit().putBoolean("allowlist_cleaned", v).apply()
+
+    /**
      * Senders the user said are not their bank - a telecom that quotes a balance, a shop
      * that texts receipts. Never read, whatever their messages look like.
      */

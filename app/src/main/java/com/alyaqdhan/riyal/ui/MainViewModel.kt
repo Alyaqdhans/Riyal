@@ -18,10 +18,12 @@ import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.ApkInstaller
 import com.alyaqdhan.riyal.data.reasonText
 import com.alyaqdhan.riyal.data.AccountDiscovery
+import com.alyaqdhan.riyal.data.Banks
 import com.alyaqdhan.riyal.data.BudgetPlan
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.MessageKind
+import com.alyaqdhan.riyal.data.MutedTemplate
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.ScanEngine
 import com.alyaqdhan.riyal.data.Stats
@@ -227,6 +229,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     _scanState.value = ScanState.Running(p.processed, p.total, p.phase, p.noun)
                 }
                 prefs.lastScanAt = summary.at
+                refreshSenderLists()
                 _scanState.value = ScanState.Done(summary)
                 // The figures roll again, changed or not: a refresh should be seen to land.
                 com.alyaqdhan.riyal.ui.compose.Rolls.replay()
@@ -1212,6 +1215,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val key = sender.trim().lowercase()
         prefs.excludedSenders = prefs.excludedSenders + sender.trim()
         prefs.senderAllowlist = prefs.senderAllowlist.filterNot { it.trim().lowercase() == key }.toSet()
+        refreshSenderLists()
         accounts.value.filter { a -> a.senderIds.any { it.trim().lowercase() == key } }
             .forEach { store.deleteAccount(it.id) }
         Verbose.info(R.string.log_sender_excluded, sender)
@@ -1223,7 +1227,97 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val key = sender.trim().lowercase()
         prefs.excludedSenders = prefs.excludedSenders.filterNot { it.trim().lowercase() == key }.toSet()
         prefs.senderAllowlist = prefs.senderAllowlist + sender.trim()
+        refreshSenderLists()
         Verbose.info(R.string.log_sender_included, sender)
+        Verbose.flush()
+    }
+
+    // ─────────────────────────── lists ───────────────────────────
+
+    /** Senders the user ignored, and those they asked to be read: Settings › Lists. */
+    private val _ignoredSenders = MutableStateFlow(prefs.excludedSenders)
+    val ignoredSenders: StateFlow<Set<String>> = _ignoredSenders
+
+    private val _addedSenders = MutableStateFlow(prefs.senderAllowlist)
+    val addedSenders: StateFlow<Set<String>> = _addedSenders
+
+    val labels = store.labels
+    val templates = store.templates
+    val muted = store.muted
+
+    private fun refreshSenderLists() {
+        _ignoredSenders.value = prefs.excludedSenders
+        _addedSenders.value = prefs.senderAllowlist
+    }
+
+    private var readAgain: Job? = null
+
+    /**
+     * A list changed what is read: the inbox is read again once the changes settle, so
+     * a few quick ones cost one read. Changing them is in the scan's fingerprint, so
+     * that read is a full one.
+     */
+    private fun readAgainSoon() {
+        readAgain?.cancel()
+        readAgain = viewModelScope.launch {
+            delay(READ_AGAIN_AFTER_MS)
+            scanState.first { it !is ScanState.Running }
+            startScan(showSheet = false)
+        }
+    }
+
+    /** Settings › Lists: never read [sender] again; its accounts go with it. */
+    fun ignoreSender(sender: String) {
+        excludeSender(sender)
+        readAgainSoon()
+    }
+
+    /** Settings › Lists: read [sender], ignored or not a bank. */
+    fun readSender(sender: String) {
+        val key = sender.trim().lowercase()
+        prefs.excludedSenders = prefs.excludedSenders.filterNot { it.trim().lowercase() == key }.toSet()
+        if (!Banks.looksLikeBank(sender) && !AccountDiscovery.isKnownSender(accounts.value, sender)) {
+            prefs.senderAllowlist = prefs.senderAllowlist + sender.trim()
+        }
+        refreshSenderLists()
+        Verbose.info(R.string.log_sender_included, sender)
+        Verbose.flush()
+        readAgainSoon()
+    }
+
+    /** Settings › Lists: no longer ignored, so read or left out as the gate decides. */
+    fun restoreSender(sender: String) {
+        val key = sender.trim().lowercase()
+        prefs.excludedSenders = prefs.excludedSenders.filterNot { it.trim().lowercase() == key }.toSet()
+        refreshSenderLists()
+        Verbose.info(R.string.log_sender_restored, sender)
+        Verbose.flush()
+        readAgainSoon()
+    }
+
+    /** Settings › Lists: back to what the gate decides by itself - not read, not a bank. */
+    fun leaveOutSender(sender: String) {
+        val key = sender.trim().lowercase()
+        prefs.excludedSenders = prefs.excludedSenders.filterNot { it.trim().lowercase() == key }.toSet()
+        prefs.senderAllowlist = prefs.senderAllowlist.filterNot { it.trim().lowercase() == key }.toSet()
+        refreshSenderLists()
+        Verbose.info(R.string.log_sender_left_out, sender)
+        Verbose.flush()
+        readAgainSoon()
+    }
+
+    /** Settings › Lists: forget what was taught about a kind of message. */
+    fun forgetTaught(key: String) = viewModelScope.launch(Dispatchers.IO) {
+        store.clearLabel(key)
+        Verbose.info(R.string.log_taught_forgotten, key.substringBefore('|'))
+        Verbose.flush()
+        readAgainSoon()
+    }
+
+    /** Settings › Lists: a kind of message dismissed for good comes back to Review. */
+    fun undismissKind(kind: MutedTemplate) = viewModelScope.launch(Dispatchers.IO) {
+        val back = store.unmute(kind.template)
+        Verbose.info(R.string.log_kind_undismissed, kind.sender, back)
         Verbose.flush()
     }
 
@@ -1375,6 +1469,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _includeBeta.value = prefs.updateIncludeBeta
         _skipped.value = prefs.skippedUpdates
         _lastUpdateCheck.value = prefs.lastUpdateCheckAt
+        refreshSenderLists()
         Verbose.info(R.string.log_wiped)
         Verbose.flush()
         withContext(Dispatchers.Main) { then() }
@@ -1457,5 +1552,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
         /** The shortest a check someone asked for shows that it is checking. */
         const val MIN_CHECK_MS = 1_000L
+
+        /** How long Lists waits for more changes before reading the inbox again. */
+        const val READ_AGAIN_AFTER_MS = 1_500L
     }
 }
