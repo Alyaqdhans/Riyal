@@ -84,7 +84,9 @@ import com.alyaqdhan.riyal.ui.compose.Face
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
 import com.alyaqdhan.riyal.ui.compose.HelpAction
 import com.alyaqdhan.riyal.ui.compose.ManualTxnDialog
+import com.alyaqdhan.riyal.ui.compose.SiftBar
 import com.alyaqdhan.riyal.ui.compose.SummaryPill
+import com.alyaqdhan.riyal.ui.compose.rememberSifting
 import com.alyaqdhan.riyal.ui.theme.successColor
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import java.time.Instant
@@ -132,6 +134,10 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
     }
     val pending = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_PENDING } }
     val dismissed = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_DISMISSED } }
+    // Every message and pair still to answer, for the bar that fills as they go.
+    val sifting = rememberSifting(
+        remember(pending, transfers) { pending.mapTo(HashSet()) { it.id } + transfers.map { "t-" + it.id } }
+    )
     // What the manual dialog is finishing. A direction-only item arrives with its
     // amount and the answer already given, so the dialog opens on the category rather
     // than on an empty amount field.
@@ -170,6 +176,8 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
     ) { padding ->
         ScanRefresh(vm, Modifier.padding(padding)) {
         Column {
+            // Above the list, so what is left stays in sight while the cards go.
+            SiftBar(sifting)
             if (pending.isEmpty() && dismissed.isEmpty() && transfers.isEmpty()) {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                     EmptyState(

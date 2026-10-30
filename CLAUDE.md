@@ -17,8 +17,9 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   chips, `FloatingActionButton`) and real libraries (Vico for charts, the markdown
   renderer for release notes). Don't hand-draw widgets. Wavy progress indicators stay
   wavy components with `amplitude = 0` (`FlatWheel`/`FlatBar` in
-  `ui/compose/Indicators.kt`), except `ScanBar`: the owner wants a scan's bar to keep
-  its wave.
+  `ui/compose/Indicators.kt`), except `ScanBar` and `SiftBar`: the owner wants a scan's
+  bar, and the bar over Needs review and Needs a category that fills as the pile is
+  worked through, to keep their wave.
 - **Pages are activities, each with its own `res/layout`.** The phone's own transition
   plays between them (the owner's MyBattery app is the reference). Never set a window
   animation or `overridePendingTransition`. The five tabs are fragments that stay built

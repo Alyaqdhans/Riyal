@@ -3,17 +3,24 @@
 package com.alyaqdhan.riyal.ui.compose
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,10 +30,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Stats
+import com.alyaqdhan.riyal.ui.theme.successColor
 import kotlin.math.PI
 import kotlin.math.abs
 
@@ -89,6 +99,62 @@ fun ScanBar(progress: (() -> Float)?, modifier: Modifier = Modifier) {
         LinearWavyProgressIndicator(progress = progress, modifier = modifier)
     } else {
         LinearWavyProgressIndicator(modifier = modifier)
+    }
+}
+
+/** What has waited on a page since it opened ([total]), and how much of it has gone ([done]). */
+class Sifting(val done: Int, val total: Int) {
+    val left: Int get() = total - done
+}
+
+/**
+ * Keeps [Sifting] for a pile by identity: everything that has waited since the page
+ * opened, and which of it is gone. An answer undone comes back as waiting, and what a
+ * scan adds makes the pile bigger rather than counting as done.
+ */
+@Composable
+fun rememberSifting(waiting: Set<String>): Sifting {
+    val seen = remember { HashSet<String>() }
+    seen.addAll(waiting)
+    return Sifting(done = seen.count { it !in waiting }, total = seen.size)
+}
+
+/**
+ * How far through a pile this visit has got - Review's messages, the records waiting for a
+ * category - as Material's wavy bar with its wave left on, like the scan's: working through
+ * a pile is the app at work too, and the bar filling as the cards go makes a long one
+ * something to finish. Under it, what is done and what is left; green once nothing is.
+ * Not shown when there was nothing to do.
+ */
+@Composable
+fun SiftBar(sifting: Sifting, modifier: Modifier = Modifier) {
+    if (sifting.total == 0) return
+    val progress by animateFloatAsState(
+        sifting.done.toFloat() / sifting.total,
+        WavyProgressIndicatorDefaults.ProgressAnimationSpec,
+        label = "sifted",
+    )
+    val finished = sifting.left == 0
+    Column(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        LinearWavyProgressIndicator(
+            progress = { progress },
+            modifier = Modifier.fillMaxWidth(),
+            color = if (finished) successColor() else WavyProgressIndicatorDefaults.indicatorColor,
+        )
+        Text(
+            when {
+                finished -> stringResource(R.string.sift_all_done, sifting.total)
+                sifting.done == 0 -> stringResource(R.string.sift_left, sifting.left)
+                else -> stringResource(R.string.sift_done_left, sifting.done, sifting.left)
+            },
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

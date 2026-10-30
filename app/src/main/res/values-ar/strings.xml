@@ -19,6 +19,9 @@
     <string name="action_dismiss">تجاهل</string>
     <string name="action_got_it">فهمت</string>
     <string name="action_next">التالي</string>
+    <string name="sift_left">بقي %1$d</string>
+    <string name="sift_done_left">أُنجز %1$d · بقي %2$d</string>
+    <string name="sift_all_done">أُنجزت كلها: %1$d</string>
     <string name="action_undo">تراجع</string>
     <string name="action_add_transaction">إضافة معاملة</string>
     <string name="action_back">رجوع</string>

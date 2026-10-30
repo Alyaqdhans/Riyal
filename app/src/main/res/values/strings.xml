@@ -19,6 +19,9 @@
     <string name="action_dismiss">Dismiss</string>
     <string name="action_got_it">Got it</string>
     <string name="action_next">Next</string>
+    <string name="sift_left">%1$d left</string>
+    <string name="sift_done_left">%1$d done · %2$d left</string>
+    <string name="sift_all_done">All %1$d done</string>
     <string name="action_undo">Undo</string>
     <string name="action_add_transaction">Add transaction</string>
     <string name="action_back">Back</string>
