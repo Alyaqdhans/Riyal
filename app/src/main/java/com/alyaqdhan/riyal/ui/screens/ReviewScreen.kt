@@ -68,7 +68,7 @@ import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Direction
 import com.alyaqdhan.riyal.data.MessageKind
-import com.alyaqdhan.riyal.data.MsgTemplate
+import com.alyaqdhan.riyal.data.Skeleton
 import com.alyaqdhan.riyal.data.ReviewItem
 import com.alyaqdhan.riyal.data.reasonText
 import com.alyaqdhan.riyal.data.TransferProposal
@@ -253,8 +253,8 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                             },
                             onDismiss = { alsoSimilar ->
                                 val similar = if (alsoSimilar) {
-                                    val t = MsgTemplate.of(item.sender, item.body)
-                                    pending.count { it.id != item.id && MsgTemplate.of(it.sender, it.body) == t }
+                                    val t = Skeleton.of(item.sender, item.body)
+                                    pending.count { it.id != item.id && Skeleton.of(it.sender, it.body) == t }
                                 } else 0
                                 vm.dismissReview(item, alsoSimilar)
                                 scope.launch {

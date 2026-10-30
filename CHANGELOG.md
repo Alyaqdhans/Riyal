@@ -6,6 +6,14 @@ is attached there.
 
 ## 1.8.1 — unreleased (branch `1.8.1`)
 
+### Riyal learns from fewer answers
+
+- **Dismissing with "Remember for similar messages" catches every message written the
+  same way.** It used to compare messages names and all, so a payment to one person and
+  a payment to another were different kinds of message: dismissing one left the rest in
+  Review, one by one. It now uses the same fingerprint as teaching, which sets the names
+  and numbers a bank fills in aside. Kinds dismissed before are matched the new way too.
+
 ## 1.8.0 — 2026-10-29
 
 ### Before you install

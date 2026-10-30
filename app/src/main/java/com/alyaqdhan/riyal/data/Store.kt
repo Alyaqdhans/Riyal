@@ -808,13 +808,13 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
      * were dismissed alongside.
      */
     suspend fun dismissReview(item: ReviewItem, smart: Boolean): Int = mutex.withLock {
-        val template = MsgTemplate.of(item.sender, item.body)
+        val template = Skeleton.of(item.sender, item.body)
         var extra = 0
         _reviews.value = _reviews.value.map { r ->
             when {
                 r.id == item.id -> r.copy(state = ReviewItem.STATE_DISMISSED)
                 smart && r.state == ReviewItem.STATE_PENDING &&
-                    MsgTemplate.of(r.sender, r.body) == template -> {
+                    Skeleton.of(r.sender, r.body) == template -> {
                     extra++
                     r.copy(state = ReviewItem.STATE_DISMISSED)
                 }
@@ -835,7 +835,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
      * hidden as one decision, it is restored as one). Returns how many others returned.
      */
     suspend fun restoreReview(item: ReviewItem): Int = mutex.withLock {
-        val template = MsgTemplate.of(item.sender, item.body)
+        val template = Skeleton.of(item.sender, item.body)
         val wasMuted = _muted.value.any { it.template == template }
         if (wasMuted) _muted.value = _muted.value.filter { it.template != template }
         var extra = 0
@@ -843,7 +843,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             when {
                 r.id == item.id -> r.copy(state = ReviewItem.STATE_PENDING)
                 wasMuted && r.state == ReviewItem.STATE_DISMISSED &&
-                    MsgTemplate.of(r.sender, r.body) == template -> {
+                    Skeleton.of(r.sender, r.body) == template -> {
                     extra++
                     r.copy(state = ReviewItem.STATE_PENDING)
                 }
@@ -859,7 +859,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         if (item != null) {
             // Recording it is the opposite signal of dismissing: this kind of message
             // matters, keep showing similar ones and drop any mute on them.
-            val template = MsgTemplate.of(item.sender, item.body)
+            val template = Skeleton.of(item.sender, item.body)
             _needed.value = _needed.value + template
             _muted.value = _muted.value.filter { it.template != template }
         }
@@ -957,7 +957,11 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             _rules.value = root.optJSONArray("rules").toListOf(::ruleFromJson)
             _askEachTime.value = root.optJSONArray("askEachTime").toStringSet()
             _senders.value = root.optJSONArray("senders").toStringSet()
+            // Keyed afresh from the message each time: a kind dismissed under an older
+            // fingerprint (names and all) still matches its messages under this one.
             _muted.value = root.optJSONArray("muted").toListOf(::mutedFromJson)
+                .map { m -> if (m.sample.isBlank()) m else m.copy(template = Skeleton.of(m.sender, m.sample)) }
+                .distinctBy { it.template }
             _needed.value = root.optJSONArray("needed").toStringSet()
             _categories.value = root.optJSONArray("categories").toListOf(::categoryFromJson)
             Categories.setCustom(_categories.value)

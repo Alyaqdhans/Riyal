@@ -348,7 +348,7 @@ class ScanEngine(
                 }
 
                 is SmsParser.Result.NeedsReview -> {
-                    val template = MsgTemplate.of(msg.sender, msg.body)
+                    val template = r.key
                     if (!r.trusted && template !in neededTemplates) {
                         skipped++
                         logSkip(Verbose.str(R.string.scanlog_skip_unparsable, msg.sender))

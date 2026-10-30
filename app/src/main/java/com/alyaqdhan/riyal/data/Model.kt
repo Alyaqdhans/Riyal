@@ -473,8 +473,9 @@ data class UserRule(val pattern: String, val categoryId: String) {
 }
 
 /**
- * A kind of message the user dismissed from Review: similar future messages are
- * auto-dismissed on scan (still stored, restorable from the Review page).
+ * A kind of message the user dismissed from Review: messages written the same way, by
+ * [Skeleton] - the names and numbers a bank fills in set aside - are auto-dismissed on
+ * scan (still stored, restorable from the Review page).
  */
 data class MutedTemplate(
     val template: String,
@@ -482,25 +483,6 @@ data class MutedTemplate(
     val sample: String,
     val at: Long,
 )
-
-object MsgTemplate {
-
-    // Compiled once: a scan fingerprints every message in the inbox.
-    private val ANY_NUMBER = Regex("[0-9٠-٩][0-9٠-٩.,:/-]*")
-    private val RUN_OF_SPACE = Regex("\\s+")
-    /**
-     * Fingerprint of "the same kind of message": the sender plus the body with every
-     * number blanked out, so two balance alerts or two promos from one sender look
-     * identical even though their digits differ.
-     */
-    fun of(sender: String, body: String): String {
-        val norm = body.lowercase()
-            .replace(ANY_NUMBER, "#")
-            .replace(RUN_OF_SPACE, " ")
-            .trim()
-        return sender.trim().lowercase() + "|" + norm
-    }
-}
 
 data class ScanSummary(
     val at: Long,
