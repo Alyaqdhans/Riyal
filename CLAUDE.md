@@ -16,6 +16,14 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   account digits, references or shop names. Explain with made-up data in the same shape
   ("accepted for AAAA####BBBB", "OMR 10.000", "007 ###### 00470", "at Example Cafe"). SMS
   exports and screenshots are never committed.
+- **Release notes are a summary, shaped like YTDLnis's.** The GitHub release body (which
+  the app's Changelog page shows) is not CHANGELOG.md: `# What's Changed`, then a `##`
+  heading per headline feature with a short paragraph in plain words, then `## Other
+  stuff` with one line per smaller change or fix, and last `**Full Changelog**:
+  https://github.com/Alyaqdhans/Riyal/compare/<previous tag>...<new tag>` with the real
+  tag names (`gh release list`; recent ones are `V1.8.0`). Anything that costs the user
+  something - a wipe, a permission, an uninstall - gets the first section. A hotfix is
+  `# Hotfix` and its bullets. Written to `release/Riyal-vX.Y.Z-notes.md` (gitignored).
 - **Never run an emulator.** Verify with `assembleDebug` + unit tests. The owner tests on
   a real phone from Android Studio, where the debug build installs beside the real app.
 - **Native components only.** Use stock Material 3 parts (`ListItem`,

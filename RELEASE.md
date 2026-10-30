@@ -111,8 +111,13 @@ git push origin v1.6.0
 
 ### 7. Write the notes
 
-One line per change, grouped by area. Lead with anything that costs the user
-something - a wipe, a required uninstall, a permission - before the features.
+A summary in YTDLnis's shape, written to `release/Riyal-vX.Y.Z-notes.md`:
+`# What's Changed`, a `##` section with a short paragraph for each headline
+feature, `## Other stuff` with one line per smaller change or fix, and the
+`**Full Changelog**` compare link between the two tags. Lead with anything that
+costs the user something - a wipe, a required uninstall, a permission - before
+the features. A hotfix is `# Hotfix` and its bullets. Made-up data only, as in
+CLAUDE.md.
 
 ### 8. Publish
 
