@@ -16,8 +16,9 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -57,7 +58,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.offset
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.data.Backup
 import com.alyaqdhan.riyal.core.Currencies
@@ -608,6 +611,9 @@ fun SettingsScreen(
 /**
  * One part of a backup to save or bring in: the whole row is its checkbox (or, for the
  * message text, its switch), and stays plain when on.
+ *
+ * It keeps the list item's own padding. Without it, the rounder corners a row morphs to
+ * when it is ticked or pressed cut into the checkbox, the switch and the first letters.
  */
 @Composable
 private fun PartRow(
@@ -621,6 +627,7 @@ private fun PartRow(
     ListItem(
         checked = checked,
         onCheckedChange = onChange,
+        modifier = Modifier.intoDialogMargin(),
         colors = ListItemDefaults.colors(
             containerColor = Color.Transparent,
             selectedContainerColor = Color.Transparent,
@@ -629,11 +636,22 @@ private fun PartRow(
             selectedTrailingContentColor = plain.trailingContentColor,
             selectedLeadingContentColor = plain.leadingContentColor,
         ),
-        contentPadding = PaddingValues(0.dp),
         leadingContent = if (switch) null else ({ Checkbox(checked = checked, onCheckedChange = null) }),
         trailingContent = if (switch) ({ Switch(checked = checked, onCheckedChange = null) }) else null,
         supportingContent = { Text(detail) },
     ) { Text(title) }
+}
+
+/**
+ * Widens a list item by its own side padding, out into the margin of the dialog it sits
+ * in: its checkbox and text then line up with the dialog's own text, and its shape still
+ * has room around them.
+ */
+private fun Modifier.intoDialogMargin(): Modifier = layout { measurable, constraints ->
+    val start = ListItemDefaults.ContentPadding.calculateStartPadding(layoutDirection).roundToPx()
+    val end = ListItemDefaults.ContentPadding.calculateEndPadding(layoutDirection).roundToPx()
+    val placeable = measurable.measure(constraints.offset(horizontal = start + end))
+    layout(placeable.width - start - end, placeable.height) { placeable.placeRelative(-start, 0) }
 }
 
 /** The one dialog or sheet Settings can have open at a time. */
