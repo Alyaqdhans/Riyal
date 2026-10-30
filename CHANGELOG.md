@@ -76,6 +76,8 @@ is attached there.
 - Questions whose yes takes something away - deleting a category, an account, a budget
   plan or everything, "Not my bank", ignoring a sender that holds accounts - answer with a
   filled red button instead of plain text.
+- The Changelog page shows Material's scroll thumb while it scrolls, so a long list of
+  releases says how far down it you are.
 
 ## 1.8.0 — 2026-10-29
 

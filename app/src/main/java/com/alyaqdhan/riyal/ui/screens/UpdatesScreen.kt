@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -39,6 +41,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.scrollbar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -250,6 +253,7 @@ fun ChangelogScreen(vm: MainViewModel, onBack: () -> Unit) {
     val installed = appVersion(context)
     val releases by vm.releases.collectAsState()
     val failed by vm.releasesFailed.collectAsState()
+    val listState = rememberLazyListState()
     LaunchedEffect(Unit) { if (vm.releases.value == null) vm.loadReleases() }
 
     fun open(url: String) {
@@ -283,10 +287,16 @@ fun ChangelogScreen(vm: MainViewModel, onBack: () -> Unit) {
             list == null -> Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
                 FlatWheel()
             }
+            // Material's own scrollbar: every release's notes make a long page, and the
+            // thumb says how far down it you are. It starts under the top bar, so the
+            // list does too.
             else -> LazyColumn(
-                contentPadding = PaddingValues(
-                    start = 16.dp, end = 16.dp, top = padding.calculateTopPadding() + 8.dp, bottom = 24.dp,
-                ),
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = padding.calculateTopPadding())
+                    .scrollbar(listState.scrollIndicatorState, Orientation.Vertical),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(list, key = { it.tag + it.publishedAt }) { release ->
