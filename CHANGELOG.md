@@ -47,6 +47,29 @@ is attached there.
   was there before mixed in.
 - **Delete everything starts over.** After deleting, Riyal goes back to the welcome and
   then the setup, as on the day it was installed, instead of leaving an empty app behind.
+- **Lists slide.** Its three tabs lie side by side: a tab slides over to its list, and a
+  finger can drag from one to the next. Each entry's Forget or Restore now waits behind
+  a swipe to the left, as a record's Remove does, and only the tap on it takes the entry
+  back.
+- In the backup and import dialogs, the checkboxes and the message-text switch are no
+  longer cut off at the corners when they are ticked or pressed.
+
+### Around the app
+
+- **Swipes show themselves once.** The first time Transactions is on screen, its first
+  record opens to the left by itself under a bubble saying what the button there does;
+  close the bubble and it opens to the right, onto Archive, with a second one. Lists does
+  the same on its first entry. The line of text that used to sit over Transactions is
+  gone.
+- **Needs review and Needs a category show how far you have got.** A wavy bar at the top
+  fills as the cards go, with how many are done and how many are left under it, and
+  turns green when the pile is gone.
+- **A category opened from one bank stays on that bank.** Picking a bank on Analysis and
+  then tapping a category listed every bank's records in it. The category's page now
+  keeps the bank, with the same account chips to change it.
+- Questions whose yes takes something away - deleting a category, an account, a budget
+  plan or everything, "Not my bank", ignoring a sender that holds accounts - answer with a
+  filled red button instead of plain text.
 
 ## 1.8.0 — 2026-10-29
 
