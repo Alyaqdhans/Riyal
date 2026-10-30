@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -44,6 +46,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,6 +70,7 @@ import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.relativeTime
 import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
+import kotlinx.coroutines.launch
 
 /** The three lists, in the order their tabs sit. */
 enum class ListsTab(@param:StringRes val label: Int) {
@@ -86,7 +90,12 @@ enum class ListsTab(@param:StringRes val label: Int) {
  */
 @Composable
 fun ListsScreen(vm: MainViewModel, onBack: () -> Unit) {
-    var tab by rememberSaveable { mutableStateOf(ListsTab.KEYWORDS) }
+    // The lists lie side by side: a tab slides over to its list, and a finger can drag
+    // from one list to the next. The tab follows where the pager is headed, so a tap
+    // lights it at once, as the slide starts.
+    val pager = rememberPagerState { ListsTab.entries.size }
+    val scope = rememberCoroutineScope()
+    val show: (ListsTab) -> Unit = { t -> scope.launch { pager.animateScrollToPage(t.ordinal) } }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -103,19 +112,25 @@ fun ListsScreen(vm: MainViewModel, onBack: () -> Unit) {
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            PrimaryTabRow(selectedTabIndex = tab.ordinal) {
+            PrimaryTabRow(selectedTabIndex = pager.targetPage) {
                 ListsTab.entries.forEach { t ->
                     Tab(
-                        selected = tab == t,
-                        onClick = { tab = t },
+                        selected = pager.targetPage == t.ordinal,
+                        onClick = { show(t) },
                         text = { Text(stringResource(t.label)) },
                     )
                 }
             }
-            when (tab) {
-                ListsTab.KEYWORDS -> KeywordsList(vm)
-                ListsTab.SENDERS -> SendersList(vm)
-                ListsTab.IGNORED -> IgnoredList(vm, onFindSender = { tab = ListsTab.SENDERS })
+            HorizontalPager(
+                state = pager,
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.Top,
+            ) { page ->
+                when (ListsTab.entries[page]) {
+                    ListsTab.KEYWORDS -> KeywordsList(vm)
+                    ListsTab.SENDERS -> SendersList(vm)
+                    ListsTab.IGNORED -> IgnoredList(vm, onFindSender = { show(ListsTab.SENDERS) })
+                }
             }
         }
     }

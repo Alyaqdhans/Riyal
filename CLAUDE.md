@@ -27,7 +27,8 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   (`MainActivity.openTab`), so the highlight and the slide start on the same frame.
 - **No decorative motion.** No pop-in or bounce on content, and `MotionScheme.standard()`.
   Charts use `animationSpec = null, animateIn = false`. The owner's exceptions: the tab
-  slide, and every dialog's pop-in with a quick close (`ui/compose/DialogPop.kt`: put
+  slide, Lists' tabs (a `HorizontalPager`: a tab slides to its list, a finger drags
+  between them), and every dialog's pop-in with a quick close (`ui/compose/DialogPop.kt`: put
   `Modifier.popIn(pop)` on the dialog and send every way of closing it through
   `pop.leave { … }`). Bottom sheets keep their own slide. And headline figures roll their
   digits (`MoneyText(roll = true)`: odometer wheels after firePOS's NumberFlow with its
