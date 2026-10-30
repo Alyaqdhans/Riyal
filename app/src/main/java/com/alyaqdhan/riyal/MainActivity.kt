@@ -229,6 +229,7 @@ class MainActivity : AppCompatActivity() {
         val outgoing = supportFragmentManager.findFragmentByTag(from.name)
         currentTab.value = tab
         backToHome.isEnabled = tab != Tab.HOME
+        (outgoing as? ScreenFragment)?.onHidden()
         slide(outgoing?.view, incoming.view ?: return, forward = tab.ordinal > from.ordinal)
         (incoming as? ScreenFragment)?.onShown()
     }

@@ -9,6 +9,7 @@ import androidx.annotation.LayoutRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
@@ -18,6 +19,7 @@ import com.alyaqdhan.riyal.Tab
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.riyalViewModel
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.LocalTabInView
 import com.alyaqdhan.riyal.ui.compose.LocalTabShows
 import com.alyaqdhan.riyal.ui.screens.AccountsScreen
 import com.alyaqdhan.riyal.ui.screens.AnalysisScreen
@@ -38,17 +40,26 @@ abstract class ScreenFragment(@LayoutRes layout: Int) : Fragment(layout) {
     protected val vm: MainViewModel get() = requireContext().riyalViewModel
 
     private val shows = mutableIntStateOf(0)
+    private val inView = mutableStateOf(false)
 
-    /** Called each time a switch brings this tab into view ([LocalTabShows]). */
+    /** Called each time a switch brings this tab into view ([LocalTabShows], [LocalTabInView]). */
     internal fun onShown() {
         shows.intValue++
+        inView.value = true
+    }
+
+    /** Called when a switch takes this tab out of view. */
+    internal fun onHidden() {
+        inView.value = false
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         // Every tab stays built once made; only the one showing is visible, and the rest
         // stay laid out, unseen, so switching to them is instant (MainActivity.openTab).
-        if ((activity as? MainActivity)?.isShowing(this) == false) view.visibility = View.INVISIBLE
+        val showing = (activity as? MainActivity)?.isShowing(this) != false
+        if (!showing) view.visibility = View.INVISIBLE
+        inView.value = showing
         view.findViewById<ComposeView>(R.id.compose_view).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             // Named Screen(), not Content(): inside apply {} the ComposeView is the innermost
@@ -56,7 +67,10 @@ abstract class ScreenFragment(@LayoutRes layout: Int) : Fragment(layout) {
             // recurse into the composition forever (StackOverflowError on launch).
             setContent {
                 RiyalTheme {
-                    CompositionLocalProvider(LocalTabShows provides shows.intValue) { Screen() }
+                    CompositionLocalProvider(
+                        LocalTabShows provides shows.intValue,
+                        LocalTabInView provides inView.value,
+                    ) { Screen() }
                 }
             }
         }

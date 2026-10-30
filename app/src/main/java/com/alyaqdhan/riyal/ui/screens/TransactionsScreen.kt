@@ -23,7 +23,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
@@ -36,7 +35,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -62,7 +60,10 @@ import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.MoneyAwareText
 import com.alyaqdhan.riyal.ui.compose.FilterSheet
 import com.alyaqdhan.riyal.ui.compose.FaceStyle
+import com.alyaqdhan.riyal.ui.compose.SwipeTour
+import com.alyaqdhan.riyal.ui.compose.SwipeWay
 import com.alyaqdhan.riyal.ui.compose.SwipeableTxnRow
+import com.alyaqdhan.riyal.ui.compose.rememberSwipeTour
 import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.toolbarSpace
 import com.alyaqdhan.riyal.ui.compose.TxnRow
@@ -91,7 +92,17 @@ fun TransactionsScreen(vm: MainViewModel) {
     val archivedIds by vm.archivedIds.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var swipeHintSeen by remember { mutableStateOf(vm.prefs.swipeHintSeen) }
+    // Swiping is the only way to archive or remove a record and nothing on screen says
+    // so, which left the gesture to be found by accident. The first time the list is seen,
+    // its first row opens each way by itself with a bubble saying what it uncovered.
+    val tour = rememberSwipeTour(
+        seen = vm.prefs.swipeTourSeen,
+        steps = listOf(
+            SwipeTour.Step(SwipeWay.LEFT, R.string.tour_remove_title, R.string.tour_remove_text),
+            SwipeTour.Step(SwipeWay.RIGHT, R.string.tour_archive_title, R.string.tour_archive_text),
+        ),
+        onDone = { vm.prefs.swipeTourSeen = true },
+    )
 
     // Unarchiving the last record used to strand you here. The way back out is only
     // drawn while something is archived, and the choice outlives leaving the screen, so
@@ -123,6 +134,11 @@ fun TransactionsScreen(vm: MainViewModel) {
     }
     val ranked = remember(filtered, order) {
         if (order.byDate) emptyList() else order.applyTo(filtered)
+    }
+    // The archive's rows bring records back rather than archive them, which is not what
+    // the bubbles say, so the tour waits for the ordinary list.
+    val touring = if (showArchived) null else {
+        if (order.byDate) grouped.values.firstOrNull()?.firstOrNull()?.id else ranked.firstOrNull()?.id
     }
 
     Scaffold(
@@ -207,33 +223,6 @@ fun TransactionsScreen(vm: MainViewModel) {
                     )
                 }
             }
-            if (!swipeHintSeen && filtered.isNotEmpty()) {
-                // Swiping is the only way to archive or remove a record and nothing on
-                // screen said so, which left the gesture to be found by accident.
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                ) {
-                    Row(
-                        Modifier.padding(start = 16.dp, end = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            stringResource(R.string.txn_swipe_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.weight(1f),
-                        )
-                        TextButton(onClick = {
-                            vm.prefs.swipeHintSeen = true
-                            swipeHintSeen = true
-                        }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_got_it)) }
-                    }
-                }
-            }
             if (filtered.isEmpty()) {
                 // Scrollable so pull-to-refresh works even with nothing in the list.
                 Column(
@@ -268,6 +257,7 @@ fun TransactionsScreen(vm: MainViewModel) {
                                     onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
                                     onRemove = { removeForGood(vm, snackbar, scope, txn) },
                                     removeLabel = removeLabelOf(txn),
+                                    tour = tour.takeIf { txn.id == touring },
                                 ) {
                                     TxnRow(
                                         txn,
@@ -285,7 +275,8 @@ fun TransactionsScreen(vm: MainViewModel) {
                                 archived = txn.id in archivedIds,
                                 onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
                                 onRemove = { removeForGood(vm, snackbar, scope, txn) },
-                                    removeLabel = removeLabelOf(txn),
+                                removeLabel = removeLabelOf(txn),
+                                tour = tour.takeIf { txn.id == touring },
                             ) {
                                 TxnRow(
                                     txn,

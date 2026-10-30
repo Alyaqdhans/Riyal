@@ -18,6 +18,7 @@
     <string name="action_restore">Restore</string>
     <string name="action_dismiss">Dismiss</string>
     <string name="action_got_it">Got it</string>
+    <string name="action_next">Next</string>
     <string name="action_undo">Undo</string>
     <string name="action_add_transaction">Add transaction</string>
     <string name="action_back">Back</string>
@@ -186,6 +187,8 @@
     <string name="lists_dismissed_intro">Dismissed in Review with “Remember for similar messages”: every message like these is set aside.</string>
     <string name="lists_dismissed_empty">Nothing dismissed for good.</string>
     <string name="lists_kind_detail">%1$s · %2$s</string>
+    <string name="lists_tour_title">Swipe an entry left</string>
+    <string name="lists_tour_text">Its button appears behind it, Forget or Restore. Nothing changes until you tap that button.</string>
     <string name="cats_learned_in_lists">Keywords, and names always asked about, are in Settings › Lists</string>
     <string name="log_sender_left_out">%1$s · left out again: not read, not ignored</string>
     <string name="log_taught_forgotten">%1$s · forgot how a kind of message is read</string>
@@ -295,9 +298,12 @@
     <string name="txn_filters">Filters</string>
     <string name="txn_back_to_yours">Back to your transactions</string>
     <string name="txn_archived_count">Archived (%d)</string>
-    <string name="txn_swipe_hint">Swipe a record either way to archive it. Tap it to change or remove it.</string>
     <string name="txn_empty_title">No transactions here</string>
     <string name="txn_empty_archived">Nothing archived. Swipe a row right to put it here.</string>
+    <string name="tour_remove_title">Swipe left to remove</string>
+    <string name="tour_remove_text">Slide a record left and the button that removes it appears behind it. Nothing goes until you tap that button.</string>
+    <string name="tour_archive_title">Swipe right to archive</string>
+    <string name="tour_archive_text">Slide it right and tap Archive to clear it from your list. It still counts towards your balance.</string>
     <string name="txn_empty_filtered">Nothing matches these filters.</string>
     <string name="txn_empty_none">Pull down to scan, or add one manually with +.</string>
 

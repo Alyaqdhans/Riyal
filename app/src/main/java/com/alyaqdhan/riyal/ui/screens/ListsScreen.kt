@@ -66,6 +66,11 @@ import com.alyaqdhan.riyal.ui.compose.ChoiceMenu
 import com.alyaqdhan.riyal.ui.compose.ConfirmDeleteButton
 import com.alyaqdhan.riyal.ui.compose.MenuChoice
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
+import com.alyaqdhan.riyal.ui.compose.SwipeAction
+import com.alyaqdhan.riyal.ui.compose.SwipeRow
+import com.alyaqdhan.riyal.ui.compose.SwipeTour
+import com.alyaqdhan.riyal.ui.compose.SwipeWay
+import com.alyaqdhan.riyal.ui.compose.rememberSwipeTour
 import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.relativeTime
@@ -96,6 +101,13 @@ fun ListsScreen(vm: MainViewModel, onBack: () -> Unit) {
     val pager = rememberPagerState { ListsTab.entries.size }
     val scope = rememberCoroutineScope()
     val show: (ListsTab) -> Unit = { t -> scope.launch { pager.animateScrollToPage(t.ordinal) } }
+    // Every entry's Forget or Restore waits behind a swipe, so the first time the page is
+    // seen, the first entry of the list showing slides open by itself to say so.
+    val tour = rememberSwipeTour(
+        seen = vm.prefs.listsTourSeen,
+        steps = listOf(SwipeTour.Step(SwipeWay.LEFT, R.string.lists_tour_title, R.string.lists_tour_text)),
+        onDone = { vm.prefs.listsTourSeen = true },
+    )
     Scaffold(
         topBar = {
             TopAppBar(
@@ -126,10 +138,13 @@ fun ListsScreen(vm: MainViewModel, onBack: () -> Unit) {
                 modifier = Modifier.fillMaxSize(),
                 verticalAlignment = Alignment.Top,
             ) { page ->
+                // Only the list the pager has settled on plays it: a neighbour drawn while
+                // dragging would open a row half off the screen.
+                val pageTour = tour.takeIf { pager.settledPage == page && !pager.isScrollInProgress }
                 when (ListsTab.entries[page]) {
-                    ListsTab.KEYWORDS -> KeywordsList(vm)
+                    ListsTab.KEYWORDS -> KeywordsList(vm, pageTour)
                     ListsTab.SENDERS -> SendersList(vm)
-                    ListsTab.IGNORED -> IgnoredList(vm, onFindSender = { show(ListsTab.SENDERS) })
+                    ListsTab.IGNORED -> IgnoredList(vm, pageTour, onFindSender = { show(ListsTab.SENDERS) })
                 }
             }
         }
@@ -144,7 +159,7 @@ private val listPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, 
  * the user answered, which every message written the same way follows.
  */
 @Composable
-private fun KeywordsList(vm: MainViewModel) {
+private fun KeywordsList(vm: MainViewModel, tour: SwipeTour?) {
     val rules by vm.rules.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
     val categoryUse by vm.categoryUse.collectAsState()
@@ -153,6 +168,12 @@ private fun KeywordsList(vm: MainViewModel) {
     var adding by remember { mutableStateOf(false) }
     val samples = remember(templates) { templates.associateBy { it.key } }
     val taught = remember(labels) { labels.entries.sortedByDescending { it.value.atMillis } }
+    val sortedRules = remember(rules) { rules.sortedBy { it.pattern } }
+    val asked = remember(askEachTime) { askEachTime.sorted() }
+    // The tour plays on the first entry, whichever list it heads.
+    val touring = sortedRules.firstOrNull()?.let { "rule-" + it.pattern + "-" + it.categoryId }
+        ?: asked.firstOrNull()?.let { "ask-$it" }
+        ?: taught.firstOrNull()?.let { "taught-" + it.key }
 
     LazyColumn(contentPadding = listPadding, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         item(key = "learned-title") { SectionTitle(stringResource(R.string.cats_learned_title)) }
@@ -173,16 +194,16 @@ private fun KeywordsList(vm: MainViewModel) {
                 tonal = true,
             )
         }
-        items(rules.sortedBy { it.pattern }, key = { "rule-" + it.pattern + "-" + it.categoryId }) { rule ->
+        items(sortedRules, key = { "rule-" + it.pattern + "-" + it.categoryId }) { rule ->
             ListRow(
                 title = rule.pattern,
                 detail = stringResource(R.string.cats_filed_as, Categories.byId(rule.categoryId).name),
                 leading = { CategoryBadge(rule.categoryId, size = 32.dp) },
-                action = stringResource(R.string.cats_forget),
-                onAction = { vm.removeRule(rule.pattern) },
+                action = forget { vm.removeRule(rule.pattern) },
+                tour = tour.takeIf { touring == "rule-" + rule.pattern + "-" + rule.categoryId },
             )
         }
-        if (askEachTime.isNotEmpty()) {
+        if (asked.isNotEmpty()) {
             item(key = "asked-title") {
                 Text(
                     stringResource(R.string.cats_asked_every_time),
@@ -190,12 +211,17 @@ private fun KeywordsList(vm: MainViewModel) {
                     modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
                 )
             }
-            items(askEachTime.sorted(), key = { "ask-$it" }) { name ->
+            items(asked, key = { "ask-$it" }) { name ->
                 ListRow(
                     title = name,
                     detail = stringResource(R.string.cats_never_rule),
-                    action = stringResource(R.string.action_remove),
-                    onAction = { vm.setAskEachTime(name, false) },
+                    action = SwipeAction(
+                        label = stringResource(R.string.action_remove),
+                        icon = R.drawable.ic_sym_delete,
+                        danger = true,
+                        onClick = { vm.setAskEachTime(name, false) },
+                    ),
+                    tour = tour.takeIf { touring == "ask-$name" },
                 )
             }
         }
@@ -220,8 +246,8 @@ private fun KeywordsList(vm: MainViewModel) {
                     sample?.count?.takeIf { it > 0 }?.let { counted(R.plurals.count_messages, it) },
                 ).joinToString(" · "),
                 leading = { Badge(kindIcon(label.kind), container, content) },
-                action = stringResource(R.string.cats_forget),
-                onAction = { vm.forgetTaught(key) },
+                action = forget { vm.forgetTaught(key) },
+                tour = tour.takeIf { touring == "taught-$key" },
             )
         }
     }
@@ -380,12 +406,14 @@ private fun SenderRow(row: SenderLists.Row, onChoose: (SenderChoice) -> Unit) {
  * from coming back.
  */
 @Composable
-private fun IgnoredList(vm: MainViewModel, onFindSender: () -> Unit) {
+private fun IgnoredList(vm: MainViewModel, tour: SwipeTour?, onFindSender: () -> Unit) {
     val ignored by vm.ignoredSenders.collectAsState()
     val muted by vm.muted.collectAsState()
     val senders = remember(ignored) { ignored.sortedBy { it.lowercase() } }
     val kinds = remember(muted) { muted.sortedByDescending { it.at } }
     val (container, content) = MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+    val touring = senders.firstOrNull()?.let { "ignored-" + it.lowercase() }
+        ?: kinds.firstOrNull()?.let { "kind-" + it.template }
 
     LazyColumn(contentPadding = listPadding, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         item(key = "senders-title") { SectionTitle(stringResource(R.string.lists_ignored_senders)) }
@@ -402,8 +430,8 @@ private fun IgnoredList(vm: MainViewModel, onFindSender: () -> Unit) {
                 title = sender,
                 detail = stringResource(R.string.lists_status_ignored),
                 leading = { Badge(R.drawable.ic_sym_block, container, content) },
-                action = stringResource(R.string.action_restore),
-                onAction = { vm.restoreSender(sender) },
+                action = restore { vm.restoreSender(sender) },
+                tour = tour.takeIf { touring == "ignored-" + sender.lowercase() },
             )
         }
         item(key = "find") {
@@ -424,8 +452,8 @@ private fun IgnoredList(vm: MainViewModel, onFindSender: () -> Unit) {
                 titleLines = 3,
                 detail = stringResource(R.string.lists_kind_detail, kind.sender, relativeTime(kind.at)),
                 leading = { Badge(R.drawable.ic_sym_inbox, container, content) },
-                action = stringResource(R.string.action_restore),
-                onAction = { vm.undismissKind(kind) },
+                action = restore { vm.undismissKind(kind) },
+                tour = tour.takeIf { touring == "kind-" + kind.template },
             )
         }
     }
@@ -449,40 +477,62 @@ private fun Badge(@DrawableRes icon: Int, container: Color, content: Color) {
     }
 }
 
+/** Forgetting a learned entry: it takes something away, so it is drawn as removing does. */
+@Composable
+private fun forget(onClick: () -> Unit) = SwipeAction(
+    label = stringResource(R.string.cats_forget),
+    icon = R.drawable.ic_sym_delete,
+    danger = true,
+    onClick = onClick,
+)
+
+/** Restoring an ignored entry: it brings something back, so it is drawn as archiving is. */
+@Composable
+private fun restore(onClick: () -> Unit) = SwipeAction(
+    label = stringResource(R.string.action_restore),
+    icon = R.drawable.ic_sym_restore,
+    danger = false,
+    onClick = onClick,
+)
+
+private val ListRowShape = RoundedCornerShape(18.dp)
+
 /**
- * One entry of a list: what it is, what it means, and the one way to take it back. A
- * tinted card rather than a bare row, because every entry is the same kind of thing to
- * the reader - something remembered.
+ * One entry of a list: what it is, what it means, and - behind a swipe to the left, as a
+ * record's Remove is - the one way to take it back. The swipe only uncovers the button;
+ * tapping it is the confirmation. A tinted card rather than a bare row, because every
+ * entry is the same kind of thing to the reader - something remembered.
  */
 @Composable
 private fun ListRow(
     title: String,
     detail: String,
-    action: String,
-    onAction: () -> Unit,
+    action: SwipeAction,
     leading: (@Composable () -> Unit)? = null,
     titleLines: Int = Int.MAX_VALUE,
+    tour: SwipeTour? = null,
 ) {
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            Modifier.padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    SwipeRow(dragLeft = action, shape = ListRowShape, tour = tour) {
+        Surface(
+            shape = ListRowShape,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            leading?.invoke()
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.bodyMedium, maxLines = titleLines, overflow = TextOverflow.Ellipsis)
-                Text(
-                    detail,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            Row(
+                Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                leading?.invoke()
+                Column(Modifier.weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.bodyMedium, maxLines = titleLines, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        detail,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
-            TextButton(onClick = onAction, shapes = ButtonDefaults.shapes()) { Text(action) }
         }
     }
 }

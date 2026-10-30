@@ -18,6 +18,7 @@
     <string name="action_restore">استعادة</string>
     <string name="action_dismiss">تجاهل</string>
     <string name="action_got_it">فهمت</string>
+    <string name="action_next">التالي</string>
     <string name="action_undo">تراجع</string>
     <string name="action_add_transaction">إضافة معاملة</string>
     <string name="action_back">رجوع</string>
@@ -186,6 +187,8 @@
     <string name="lists_dismissed_intro">استُبعدت في المراجعة مع «تذكَّر هذا للرسائل المشابهة»: كل رسالة مثلها تُنحّى جانبًا.</string>
     <string name="lists_dismissed_empty">لا شيء مستبعَد نهائيًا.</string>
     <string name="lists_kind_detail">%1$s · %2$s</string>
+    <string name="lists_tour_title">اسحب العنصر يساراً</string>
+    <string name="lists_tour_text">يظهر خلفه زرّه: «انسَ القاعدة» أو «استعادة». لا يتغير شيء حتى تضغط ذلك الزر.</string>
     <string name="cats_learned_in_lists">الكلمات والأسماء التي يُسأل عنها كل مرة في الإعدادات › القوائم</string>
     <string name="log_sender_left_out">%1$s · تُرك مجددًا: لا يُقرأ ولا يُتجاهَل</string>
     <string name="log_taught_forgotten">%1$s · نُسي كيف يُقرأ نوع من الرسائل</string>
@@ -339,9 +342,12 @@
     <string name="txn_filters">تصفية</string>
     <string name="txn_back_to_yours">العودة إلى معاملاتك</string>
     <string name="txn_archived_count">المؤرشفة (%d)</string>
-    <string name="txn_swipe_hint">اسحب السجل في أي اتجاه لأرشفته. اضغط عليه لتعديله أو إزالته.</string>
     <string name="txn_empty_title">لا معاملات هنا</string>
     <string name="txn_empty_archived">الأرشيف فارغ. اسحب الصف يميناً لوضعه فيه.</string>
+    <string name="tour_remove_title">اسحب يساراً للإزالة</string>
+    <string name="tour_remove_text">اسحب السجل يساراً فيظهر خلفه زر إزالته. لا يُزال شيء حتى تضغط ذلك الزر.</string>
+    <string name="tour_archive_title">اسحب يميناً للأرشفة</string>
+    <string name="tour_archive_text">اسحبه يميناً واضغط «أرشفة» ليختفي من قائمتك. يبقى محسوباً في رصيدك.</string>
     <string name="txn_empty_filtered">لا شيء يطابق هذه التصفية.</string>
     <string name="txn_empty_none">اسحب للأسفل لبدء الفحص، أو أضف معاملة يدوياً بزر +.</string>
 

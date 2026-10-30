@@ -28,7 +28,9 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
 - **No decorative motion.** No pop-in or bounce on content, and `MotionScheme.standard()`.
   Charts use `animationSpec = null, animateIn = false`. The owner's exceptions: the tab
   slide, Lists' tabs (a `HorizontalPager`: a tab slides to its list, a finger drags
-  between them), and every dialog's pop-in with a quick close (`ui/compose/DialogPop.kt`: put
+  between them), the swipe tours (the first time Transactions or Lists is seen, one row
+  opens by itself under a tooltip saying what its swipe uncovers: `SwipeTour`, shown only
+  while the tab is in view, `LocalTabInView`), and every dialog's pop-in with a quick close (`ui/compose/DialogPop.kt`: put
   `Modifier.popIn(pop)` on the dialog and send every way of closing it through
   `pop.leave { … }`). Bottom sheets keep their own slide. And headline figures roll their
   digits (`MoneyText(roll = true)`: odometer wheels after firePOS's NumberFlow with its
@@ -94,7 +96,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `ui/nav/Pages.kt` | `PageActivity` and every page opened from a tab (onboarding, setup, review, categories, lists, updates, changelog), each with its `activity_*.xml` layout |
 | `MainActivity.kt` | The tabs, the floating toolbar (`HorizontalFloatingToolbar` + Add FAB), global dialogs (update prompt, manual add); sends a first run to `OnboardingActivity` |
 | `ui/screens/*` | Home, Transactions, Analysis, Accounts, Settings (tabs); Setup, Review, Updates, Changelog, Categories… (pages) |
-| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs at the text's measured stroke weight), `SwipeRow` (swipe to reveal Archive/Remove, on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips), `BudgetSection` (Home's budget card under the net, and its editor) |
+| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs at the text's measured stroke weight), `SwipeRow` (a swipe uncovers an action - a record's Archive/Remove, a list entry's Forget/Restore - and a tap on it confirms; `SwipeTour` shows it once; on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips), `BudgetSection` (Home's budget card under the net, and its editor) |
 
 ## How a message is read (1.8.0+)
 

@@ -404,6 +404,14 @@ private fun DigitWheel(
 val LocalTabShows = compositionLocalOf { 0 }
 
 /**
+ * Whether the tab holding this is the one on screen. The tabs stay built while hidden, and
+ * what floats over the screen in a window of its own - a tooltip - would float over
+ * whichever tab is showing, so it waits for this and goes when it turns false. A page is
+ * always on screen while it is built, hence true when no tab says otherwise.
+ */
+val LocalTabInView = compositionLocalOf { true }
+
+/**
  * When figures roll in from zero: for a moment after the app starts, and after each scan
  * or refresh lands, when [replay] also rebuilds every rolling figure on screen. A figure
  * that appears outside those moments shows its value at once.
