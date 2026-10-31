@@ -84,7 +84,7 @@
     <string name="upd_retry">Retry</string>
     <string name="upd_update">Update</string>
     <string name="upd_open_github">Open on GitHub</string>
-    <string name="upd_skip">Skip this version</string>
+    <string name="upd_skip">Skip</string>
     <string name="upd_later">Later</string>
     <string name="upd_app_version">Riyal %1$s</string>
     <string name="upd_version_arrow">%1$s → %2$s</string>

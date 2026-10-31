@@ -21,15 +21,23 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   heading per headline feature with a short paragraph in plain words, then `## Other
   stuff` with one line per smaller change or fix, and last `**Full Changelog**:
   https://github.com/Alyaqdhans/Riyal/compare/<previous tag>...<new tag>` with the real
-  tag names (`gh release list`; recent ones are `V1.8.0`). Anything that costs the user
+  tag names (`gh release list`; recent ones are `V1.8.1`). Anything that costs the user
   something - a wipe, a permission, an uninstall - gets the first section. A hotfix is
   `# Hotfix` and its bullets. Written to `release/Riyal-vX.Y.Z-notes.md` (gitignored).
+- **Keep release notes short.** The owner wants them read at a glance: a few headline
+  sections of one or two sentences each, and Other stuff bullets of a few words. Say what
+  changed for the user, never how it was built; library names, versions and causes stay
+  in CHANGELOG.md and the commits. Leave out what a user would not notice.
 - **Never run an emulator.** Verify with `assembleDebug` + unit tests. The owner tests on
   a real phone from Android Studio, where the debug build installs beside the real app.
 - **Native components only.** Use stock Material 3 parts (`ListItem`,
   `HorizontalFloatingToolbar`, `SwipeToDismissBox`, `ModalBottomSheet`, `AlertDialog`,
-  chips, `FloatingActionButton`) and real libraries (Vico for charts, the markdown
-  renderer for release notes). Don't hand-draw widgets. Wavy progress indicators stay
+  chips, `FloatingActionButton`) and real libraries (Vico for charts, Markwon for
+  release notes, as YTDLnis draws its own, LazyColumnScrollbar for the scroll thumb).
+  Every vertical scroll - a tab, a page, a sheet or a dialog - sits in `ScrollThumb`
+  (`ui/compose/ScrollThumb.kt`), with `bottom` set to whatever floats over its foot
+  (`toolbarSpace` on a tab), and size it through the wrapper, not the list. Don't
+  hand-draw widgets. Wavy progress indicators stay
   wavy components with `amplitude = 0` (`FlatWheel`/`FlatBar` in
   `ui/compose/Indicators.kt`), except `ScanBar` and `SiftBar`: the owner wants a scan's
   bar, and the bar over Needs review and Needs a category that fills as the pile is
@@ -62,11 +70,13 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   (`Rolls.replay`), and the launch scan and building the other tabs wait for the roll.
 - **Choices of dates are tiles** (`ui/compose/Presets.kt`: `PresetSheet`/`PresetGrid`),
   never a plain list of words. Each tile says what it covers, and all tiles are one size.
-- **Exact versions.** `androidx.compose.material3:material3:1.5.0-alpha23` with
+- **Exact versions.** `androidx.compose.material3:material3:1.5.0-alpha29` with
   `@OptIn(ExperimentalMaterial3Api / ExperimentalMaterial3ExpressiveApi)`. Use its
-  current APIs: `ListItem(onClick | checked/onCheckedChange, …) { headline }`, and
-  `rememberBottomSheetState(initialValue = SheetValue.Hidden)` instead of the deprecated
-  forms.
+  current APIs: `ListItem(onClick | checked/onCheckedChange, …) { headline }`,
+  `rememberBottomSheetState(initialValue = SheetValue.Hidden)`,
+  `SelectableDropdownMenuItem` for a menu choice, and `ToggleButtonDefaults.shapesFor` /
+  `colors` instead of the deprecated forms. The owner raises the alpha when asked; it
+  sits on Compose 1.12 (foundation 1.13 alpha).
 - **Every string in both languages.** `res/values/strings.xml` and
   `res/values-ar/strings.xml` must keep the same names and placeholders, with Arabic
   plurals given all six forms. Never hard-code user-visible text.
@@ -81,11 +91,16 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 .\gradlew.bat :app:assembleDebug :app:testDebugUnitTest --console=plain
 ```
 
-- AGP 9.2.1 with built-in Kotlin 2.3.10 and the Compose compiler plugin; Gradle 9.6;
-  compileSdk 37, minSdk 29.
-- Libraries must be built for Kotlin ≤ 2.3.x. That is why the markdown renderer is
-  pinned at 0.41.0; later versions pull kotlin-stdlib 2.4.
+- AGP 9.2.1 with built-in Kotlin 2.4.21 and the Compose compiler plugin; Gradle 9.8.2;
+  compileSdk 37, minSdk 29. AGP only asks for KGP 2.2.10; the Compose compiler plugin's
+  Kotlin BOM raises it, so `kotlinComposePlugin` is the Kotlin the app compiles with.
+- Libraries must be built for that Kotlin or older (2.4.x). A library on a newer Kotlin
+  means raising `kotlinComposePlugin` first.
 - Count the tests in `app/build/test-results` rather than trusting the exit code alone.
+- A debug build is never behind a release, so its update prompt never opens by itself:
+  long-press a release in Settings › Updates › Changelog to open the prompt for it.
+- JitPack is a repository only for LazyColumnScrollbar, which publishes nowhere else;
+  `settings.gradle.kts` keeps it to that group.
 - Release steps, signing and the keystore history are in [RELEASE.md](RELEASE.md).
   Changes go in [CHANGELOG.md](CHANGELOG.md).
 
@@ -111,7 +126,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `ui/nav/Pages.kt` | `PageActivity` and every page opened from a tab (onboarding, setup, review, categories, lists, updates, changelog), each with its `activity_*.xml` layout |
 | `MainActivity.kt` | The tabs, the floating toolbar (`HorizontalFloatingToolbar` + Add FAB), global dialogs (update prompt, manual add); sends a first run to `OnboardingActivity` |
 | `ui/screens/*` | Home, Transactions, Analysis, Accounts, Settings (tabs); Setup, Review, Updates, Changelog, Categories… (pages) |
-| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs at the text's measured stroke weight), `SwipeRow` (a swipe uncovers an action - a record's Archive/Remove, a list entry's Forget/Restore - and a tap on it confirms; `SwipeTour` shows it once; on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips), `BudgetSection` (Home's budget card under the net, and its editor) |
+| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs at the text's measured stroke weight), `ScrollThumb` (the thumb every scrolling list carries; it can be held and dragged, and its size follows how many items are on screen), `SwipeRow` (a swipe uncovers an action - a record's Archive/Remove, a list entry's Forget/Restore - and a tap on it confirms; `SwipeTour` shows it once; on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips), `BudgetSection` (Home's budget card under the net, and its editor) |
 
 ## How a message is read (1.8.0+)
 

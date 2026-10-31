@@ -18,8 +18,8 @@ android {
         applicationId = "com.alyaqdhan.riyal"
         minSdk = 29
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.8.1"
+        versionCode = 10
+        versionName = "1.8.2"
 
         androidResources {
             localeFilters += listOf("en", "ar")
@@ -86,15 +86,19 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.core.splashscreen)
-    // Compose Material 3 1.5.0-alpha23: Material 3 Expressive screens rendered inside
+    // Compose Material 3 1.5.0-alpha29: Material 3 Expressive screens rendered inside
     // the tab fragments (MaterialExpressiveTheme, expressive MotionScheme, LoadingIndicator…).
     implementation(libs.compose.material3)
     implementation(libs.compose.icons.core)
     // Vico: proper chart library (Analysis 6-month columns), Compose + Material 3.
     implementation(libs.vico.compose.m3)
-    // Release notes in the update dialog and the changelog, rendered with Material 3
-    // typography instead of having their markdown stripped by hand.
-    implementation(libs.markdown.renderer.m3)
+    // Release notes in the update dialog and the changelog: Markwon, the renderer ytdlnis
+    // uses, and its plugin that turns bare web addresses into links.
+    implementation(libs.markwon.core)
+    implementation(libs.markwon.linkify)
+    // The scroll thumb every list carries (ui/compose/ScrollThumb.kt): it can be held and
+    // dragged, which Material's own scrollbar cannot.
+    implementation(libs.lazycolumnscrollbar)
     testImplementation(libs.junit)
     testImplementation(libs.json)
 }

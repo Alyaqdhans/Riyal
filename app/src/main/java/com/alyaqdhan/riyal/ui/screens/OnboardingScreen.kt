@@ -41,7 +41,11 @@ import com.alyaqdhan.riyal.core.ScanHistory
 import com.alyaqdhan.riyal.ui.compose.CurrencySign
 import com.alyaqdhan.riyal.ui.compose.Preset
 import com.alyaqdhan.riyal.ui.compose.PresetGrid
+import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import java.time.LocalDate
+
+/** The room the two floating answers take at the foot of the page. */
+private val ANSWERS_CLEARANCE = 104.dp
 
 /**
  * First-run welcome. What the app is, the four promises it keeps, and then the user -
@@ -63,12 +67,14 @@ fun OnboardingScreen(
     var history by rememberSaveable { mutableStateOf(ScanHistory.ALL) }
     Scaffold { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
+            val scroll = rememberScrollState()
+            ScrollThumb(scroll, Modifier.fillMaxSize(), bottom = ANSWERS_CLEARANCE) {
             Column(
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scroll)
                     .padding(horizontal = 20.dp)
-                    .padding(top = 32.dp, bottom = 104.dp),
+                    .padding(top = 32.dp, bottom = ANSWERS_CLEARANCE),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 BrandMark()
@@ -128,6 +134,7 @@ fun OnboardingScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 12.dp),
                 )
+            }
             }
 
             Row(

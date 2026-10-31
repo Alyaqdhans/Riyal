@@ -4,7 +4,28 @@ Every release of Riyal, newest first. Released versions are condensed from their
 [GitHub release notes](https://github.com/Alyaqdhans/Riyal/releases); the APK for each
 is attached there.
 
-## 1.8.1 — unreleased (branch `1.8.1`)
+## 1.8.2 — unreleased (branch `1.8.2`)
+
+### Around the app
+
+- **Release notes read like YTDLnis's.** The update dialog and the Changelog page draw
+  them with Markwon, the renderer YTDLnis uses: "What's Changed" and each section's
+  heading are large and bold with a rule under them, a blank line parts one block from
+  the next, bullets are set in, and links are in the accent colour. The "Full Changelog"
+  address opens on a tap. Headings used to be barely larger than the text, and links
+  larger than it.
+- **Every list has a scroll thumb you can hold.** The tabs, pages, sheets and dialogs
+  that scroll show a thumb at the edge while they move and for a moment after; hold it
+  and drag to run down the list, and it takes the accent colour while held. It stays
+  away from lists that fit on the screen, and on the tabs it stops above the floating
+  toolbar. The Changelog's thumb, which could not be held, is the same one now.
+- The update prompt's buttons sit on one line. Update - and after it the download,
+  Install or Retry - is a filled button, and "Skip this version" is now "Skip", which
+  still skips only that version; the long name used to push the buttons onto two lines.
+- Update on the Updates page opens the update prompt there. It used to open behind the
+  page, and showed only after going back.
+
+## 1.8.1 — 2026-10-30
 
 ### Riyal learns from fewer answers
 

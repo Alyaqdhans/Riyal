@@ -2,7 +2,9 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.text.font.FontWeight
+import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import com.alyaqdhan.riyal.ui.compose.title
 import androidx.compose.foundation.layout.size
 import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
@@ -177,7 +179,10 @@ fun HomeScreen(
         topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_home)) }) },
     ) { padding ->
         ScanRefresh(vm, Modifier.padding(padding)) {
+            val list = rememberLazyListState()
+            ScrollThumb(list, bottom = toolbarSpace) {
             LazyColumn(
+                state = list,
                 contentPadding = PaddingValues(bottom = toolbarSpace),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -255,6 +260,7 @@ fun HomeScreen(
                         }
                     }
                 }
+            }
             }
         }
     }

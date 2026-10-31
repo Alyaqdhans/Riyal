@@ -2,12 +2,14 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.foundation.lazy.rememberLazyListState
 import com.alyaqdhan.riyal.ui.compose.ActionButton
 import com.alyaqdhan.riyal.ui.compose.ConfirmDeleteButton
 import com.alyaqdhan.riyal.ui.compose.DeleteButton
 import com.alyaqdhan.riyal.ui.compose.MenuChoice
 import com.alyaqdhan.riyal.ui.compose.ChoiceMenu
 import androidx.compose.foundation.layout.Arrangement
+import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
 import com.alyaqdhan.riyal.ui.compose.toolbarSpace
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -139,7 +142,9 @@ fun AccountsScreen(vm: MainViewModel, onBack: (() -> Unit)?) {
         ScanRefresh(vm, Modifier.padding(padding)) {
         Column {
             if (accounts.isEmpty()) {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
+                val scroll = rememberScrollState()
+                ScrollThumb(scroll, bottom = toolbarSpace) {
+                Column(Modifier.verticalScroll(scroll)) {
                     EmptyState(
                         title = stringResource(R.string.acct_empty_title),
                         subtitle = stringResource(R.string.acct_empty_subtitle),
@@ -155,10 +160,14 @@ fun AccountsScreen(vm: MainViewModel, onBack: (() -> Unit)?) {
                         )
                     }
                 }
+                }
                 return@Column
             }
 
+            val list = rememberLazyListState()
+            ScrollThumb(list, bottom = toolbarSpace) {
             LazyColumn(
+                state = list,
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = toolbarSpace + 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -189,6 +198,7 @@ fun AccountsScreen(vm: MainViewModel, onBack: (() -> Unit)?) {
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
+            }
             }
         }
         }
@@ -391,8 +401,10 @@ internal fun AccountEditorDialog(
             )
         },
         text = {
+            val scroll = rememberScrollState()
+            ScrollThumb(scroll) {
             Column(
-                Modifier.verticalScroll(rememberScrollState()),
+                Modifier.verticalScroll(scroll),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 OutlinedTextField(
@@ -519,6 +531,7 @@ internal fun AccountEditorDialog(
                     trailingContent = { Switch(checked = archived, onCheckedChange = null) },
                 ) { Text(stringResource(R.string.acct_archived)) }
                 if (!isNew) DeleteButton(onClick = { pop.leave(onDelete) })
+            }
             }
         },
         confirmButton = {

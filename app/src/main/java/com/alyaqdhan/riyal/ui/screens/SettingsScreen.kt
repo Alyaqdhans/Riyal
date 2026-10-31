@@ -68,6 +68,7 @@ import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Language
 import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
 import com.alyaqdhan.riyal.ui.compose.ConfirmDeleteButton
@@ -140,10 +141,11 @@ fun SettingsScreen(
     Scaffold(
         topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_settings)) }) },
     ) { padding ->
+        val scroll = rememberScrollState()
+        ScrollThumb(scroll, Modifier.padding(padding), bottom = toolbarSpace) {
         Column(
             Modifier
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scroll)
                 .padding(bottom = toolbarSpace + 16.dp),
         ) {
             StatusCard(
@@ -358,6 +360,7 @@ fun SettingsScreen(
                 supportingContent = { Text(stringResource(R.string.set_danger_body)) },
             ) { Text(stringResource(R.string.set_wipe_title), color = MaterialTheme.colorScheme.error) }
         }
+        }
     }
 
     // The scan sheet is hosted here, on the screen whose rows start a scan.
@@ -487,7 +490,9 @@ fun SettingsScreen(
                 modifier = Modifier.popIn(pop),
                 title = { Text(stringResource(R.string.backup_save_title)) },
                 text = {
-                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                    val scroll = rememberScrollState()
+                    ScrollThumb(scroll) {
+                    Column(Modifier.verticalScroll(scroll)) {
                         Text(
                             stringResource(R.string.backup_save_intro),
                             style = MaterialTheme.typography.bodySmall,
@@ -513,6 +518,7 @@ fun SettingsScreen(
                                 switch = true,
                             )
                         }
+                    }
                     }
                 },
                 confirmButton = {
@@ -572,7 +578,9 @@ fun SettingsScreen(
             modifier = Modifier.popIn(pop),
             title = { Text(stringResource(R.string.backup_import_title)) },
             text = {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
+                val scroll = rememberScrollState()
+                ScrollThumb(scroll) {
+                Column(Modifier.verticalScroll(scroll)) {
                     Text(
                         stringResource(R.string.backup_import_intro),
                         style = MaterialTheme.typography.bodySmall,
@@ -587,6 +595,7 @@ fun SettingsScreen(
                             onChange = { parts = if (it) parts + part else parts - part },
                         )
                     }
+                }
                 }
             },
             confirmButton = {

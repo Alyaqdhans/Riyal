@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -66,6 +67,7 @@ import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.ChoiceMenu
 import com.alyaqdhan.riyal.ui.compose.ConfirmDeleteButton
 import com.alyaqdhan.riyal.ui.compose.MenuChoice
+import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.SwipeAction
 import com.alyaqdhan.riyal.ui.compose.SwipeRow
@@ -177,7 +179,9 @@ private fun KeywordsList(vm: MainViewModel, tour: SwipeTour?) {
         ?: asked.firstOrNull()?.let { "ask-$it" }
         ?: taught.firstOrNull()?.let { "taught-" + it.key }
 
-    LazyColumn(contentPadding = listPadding, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    val list = rememberLazyListState()
+    ScrollThumb(list) {
+    LazyColumn(state = list, contentPadding = listPadding, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         item(key = "learned-title") { SectionTitle(stringResource(R.string.cats_learned_title)) }
         item(key = "learned-intro") {
             Intro(
@@ -260,6 +264,7 @@ private fun KeywordsList(vm: MainViewModel, tour: SwipeTour?) {
             )
         }
     }
+    }
 
     if (adding) {
         KeywordRuleDialog(
@@ -302,7 +307,9 @@ private fun SendersList(vm: MainViewModel) {
         if (query.isBlank()) rows else rows.filter { it.sender.contains(query.trim(), ignoreCase = true) }
     }
 
-    LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp)) {
+    val list = rememberLazyListState()
+    ScrollThumb(list) {
+    LazyColumn(state = list, contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp)) {
         item(key = "intro") {
             Intro(
                 stringResource(if (rows.isEmpty()) R.string.lists_senders_empty else R.string.lists_senders_intro),
@@ -336,6 +343,7 @@ private fun SendersList(vm: MainViewModel) {
                 }
             }
         }
+    }
     }
 
     confirming?.let { sender ->
@@ -424,7 +432,9 @@ private fun IgnoredList(vm: MainViewModel, tour: SwipeTour?, onFindSender: () ->
     val touring = senders.firstOrNull()?.let { "ignored-" + it.lowercase() }
         ?: kinds.firstOrNull()?.let { "kind-" + it.template }
 
-    LazyColumn(contentPadding = listPadding, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    val list = rememberLazyListState()
+    ScrollThumb(list) {
+    LazyColumn(state = list, contentPadding = listPadding, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         item(key = "senders-title") { SectionTitle(stringResource(R.string.lists_ignored_senders)) }
         item(key = "senders-intro") {
             Intro(
@@ -465,6 +475,7 @@ private fun IgnoredList(vm: MainViewModel, tour: SwipeTour?, onFindSender: () ->
                 tour = tour.takeIf { touring == "kind-" + kind.template },
             )
         }
+    }
     }
 }
 

@@ -82,7 +82,7 @@ class AccountDiscoveryTest {
     }
 
     @Test
-    fun `the Arabic "account ending in" phrasing yields its tail`() {
+    fun `the Arabic 'account ending in' phrasing yields its tail`() {
         val r = parsed("تم خصم 1.000 OMR من الحساب المنتهي ب 0019 بتاريخ 2026/08/25")
         assertEquals("0019", r.accountTail)
     }

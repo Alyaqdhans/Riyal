@@ -2,11 +2,13 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Badge
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChipDefaults
+import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import com.alyaqdhan.riyal.ui.compose.typeIcon
 import com.alyaqdhan.riyal.ui.compose.typeLabel
 import com.alyaqdhan.riyal.ui.compose.typeTone
@@ -225,10 +227,12 @@ fun TransactionsScreen(vm: MainViewModel) {
             }
             if (filtered.isEmpty()) {
                 // Scrollable so pull-to-refresh works even with nothing in the list.
+                val scroll = rememberScrollState()
+                ScrollThumb(scroll, Modifier.fillMaxSize(), bottom = toolbarSpace) {
                 Column(
                     Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
+                        .verticalScroll(scroll),
                 ) {
                     EmptyState(
                         title = stringResource(R.string.txn_empty_title),
@@ -242,10 +246,14 @@ fun TransactionsScreen(vm: MainViewModel) {
                         ),
                     )
                 }
+                }
             } else {
                 // Rows are list items with their own inset, so the list adds none at the
                 // sides; the end leaves room for the bar and the Add button over it.
+                val list = rememberLazyListState()
+                ScrollThumb(list, bottom = toolbarSpace) {
                 LazyColumn(
+                    state = list,
                     contentPadding = PaddingValues(top = 4.dp, bottom = toolbarSpace),
                 ) {
                     if (order.byDate) {
@@ -287,6 +295,7 @@ fun TransactionsScreen(vm: MainViewModel) {
                             }
                         }
                     }
+                }
                 }
             }
         }

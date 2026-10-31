@@ -84,7 +84,7 @@
     <string name="upd_retry">إعادة المحاولة</string>
     <string name="upd_update">تحديث</string>
     <string name="upd_open_github">فتح في GitHub</string>
-    <string name="upd_skip">تخطي هذا الإصدار</string>
+    <string name="upd_skip">تخطَّ</string>
     <string name="upd_later">لاحقًا</string>
     <string name="upd_app_version">ريال %1$s</string>
     <string name="upd_version_arrow">%1$s ← %2$s</string>

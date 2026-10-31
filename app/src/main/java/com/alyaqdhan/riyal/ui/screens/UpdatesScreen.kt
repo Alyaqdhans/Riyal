@@ -3,7 +3,9 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.net.Uri
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -41,7 +42,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.scrollbar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -60,6 +61,8 @@ import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.MainViewModel.UpdateState
 import com.alyaqdhan.riyal.ui.compose.FlatWheel
 import com.alyaqdhan.riyal.ui.compose.ReleaseNotes
+import com.alyaqdhan.riyal.ui.compose.ScrollThumb
+import com.alyaqdhan.riyal.ui.compose.UpdateDialogHost
 import com.alyaqdhan.riyal.ui.compose.appVersion
 import com.alyaqdhan.riyal.ui.compose.megabytes
 import com.alyaqdhan.riyal.ui.compose.relativeTime
@@ -95,10 +98,11 @@ fun UpdatesScreen(vm: MainViewModel, onBack: () -> Unit, onOpenChangelog: () -> 
             )
         },
     ) { padding ->
+        val scroll = rememberScrollState()
+        ScrollThumb(scroll, Modifier.padding(padding)) {
         Column(
             Modifier
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scroll)
                 .padding(bottom = 24.dp),
         ) {
             StatusCard(
@@ -145,7 +149,11 @@ fun UpdatesScreen(vm: MainViewModel, onBack: () -> Unit, onOpenChangelog: () -> 
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             )
         }
+        }
     }
+    // This page is an activity of its own, so the prompt its Update button opens has to
+    // be shown here; the one MainActivity hosts would open behind the page.
+    UpdateDialogHost(vm)
 }
 
 /**
@@ -255,6 +263,9 @@ fun ChangelogScreen(vm: MainViewModel, onBack: () -> Unit) {
     val failed by vm.releasesFailed.collectAsState()
     val listState = rememberLazyListState()
     LaunchedEffect(Unit) { if (vm.releases.value == null) vm.loadReleases() }
+    // A debug build is never behind a release, so its prompt never opens by itself: there,
+    // a long press on a release opens the prompt for it, to see how it looks.
+    val debuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     fun open(url: String) {
         runCatching {
@@ -287,33 +298,48 @@ fun ChangelogScreen(vm: MainViewModel, onBack: () -> Unit) {
             list == null -> Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
                 FlatWheel()
             }
-            // Material's own scrollbar: every release's notes make a long page, and the
-            // thumb says how far down it you are. It starts under the top bar, so the
-            // list does too.
-            else -> LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = padding.calculateTopPadding())
-                    .scrollbar(listState.scrollIndicatorState, Orientation.Vertical),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(list, key = { it.tag + it.publishedAt }) { release ->
-                    ReleaseCard(
-                        release = release,
-                        installed = Updates.sameVersion(release.tag, installed),
-                        onOpen = ::open,
-                    )
+            // Every release's notes make a long page: the thumb says how far down it you
+            // are, and dragging it runs through the releases.
+            else -> ScrollThumb(listState, Modifier.padding(padding)) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(list, key = { it.tag + it.publishedAt }) { release ->
+                        ReleaseCard(
+                            release = release,
+                            installed = Updates.sameVersion(release.tag, installed),
+                            onOpen = ::open,
+                            onPreview = if (debuggable) ({ vm.openUpdatePrompt(release) }) else null,
+                        )
+                    }
                 }
             }
         }
     }
+    UpdateDialogHost(vm)
 }
 
 @Composable
-private fun ReleaseCard(release: Updates.Release, installed: Boolean, onOpen: (String) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+private fun ReleaseCard(
+    release: Updates.Release,
+    installed: Boolean,
+    onOpen: (String) -> Unit,
+    onPreview: (() -> Unit)?,
+) {
+    Card(
+        Modifier
+            .fillMaxWidth()
+            .then(
+                if (onPreview == null) {
+                    Modifier
+                } else {
+                    Modifier.pointerInput(onPreview) { detectTapGestures(onLongPress = { onPreview() }) }
+                }
+            ),
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(release.tag, style = MaterialTheme.typography.titleMedium)

@@ -105,9 +105,11 @@ fun PresetSheet(title: String, presets: List<Preset>, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden),
     ) {
+        val scroll = rememberScrollState()
+        ScrollThumb(scroll) {
         Column(
             Modifier
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scroll)
                 .padding(horizontal = 16.dp)
                 .navigationBarsPadding()
                 .padding(bottom = 16.dp),
@@ -118,6 +120,7 @@ fun PresetSheet(title: String, presets: List<Preset>, onDismiss: () -> Unit) {
                 modifier = Modifier.padding(start = 8.dp, bottom = 16.dp),
             )
             PresetGrid(presets)
+        }
         }
     }
 }
