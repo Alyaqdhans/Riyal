@@ -15,6 +15,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
@@ -142,6 +143,7 @@ fun RiyalTheme(content: @Composable () -> Unit) {
         dark -> DarkScheme
         else -> LightScheme
     }
+    val arabic = LocalConfiguration.current.locales[0]?.language == "ar"
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         // Standard, not expressive: the expressive springs overshoot, so every switch,
@@ -149,6 +151,8 @@ fun RiyalTheme(content: @Composable () -> Unit) {
         // platform expects them to, without the bounce.
         motionScheme = MotionScheme.standard(),
         shapes = RiyalShapes,
+        // English keeps the phone's own font; Arabic reads faint in it.
+        typography = if (arabic) ArabicTypography else null,
         content = content,
     )
 }

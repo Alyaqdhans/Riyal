@@ -8,6 +8,10 @@ is attached there.
 
 ### Around the app
 
+- **Arabic is easier to read.** Arabic text is set in Noto Sans Arabic UI, the Arabic
+  drawn to sit beside Roboto, a step heavier than the weight each line asks for. The
+  phone's own Arabic, Naskh on most phones, read thin and small beside English. Figures and English
+  words in an Arabic line stay in the phone's sans-serif, and English is unchanged.
 - Swiping a record in Arabic moves the row with your finger. It slid the other way, and
   uncovered the action on the side the finger was moving away from.
 - Holding the scroll thumb and dragging through a long list is smoother. Each step of

@@ -195,6 +195,13 @@ everything.
 - Draw category and account colours through `categoryColor(id)`, `rememberBadgeColours`
   or `legible(...)` (ui/theme/Contrast.kt), never `Color(Categories.colorFor(id))`: the raw
   palette falls under 3:1 on light cards. `ContrastTest` holds every colour to it.
+- Arabic is drawn in Noto Sans Arabic UI a step heavier (`ui/theme/ArabicType.kt`,
+  `HEAVIER`), only while the app is in Arabic. `res/font/noto_sans_arabic_ui.ttf` is the
+  upstream variable font (notofonts, unhinted) with `wdth` pinned at 100 and cut with
+  fonttools to the Arabic blocks, so Latin and digits fall back to the phone's
+  sans-serif; a replacement must stay Arabic-only. Each weight is its own
+  `Typeface.CustomFallbackBuilder` typeface: a Compose resource font is loaded at the
+  file's default weight and varied through the paint, fallback font and all.
 - A held scroll thumb jumps the list each frame, and each frame builds a screen of rows.
   Long lists give their items a `contentType` (a record from a record, a day from a day),
   so the rows just left are reused, and a row makes no layer, measurer or state it does
