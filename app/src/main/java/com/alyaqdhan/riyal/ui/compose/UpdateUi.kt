@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -137,7 +138,10 @@ fun megabytes(bytes: Long): String = String.format(Locale.ROOT, "%.1f MB", bytes
 /**
  * The new-release dialog, after ytdlnis's: the notes, then Update. The button becomes
  * the download's progress, then Install, which hands the file to Android's installer.
- * "Skip this version" means that version only; "Later" leaves it waiting in Settings.
+ * Skip means that version only; Later leaves it waiting in Settings.
+ *
+ * The one action that matters is filled at every stage, and the two ways out are text
+ * with short names, so all three sit on one line rather than the last wrapping under.
  *
  * Hosted once by the activity, so it opens over whichever screen is showing.
  */
@@ -223,10 +227,10 @@ fun UpdateDialogHost(vm: MainViewModel) {
         },
         confirmButton = {
             when (state) {
-                is DownloadState.Downloading -> TextButton(onClick = {}, enabled = false, shapes = ButtonDefaults.shapes()) {
+                is DownloadState.Downloading -> Button(onClick = {}, enabled = false, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.upd_percent, (state.fraction * 100).roundToInt()))
                 }
-                is DownloadState.Ready -> TextButton(onClick = {
+                is DownloadState.Ready -> Button(onClick = {
                     when (vm.install(state.file)) {
                         MainViewModel.InstallResult.NEEDS_PERMISSION -> {
                             needsPermission = true
@@ -236,13 +240,13 @@ fun UpdateDialogHost(vm: MainViewModel) {
                         MainViewModel.InstallResult.FAILED -> openOnGitHub()
                     }
                 }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.upd_install)) }
-                is DownloadState.Failed -> TextButton(onClick = { vm.startDownload(release) }, shapes = ButtonDefaults.shapes()) {
+                is DownloadState.Failed -> Button(onClick = { vm.startDownload(release) }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.upd_retry))
                 }
                 else -> if (release.hasApk) {
-                    TextButton(onClick = { vm.startDownload(release) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.upd_update)) }
+                    Button(onClick = { vm.startDownload(release) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.upd_update)) }
                 } else {
-                    TextButton(onClick = { openOnGitHub() }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.upd_open_github)) }
+                    Button(onClick = { openOnGitHub() }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.upd_open_github)) }
                 }
             }
         },

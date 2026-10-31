@@ -19,6 +19,9 @@ is attached there.
   and drag to run down the list, and it takes the accent colour while held. It stays
   away from lists that fit on the screen, and on the tabs it stops above the floating
   toolbar. The Changelog's thumb, which could not be held, is the same one now.
+- The update prompt's buttons sit on one line. Update - and after it the download,
+  Install or Retry - is a filled button, and "Skip this version" is now "Skip", which
+  still skips only that version; the long name used to push the buttons onto two lines.
 
 ## 1.8.1 — 2026-10-30
 
