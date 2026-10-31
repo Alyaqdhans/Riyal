@@ -119,8 +119,9 @@ costs the user something - a wipe, a required uninstall, a permission - before
 the features. A hotfix is `# Hotfix` and its bullets. Made-up data only, as in
 CLAUDE.md.
 
-Keep it short: a few headline sections of one or two sentences, bullets of a few
-words, and nothing a user would not notice. The detail belongs in CHANGELOG.md.
+Keep it short: a few headline sections of one or two sentences and bullets of a few
+words. What was updated underneath (Material 3, Kotlin, Gradle, libraries) is one
+bullet with the new versions. The detail belongs in CHANGELOG.md.
 
 ### 8. Publish
 

@@ -26,8 +26,9 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   `# Hotfix` and its bullets. Written to `release/Riyal-vX.Y.Z-notes.md` (gitignored).
 - **Keep release notes short.** The owner wants them read at a glance: a few headline
   sections of one or two sentences each, and Other stuff bullets of a few words. Say what
-  changed for the user, never how it was built; library names, versions and causes stay
-  in CHANGELOG.md and the commits. Leave out what a user would not notice.
+  changed for the user. What was updated underneath (Material 3, Kotlin, Gradle, a
+  library) is welcome as one Other stuff bullet with the new versions; how a change was
+  built stays in CHANGELOG.md and the commits.
 - **Never run an emulator.** Verify with `assembleDebug` + unit tests. The owner tests on
   a real phone from Android Studio, where the debug build installs beside the real app.
 - **Native components only.** Use stock Material 3 parts (`ListItem`,
