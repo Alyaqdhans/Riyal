@@ -86,7 +86,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.core.splashscreen)
-    // Compose Material 3 1.5.0-alpha23: Material 3 Expressive screens rendered inside
+    // Compose Material 3 1.5.0-alpha29: Material 3 Expressive screens rendered inside
     // the tab fragments (MaterialExpressiveTheme, expressive MotionScheme, LoadingIndicator…).
     implementation(libs.compose.material3)
     implementation(libs.compose.icons.core)

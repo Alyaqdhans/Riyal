@@ -16,6 +16,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ButtonGroupDefaults
@@ -55,9 +56,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -186,12 +187,12 @@ fun <T> ConnectedChoice(
                             onCheckedChange = { onSelect(option) },
                             modifier = Modifier.weight(1f).semantics { role = Role.RadioButton },
                             shapes = when {
-                                row.size == 1 -> ToggleButtonDefaults.shapes()
+                                row.size == 1 -> ToggleButtonDefaults.shapesFor(ToggleButtonDefaults.size)
                                 at == 0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                                 at == row.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                                 else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                             },
-                            colors = ToggleButtonDefaults.toggleButtonColors(
+                            colors = ToggleButtonDefaults.colors(
                                 checkedContainerColor = on,
                                 checkedContentColor = onOn,
                             ),
@@ -925,13 +926,13 @@ fun MenuChoice(
     @DrawableRes icon: Int?,
     onClick: () -> Unit,
 ) {
-    DropdownMenuItem(
+    SelectableDropdownMenuItem(
         selected = selected,
         onClick = onClick,
         text = { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         shapes = MenuDefaults.itemShape(index, count),
         leadingIcon = icon?.let { res -> { Icon(painterResource(res), contentDescription = null, modifier = Modifier.size(20.dp)) } },
-        trailingIcon = if (selected) {
+        trailingContent = if (selected) {
             { Icon(painterResource(R.drawable.ic_sym_check), contentDescription = null, modifier = Modifier.size(20.dp)) }
         } else {
             null

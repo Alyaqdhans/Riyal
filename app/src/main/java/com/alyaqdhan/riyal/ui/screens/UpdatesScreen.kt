@@ -41,7 +41,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.scrollbar
+import androidx.compose.material3.nonInteractiveScrollbar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -295,7 +295,7 @@ fun ChangelogScreen(vm: MainViewModel, onBack: () -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(top = padding.calculateTopPadding())
-                    .scrollbar(listState.scrollIndicatorState, Orientation.Vertical),
+                    .then(listState.scrollIndicatorState?.let { Modifier.nonInteractiveScrollbar(it, Orientation.Vertical) } ?: Modifier),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {

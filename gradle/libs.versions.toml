@@ -1,6 +1,6 @@
 [versions]
 # AGP 9.2.1: built-in Kotlin (no standalone kotlin-android/compose plugins),
-# required by compose material3 1.5.0-alpha23 (needs AGP >= 9.1 and compileSdk 37).
+# required by compose material3 1.5.0-alpha29 (needs AGP >= 9.1 and compileSdk 37).
 agp = "9.2.1"
 # Must match the Kotlin version embedded in AGP's built-in Kotlin (2.3.10 for AGP 9.2).
 kotlinComposePlugin = "2.3.10"
@@ -17,7 +17,7 @@ fragment = "1.6.2"
 # markdown libraries pull it in); declared so screens can use BackHandler directly.
 activityCompose = "1.8.2"
 splashscreen = "1.0.1"
-composeMaterial3 = "1.5.0-alpha23"
+composeMaterial3 = "1.5.0-alpha29"
 composeIconsCore = "1.7.8"
 vico = "3.2.3"
 # Release notes are markdown. 0.41.0 is the last release built against Kotlin 2.3,
