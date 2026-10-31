@@ -225,7 +225,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                                 )
                             }
                         }
-                        items(transfers, key = { "t-" + it.id }) { proposal ->
+                        items(transfers, key = { "t-" + it.id }, contentType = { "transfer" }) { proposal ->
                             TransferCard(
                                 proposal = proposal,
                                 accounts = accounts,
@@ -266,7 +266,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                             modifier = Modifier.padding(top = if (transfers.isEmpty()) 0.dp else 12.dp),
                         )
                     }
-                    items(pending, key = { it.id }) { item ->
+                    items(pending, key = { it.id }, contentType = { "pending" }) { item ->
                         ReviewCard(
                             item = item,
                             accounts = accounts,
@@ -333,7 +333,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            items(dismissed, key = { "d-" + it.id }) { item ->
+                            items(dismissed, key = { "d-" + it.id }, contentType = { "dismissed" }) { item ->
                                 DismissedCard(
                                     item = item,
                                     modifier = Modifier.animateItem(),

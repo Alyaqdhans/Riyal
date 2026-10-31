@@ -190,7 +190,7 @@ fun CategoryDetailScreen(
                 item(key = "merchants-title") {
                     SectionTitle(stringResource(R.string.cat_detail_where))
                 }
-                items(merchants, key = { "m-" + it.first }) { (merchant, amount) ->
+                items(merchants, key = { "m-" + it.first }, contentType = { "merchant" }) { (merchant, amount) ->
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -218,7 +218,7 @@ fun CategoryDetailScreen(
                     )
                 }
             } else {
-                items(inCategory, key = { it.id }) { txn ->
+                items(inCategory, key = { it.id }, contentType = { "record" }) { txn ->
                     // Swipe, like every other transaction list: the little × next to
                     // each row was permanent deletion one mis-tap away.
                     SwipeableTxnRow(

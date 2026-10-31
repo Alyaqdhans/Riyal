@@ -24,11 +24,11 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.graphics.vector.VectorGroup
 import androidx.compose.ui.graphics.vector.VectorPath
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.isSpecified
@@ -50,21 +50,28 @@ import kotlin.math.min
 internal fun SignGlyph(@DrawableRes res: Int, tint: Color, style: TextStyle, modifier: Modifier = Modifier) {
     val vector = ImageVector.vectorResource(res)
     val shape = remember(res) { shapes.getOrPut(res) { SignShape.of(vector) } }
-    val measurer = rememberTextMeasurer()
+    val resolver = LocalFontFamilyResolver.current
     val density = LocalDensity.current
     val fontStem = if (style.fontSize.isSpecified) {
         val key = Triple(style.fontFamily, style.fontWeight, style.fontStyle)
-        val ratio = remember(key) { stems.getOrPut(key) { fontStem(measurer, style, density) } }
+        // Measured once per family and weight, so a list's rows keep no measurer each.
+        val ratio = remember(key) {
+            stems.getOrPut(key) { fontStem(TextMeasurer(resolver, density, LayoutDirection.Ltr, cacheSize = 0), style) }
+        }
         ratio * with(density) { style.fontSize.toPx() }
     } else {
         null
     }
-    Canvas(modifier.graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)) {
-        val s = min(size.width / shape.width, size.height / shape.height)
-        val signStem = shape.stem * shape.height * s
-        // Never more than half again or half away: a figure set huge or tiny is no reason
-        // to turn the sign into a blob or a hairline.
-        val change = fontStem?.let { (it - signStem).coerceIn(-signStem * 0.5f, signStem * 0.5f) } ?: 0f
+    Canvas(
+        modifier.graphicsLayer {
+            // Thinning cuts the outline away, and needs a layer of its own to cut from.
+            // A sign drawn as it is or thickened needs none, and a list does not pay for
+            // a texture behind every row's amount.
+            compositingStrategy = if (shape.change(size, fontStem) < 0f) CompositingStrategy.Offscreen else CompositingStrategy.Auto
+        }
+    ) {
+        val s = shape.scaleIn(size)
+        val change = shape.change(size, fontStem)
         val dx = (size.width - shape.width * s) / 2
         val dy = (size.height - shape.height * s) / 2
         translateBy(dx, dy) {
@@ -99,6 +106,21 @@ private val shapes = HashMap<Int, SignShape>()
 private val stems = HashMap<Any, Float>()
 
 private class SignShape(val paths: List<Path>, val width: Float, val height: Float, val stem: Float) {
+
+    /** The scale that fits the sign in [size]. */
+    fun scaleIn(size: Size): Float = min(size.width / width, size.height / height)
+
+    /**
+     * How much thicker to draw the strokes at [size] to match [fontStem], or below zero
+     * how much thinner. Never more than half again or half away: a figure set huge or tiny
+     * is no reason to turn the sign into a blob or a hairline.
+     */
+    fun change(size: Size, fontStem: Float?): Float {
+        if (fontStem == null) return 0f
+        val signStem = stem * height * scaleIn(size)
+        return (fontStem - signStem).coerceIn(-signStem * 0.5f, signStem * 0.5f)
+    }
+
     companion object {
         fun of(vector: ImageVector): SignShape {
             val paths = ArrayList<Path>()
@@ -147,7 +169,7 @@ private class SignShape(val paths: List<Path>, val width: Float, val height: Flo
 }
 
 /** The stem of the font's "I", as a share of its size. */
-private fun fontStem(measurer: TextMeasurer, style: TextStyle, density: Density): Float {
+private fun fontStem(measurer: TextMeasurer, style: TextStyle): Float {
     val probe = style.copy(fontSize = 100.sp, color = Color.Black, letterSpacing = 0.sp)
     val layout = measurer.measure("I", probe, density = Density(1f, 1f))
     val bw = max(1, layout.size.width)

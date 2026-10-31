@@ -195,6 +195,11 @@ everything.
 - Draw category and account colours through `categoryColor(id)`, `rememberBadgeColours`
   or `legible(...)` (ui/theme/Contrast.kt), never `Color(Categories.colorFor(id))`: the raw
   palette falls under 3:1 on light cards. `ContrastTest` holds every colour to it.
+- A held scroll thumb jumps the list each frame, and each frame builds a screen of rows.
+  Long lists give their items a `contentType` (a record from a record, a day from a day),
+  so the rows just left are reused, and a row makes no layer, measurer or state it does
+  not need: `SignGlyph` takes an offscreen layer only while it thins a sign, and
+  `SwipeRow` a tooltip state only on tour.
 - Never read an animated value during composition in something that animates often.
   `DigitWheel` reads its wheel only in `drawBehind` and draws ten digits measured once;
   reading it in composition recomposed and re-laid-out text every frame for every digit,

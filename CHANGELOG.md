@@ -10,6 +10,9 @@ is attached there.
 
 - Swiping a record in Arabic moves the row with your finger. It slid the other way, and
   uncovered the action on the side the finger was moving away from.
+- Holding the scroll thumb and dragging through a long list is smoother. Each step of
+  the drag jumps the list and builds a screen of new rows; they are now made from the
+  rows just left behind, and an amount no longer draws on a layer of its own.
 
 ## 1.8.2 — 2026-10-31
 

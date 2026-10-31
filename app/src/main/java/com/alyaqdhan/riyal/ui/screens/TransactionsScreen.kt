@@ -256,10 +256,12 @@ fun TransactionsScreen(vm: MainViewModel) {
                     state = list,
                     contentPadding = PaddingValues(top = 4.dp, bottom = toolbarSpace),
                 ) {
+                    // Content types let a jump of the thumb build its new screen from the
+                    // rows it left, a record from a record and a day from a day.
                     if (order.byDate) {
                         grouped.forEach { (date, dayTxns) ->
-                            item(key = "header-$date") { DayHeader(date, dayTxns) }
-                            items(dayTxns, key = { it.id }) { txn ->
+                            item(key = "header-$date", contentType = "day") { DayHeader(date, dayTxns) }
+                            items(dayTxns, key = { it.id }, contentType = { "record" }) { txn ->
                                 SwipeableTxnRow(
                                     archived = txn.id in archivedIds,
                                     onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
@@ -278,7 +280,7 @@ fun TransactionsScreen(vm: MainViewModel) {
                             }
                         }
                     } else {
-                        items(ranked, key = { it.id }) { txn ->
+                        items(ranked, key = { it.id }, contentType = { "record" }) { txn ->
                             SwipeableTxnRow(
                                 archived = txn.id in archivedIds,
                                 onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },

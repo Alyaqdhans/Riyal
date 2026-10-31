@@ -247,7 +247,7 @@ fun HomeScreen(
                     }
                 } else {
                     recent.forEach { (date, dayTxns) ->
-                        item(key = "day-$date") {
+                        item(key = "day-$date", contentType = "day") {
                             Text(
                                 dayLabel(date),
                                 style = MaterialTheme.typography.labelLarge,
@@ -255,7 +255,7 @@ fun HomeScreen(
                                 modifier = Modifier.padding(horizontal = 16.dp),
                             )
                         }
-                        items(dayTxns, key = { it.id }) { txn ->
+                        items(dayTxns, key = { it.id }, contentType = { "record" }) { txn ->
                             TxnRow(txn, onClick = { picker = txn }, accounts = accounts, showDate = false)
                         }
                     }
