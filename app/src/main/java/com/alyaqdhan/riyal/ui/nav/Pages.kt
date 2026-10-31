@@ -71,6 +71,8 @@ abstract class PageActivity : AppCompatActivity() {
         super.onResume()
         // Permission can change behind our back in system settings; re-check on every return.
         vm.refreshPermission()
+        // Back from the "install unknown apps" switch with it on: the update installs.
+        vm.resumeInstall()
     }
 
     @Composable

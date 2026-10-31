@@ -58,7 +58,9 @@ import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.data.Updates
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.MainViewModel.DownloadState
 import com.alyaqdhan.riyal.ui.MainViewModel.UpdateState
+import com.alyaqdhan.riyal.ui.compose.FlatBar
 import com.alyaqdhan.riyal.ui.compose.FlatWheel
 import com.alyaqdhan.riyal.ui.compose.ReleaseNotes
 import com.alyaqdhan.riyal.ui.compose.ScrollThumb
@@ -70,6 +72,7 @@ import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
 import com.alyaqdhan.riyal.ui.theme.successContainer
 import java.time.Instant
 import java.time.ZoneId
+import kotlin.math.roundToInt
 
 /**
  * Updates, laid out the way ytdlnis lays its own: a status card that says where things
@@ -85,6 +88,14 @@ fun UpdatesScreen(vm: MainViewModel, onBack: () -> Unit, onOpenChangelog: () -> 
     val checkOnStart by vm.checkOnStart.collectAsState()
     val includeBeta by vm.includeBeta.collectAsState()
     val skipped by vm.skippedUpdates.collectAsState()
+    val download by vm.download.collectAsState()
+    val needsPermission by vm.awaitingInstallPermission.collectAsState()
+
+    fun open(url: String) {
+        runCatching {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -107,11 +118,16 @@ fun UpdatesScreen(vm: MainViewModel, onBack: () -> Unit, onOpenChangelog: () -> 
         ) {
             StatusCard(
                 state = state,
+                download = download,
+                needsPermission = needsPermission,
                 version = version,
                 lastCheck = lastCheck,
                 includeBeta = includeBeta,
                 onCheck = { vm.checkForUpdate(version, force = true) },
-                onUpdate = { vm.openUpdatePrompt(it) },
+                onUpdate = { if (it.hasApk) vm.startDownload(it) else open(it.htmlUrl) },
+                onCancel = { vm.cancelDownload() },
+                onInstall = { if (vm.installDownload() == MainViewModel.InstallResult.FAILED) open(it.htmlUrl) },
+                onSkip = { vm.skipUpdate(it) },
                 modifier = Modifier.padding(16.dp),
             )
             ListItem(
@@ -151,25 +167,35 @@ fun UpdatesScreen(vm: MainViewModel, onBack: () -> Unit, onOpenChangelog: () -> 
         }
         }
     }
-    // This page is an activity of its own, so the prompt its Update button opens has to
-    // be shown here; the one MainActivity hosts would open behind the page.
-    UpdateDialogHost(vm)
 }
 
 /**
  * Where updates stand, coloured by it: green when current, the primary colour when a
  * release is waiting, red when GitHub could not be reached.
+ *
+ * A waiting release is all here, with no dialog over the page: its notes, then Update,
+ * whose download fills a bar in the card, and Android's installer opens by itself when
+ * the file is in. Install comes back only if the installer was backed out of.
  */
 @Composable
 private fun StatusCard(
     state: UpdateState,
+    download: DownloadState,
+    needsPermission: Boolean,
     version: String,
     lastCheck: Long,
     includeBeta: Boolean,
     onCheck: () -> Unit,
     onUpdate: (Updates.Release) -> Unit,
+    onCancel: () -> Unit,
+    onInstall: (Updates.Release) -> Unit,
+    onSkip: (Updates.Release) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val release = (state as? UpdateState.Available)?.release
+    // Only a download of the release on offer belongs in the card.
+    val fetch = download.takeIf { release != null && it.tag?.let { tag -> Updates.sameVersion(tag, release.tag) } == true }
+        ?: DownloadState.Idle
     val scheme = MaterialTheme.colorScheme
     val (container, content) = when (state) {
         is UpdateState.Available -> scheme.primaryContainer to scheme.onPrimaryContainer
@@ -225,22 +251,67 @@ private fun StatusCard(
                 )
             }
         }
-        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 16.dp)) {
-            Spacer(Modifier.weight(1f))
-            Button(
-                onClick = { if (state is UpdateState.Available) onUpdate(state.release) else onCheck() },
-                enabled = state != UpdateState.Checking,
-                shapes = ButtonDefaults.shapes(),
+        if (release != null) {
+            Column(
+                Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    stringResource(
-                        when (state) {
-                            is UpdateState.Available -> R.string.upd_update
-                            UpdateState.Unreachable -> R.string.upd_try_again
-                            else -> R.string.upd_check_now
-                        }
+                ReleaseNotes(release.notes.ifBlank { stringResource(R.string.upd_no_notes) })
+                when (fetch) {
+                    is DownloadState.Downloading -> {
+                        FlatBar(
+                            progress = { fetch.fraction },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = content,
+                            trackColor = content.copy(alpha = 0.24f),
+                        )
+                        Text(
+                            stringResource(R.string.upd_downloading, (fetch.fraction * 100).roundToInt()),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    is DownloadState.Failed -> Text(
+                        stringResource(R.string.upd_download_failed),
+                        style = MaterialTheme.typography.bodySmall,
                     )
-                )
+                    is DownloadState.Ready -> if (needsPermission) {
+                        Text(stringResource(R.string.upd_allow_installs), style = MaterialTheme.typography.bodySmall)
+                    }
+                    DownloadState.Idle -> if (!release.hasApk) {
+                        Text(stringResource(R.string.upd_no_apk), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+        ) {
+            when {
+                release == null -> Button(onClick = onCheck, enabled = state != UpdateState.Checking, shapes = ButtonDefaults.shapes()) {
+                    Text(stringResource(if (state == UpdateState.Unreachable) R.string.upd_try_again else R.string.upd_check_now))
+                }
+                fetch is DownloadState.Downloading -> TextButton(onClick = onCancel, shapes = ButtonDefaults.shapes()) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+                else -> {
+                    TextButton(onClick = { onSkip(release) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.upd_skip)) }
+                    Button(
+                        onClick = { if (fetch is DownloadState.Ready) onInstall(release) else onUpdate(release) },
+                        shapes = ButtonDefaults.shapes(),
+                    ) {
+                        Text(
+                            stringResource(
+                                when {
+                                    fetch is DownloadState.Ready -> R.string.upd_install
+                                    fetch is DownloadState.Failed -> R.string.upd_retry
+                                    !release.hasApk -> R.string.upd_open_github
+                                    else -> R.string.upd_update
+                                }
+                            )
+                        )
+                    }
+                }
             }
         }
     }

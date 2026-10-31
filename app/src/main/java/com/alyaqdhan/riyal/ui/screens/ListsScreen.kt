@@ -328,7 +328,7 @@ private fun SendersList(vm: MainViewModel) {
                 )
             }
         }
-        items(shown, key = { "sender-" + it.sender.lowercase() }) { row ->
+        items(shown, key = { "sender-" + it.sender.lowercase() }, contentType = { "sender" }) { row ->
             SenderRow(row) { choice ->
                 when (choice) {
                     SenderChoice.READ ->

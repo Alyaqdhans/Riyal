@@ -4,7 +4,44 @@ Every release of Riyal, newest first. Released versions are condensed from their
 [GitHub release notes](https://github.com/Alyaqdhans/Riyal/releases); the APK for each
 is attached there.
 
-## 1.8.2 — unreleased (branch `1.8.2`)
+## 1.8.3 — unreleased (branch `1.8.3`)
+
+### Around the app
+
+- **Updates without the extra taps.** Riyal looks for a new version each time it opens
+  rather than once a day, and the update dialog opens on every launch until you update
+  or skip that version; Later means until the next launch. On the Updates page there is
+  no dialog: the top card shows the new version's notes, Update fills a bar in it, and
+  Android's installer opens by itself when the download is done. The dialog installs
+  the same way.
+- **A font of its own, and Arabic easier to read.** Riyal is set in Noto Sans, and its
+  Arabic in Noto Sans Arabic UI, a pair drawn to sit together, in place of the phone's
+  fonts. Arabic is a step heavier than English at each weight: the phone's own Arabic,
+  Naskh on most phones, read thin and small beside it. The charts' labels and the release
+  notes are in it too.
+- Settings' counts sit on one line, each a figure over its name, where the third used to
+  drop under the other two. Home's "needs your attention" rows keep to a line each: the
+  page they open, and how much is waiting there.
+- Home's Expense and Income totals are larger than their names: each is a tile with the
+  name small on top and the figure under it. The figure used to shrink to fit beside the
+  name, and ended up the smaller of the two. Their arrows, and the icons on Settings'
+  counts, are drawn as heavy as the text beside them.
+- Adding a record, Transfer sits on the row under Expense and Income in both languages.
+  It used to share their row in Arabic and drop under them in English.
+- A record's "Just this one / Same category / Ask each time" choice shows every label
+  whole. The three buttons were always equal thirds, which cut the longest short even
+  when the row had room for all three; a longer label now gets a wider button.
+- Transactions' filters take any number of accounts and categories at once, and the
+  badge on the filter button counts them all. Clear is always in the sheet's header,
+  smaller and greyed out until something is chosen; it used to appear only then, and
+  push the sheet down as it did.
+- Swiping a record in Arabic moves the row with your finger. It slid the other way, and
+  uncovered the action on the side the finger was moving away from.
+- Holding the scroll thumb and dragging through a long list is smoother. Each step of
+  the drag jumps the list and builds a screen of new rows; they are now made from the
+  rows just left behind, and an amount no longer draws on a layer of its own.
+
+## 1.8.2 — 2026-10-31
 
 ### Around the app
 

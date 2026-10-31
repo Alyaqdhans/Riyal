@@ -425,8 +425,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val releasesFailed: StateFlow<Boolean> = _releasesFailed
 
     /**
-     * The release the update dialog is open on. A check finds a new version and opens it
-     * once for that version; after that the update waits in Settings until it is wanted.
+     * The release the update dialog is open on. The launch's check opens it whenever a
+     * newer release is waiting that was not skipped, so Later means the next launch; the
+     * Updates page shows the same release in its own card instead.
      */
     private val _updatePrompt = MutableStateFlow<Updates.Release?>(null)
     val updatePrompt: StateFlow<Updates.Release?> = _updatePrompt
@@ -475,18 +476,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Asks GitHub for its releases, at most once a day unless [force]d by a tap.
+     * Asks GitHub for its releases: on each launch ([onStart]), and when Check now is
+     * tapped ([force]).
      *
      * A failed check that nobody asked for changes nothing on screen: it is a line in the
-     * log, and the next launch tries again. [onStart] is the launch's own check, which
-     * the "check on start" switch can turn off entirely.
+     * log, and the next launch tries again. The launch's check is the one the "check on
+     * start" switch turns off, and the only one that opens the dialog; Check now answers
+     * in the Updates page's own card.
+     *
+     * It used to ask at most once a day, so a release published after the day's check
+     * was not offered until the next day, however often the app was opened.
      */
     fun checkForUpdate(currentVersion: String, force: Boolean = false, onStart: Boolean = false) =
         viewModelScope.launch(Dispatchers.IO) {
             if (onStart && !prefs.checkUpdatesOnStart) return@launch
-            if (!Updates.shouldCheck(System.currentTimeMillis(), prefs.lastUpdateCheckAt, force)) {
-                return@launch
-            }
             if (force) _updateState.value = UpdateState.Checking
             val askedAt = SystemClock.uptimeMillis()
 
@@ -506,16 +509,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _lastUpdateCheck.value = now
             _releases.value = list
             _releasesFailed.value = false
-            decide(list, currentVersion, prompt = true, asked = force)
+            decide(list, currentVersion, prompt = onStart)
             Verbose.flush()
         }
 
-    private fun decide(
-        list: List<Updates.Release>,
-        currentVersion: String,
-        prompt: Boolean,
-        asked: Boolean = false,
-    ) {
+    private fun decide(list: List<Updates.Release>, currentVersion: String, prompt: Boolean) {
         val newest = Updates.newest(list, prefs.updateIncludeBeta)
         newest?.let {
             prefs.lastReleaseTag = it.tag
@@ -533,12 +531,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             offer.tag,
             currentVersion,
         )
-        // The dialog opens once per version on its own, and every time someone asks.
-        val seen = prefs.updatePromptedTag?.let { Updates.sameVersion(it, offer.tag) } == true
-        if (prompt && (asked || !seen)) {
-            prefs.updatePromptedTag = offer.tag
-            _updatePrompt.value = offer
-        }
+        if (prompt) _updatePrompt.value = offer
     }
 
     /** The changelog page asking for the list when no check has fetched it yet. */
@@ -566,10 +559,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     sealed interface DownloadState {
-        data object Idle : DownloadState
-        data class Downloading(val tag: String, val fraction: Float) : DownloadState
-        data class Ready(val tag: String, val file: File) : DownloadState
-        data class Failed(val tag: String) : DownloadState
+        /** The release the download is for; none while idle. */
+        val tag: String?
+
+        data object Idle : DownloadState {
+            override val tag: String? = null
+        }
+        data class Downloading(override val tag: String, val fraction: Float) : DownloadState
+        data class Ready(override val tag: String, val file: File) : DownloadState
+        data class Failed(override val tag: String) : DownloadState
     }
 
     private val _download = MutableStateFlow<DownloadState>(DownloadState.Idle)
@@ -577,8 +575,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private var downloadJob: Job? = null
 
     /**
-     * Fetches the release's APK into the app's own cache, with the progress on screen.
-     * Nothing installs at the end of it: [install] hands the file to Android, which asks.
+     * Fetches the release's APK into the app's own cache, with the progress on screen, and
+     * opens Android's installer on it the moment it is there ([installDownload]). Android
+     * still asks before it installs anything.
      */
     fun startDownload(release: Updates.Release) {
         if (_download.value is DownloadState.Downloading) return
@@ -598,12 +597,44 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 _download.value = DownloadState.Downloading(release.tag, fraction)
             }
             _download.value = if (ok) DownloadState.Ready(release.tag, dest) else DownloadState.Failed(release.tag)
+            if (ok) withContext(Dispatchers.Main) { installDownload() }
         }
+    }
+
+    /**
+     * A finished download waiting on Android's "install unknown apps" switch. The switch's
+     * screen was opened for it; coming back with the switch on installs it ([resumeInstall]).
+     */
+    private val _awaitingInstallPermission = MutableStateFlow(false)
+    val awaitingInstallPermission: StateFlow<Boolean> = _awaitingInstallPermission
+
+    /**
+     * Hands the finished download to Android's installer. Without the "install unknown
+     * apps" permission it opens that switch instead, and the install goes on when the
+     * user comes back with it on. The dialog closes once the installer is up; Install is
+     * offered again only if the installer was backed out of.
+     */
+    fun installDownload(): InstallResult? {
+        val ready = _download.value as? DownloadState.Ready ?: return null
+        val result = install(ready.file)
+        _awaitingInstallPermission.value = result == InstallResult.NEEDS_PERMISSION
+        when (result) {
+            InstallResult.NEEDS_PERMISSION -> openInstallPermission()
+            InstallResult.STARTED -> _updatePrompt.value = null
+            InstallResult.FAILED -> Unit
+        }
+        return result
+    }
+
+    /** Back on screen: if the switch was turned on for a waiting download, install it. */
+    fun resumeInstall() {
+        if (_awaitingInstallPermission.value && ApkInstaller.canInstall(getApplication())) installDownload()
     }
 
     fun cancelDownload() {
         downloadJob?.cancel()
         downloadJob = null
+        _awaitingInstallPermission.value = false
         if (_download.value is DownloadState.Downloading) _download.value = DownloadState.Idle
     }
 

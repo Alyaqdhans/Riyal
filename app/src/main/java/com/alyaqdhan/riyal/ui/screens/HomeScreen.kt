@@ -9,10 +9,8 @@ import com.alyaqdhan.riyal.ui.compose.title
 import androidx.compose.foundation.layout.size
 import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
 import com.alyaqdhan.riyal.ui.theme.successContainer
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.foundation.shape.CircleShape
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
@@ -34,6 +33,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -63,6 +63,7 @@ import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.BudgetCard
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.EmptyState
+import com.alyaqdhan.riyal.ui.compose.MatchedIcon
 import com.alyaqdhan.riyal.ui.compose.FlatBar
 import com.alyaqdhan.riyal.ui.compose.MoneySign
 import com.alyaqdhan.riyal.ui.compose.MoneyText
@@ -147,17 +148,18 @@ fun HomeScreen(
                 Attention(
                     R.drawable.ic_sym_inbox,
                     stringResource(R.string.review_title),
-                    stringResource(R.string.home_needs_review_subtitle, parts.joinToString(" · ")),
+                    parts.joinToString(" · "),
                     onOpenReview,
                 )
             )
         }
+        // Like the row above: the page it opens, and how much is waiting there.
         if (needsCategory > 0) {
             add(
                 Attention(
                     R.drawable.ic_sym_category,
-                    counted(R.plurals.home_needs_category_title, needsCategory),
-                    stringResource(R.string.home_needs_category_subtitle),
+                    stringResource(R.string.needs_title),
+                    counted(R.plurals.count_records, needsCategory),
                     onOpenNeedsCategory,
                 )
             )
@@ -247,7 +249,7 @@ fun HomeScreen(
                     }
                 } else {
                     recent.forEach { (date, dayTxns) ->
-                        item(key = "day-$date") {
+                        item(key = "day-$date", contentType = "day") {
                             Text(
                                 dayLabel(date),
                                 style = MaterialTheme.typography.labelLarge,
@@ -255,7 +257,7 @@ fun HomeScreen(
                                 modifier = Modifier.padding(horizontal = 16.dp),
                             )
                         }
-                        items(dayTxns, key = { it.id }) { txn ->
+                        items(dayTxns, key = { it.id }, contentType = { "record" }) { txn ->
                             TxnRow(txn, onClick = { picker = txn }, accounts = accounts, showDate = false)
                         }
                     }
@@ -376,7 +378,11 @@ private fun SummaryCard(totals: Stats.MonthTotals, currency: String) {
     }
 }
 
-/** One side of the net: an arrow, its name and its total, in a pill of its own colour. */
+/**
+ * One side of the net, on a tile of its own colour: an arrow and its name, small, over
+ * its total. The figure is what the tile is for, so it has the line to itself and the
+ * larger type; side by side with its name, it was the figure that shrank to fit.
+ */
 @Composable
 private fun TotalPill(
     @DrawableRes icon: Int,
@@ -387,26 +393,24 @@ private fun TotalPill(
     content: Color,
     modifier: Modifier,
 ) {
-    Surface(shape = CircleShape, color = container, contentColor = content, modifier = modifier) {
-        Row(
-            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(16.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+    Surface(shape = MaterialTheme.shapes.large, color = container, contentColor = content, modifier = modifier) {
+        // The tile's ends are round: its start keeps the name and figure clear of the curve.
+        Column(Modifier.padding(start = 24.dp, end = 16.dp, top = 6.dp, bottom = 6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                MatchedIcon(icon, MaterialTheme.typography.labelMedium, Modifier.size(14.dp))
+                Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+            }
             MoneyText(
                 minor,
                 currency,
                 sign = MoneySign.NONE,
                 roll = true,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = content,
-                textAlign = TextAlign.End,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
                 autoSize = TextAutoSize.StepBased(
-                    minFontSize = 9.sp,
-                    maxFontSize = MaterialTheme.typography.labelLarge.fontSize,
+                    minFontSize = 11.sp,
+                    maxFontSize = MaterialTheme.typography.titleMedium.fontSize,
                 ),
             )
         }
@@ -446,12 +450,26 @@ private fun AttentionCard(items: List<Attention>) {
             ListItem(
                 onClick = a.onClick,
                 leadingContent = { Icon(painterResource(a.icon), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                supportingContent = { Text(a.subtitle) },
+                supportingContent = { OneLine(a.subtitle) },
                 trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            ) { Text(a.title) }
+            ) { OneLine(a.title) }
         }
     }
+}
+
+/**
+ * An attention row's line, kept to one: a little smaller rather than broken, when a large
+ * count or two reasons at once make it long.
+ */
+@Composable
+private fun OneLine(text: String) {
+    Text(
+        text,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = LocalTextStyle.current.fontSize),
+    )
 }
 
 /** Where the money went: the biggest categories of the period, each with its share. */

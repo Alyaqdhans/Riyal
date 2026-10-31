@@ -128,11 +128,12 @@ fun SwipeRow(
     val x = state.offset.takeUnless { it.isNaN() } ?: 0f
     val open = abs(x) > 0.5f
     val step = tour?.current
-    val tip = rememberTooltipState(isPersistent = true)
+    // Only the row on tour has a bubble; the rest of a long list skips making one.
+    val tip = if (tour != null && step != null) rememberTooltipState(isPersistent = true) else null
 
     fun close() = scope.launch { state.animateTo(Reveal.CLOSED) }
 
-    if (tour != null && step != null) {
+    if (tour != null && step != null && tip != null) {
         val inView = LocalTabInView.current
         LaunchedEffect(step, inView) {
             if (!inView) return@LaunchedEffect
@@ -210,7 +211,7 @@ fun SwipeRow(
                 }
             }
         }
-        if (tour != null && step != null) {
+        if (tour != null && step != null && tip != null) {
             // What the bubble points at: the strip the step uncovers. It draws nothing and
             // takes no touches; the row slides over it.
             Box(
@@ -243,7 +244,9 @@ fun SwipeRow(
             Modifier
                 .absoluteOffset { IntOffset(x.roundToInt(), 0) }
                 .fillMaxWidth()
-                .anchoredDraggable(state, Orientation.Horizontal),
+                // The anchors and the offset are screen directions, so the drag is too. Left
+                // to itself it mirrors in Arabic, and the row slid against the finger.
+                .anchoredDraggable(state, reverseDirection = false, orientation = Orientation.Horizontal),
         ) {
             content()
             // An open row is a lid over its action, not a target: tapping it shuts the row

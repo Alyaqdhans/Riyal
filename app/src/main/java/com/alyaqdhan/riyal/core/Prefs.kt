@@ -233,14 +233,6 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putStringSet("skipped_updates", v.toSet()).apply()
 
     /**
-     * The version the start-up prompt was last shown for. It appears once per release,
-     * then the update waits quietly in Settings until the user goes to it.
-     */
-    var updatePromptedTag: String?
-        get() = sp.getString("update_prompted_tag", null)
-        set(v) = sp.edit().putString("update_prompted_tag", v).apply()
-
-    /**
      * The date of the newest message the last successful scan read.
      *
      * A scan starts a little before this rather than at it: see [SCAN_OVERLAP_MILLIS].

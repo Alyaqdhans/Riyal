@@ -9,6 +9,7 @@ package com.alyaqdhan.riyal.ui.screens
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Surface
@@ -93,6 +94,7 @@ import com.alyaqdhan.riyal.ui.theme.successColor
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLabelComponent
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.compose.cartesian.data.columnModel
@@ -103,6 +105,7 @@ import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesian
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.common.Fill
+import com.patrykandpatrick.vico.compose.common.vicoTheme
 import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
 import com.patrykandpatrick.vico.compose.common.data.ExtraStore
 import java.time.Instant
@@ -682,9 +685,11 @@ private fun ChartsCard(
                             ),
                         ),
                         startAxis = VerticalAxis.rememberStart(
+                            label = axisLabel(),
                             valueFormatter = amountAxisFormatter(currency),
                         ),
                         bottomAxis = HorizontalAxis.rememberBottom(
+                            label = axisLabel(),
                             valueFormatter = labelAxisFormatter(),
                         ),
                     ),
@@ -723,9 +728,11 @@ private fun ChartsCard(
                             ),
                         ),
                         startAxis = VerticalAxis.rememberStart(
+                            label = axisLabel(),
                             valueFormatter = amountAxisFormatter(currency),
                         ),
                         bottomAxis = HorizontalAxis.rememberBottom(
+                            label = axisLabel(),
                             valueFormatter = labelAxisFormatter(),
                         ),
                     ),
@@ -744,6 +751,19 @@ private fun ChartsCard(
         }
     }
 }
+
+/**
+ * Vico's axis label in the app's face: its own style names only a colour and a size, and
+ * the labels fell back to the phone's font.
+ */
+@Composable
+private fun axisLabel() = rememberAxisLabelComponent(
+    style = TextStyle(
+        color = vicoTheme.textColor,
+        fontSize = 12.sp,
+        fontFamily = MaterialTheme.typography.labelSmall.fontFamily,
+    ),
+)
 
 /** Axis labels in whole units: minor units would make every tick unreadable. */
 private fun amountAxisFormatter(currency: String) = CartesianValueFormatter { _, y, _ ->

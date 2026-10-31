@@ -69,6 +69,9 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   line, looping until the store has loaded (`vm.storeReady`), then filled, then lifted;
   the system splash has no icon so the two read as one. Home's figures roll as it lifts
   (`Rolls.replay`), and the launch scan and building the other tabs wait for the roll.
+- **Out and in side by side, the rest under them.** A `ConnectedChoice` of kinds puts
+  Expense and Income on one row and the third answer (Transfer, Not a transaction) on
+  the row under them, with `perRow = 2`, in every language.
 - **Choices of dates are tiles** (`ui/compose/Presets.kt`: `PresetSheet`/`PresetGrid`),
   never a plain list of words. Each tile says what it covers, and all tiles are one size.
 - **Exact versions.** `androidx.compose.material3:material3:1.5.0-alpha29` with
@@ -84,6 +87,12 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
 - **Money shows signs, not codes.** Show amounts with `MoneyText` (one amount) or
   `MoneyAwareText` (a sentence containing `Money.format` output). These draw the
   currency's own sign; the new Omani rial sign comes from firePOS's path data.
+- **Icons match the weight of their text.** An icon beside text is drawn with strokes as
+  thick as the text's: `MatchedIcon(res, style)` (`ui/compose/SignGlyph.kt`), which
+  measures the font's stem and thickens or thins the icon to it, as the currency signs
+  are. Material Symbols are cut at one weight, so a plain `Icon` beside a Medium label
+  reads thinner than the label. Older screens still draw plain `Icon`s; bring each over
+  when touching it.
 
 ## Build and test
 
@@ -127,7 +136,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `ui/nav/Pages.kt` | `PageActivity` and every page opened from a tab (onboarding, setup, review, categories, lists, updates, changelog), each with its `activity_*.xml` layout |
 | `MainActivity.kt` | The tabs, the floating toolbar (`HorizontalFloatingToolbar` + Add FAB), global dialogs (update prompt, manual add); sends a first run to `OnboardingActivity` |
 | `ui/screens/*` | Home, Transactions, Analysis, Accounts, Settings (tabs); Setup, Review, Updates, Changelog, Categories… (pages) |
-| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs at the text's measured stroke weight), `ScrollThumb` (the thumb every scrolling list carries; it can be held and dragged, and its size follows how many items are on screen), `SwipeRow` (a swipe uncovers an action - a record's Archive/Remove, a list entry's Forget/Restore - and a tap on it confirms; `SwipeTour` shows it once; on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips), `BudgetSection` (Home's budget card under the net, and its editor) |
+| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs, and icons through `MatchedIcon`, at the text's measured stroke weight), `ScrollThumb` (the thumb every scrolling list carries; it can be held and dragged, and its size follows how many items are on screen), `SwipeRow` (a swipe uncovers an action - a record's Archive/Remove, a list entry's Forget/Restore - and a tap on it confirms; `SwipeTour` shows it once; on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips), `BudgetSection` (Home's budget card under the net, and its editor) |
 
 ## How a message is read (1.8.0+)
 
@@ -195,6 +204,21 @@ everything.
 - Draw category and account colours through `categoryColor(id)`, `rememberBadgeColours`
   or `legible(...)` (ui/theme/Contrast.kt), never `Color(Categories.colorFor(id))`: the raw
   palette falls under 3:1 on light cards. `ContrastTest` holds every colour to it.
+- The app's type is Noto Sans with Noto Sans Arabic UI (`ui/theme/Type.kt`:
+  `RiyalTypography`, and `riyalTypeface` for Android views), Arabic a step heavier
+  (`ARABIC_HEAVIER`). The files in `res/font` are the upstream variable fonts (notofonts,
+  unhinted) with `wdth` pinned at 100, each cut with fonttools to its own script plus the
+  space; a replacement must stay that way, or one script's file draws the other's digits.
+  One `Typeface.CustomFallbackBuilder` holds both at weights 100-900, and each Compose
+  weight asks it with `Typeface.create(base, weight, false)`: a Compose resource font is
+  loaded at the file's default weight and varied through the paint, fallback font and
+  all. Text drawn outside the theme takes the family itself (Vico's axis labels,
+  Markwon's TextView and headings).
+- A held scroll thumb jumps the list each frame, and each frame builds a screen of rows.
+  Long lists give their items a `contentType` (a record from a record, a day from a day),
+  so the rows just left are reused, and a row makes no layer, measurer or state it does
+  not need: `SignGlyph` takes an offscreen layer only while it thins a sign, and
+  `SwipeRow` a tooltip state only on tour.
 - Never read an animated value during composition in something that animates often.
   `DigitWheel` reads its wheel only in `drawBehind` and draws ten digits measured once;
   reading it in composition recomposed and re-laid-out text every frame for every digit,

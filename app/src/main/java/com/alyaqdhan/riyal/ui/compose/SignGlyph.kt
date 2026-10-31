@@ -2,6 +2,7 @@ package com.alyaqdhan.riyal.ui.compose
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -24,11 +25,11 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.graphics.vector.VectorGroup
 import androidx.compose.ui.graphics.vector.VectorPath
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.isSpecified
@@ -39,9 +40,9 @@ import kotlin.math.min
 /**
  * A currency sign drawn with strokes as thick as the text beside it.
  *
- * The signs are filled outlines cut for one weight, and the text is in whatever font the
- * phone is set to - a light custom font made every sign look bold beside it. So both are
- * measured: how thick the font's strokes are (the stem of an "I", as a share of the font
+ * The signs are filled outlines cut for one weight, and the text beside them comes in
+ * every weight from a label to a headline - when it was the phone's own font, a light
+ * custom font made every sign look bold beside it. So both are measured: how thick the font's strokes are (the stem of an "I", as a share of the font
  * size) and how thick the sign's are (twice its area over its outline, as a share of its
  * height). The sign is then thinned or thickened by the difference: its outline is traced
  * and either cut away or filled in, by exactly that much.
@@ -50,21 +51,28 @@ import kotlin.math.min
 internal fun SignGlyph(@DrawableRes res: Int, tint: Color, style: TextStyle, modifier: Modifier = Modifier) {
     val vector = ImageVector.vectorResource(res)
     val shape = remember(res) { shapes.getOrPut(res) { SignShape.of(vector) } }
-    val measurer = rememberTextMeasurer()
+    val resolver = LocalFontFamilyResolver.current
     val density = LocalDensity.current
     val fontStem = if (style.fontSize.isSpecified) {
         val key = Triple(style.fontFamily, style.fontWeight, style.fontStyle)
-        val ratio = remember(key) { stems.getOrPut(key) { fontStem(measurer, style, density) } }
+        // Measured once per family and weight, so a list's rows keep no measurer each.
+        val ratio = remember(key) {
+            stems.getOrPut(key) { fontStem(TextMeasurer(resolver, density, LayoutDirection.Ltr, cacheSize = 0), style) }
+        }
         ratio * with(density) { style.fontSize.toPx() }
     } else {
         null
     }
-    Canvas(modifier.graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)) {
-        val s = min(size.width / shape.width, size.height / shape.height)
-        val signStem = shape.stem * shape.height * s
-        // Never more than half again or half away: a figure set huge or tiny is no reason
-        // to turn the sign into a blob or a hairline.
-        val change = fontStem?.let { (it - signStem).coerceIn(-signStem * 0.5f, signStem * 0.5f) } ?: 0f
+    Canvas(
+        modifier.graphicsLayer {
+            // Thinning cuts the outline away, and needs a layer of its own to cut from.
+            // A sign drawn as it is or thickened needs none, and a list does not pay for
+            // a texture behind every row's amount.
+            compositingStrategy = if (shape.change(size, fontStem) < 0f) CompositingStrategy.Offscreen else CompositingStrategy.Auto
+        }
+    ) {
+        val s = shape.scaleIn(size)
+        val change = shape.change(size, fontStem)
         val dx = (size.width - shape.width * s) / 2
         val dy = (size.height - shape.height * s) / 2
         translateBy(dx, dy) {
@@ -81,6 +89,21 @@ internal fun SignGlyph(@DrawableRes res: Int, tint: Color, style: TextStyle, mod
         }
     }
 }
+
+/**
+ * An icon drawn at the weight of the text beside it: [res]'s strokes thickened or thinned
+ * to [style]'s, the way the currency signs are. Material Symbols are cut at one weight
+ * and the app's text comes in several, so a plain [androidx.compose.material3.Icon]
+ * beside a Medium label reads thinner than the label. Decorative: it says nothing to
+ * TalkBack, as its label does.
+ */
+@Composable
+fun MatchedIcon(
+    @DrawableRes res: Int,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+) = SignGlyph(res, tint, style, modifier)
 
 private inline fun androidx.compose.ui.graphics.drawscope.DrawScope.translateBy(
     x: Float,
@@ -99,6 +122,21 @@ private val shapes = HashMap<Int, SignShape>()
 private val stems = HashMap<Any, Float>()
 
 private class SignShape(val paths: List<Path>, val width: Float, val height: Float, val stem: Float) {
+
+    /** The scale that fits the sign in [size]. */
+    fun scaleIn(size: Size): Float = min(size.width / width, size.height / height)
+
+    /**
+     * How much thicker to draw the strokes at [size] to match [fontStem], or below zero
+     * how much thinner. Never more than half again or half away: a figure set huge or tiny
+     * is no reason to turn the sign into a blob or a hairline.
+     */
+    fun change(size: Size, fontStem: Float?): Float {
+        if (fontStem == null) return 0f
+        val signStem = stem * height * scaleIn(size)
+        return (fontStem - signStem).coerceIn(-signStem * 0.5f, signStem * 0.5f)
+    }
+
     companion object {
         fun of(vector: ImageVector): SignShape {
             val paths = ArrayList<Path>()
@@ -147,7 +185,7 @@ private class SignShape(val paths: List<Path>, val width: Float, val height: Flo
 }
 
 /** The stem of the font's "I", as a share of its size. */
-private fun fontStem(measurer: TextMeasurer, style: TextStyle, density: Density): Float {
+private fun fontStem(measurer: TextMeasurer, style: TextStyle): Float {
     val probe = style.copy(fontSize = 100.sp, color = Color.Black, letterSpacing = 0.sp)
     val layout = measurer.measure("I", probe, density = Density(1f, 1f))
     val bw = max(1, layout.size.width)

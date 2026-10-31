@@ -149,6 +149,7 @@ fun RiyalTheme(content: @Composable () -> Unit) {
         // platform expects them to, without the bounce.
         motionScheme = MotionScheme.standard(),
         shapes = RiyalShapes,
+        typography = RiyalTypography,
         content = content,
     )
 }
