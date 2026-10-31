@@ -2,8 +2,10 @@
 # AGP 9.2.1: built-in Kotlin (no standalone kotlin-android/compose plugins),
 # required by compose material3 1.5.0-alpha29 (needs AGP >= 9.1 and compileSdk 37).
 agp = "9.2.1"
-# Must match the Kotlin version embedded in AGP's built-in Kotlin (2.3.10 for AGP 9.2).
-kotlinComposePlugin = "2.3.10"
+# The Kotlin the app is compiled with. AGP's built-in Kotlin asks for KGP 2.2.10 at least,
+# and the Compose compiler plugin's Kotlin BOM raises it to this version, so the compiler
+# and the plugin always match. 2.4 because LazyColumnScrollbar 3.0 is built with 2.4.20.
+kotlinComposePlugin = "2.4.21"
 coreKtx = "1.17.0"
 junit = "4.13.2"
 json = "20250107"

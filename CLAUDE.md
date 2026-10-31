@@ -83,10 +83,11 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 .\gradlew.bat :app:assembleDebug :app:testDebugUnitTest --console=plain
 ```
 
-- AGP 9.2.1 with built-in Kotlin 2.3.10 and the Compose compiler plugin; Gradle 9.6;
-  compileSdk 37, minSdk 29.
-- Libraries must be built for Kotlin ≤ 2.3.x. That is why the markdown renderer is
-  pinned at 0.41.0; later versions pull kotlin-stdlib 2.4.
+- AGP 9.2.1 with built-in Kotlin 2.4.21 and the Compose compiler plugin; Gradle 9.6;
+  compileSdk 37, minSdk 29. AGP only asks for KGP 2.2.10; the Compose compiler plugin's
+  Kotlin BOM raises it, so `kotlinComposePlugin` is the Kotlin the app compiles with.
+- Libraries must be built for that Kotlin or older (2.4.x). A library on a newer Kotlin
+  means raising `kotlinComposePlugin` first.
 - Count the tests in `app/build/test-results` rather than trusting the exit code alone.
 - Release steps, signing and the keystore history are in [RELEASE.md](RELEASE.md).
   Changes go in [CHANGELOG.md](CHANGELOG.md).
