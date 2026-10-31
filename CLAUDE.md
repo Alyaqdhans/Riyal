@@ -21,9 +21,13 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   heading per headline feature with a short paragraph in plain words, then `## Other
   stuff` with one line per smaller change or fix, and last `**Full Changelog**:
   https://github.com/Alyaqdhans/Riyal/compare/<previous tag>...<new tag>` with the real
-  tag names (`gh release list`; recent ones are `V1.8.0`). Anything that costs the user
+  tag names (`gh release list`; recent ones are `V1.8.1`). Anything that costs the user
   something - a wipe, a permission, an uninstall - gets the first section. A hotfix is
   `# Hotfix` and its bullets. Written to `release/Riyal-vX.Y.Z-notes.md` (gitignored).
+- **Keep release notes short.** The owner wants them read at a glance: a few headline
+  sections of one or two sentences each, and Other stuff bullets of a few words. Say what
+  changed for the user, never how it was built; library names, versions and causes stay
+  in CHANGELOG.md and the commits. Leave out what a user would not notice.
 - **Never run an emulator.** Verify with `assembleDebug` + unit tests. The owner tests on
   a real phone from Android Studio, where the debug build installs beside the real app.
 - **Native components only.** Use stock Material 3 parts (`ListItem`,
