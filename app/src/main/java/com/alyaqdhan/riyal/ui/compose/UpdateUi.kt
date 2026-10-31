@@ -44,9 +44,11 @@ import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.data.Updates
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.MainViewModel.DownloadState
+import com.alyaqdhan.riyal.ui.theme.riyalTypeface
 import io.noties.markwon.AbstractMarkwonPlugin
 import io.noties.markwon.Markwon
 import io.noties.markwon.MarkwonConfiguration
+import io.noties.markwon.core.MarkwonTheme
 import io.noties.markwon.linkify.LinkifyPlugin
 import io.noties.markwon.movement.MovementMethodPlugin
 import java.util.Locale
@@ -77,6 +79,7 @@ fun ReleaseNotes(markdown: String, modifier: Modifier = Modifier) {
         factory = { TextView(it).also { view -> shown.view = view } },
         update = { view ->
             view.includeFontPadding = false
+            view.typeface = riyalTypeface(view.context)
             view.setTextSize(TypedValue.COMPLEX_UNIT_SP, style.fontSize.value)
             view.letterSpacing = style.letterSpacing.value / style.fontSize.value
             view.setLineHeight(lineHeight)
@@ -101,12 +104,17 @@ private class NotesView {
 /**
  * Markwon as ytdlnis builds it, with links opening in the browser, bare web addresses
  * turned into links, and no movement method: Markwon would otherwise give the TextView
- * one that keeps every touch.
+ * one that keeps every touch. Headings are the app's face in its bold, where Markwon
+ * would thicken the regular.
  */
 private fun notesMarkwon(context: Context): Markwon = Markwon.builder(context)
     .usePlugin(MovementMethodPlugin.none())
     .usePlugin(LinkifyPlugin.create(Linkify.WEB_URLS))
     .usePlugin(object : AbstractMarkwonPlugin() {
+        override fun configureTheme(builder: MarkwonTheme.Builder) {
+            builder.headingTypeface(riyalTypeface(context, 700))
+        }
+
         override fun configureConfiguration(builder: MarkwonConfiguration.Builder) {
             builder.linkResolver { view, link ->
                 runCatching {

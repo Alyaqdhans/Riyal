@@ -39,9 +39,9 @@ import kotlin.math.min
 /**
  * A currency sign drawn with strokes as thick as the text beside it.
  *
- * The signs are filled outlines cut for one weight, and the text is in whatever font the
- * phone is set to - a light custom font made every sign look bold beside it. So both are
- * measured: how thick the font's strokes are (the stem of an "I", as a share of the font
+ * The signs are filled outlines cut for one weight, and the text beside them comes in
+ * every weight from a label to a headline - when it was the phone's own font, a light
+ * custom font made every sign look bold beside it. So both are measured: how thick the font's strokes are (the stem of an "I", as a share of the font
  * size) and how thick the sign's are (twice its area over its outline, as a share of its
  * height). The sign is then thinned or thickened by the difference: its outline is traced
  * and either cut away or filled in, by exactly that much.

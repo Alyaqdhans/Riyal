@@ -8,10 +8,11 @@ is attached there.
 
 ### Around the app
 
-- **Arabic is easier to read.** Arabic text is set in Noto Sans Arabic UI, the Arabic
-  drawn to sit beside Roboto, a step heavier than the weight each line asks for. The
-  phone's own Arabic, Naskh on most phones, read thin and small beside English. Figures and English
-  words in an Arabic line stay in the phone's sans-serif, and English is unchanged.
+- **A font of its own, and Arabic easier to read.** Riyal is set in Noto Sans, and its
+  Arabic in Noto Sans Arabic UI, a pair drawn to sit together, in place of the phone's
+  fonts. Arabic is a step heavier than English at each weight: the phone's own Arabic,
+  Naskh on most phones, read thin and small beside it. The charts' labels and the release
+  notes are in it too.
 - Swiping a record in Arabic moves the row with your finger. It slid the other way, and
   uncovered the action on the side the finger was moving away from.
 - Holding the scroll thumb and dragging through a long list is smoother. Each step of
