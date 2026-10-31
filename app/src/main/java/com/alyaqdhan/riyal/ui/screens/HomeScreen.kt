@@ -63,6 +63,7 @@ import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.BudgetCard
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.EmptyState
+import com.alyaqdhan.riyal.ui.compose.MatchedIcon
 import com.alyaqdhan.riyal.ui.compose.FlatBar
 import com.alyaqdhan.riyal.ui.compose.MoneySign
 import com.alyaqdhan.riyal.ui.compose.MoneyText
@@ -393,9 +394,10 @@ private fun TotalPill(
     modifier: Modifier,
 ) {
     Surface(shape = MaterialTheme.shapes.large, color = container, contentColor = content, modifier = modifier) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+        // The tile's ends are round: its start keeps the name and figure clear of the curve.
+        Column(Modifier.padding(start = 24.dp, end = 16.dp, top = 6.dp, bottom = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(14.dp))
+                MatchedIcon(icon, MaterialTheme.typography.labelMedium, Modifier.size(14.dp))
                 Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
             }
             MoneyText(

@@ -24,7 +24,8 @@ is attached there.
   page they open, and how much is waiting there.
 - Home's Expense and Income totals are larger than their names: each is a tile with the
   name small on top and the figure under it. The figure used to shrink to fit beside the
-  name, and ended up the smaller of the two.
+  name, and ended up the smaller of the two. Their arrows, and the icons on Settings'
+  counts, are drawn as heavy as the text beside them.
 - Adding a record, Transfer sits on the row under Expense and Income in both languages.
   It used to share their row in Arabic and drop under them in English.
 - A record's "Just this one / Same category / Ask each time" choice shows every label

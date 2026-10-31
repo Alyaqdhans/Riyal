@@ -87,6 +87,12 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
 - **Money shows signs, not codes.** Show amounts with `MoneyText` (one amount) or
   `MoneyAwareText` (a sentence containing `Money.format` output). These draw the
   currency's own sign; the new Omani rial sign comes from firePOS's path data.
+- **Icons match the weight of their text.** An icon beside text is drawn with strokes as
+  thick as the text's: `MatchedIcon(res, style)` (`ui/compose/SignGlyph.kt`), which
+  measures the font's stem and thickens or thins the icon to it, as the currency signs
+  are. Material Symbols are cut at one weight, so a plain `Icon` beside a Medium label
+  reads thinner than the label. Older screens still draw plain `Icon`s; bring each over
+  when touching it.
 
 ## Build and test
 
@@ -130,7 +136,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `ui/nav/Pages.kt` | `PageActivity` and every page opened from a tab (onboarding, setup, review, categories, lists, updates, changelog), each with its `activity_*.xml` layout |
 | `MainActivity.kt` | The tabs, the floating toolbar (`HorizontalFloatingToolbar` + Add FAB), global dialogs (update prompt, manual add); sends a first run to `OnboardingActivity` |
 | `ui/screens/*` | Home, Transactions, Analysis, Accounts, Settings (tabs); Setup, Review, Updates, Changelog, Categories… (pages) |
-| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs at the text's measured stroke weight), `ScrollThumb` (the thumb every scrolling list carries; it can be held and dragged, and its size follows how many items are on screen), `SwipeRow` (a swipe uncovers an action - a record's Archive/Remove, a list entry's Forget/Restore - and a tap on it confirms; `SwipeTour` shows it once; on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips), `BudgetSection` (Home's budget card under the net, and its editor) |
+| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs, and icons through `MatchedIcon`, at the text's measured stroke weight), `ScrollThumb` (the thumb every scrolling list carries; it can be held and dragged, and its size follows how many items are on screen), `SwipeRow` (a swipe uncovers an action - a record's Archive/Remove, a list entry's Forget/Restore - and a tap on it confirms; `SwipeTour` shows it once; on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips), `BudgetSection` (Home's budget card under the net, and its editor) |
 
 ## How a message is read (1.8.0+)
 

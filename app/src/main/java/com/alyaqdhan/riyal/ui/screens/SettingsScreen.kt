@@ -3,6 +3,7 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import com.alyaqdhan.riyal.ui.compose.CurrencySign
+import com.alyaqdhan.riyal.ui.compose.MatchedIcon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.shape.CircleShape
@@ -874,11 +875,11 @@ private fun StatusTile(@DrawableRes icon: Int, count: Int, @StringRes label: Int
     Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHighest, modifier = modifier) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(
-                    painterResource(icon),
-                    contentDescription = null,
+                MatchedIcon(
+                    icon,
+                    MaterialTheme.typography.titleMedium,
+                    Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp),
                 )
                 Text(count.toString(), style = MaterialTheme.typography.titleMedium, maxLines = 1)
             }

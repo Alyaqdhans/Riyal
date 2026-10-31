@@ -2,6 +2,7 @@ package com.alyaqdhan.riyal.ui.compose
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -88,6 +89,21 @@ internal fun SignGlyph(@DrawableRes res: Int, tint: Color, style: TextStyle, mod
         }
     }
 }
+
+/**
+ * An icon drawn at the weight of the text beside it: [res]'s strokes thickened or thinned
+ * to [style]'s, the way the currency signs are. Material Symbols are cut at one weight
+ * and the app's text comes in several, so a plain [androidx.compose.material3.Icon]
+ * beside a Medium label reads thinner than the label. Decorative: it says nothing to
+ * TalkBack, as its label does.
+ */
+@Composable
+fun MatchedIcon(
+    @DrawableRes res: Int,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+) = SignGlyph(res, tint, style, modifier)
 
 private inline fun androidx.compose.ui.graphics.drawscope.DrawScope.translateBy(
     x: Float,
