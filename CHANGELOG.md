@@ -21,6 +21,9 @@ is attached there.
   name, and ended up the smaller of the two.
 - Adding a record, Transfer sits on the row under Expense and Income in both languages.
   It used to share their row in Arabic and drop under them in English.
+- A record's "Just this one / Same category / Ask each time" choice shows every label
+  whole. The three buttons were always equal thirds, which cut the longest short even
+  when the row had room for all three; a longer label now gets a wider button.
 - Swiping a record in Arabic moves the row with your finger. It slid the other way, and
   uncovered the action on the side the finger was moving away from.
 - Holding the scroll thumb and dragging through a long list is smoother. Each step of

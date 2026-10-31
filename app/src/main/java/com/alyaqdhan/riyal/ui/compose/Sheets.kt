@@ -163,18 +163,25 @@ fun <T> ConnectedChoice(
     val measurer = rememberTextMeasurer()
     val textStyle = MaterialTheme.typography.labelLarge
     BoxWithConstraints(modifier.fillMaxWidth()) {
+        // What each button needs to show its label whole: the text, its padding, its icon.
+        val density = LocalDensity.current
+        val gap = with(density) { ButtonGroupDefaults.ConnectedSpaceBetween.roundToPx() }
+        val needs = with(density) {
+            val chrome = (16.dp + if (icon != null) 24.dp else 0.dp).roundToPx()
+            labels.map { measurer.measure(it, textStyle).size.width + chrome }
+        }
+        fun fits(row: List<Int>, each: (Int) -> Int) = row.sumOf(each) + (row.size - 1) * gap <= constraints.maxWidth
         // One row when every label fits whole; otherwise two to a row, so a narrow phone
         // gets "Expense | Income" and "Transfer" under them rather than three squeezed
         // to ellipses.
-        val density = LocalDensity.current
-        val needed = with(density) {
-            labels.sumOf { measurer.measure(it, textStyle).size.width } +
-                options.size * (16.dp + if (icon != null) 24.dp else 0.dp).roundToPx() +
-                (options.size - 1) * ButtonGroupDefaults.ConnectedSpaceBetween.roundToPx()
-        }
-        val inRow = perRow ?: if (needed <= constraints.maxWidth) options.size else 2
+        val inRow = perRow ?: if (fits(options.indices.toList()) { needs[it] }) options.size else 2
         Column(verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
             options.indices.chunked(inRow).forEach { row ->
+                // Equal shares when the longest label fits one; otherwise each its own
+                // label's share, as equal thirds cut "Same category" short beside two
+                // shorter labels while the row as a whole had room for all three.
+                val widest = row.maxOf { needs[it] }
+                val even = fits(row) { widest }
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
@@ -185,7 +192,9 @@ fun <T> ConnectedChoice(
                         ToggleButton(
                             checked = option == selected,
                             onCheckedChange = { onSelect(option) },
-                            modifier = Modifier.weight(1f).semantics { role = Role.RadioButton },
+                            modifier = Modifier
+                                .weight(if (even) 1f else needs[index].toFloat())
+                                .semantics { role = Role.RadioButton },
                             shapes = when {
                                 row.size == 1 -> ToggleButtonDefaults.shapesFor(ToggleButtonDefaults.size)
                                 at == 0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
@@ -675,6 +684,10 @@ fun ManualTxnDialog(
                     label = { stringResource(typeLabel(it)) },
                     icon = ::typeIcon,
                     tone = { typeTone(it) },
+                    // As Review asks it: money out and in side by side, and a transfer,
+                    // which is neither, on the row under them - in every language, not
+                    // only where the three labels happen not to fit on one.
+                    perRow = 2,
                 )
                 // The amount is what the form is for, so it is written large.
                 OutlinedTextField(
@@ -684,10 +697,6 @@ fun ManualTxnDialog(
                     suffix = { CurrencySign(currency, height = 22.dp) },
                     singleLine = true,
                     textStyle = MaterialTheme.typography.headlineSmall,
-                    // As Review asks it: money out and in side by side, and a transfer,
-                    // which is neither, on the row under them - in every language, not
-                    // only where the three labels happen not to fit on one.
-                    perRow = 2,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )
