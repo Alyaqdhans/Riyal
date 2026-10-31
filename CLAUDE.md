@@ -29,7 +29,11 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
 - **Native components only.** Use stock Material 3 parts (`ListItem`,
   `HorizontalFloatingToolbar`, `SwipeToDismissBox`, `ModalBottomSheet`, `AlertDialog`,
   chips, `FloatingActionButton`) and real libraries (Vico for charts, Markwon for
-  release notes, as YTDLnis draws its own). Don't hand-draw widgets. Wavy progress indicators stay
+  release notes, as YTDLnis draws its own, LazyColumnScrollbar for the scroll thumb).
+  Every vertical scroll - a tab, a page, a sheet or a dialog - sits in `ScrollThumb`
+  (`ui/compose/ScrollThumb.kt`), with `bottom` set to whatever floats over its foot
+  (`toolbarSpace` on a tab), and size it through the wrapper, not the list. Don't
+  hand-draw widgets. Wavy progress indicators stay
   wavy components with `amplitude = 0` (`FlatWheel`/`FlatBar` in
   `ui/compose/Indicators.kt`), except `ScanBar` and `SiftBar`: the owner wants a scan's
   bar, and the bar over Needs review and Needs a category that fills as the pile is
@@ -89,6 +93,8 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 - Libraries must be built for that Kotlin or older (2.4.x). A library on a newer Kotlin
   means raising `kotlinComposePlugin` first.
 - Count the tests in `app/build/test-results` rather than trusting the exit code alone.
+- JitPack is a repository only for LazyColumnScrollbar, which publishes nowhere else;
+  `settings.gradle.kts` keeps it to that group.
 - Release steps, signing and the keystore history are in [RELEASE.md](RELEASE.md).
   Changes go in [CHANGELOG.md](CHANGELOG.md).
 
@@ -114,7 +120,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `ui/nav/Pages.kt` | `PageActivity` and every page opened from a tab (onboarding, setup, review, categories, lists, updates, changelog), each with its `activity_*.xml` layout |
 | `MainActivity.kt` | The tabs, the floating toolbar (`HorizontalFloatingToolbar` + Add FAB), global dialogs (update prompt, manual add); sends a first run to `OnboardingActivity` |
 | `ui/screens/*` | Home, Transactions, Analysis, Accounts, Settings (tabs); Setup, Review, Updates, Changelog, Categories… (pages) |
-| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs at the text's measured stroke weight), `SwipeRow` (a swipe uncovers an action - a record's Archive/Remove, a list entry's Forget/Restore - and a tap on it confirms; `SwipeTour` shows it once; on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips), `BudgetSection` (Home's budget card under the net, and its editor) |
+| `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs at the text's measured stroke weight), `ScrollThumb` (the thumb every scrolling list carries; it can be held and dragged, and its size follows how many items are on screen), `SwipeRow` (a swipe uncovers an action - a record's Archive/Remove, a list entry's Forget/Restore - and a tap on it confirms; `SwipeTour` shows it once; on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips), `BudgetSection` (Home's budget card under the net, and its editor) |
 
 ## How a message is read (1.8.0+)
 

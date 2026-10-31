@@ -54,9 +54,11 @@ fun FilterSheet(
 ) {
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        val scroll = rememberScrollState()
+        ScrollThumb(scroll) {
         Column(
             Modifier
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scroll)
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -106,6 +108,7 @@ fun FilterSheet(
                     modifier = Modifier.padding(horizontal = 20.dp),
                 )
             }
+        }
         }
     }
 }

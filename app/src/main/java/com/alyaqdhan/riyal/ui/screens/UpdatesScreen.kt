@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -41,7 +40,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.nonInteractiveScrollbar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -60,6 +58,7 @@ import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.MainViewModel.UpdateState
 import com.alyaqdhan.riyal.ui.compose.FlatWheel
 import com.alyaqdhan.riyal.ui.compose.ReleaseNotes
+import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import com.alyaqdhan.riyal.ui.compose.appVersion
 import com.alyaqdhan.riyal.ui.compose.megabytes
 import com.alyaqdhan.riyal.ui.compose.relativeTime
@@ -95,10 +94,11 @@ fun UpdatesScreen(vm: MainViewModel, onBack: () -> Unit, onOpenChangelog: () -> 
             )
         },
     ) { padding ->
+        val scroll = rememberScrollState()
+        ScrollThumb(scroll, Modifier.padding(padding)) {
         Column(
             Modifier
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scroll)
                 .padding(bottom = 24.dp),
         ) {
             StatusCard(
@@ -144,6 +144,7 @@ fun UpdatesScreen(vm: MainViewModel, onBack: () -> Unit, onOpenChangelog: () -> 
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             )
+        }
         }
     }
 }
@@ -287,24 +288,22 @@ fun ChangelogScreen(vm: MainViewModel, onBack: () -> Unit) {
             list == null -> Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
                 FlatWheel()
             }
-            // Material's own scrollbar: every release's notes make a long page, and the
-            // thumb says how far down it you are. It starts under the top bar, so the
-            // list does too.
-            else -> LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = padding.calculateTopPadding())
-                    .then(listState.scrollIndicatorState?.let { Modifier.nonInteractiveScrollbar(it, Orientation.Vertical) } ?: Modifier),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(list, key = { it.tag + it.publishedAt }) { release ->
-                    ReleaseCard(
-                        release = release,
-                        installed = Updates.sameVersion(release.tag, installed),
-                        onOpen = ::open,
-                    )
+            // Every release's notes make a long page: the thumb says how far down it you
+            // are, and dragging it runs through the releases.
+            else -> ScrollThumb(listState, Modifier.padding(padding)) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(list, key = { it.tag + it.publishedAt }) { release ->
+                        ReleaseCard(
+                            release = release,
+                            installed = Updates.sameVersion(release.tag, installed),
+                            onOpen = ::open,
+                        )
+                    }
                 }
             }
         }

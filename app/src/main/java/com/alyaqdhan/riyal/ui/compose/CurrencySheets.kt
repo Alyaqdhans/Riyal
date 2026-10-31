@@ -4,6 +4,7 @@ package com.alyaqdhan.riyal.ui.compose
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.layout.Box
@@ -111,7 +112,9 @@ fun CurrencyPickerSheet(
                     modifier = Modifier.padding(24.dp),
                 )
             }
-            LazyColumn {
+            val list = rememberLazyListState()
+            ScrollThumb(list) {
+            LazyColumn(state = list) {
                 items(shown, key = { it.code }) { info ->
                     ListItem(
                         onClick = { onPick(info.code) },
@@ -130,6 +133,7 @@ fun CurrencyPickerSheet(
                         },
                     ) { Text(stringResource(info.name)) }
                 }
+            }
             }
         }
     }
@@ -252,7 +256,9 @@ fun ExchangeRatesSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
             )
-            LazyColumn {
+            val list = rememberLazyListState()
+            ScrollThumb(list) {
+            LazyColumn(state = list) {
                 items(rows, key = { it.code }) { info ->
                     val rate = Currencies.rate(info.code, base)
                     val custom = info.code in overrides
@@ -289,6 +295,7 @@ fun ExchangeRatesSheet(
                         },
                     ) { Text(stringResource(info.name)) }
                 }
+            }
             }
         }
     }

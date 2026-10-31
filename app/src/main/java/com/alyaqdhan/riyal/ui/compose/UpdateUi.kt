@@ -182,12 +182,15 @@ fun UpdateDialogHost(vm: MainViewModel) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Column(
-                    Modifier
-                        .heightIn(max = 300.dp)
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    ReleaseNotes(release.notes.ifBlank { stringResource(R.string.upd_no_notes) })
+                val scroll = rememberScrollState()
+                ScrollThumb(scroll) {
+                    Column(
+                        Modifier
+                            .heightIn(max = 300.dp)
+                            .verticalScroll(scroll),
+                    ) {
+                        ReleaseNotes(release.notes.ifBlank { stringResource(R.string.upd_no_notes) })
+                    }
                 }
                 when (state) {
                     is DownloadState.Downloading -> {

@@ -377,11 +377,13 @@ fun ScanSheetHost(vm: MainViewModel) {
                     .weight(1f)
                     .fillMaxWidth(),
             ) {
+                ScrollThumb(listState) {
                 LazyColumn(
                     state = listState,
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
                 ) {
                     items(lines) { LogRow(it) }
+                }
                 }
             }
             Button(
@@ -433,9 +435,11 @@ fun TxnEditSheet(
     val live = accounts.filter { !it.archived }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        val scroll = rememberScrollState()
+        ScrollThumb(scroll) {
         Column(
             Modifier
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scroll)
                 .padding(start = 20.dp, end = 20.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -596,6 +600,7 @@ fun TxnEditSheet(
                 }
             }
         }
+        }
     }
 }
 
@@ -657,8 +662,10 @@ fun ManualTxnDialog(
         modifier = Modifier.popIn(pop),
         title = { Text(title) },
         text = {
+            val scroll = rememberScrollState()
+            ScrollThumb(scroll) {
             Column(
-                Modifier.verticalScroll(rememberScrollState()),
+                Modifier.verticalScroll(scroll),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 ConnectedChoice(
@@ -768,6 +775,7 @@ fun ManualTxnDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
             }
         },
         confirmButton = {

@@ -2,6 +2,8 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -214,8 +216,11 @@ private fun AccountsStep(vm: MainViewModel) {
     }
 
     Box(Modifier.fillMaxSize()) {
+        val list = rememberLazyListState()
+        ScrollThumb(list, Modifier.fillMaxSize(), bottom = FLOATING_CLEARANCE) {
         LazyColumn(
             Modifier.fillMaxSize(),
+            state = list,
             contentPadding = PaddingValues(bottom = FLOATING_CLEARANCE),
         ) {
             item(key = "intro") {
@@ -309,6 +314,7 @@ private fun AccountsStep(vm: MainViewModel) {
                 }
             }
         }
+        }
         ExtendedFloatingActionButton(
             onClick = { vm.confirmSetupAccounts() },
             icon = { Icon(painterResource(R.drawable.ic_sym_check), contentDescription = null) },
@@ -382,10 +388,12 @@ private fun QuestionsStep(vm: MainViewModel) {
     BackHandler(enabled = canStepBack) { vm.stepBackSetup() }
 
     Box(Modifier.fillMaxSize()) {
+        val scroll = rememberScrollState()
+        ScrollThumb(scroll, Modifier.fillMaxSize(), bottom = FLOATING_CLEARANCE) {
         Column(
             Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scroll)
                 .padding(16.dp)
                 .padding(bottom = FLOATING_CLEARANCE),
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -512,6 +520,7 @@ private fun QuestionsStep(vm: MainViewModel) {
                     onCancel = { correcting = false },
                 )
             }
+        }
         }
         if (!correcting) {
             // The way back sits opposite the answers, so it is never hit by mistake for

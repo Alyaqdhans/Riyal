@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
@@ -46,6 +47,7 @@ import com.alyaqdhan.riyal.ui.compose.MoneyText
 import com.alyaqdhan.riyal.ui.compose.MoneyAwareText
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
+import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import com.alyaqdhan.riyal.ui.compose.bidi
 import com.alyaqdhan.riyal.ui.compose.counted
 import com.alyaqdhan.riyal.ui.compose.SortChip
@@ -145,7 +147,10 @@ fun CategoryDetailScreen(
         ScanRefresh(vm, Modifier.padding(padding)) {
         Column {
         AccountChips(accounts, accountId, onSelect = { accountId = it })
+        val list = rememberLazyListState()
+        ScrollThumb(list) {
         LazyColumn(
+            state = list,
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -226,6 +231,7 @@ fun CategoryDetailScreen(
                     }
                 }
             }
+        }
         }
         }
         }

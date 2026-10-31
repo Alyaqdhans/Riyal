@@ -19,6 +19,11 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // LazyColumnScrollbar is published only through JitPack, and nothing else may come
+        // from there.
+        maven("https://jitpack.io") {
+            content { includeGroupByRegex("com\\.github\\.nanihadesuka(\\..*)?") }
+        }
     }
 }
 

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -69,6 +70,7 @@ import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.ui.compose.ActionButton
 import com.alyaqdhan.riyal.ui.compose.ConfirmDeleteButton
 import com.alyaqdhan.riyal.ui.compose.DeleteButton
+import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import com.alyaqdhan.riyal.ui.compose.popIn
 import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
 import com.alyaqdhan.riyal.ui.compose.bidi
@@ -161,7 +163,10 @@ fun CategoriesScreen(
             (Categories.forType(TxnType.EXPENSE) + Categories.forType(TxnType.INCOME))
                 .count { (counts[it.id] ?: 0) == 0 }
         }
+        val list = rememberLazyListState()
+        ScrollThumb(list) {
         LazyColumn(
+            state = list,
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -256,6 +261,7 @@ fun CategoriesScreen(
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 ) { Text(stringResource(R.string.cats_learned_title)) }
             }
+        }
         }
         }
     }
@@ -420,8 +426,10 @@ internal fun KeywordRuleDialog(
         modifier = Modifier.popIn(pop),
         title = { Text(stringResource(R.string.cats_add_keyword)) },
         text = {
+            val scroll = rememberScrollState()
+            ScrollThumb(scroll) {
             Column(
-                Modifier.verticalScroll(rememberScrollState()),
+                Modifier.verticalScroll(scroll),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 OutlinedTextField(
@@ -474,6 +482,7 @@ internal fun KeywordRuleDialog(
                     }
                 }
             }
+            }
         },
         confirmButton = {
             Button(
@@ -518,8 +527,10 @@ private fun CategoryEditorDialog(
             )
         },
         text = {
+            val scroll = rememberScrollState()
+            ScrollThumb(scroll) {
             Column(
-                Modifier.verticalScroll(rememberScrollState()),
+                Modifier.verticalScroll(scroll),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // The category as it will look, beside its name, changing with each pick.
@@ -617,6 +628,7 @@ private fun CategoryEditorDialog(
                     }
                 }
                 if (onDelete != null) DeleteButton(onClick = { pop.leave(onDelete) })
+            }
             }
         },
         confirmButton = {

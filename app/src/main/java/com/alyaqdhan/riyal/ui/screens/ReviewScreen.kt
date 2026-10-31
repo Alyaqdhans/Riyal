@@ -2,6 +2,7 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.res.painterResource
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -23,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDirection
+import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import com.alyaqdhan.riyal.ui.compose.typeIcon
 import com.alyaqdhan.riyal.ui.compose.typeLabel
 import com.alyaqdhan.riyal.ui.compose.typeTone
@@ -188,15 +190,21 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
             // Above the list, so what is left stays in sight while the cards go.
             SiftBar(sifting)
             if (pending.isEmpty() && dismissed.isEmpty() && transfers.isEmpty()) {
-                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                val scroll = rememberScrollState()
+                ScrollThumb(scroll, Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
                     EmptyState(
                         title = stringResource(R.string.review_all_clear_title),
                         subtitle = stringResource(R.string.review_all_clear_subtitle) +
                             (autoNote?.let { "\n\n$it" } ?: ""),
                     )
                 }
+                }
             } else {
+                val list = rememberLazyListState()
+                ScrollThumb(list) {
                 LazyColumn(
+                    state = list,
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -337,6 +345,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                             }
                         }
                     }
+                }
                 }
             }
         }

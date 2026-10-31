@@ -25,6 +25,9 @@ vico = "3.2.3"
 # Release notes are markdown, drawn by Markwon as ytdlnis draws its own. 4.6.2 is
 # Markwon's last release; it is Java, so the Kotlin version does not reach it.
 markwon = "4.6.2"
+# The scroll thumb on every list: drag it to run down the list. 3.0 is the release whose
+# thumb no longer jumps on lists with content padding; it is built with Kotlin 2.4.20.
+lazyColumnScrollbar = "3.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -40,6 +43,7 @@ compose-icons-core = { group = "androidx.compose.material", name = "material-ico
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
 markwon-core = { group = "io.noties.markwon", name = "core", version.ref = "markwon" }
 markwon-linkify = { group = "io.noties.markwon", name = "linkify", version.ref = "markwon" }
+lazycolumnscrollbar = { group = "com.github.nanihadesuka.LazyColumnScrollbar", name = "lazycolumnscrollbar", version.ref = "lazyColumnScrollbar" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 json = { group = "org.json", name = "json", version.ref = "json" }
 

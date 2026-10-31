@@ -14,6 +14,11 @@ is attached there.
   the next, bullets are set in, and links are in the accent colour. The "Full Changelog"
   address opens on a tap. Headings used to be barely larger than the text, and links
   larger than it.
+- **Every list has a scroll thumb you can hold.** The tabs, pages, sheets and dialogs
+  that scroll show a thumb at the edge while they move and for a moment after; hold it
+  and drag to run down the list, and it takes the accent colour while held. It stays
+  away from lists that fit on the screen, and on the tabs it stops above the floating
+  toolbar. The Changelog's thumb, which could not be held, is the same one now.
 
 ## 1.8.1 — 2026-10-30
 

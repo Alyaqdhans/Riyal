@@ -485,8 +485,10 @@ private fun BudgetEditor(
         modifier = Modifier.popIn(pop),
         title = { Text(stringResource(R.string.budget_editor_title, plan.label)) },
         text = {
+            val scroll = rememberScrollState()
+            ScrollThumb(scroll) {
             Column(
-                Modifier.verticalScroll(rememberScrollState()),
+                Modifier.verticalScroll(scroll),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
@@ -562,6 +564,7 @@ private fun BudgetEditor(
                     }
                 }
                 if (plan.id.isNotBlank()) DeleteButton(onClick = { confirmDelete = true })
+            }
             }
         },
         confirmButton = {

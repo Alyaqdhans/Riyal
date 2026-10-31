@@ -96,6 +96,9 @@ dependencies {
     // uses, and its plugin that turns bare web addresses into links.
     implementation(libs.markwon.core)
     implementation(libs.markwon.linkify)
+    // The scroll thumb every list carries (ui/compose/ScrollThumb.kt): it can be held and
+    // dragged, which Material's own scrollbar cannot.
+    implementation(libs.lazycolumnscrollbar)
     testImplementation(libs.junit)
     testImplementation(libs.json)
 }

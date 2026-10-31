@@ -13,6 +13,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Surface
 import androidx.compose.material3.CardDefaults
+import com.alyaqdhan.riyal.ui.compose.ScrollThumb
+import com.alyaqdhan.riyal.ui.compose.toolbarSpace
 import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
 import com.alyaqdhan.riyal.ui.theme.successContainer
 import com.alyaqdhan.riyal.ui.compose.iconFor
@@ -189,11 +191,14 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice, String
         ScanRefresh(vm, Modifier.padding(padding)) {
         Column {
             if (txns.isEmpty()) {
-                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                val scroll = rememberScrollState()
+                ScrollThumb(scroll, Modifier.fillMaxSize(), bottom = toolbarSpace) {
+                Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
                     EmptyState(
                         title = stringResource(R.string.an_empty_title),
                         subtitle = stringResource(R.string.an_empty_subtitle),
                     )
+                }
                 }
                 return@Column
             }
@@ -202,9 +207,11 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice, String
             // so it should never scroll out of sight while you read the numbers.
             AccountChips(accounts, accountId, onSelect = { accountId = it })
 
+            val scroll = rememberScrollState()
+            ScrollThumb(scroll, bottom = toolbarSpace) {
             Column(
                 Modifier
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scroll)
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
@@ -574,6 +581,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice, String
                 }
                 // Room for the floating toolbar hovering over the content.
                 ToolbarSpacer()
+            }
             }
         }
         }

@@ -11,6 +11,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -18,6 +19,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import com.alyaqdhan.riyal.ui.compose.typeIcon
 import com.alyaqdhan.riyal.ui.compose.typeLabel
 import com.alyaqdhan.riyal.ui.compose.typeTone
@@ -188,7 +190,10 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
         Column {
         // Above the list, so what is left stays in sight while the cards go.
         SiftBar(sifting)
+        val list = rememberLazyListState()
+        ScrollThumb(list) {
         LazyColumn(
+            state = list,
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -279,6 +284,7 @@ fun NeedsCategoryScreen(vm: MainViewModel, onBack: () -> Unit) {
                     }
                 }
             }
+        }
         }
         }
         }
