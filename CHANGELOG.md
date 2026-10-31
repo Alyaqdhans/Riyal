@@ -31,6 +31,10 @@ is attached there.
 - A record's "Just this one / Same category / Ask each time" choice shows every label
   whole. The three buttons were always equal thirds, which cut the longest short even
   when the row had room for all three; a longer label now gets a wider button.
+- Transactions' filters take any number of accounts and categories at once, and the
+  badge on the filter button counts them all. Clear is always in the sheet's header,
+  smaller and greyed out until something is chosen; it used to appear only then, and
+  push the sheet down as it did.
 - Swiping a record in Arabic moves the row with your finger. It slid the other way, and
   uncovered the action on the side the finger was moving away from.
 - Holding the scroll thumb and dragging through a long list is smoother. Each step of

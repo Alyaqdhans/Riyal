@@ -84,9 +84,10 @@ fun TransactionsScreen(vm: MainViewModel) {
     val accounts by vm.accounts.collectAsState()
     val categoryUse by vm.categoryUse.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
-    var categoryFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    // Any number of each; lists, as a screen's saved state keeps them.
+    var categoryFilter by rememberSaveable { mutableStateOf(listOf<String>()) }
     var typeFilter by rememberSaveable { mutableStateOf<String?>(null) }
-    var accountFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    var accountFilter by rememberSaveable { mutableStateOf(listOf<String>()) }
     var showFilters by rememberSaveable { mutableStateOf(false) }
     var sort by rememberSaveable { mutableStateOf(TxnSort.NEWEST.name) }
     var showArchived by rememberSaveable { mutableStateOf(false) }
@@ -114,18 +115,22 @@ fun TransactionsScreen(vm: MainViewModel) {
         if (archivedIds.isEmpty()) showArchived = false
     }
 
+    // In any of the chosen categories, touching any of the chosen accounts.
     val filtered = remember(txns, categoryFilter, typeFilter, accountFilter, archivedIds, showArchived) {
+        val categories = categoryFilter.toSet()
         txns.filter { t ->
-            (categoryFilter == null || t.categoryId == categoryFilter) &&
+            (categories.isEmpty() || t.categoryId in categories) &&
                 (typeFilter == null || t.type.name == typeFilter) &&
-                (accountFilter == null || t.touches(accountFilter!!)) &&
+                (accountFilter.isEmpty() || accountFilter.any(t::touches)) &&
                 (showArchived == (t.id in archivedIds))
         }
     }
     val order = TxnSort.valueOf(sort)
-    // How many of the sheet's filters are on, so the button can say so without
+    // How many of the sheet's choices are on, so the button can say so without
     // opening it.
-    val hiddenFilterCount = listOfNotNull(categoryFilter, accountFilter).size
+    val hiddenFilterCount = categoryFilter.size + accountFilter.size
+    // A row names its account unless the list is down to one.
+    val showAccount = accountFilter.size != 1
     val categoriesPresent = remember(txns) {
         Categories.ALL.filter { cat -> txns.any { it.categoryId == cat.id } }
     }
@@ -274,7 +279,7 @@ fun TransactionsScreen(vm: MainViewModel) {
                                         onClick = { picker = txn },
                                         accounts = accounts,
                                         showDate = false,
-                                        showAccount = accountFilter == null,
+                                        showAccount = showAccount,
                                     )
                                 }
                             }
@@ -292,7 +297,7 @@ fun TransactionsScreen(vm: MainViewModel) {
                                     txn,
                                     onClick = { picker = txn },
                                     accounts = accounts,
-                                    showAccount = accountFilter == null,
+                                    showAccount = showAccount,
                                 )
                             }
                         }
@@ -308,13 +313,13 @@ fun TransactionsScreen(vm: MainViewModel) {
         FilterSheet(
             categories = categoriesPresent,
             accounts = accounts,
-            selectedCategoryId = categoryFilter,
-            selectedAccountId = accountFilter,
-            onCategory = { categoryFilter = it },
-            onAccount = { accountFilter = it },
+            selectedCategoryIds = categoryFilter.toSet(),
+            selectedAccountIds = accountFilter.toSet(),
+            onToggleCategory = { id -> categoryFilter = if (id in categoryFilter) categoryFilter - id else categoryFilter + id },
+            onToggleAccount = { id -> accountFilter = if (id in accountFilter) accountFilter - id else accountFilter + id },
             onClearAll = {
-                categoryFilter = null
-                accountFilter = null
+                categoryFilter = emptyList()
+                accountFilter = emptyList()
             },
             onDismiss = { showFilters = false },
         )
