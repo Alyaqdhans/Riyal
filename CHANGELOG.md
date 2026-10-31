@@ -16,6 +16,9 @@ is attached there.
 - Settings' counts sit on one line, each a figure over its name, where the third used to
   drop under the other two. Home's "needs your attention" rows keep to a line each: the
   page they open, and how much is waiting there.
+- Home's Expense and Income totals are larger than their names: each is a tile with the
+  name small on top and the figure under it. The figure used to shrink to fit beside the
+  name, and ended up the smaller of the two.
 - Swiping a record in Arabic moves the row with your finger. It slid the other way, and
   uncovered the action on the side the finger was moving away from.
 - Holding the scroll thumb and dragging through a long list is smoother. Each step of
