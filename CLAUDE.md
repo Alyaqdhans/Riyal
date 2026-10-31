@@ -83,7 +83,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 .\gradlew.bat :app:assembleDebug :app:testDebugUnitTest --console=plain
 ```
 
-- AGP 9.2.1 with built-in Kotlin 2.4.21 and the Compose compiler plugin; Gradle 9.6;
+- AGP 9.2.1 with built-in Kotlin 2.4.21 and the Compose compiler plugin; Gradle 9.8.2;
   compileSdk 37, minSdk 29. AGP only asks for KGP 2.2.10; the Compose compiler plugin's
   Kotlin BOM raises it, so `kotlinComposePlugin` is the Kotlin the app compiles with.
 - Libraries must be built for that Kotlin or older (2.4.x). A library on a newer Kotlin
