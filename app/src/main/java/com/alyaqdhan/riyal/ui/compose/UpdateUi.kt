@@ -1,7 +1,14 @@
 package com.alyaqdhan.riyal.ui.compose
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.text.Spanned
+import android.text.style.ClickableSpan
+import android.text.util.Linkify
+import android.util.TypedValue
+import android.widget.TextView
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,47 +30,105 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.data.Updates
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.MainViewModel.DownloadState
-import com.mikepenz.markdown.m3.Markdown
-import com.mikepenz.markdown.m3.markdownColor
-import com.mikepenz.markdown.m3.markdownTypography
-import com.mikepenz.markdown.model.markdownAnimations
+import io.noties.markwon.AbstractMarkwonPlugin
+import io.noties.markwon.Markwon
+import io.noties.markwon.MarkwonConfiguration
+import io.noties.markwon.linkify.LinkifyPlugin
+import io.noties.markwon.movement.MovementMethodPlugin
 import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * A release body as GitHub stores it - markdown - set in the app's own type scale.
- * Headings are sized for a dialog, not a document, and nothing animates in.
+ * A release body as GitHub stores it - markdown - drawn by Markwon, the renderer ytdlnis
+ * draws its own with, in its own look: headings at twice, one and a half and 1.17 times
+ * the text, the first two with a rule under them, a blank line between blocks, bullets set
+ * in, and links in the accent colour. A bare address (the "Full Changelog" line) is a link
+ * too. The text itself is the app's body size and line height.
+ *
+ * The TextView only draws. A tap on a link opens it, and every other touch - a drag above
+ * all - goes to whatever the notes scroll in: a TextView that handled its own links would
+ * keep the drags, and the list would not move under a finger on the notes.
  */
 @Composable
 fun ReleaseNotes(markdown: String, modifier: Modifier = Modifier) {
-    val type = MaterialTheme.typography
-    Markdown(
-        content = markdown,
-        colors = markdownColor(),
-        typography = markdownTypography(
-            h1 = type.titleMedium,
-            h2 = type.titleSmall,
-            h3 = type.titleSmall,
-            h4 = type.labelLarge,
-            h5 = type.labelLarge,
-            h6 = type.labelLarge,
-            text = type.bodyMedium,
-            paragraph = type.bodyMedium,
-            ordered = type.bodyMedium,
-            bullet = type.bodyMedium,
-            list = type.bodyMedium,
-        ),
-        modifier = modifier,
-        animations = markdownAnimations { this },
+    val context = LocalContext.current
+    val markwon = remember(context) { notesMarkwon(context) }
+    val notes = remember(markwon, markdown) { markwon.toMarkdown(markdown) }
+    val textColor = LocalContentColor.current.toArgb()
+    val linkColor = MaterialTheme.colorScheme.primary.toArgb()
+    val style = MaterialTheme.typography.bodyMedium
+    val lineHeight = with(LocalDensity.current) { style.lineHeight.roundToPx() }
+    val shown = remember { NotesView() }
+    AndroidView(
+        factory = { TextView(it).also { view -> shown.view = view } },
+        update = { view ->
+            view.includeFontPadding = false
+            view.setTextSize(TypedValue.COMPLEX_UNIT_SP, style.fontSize.value)
+            view.letterSpacing = style.letterSpacing.value / style.fontSize.value
+            view.setLineHeight(lineHeight)
+            view.setTextColor(textColor)
+            view.setLinkTextColor(linkColor)
+            markwon.setParsedMarkdown(view, notes)
+        },
+        onRelease = { shown.view = null },
+        modifier = modifier
+            .fillMaxWidth()
+            .pointerInput(shown) {
+                detectTapGestures { at -> shown.view?.let { view -> view.linkAt(at)?.onClick(view) } }
+            },
     )
+}
+
+/** The notes' TextView, kept so a tap can be matched to the link under it. */
+private class NotesView {
+    var view: TextView? = null
+}
+
+/**
+ * Markwon as ytdlnis builds it, with links opening in the browser, bare web addresses
+ * turned into links, and no movement method: Markwon would otherwise give the TextView
+ * one that keeps every touch.
+ */
+private fun notesMarkwon(context: Context): Markwon = Markwon.builder(context)
+    .usePlugin(MovementMethodPlugin.none())
+    .usePlugin(LinkifyPlugin.create(Linkify.WEB_URLS))
+    .usePlugin(object : AbstractMarkwonPlugin() {
+        override fun configureConfiguration(builder: MarkwonConfiguration.Builder) {
+            builder.linkResolver { view, link ->
+                runCatching {
+                    view.context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse(link)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                }
+            }
+        }
+    })
+    .build()
+
+/** The link under [at], a point in the view's own pixels, or null when there is none. */
+private fun TextView.linkAt(at: Offset): ClickableSpan? {
+    val layout = layout ?: return null
+    val spanned = text as? Spanned ?: return null
+    val x = at.x - totalPaddingLeft + scrollX
+    val y = at.y.toInt() - totalPaddingTop + scrollY
+    if (y < 0 || y > layout.height) return null
+    val line = layout.getLineForVertical(y)
+    if (x < layout.getLineLeft(line) || x > layout.getLineRight(line)) return null
+    val offset = layout.getOffsetForHorizontal(line, x)
+    return spanned.getSpans(offset, offset, ClickableSpan::class.java).firstOrNull()
 }
 
 /** "33.2 MB", for saying how large a download is before it starts. */

@@ -92,9 +92,10 @@ dependencies {
     implementation(libs.compose.icons.core)
     // Vico: proper chart library (Analysis 6-month columns), Compose + Material 3.
     implementation(libs.vico.compose.m3)
-    // Release notes in the update dialog and the changelog, rendered with Material 3
-    // typography instead of having their markdown stripped by hand.
-    implementation(libs.markdown.renderer.m3)
+    // Release notes in the update dialog and the changelog: Markwon, the renderer ytdlnis
+    // uses, and its plugin that turns bare web addresses into links.
+    implementation(libs.markwon.core)
+    implementation(libs.markwon.linkify)
     testImplementation(libs.junit)
     testImplementation(libs.json)
 }

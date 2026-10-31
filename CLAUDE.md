@@ -28,8 +28,8 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   a real phone from Android Studio, where the debug build installs beside the real app.
 - **Native components only.** Use stock Material 3 parts (`ListItem`,
   `HorizontalFloatingToolbar`, `SwipeToDismissBox`, `ModalBottomSheet`, `AlertDialog`,
-  chips, `FloatingActionButton`) and real libraries (Vico for charts, the markdown
-  renderer for release notes). Don't hand-draw widgets. Wavy progress indicators stay
+  chips, `FloatingActionButton`) and real libraries (Vico for charts, Markwon for
+  release notes, as YTDLnis draws its own). Don't hand-draw widgets. Wavy progress indicators stay
   wavy components with `amplitude = 0` (`FlatWheel`/`FlatBar` in
   `ui/compose/Indicators.kt`), except `ScanBar` and `SiftBar`: the owner wants a scan's
   bar, and the bar over Needs review and Needs a category that fills as the pile is

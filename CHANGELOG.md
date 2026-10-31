@@ -6,6 +6,15 @@ is attached there.
 
 ## 1.8.2 — unreleased (branch `1.8.2`)
 
+### Around the app
+
+- **Release notes read like YTDLnis's.** The update dialog and the Changelog page draw
+  them with Markwon, the renderer YTDLnis uses: "What's Changed" and each section's
+  heading are large and bold with a rule under them, a blank line parts one block from
+  the next, bullets are set in, and links are in the accent colour. The "Full Changelog"
+  address opens on a tap. Headings used to be barely larger than the text, and links
+  larger than it.
+
 ## 1.8.1 — 2026-10-30
 
 ### Riyal learns from fewer answers

@@ -15,16 +15,16 @@ material = "1.14.0"
 # The tabs are plain fragments that MainActivity keeps and slides itself; the version
 # the rest of the graph already resolves.
 fragment = "1.6.2"
-# The version the rest of the graph already resolves (appcompat 1.7 and the chart and
-# markdown libraries pull it in); declared so screens can use BackHandler directly.
+# The version the rest of the graph already resolves (appcompat 1.7 and the chart
+# library pull it in); declared so screens can use BackHandler directly.
 activityCompose = "1.8.2"
 splashscreen = "1.0.1"
 composeMaterial3 = "1.5.0-alpha29"
 composeIconsCore = "1.7.8"
 vico = "3.2.3"
-# Release notes are markdown. 0.41.0 is the last release built against Kotlin 2.3,
-# which is the compiler AGP 9.2 embeds; later ones pull kotlin-stdlib 2.4.
-markdownRenderer = "0.41.0"
+# Release notes are markdown, drawn by Markwon as ytdlnis draws its own. 4.6.2 is
+# Markwon's last release; it is Java, so the Kotlin version does not reach it.
+markwon = "4.6.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -38,7 +38,8 @@ androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscree
 compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "composeMaterial3" }
 compose-icons-core = { group = "androidx.compose.material", name = "material-icons-core", version.ref = "composeIconsCore" }
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
-markdown-renderer-m3 = { group = "com.mikepenz", name = "multiplatform-markdown-renderer-m3", version.ref = "markdownRenderer" }
+markwon-core = { group = "io.noties.markwon", name = "core", version.ref = "markwon" }
+markwon-linkify = { group = "io.noties.markwon", name = "linkify", version.ref = "markwon" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 json = { group = "org.json", name = "json", version.ref = "json" }
 
