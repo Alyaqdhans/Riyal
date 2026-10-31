@@ -393,10 +393,7 @@ private fun TotalPill(
     modifier: Modifier,
 ) {
     Surface(shape = MaterialTheme.shapes.large, color = container, contentColor = content, modifier = modifier) {
-        Column(
-            Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(14.dp))
                 Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
