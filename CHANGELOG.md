@@ -4,7 +4,9 @@ Every release of Riyal, newest first. Released versions are condensed from their
 [GitHub release notes](https://github.com/Alyaqdhans/Riyal/releases); the APK for each
 is attached there.
 
-## 1.8.1 — unreleased (branch `1.8.1`)
+## 1.8.2 — unreleased (branch `1.8.2`)
+
+## 1.8.1 — 2026-10-30
 
 ### Riyal learns from fewer answers
 
