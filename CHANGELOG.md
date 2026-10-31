@@ -8,6 +8,12 @@ is attached there.
 
 ### Around the app
 
+- **Updates without the extra taps.** Riyal looks for a new version each time it opens
+  rather than once a day, and the update dialog opens on every launch until you update
+  or skip that version; Later means until the next launch. On the Updates page there is
+  no dialog: the top card shows the new version's notes, Update fills a bar in it, and
+  Android's installer opens by itself when the download is done. The dialog installs
+  the same way.
 - **A font of its own, and Arabic easier to read.** Riyal is set in Noto Sans, and its
   Arabic in Noto Sans Arabic UI, a pair drawn to sit together, in place of the phone's
   fonts. Arabic is a step heavier than English at each weight: the phone's own Arabic,

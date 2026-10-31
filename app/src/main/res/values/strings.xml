@@ -78,7 +78,7 @@
     <string name="upd_downloading">Downloading… %1$d%%</string>
     <string name="upd_percent">%1$d%%</string>
     <string name="upd_download_failed">The download did not finish. Check your connection and try again.</string>
-    <string name="upd_allow_installs">Allow Riyal to install updates on the screen that just opened, then come back and tap Install. Android asks you to confirm the install itself.</string>
+    <string name="upd_allow_installs">Allow Riyal to install updates on the screen that just opened, then come back and the install carries on. Android asks you to confirm it.</string>
     <string name="upd_no_apk">This release has no APK attached. It can be downloaded from its page on GitHub.</string>
     <string name="upd_install">Install</string>
     <string name="upd_retry">Retry</string>
@@ -99,7 +99,7 @@
     <string name="upd_channel_stable">Stable releases</string>
     <string name="upd_channel_beta">Stable and beta releases</string>
     <string name="upd_check_on_start">Check for updates on start</string>
-    <string name="upd_check_on_start_detail">At most once a day, when Riyal opens</string>
+    <string name="upd_check_on_start_detail">Each time Riyal opens</string>
     <string name="upd_beta">Include beta releases</string>
     <string name="upd_beta_detail">Pre-releases published on GitHub</string>
     <string name="upd_changelog">Changelog</string>

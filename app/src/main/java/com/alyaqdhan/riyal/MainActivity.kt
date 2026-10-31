@@ -133,18 +133,20 @@ class MainActivity : AppCompatActivity() {
             (splash.parent as? ViewGroup)?.removeView(splash)
             settle(fresh = false)
         }
-        // Once a day at most, only when "check on start" is on, and silent unless it
-        // finds something. An empty version string parses to nothing, which is never
-        // newer than anything, so a phone that cannot report its own version is simply
-        // never offered an update.
-        vm.checkForUpdate(
-            try {
-                packageManager.getPackageInfo(packageName, 0).versionName ?: ""
-            } catch (e: Exception) {
-                ""
-            },
-            onStart = true,
-        )
+        // Each launch, not a screen rebuilt in place; only when "check on start" is on, and
+        // silent unless it finds something. An empty version string parses to nothing,
+        // which is never newer than anything, so a phone that cannot report its own
+        // version is simply never offered an update.
+        if (fresh) {
+            vm.checkForUpdate(
+                try {
+                    packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+                } catch (e: Exception) {
+                    ""
+                },
+                onStart = true,
+            )
+        }
 
         findViewById<ComposeView>(R.id.bottom_bar).setContent {
             RiyalTheme {

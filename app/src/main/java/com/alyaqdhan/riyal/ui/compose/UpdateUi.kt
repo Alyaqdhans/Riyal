@@ -27,9 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.toArgb
@@ -144,14 +142,16 @@ private fun TextView.linkAt(at: Offset): ClickableSpan? {
 fun megabytes(bytes: Long): String = String.format(Locale.ROOT, "%.1f MB", bytes / 1_048_576.0)
 
 /**
- * The new-release dialog, after ytdlnis's: the notes, then Update. The button becomes
- * the download's progress, then Install, which hands the file to Android's installer.
- * Skip means that version only; Later leaves it waiting in Settings.
+ * The new-release dialog the launch's check opens, after ytdlnis's: the notes, then
+ * Update. The button becomes the download's progress, and Android's installer opens by
+ * itself the moment the file is in; Install is there again only if the installer was
+ * backed out of. Skip means that version only; Later, until the next launch.
  *
  * The one action that matters is filled at every stage, and the two ways out are text
  * with short names, so all three sit on one line rather than the last wrapping under.
  *
- * Hosted once by the activity, so it opens over whichever screen is showing.
+ * Hosted by MainActivity, so it opens over whichever tab is showing. The Updates page
+ * has no dialog: its own card shows the release and the download.
  */
 @Composable
 fun UpdateDialogHost(vm: MainViewModel) {
@@ -160,15 +160,8 @@ fun UpdateDialogHost(vm: MainViewModel) {
     val context = LocalContext.current
     val installed = appVersion(context)
     // Only a download of this release belongs in this dialog.
-    val state = download.takeIf {
-        when (it) {
-            is DownloadState.Downloading -> Updates.sameVersion(it.tag, release.tag)
-            is DownloadState.Ready -> Updates.sameVersion(it.tag, release.tag)
-            is DownloadState.Failed -> Updates.sameVersion(it.tag, release.tag)
-            DownloadState.Idle -> false
-        }
-    }
-    var needsPermission by remember { mutableStateOf(false) }
+    val state = download.takeIf { it.tag?.let { tag -> Updates.sameVersion(tag, release.tag) } == true }
+    val needsPermission by vm.awaitingInstallPermission.collectAsState()
 
     fun openOnGitHub() {
         runCatching {
@@ -239,14 +232,7 @@ fun UpdateDialogHost(vm: MainViewModel) {
                     Text(stringResource(R.string.upd_percent, (state.fraction * 100).roundToInt()))
                 }
                 is DownloadState.Ready -> Button(onClick = {
-                    when (vm.install(state.file)) {
-                        MainViewModel.InstallResult.NEEDS_PERMISSION -> {
-                            needsPermission = true
-                            vm.openInstallPermission()
-                        }
-                        MainViewModel.InstallResult.STARTED -> pop.leave { vm.dismissUpdatePrompt() }
-                        MainViewModel.InstallResult.FAILED -> openOnGitHub()
-                    }
+                    if (vm.installDownload() == MainViewModel.InstallResult.FAILED) openOnGitHub()
                 }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.upd_install)) }
                 is DownloadState.Failed -> Button(onClick = { vm.startDownload(release) }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.upd_retry))
