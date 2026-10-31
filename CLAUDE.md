@@ -69,6 +69,9 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   line, looping until the store has loaded (`vm.storeReady`), then filled, then lifted;
   the system splash has no icon so the two read as one. Home's figures roll as it lifts
   (`Rolls.replay`), and the launch scan and building the other tabs wait for the roll.
+- **Out and in side by side, the rest under them.** A `ConnectedChoice` of kinds puts
+  Expense and Income on one row and the third answer (Transfer, Not a transaction) on
+  the row under them, with `perRow = 2`, in every language.
 - **Choices of dates are tiles** (`ui/compose/Presets.kt`: `PresetSheet`/`PresetGrid`),
   never a plain list of words. Each tile says what it covers, and all tiles are one size.
 - **Exact versions.** `androidx.compose.material3:material3:1.5.0-alpha29` with

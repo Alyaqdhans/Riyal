@@ -684,6 +684,10 @@ fun ManualTxnDialog(
                     suffix = { CurrencySign(currency, height = 22.dp) },
                     singleLine = true,
                     textStyle = MaterialTheme.typography.headlineSmall,
+                    // As Review asks it: money out and in side by side, and a transfer,
+                    // which is neither, on the row under them - in every language, not
+                    // only where the three labels happen not to fit on one.
+                    perRow = 2,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )

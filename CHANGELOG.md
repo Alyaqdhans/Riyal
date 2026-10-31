@@ -19,6 +19,8 @@ is attached there.
 - Home's Expense and Income totals are larger than their names: each is a tile with the
   name small on top and the figure under it. The figure used to shrink to fit beside the
   name, and ended up the smaller of the two.
+- Adding a record, Transfer sits on the row under Expense and Income in both languages.
+  It used to share their row in Arabic and drop under them in English.
 - Swiping a record in Arabic moves the row with your finger. It slid the other way, and
   uncovered the action on the side the finger was moving away from.
 - Holding the scroll thumb and dragging through a long list is smoother. Each step of
