@@ -243,7 +243,9 @@ fun SwipeRow(
             Modifier
                 .absoluteOffset { IntOffset(x.roundToInt(), 0) }
                 .fillMaxWidth()
-                .anchoredDraggable(state, Orientation.Horizontal),
+                // The anchors and the offset are screen directions, so the drag is too. Left
+                // to itself it mirrors in Arabic, and the row slid against the finger.
+                .anchoredDraggable(state, reverseDirection = false, orientation = Orientation.Horizontal),
         ) {
             content()
             // An open row is a lid over its action, not a target: tapping it shuts the row

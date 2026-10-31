@@ -8,6 +8,9 @@ is attached there.
 
 ### Around the app
 
+- Swiping a record in Arabic moves the row with your finger. It slid the other way, and
+  uncovered the action on the side the finger was moving away from.
+
 ## 1.8.2 — 2026-10-31
 
 ### Around the app
