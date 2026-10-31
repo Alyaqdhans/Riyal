@@ -279,7 +279,6 @@
     <string name="home_check_accounts_title">Check your accounts</string>
     <string name="home_check_accounts_subtitle">%s read from your messages</string>
 
-    <string name="home_needs_review_subtitle">%s, tap to decide</string>
     <plurals name="home_possible_transfers">
         <item quantity="one">%d possible transfer</item>
         <item quantity="other">%d possible transfers</item>
@@ -289,11 +288,6 @@
         <item quantity="other">%d unreadable messages</item>
     </plurals>
 
-    <plurals name="home_needs_category_title">
-        <item quantity="one">%d record needs a category</item>
-        <item quantity="other">%d records need a category</item>
-    </plurals>
-    <string name="home_needs_category_subtitle">One tap files a whole shop</string>
 
 
     <string name="home_empty_title">Nothing recorded yet</string>
@@ -761,7 +755,9 @@
     <string name="set_status_scanning">Reading your messages</string>
     <string name="set_status_failed">The last scan didn\'t finish</string>
     <string name="set_status_never_body">Scan to build your records from your bank\'s messages</string>
-    <string name="set_messages_read">%1$s read</string>
+    <string name="set_stat_records">Records</string>
+    <string name="set_stat_accounts">Accounts</string>
+    <string name="set_stat_messages_read">Messages read</string>
     <string name="set_just_now">just now</string>
     <string name="set_ago">%1$s ago</string>
     <string name="set_on_date">on %1$s</string>

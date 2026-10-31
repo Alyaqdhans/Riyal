@@ -311,7 +311,6 @@
     <string name="home_check_accounts_title">تحقّق من حساباتك</string>
     <string name="home_check_accounts_subtitle">%s قُرئت من رسائلك</string>
 
-    <string name="home_needs_review_subtitle">%s، اضغط للبتّ فيها</string>
     <plurals name="home_possible_transfers">
         <item quantity="zero">لا تحويلات محتملة</item>
         <item quantity="one">تحويل محتمل واحد</item>
@@ -329,15 +328,6 @@
         <item quantity="other">%d رسالة غير مقروءة</item>
     </plurals>
 
-    <plurals name="home_needs_category_title">
-        <item quantity="zero">لا سجلات بحاجة إلى تصنيف</item>
-        <item quantity="one">سجل واحد بحاجة إلى تصنيف</item>
-        <item quantity="two">سجلان بحاجة إلى تصنيف</item>
-        <item quantity="few">%d سجلات بحاجة إلى تصنيف</item>
-        <item quantity="many">%d سجلاً بحاجة إلى تصنيف</item>
-        <item quantity="other">%d سجل بحاجة إلى تصنيف</item>
-    </plurals>
-    <string name="home_needs_category_subtitle">ضغطة واحدة تُصنّف متجراً بكامله</string>
 
 
     <string name="home_empty_title">لا شيء مُسجَّل بعد</string>
@@ -821,7 +811,9 @@
     <string name="set_status_scanning">جارٍ قراءة رسائلك</string>
     <string name="set_status_failed">لم تكتمل آخر قراءة</string>
     <string name="set_status_never_body">ابدأ القراءة لتُبنى سجلاتك من رسائل بنكك</string>
-    <string name="set_messages_read">%1$s مقروءة</string>
+    <string name="set_stat_records">السجلات</string>
+    <string name="set_stat_accounts">الحسابات</string>
+    <string name="set_stat_messages_read">الرسائل المقروءة</string>
     <string name="set_just_now">الآن</string>
     <string name="set_ago">قبل %1$s</string>
     <string name="set_on_date">في %1$s</string>

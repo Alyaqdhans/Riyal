@@ -7,7 +7,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.Box
 import android.content.Intent
 import android.net.Uri
@@ -61,6 +62,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.offset
+import androidx.compose.ui.unit.sp
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.data.Backup
 import com.alyaqdhan.riyal.core.Currencies
@@ -849,14 +851,12 @@ private fun StatusCard(
                 )
             }
             if (!never) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatusPill(R.drawable.ic_sym_payments, counted(R.plurals.count_records, records))
-                    StatusPill(R.drawable.ic_sym_account_balance, counted(R.plurals.count_accounts, accounts))
+                // Side by side in equal shares, so the counts are one line in any language.
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatusTile(R.drawable.ic_sym_payments, records, R.string.set_stat_records, Modifier.weight(1f))
+                    StatusTile(R.drawable.ic_sym_account_balance, accounts, R.string.set_stat_accounts, Modifier.weight(1f))
                     messagesRead?.let {
-                        StatusPill(
-                            R.drawable.ic_sym_mail_read,
-                            stringResource(R.string.set_messages_read, counted(R.plurals.count_messages, it)),
-                        )
+                        StatusTile(R.drawable.ic_sym_mail_read, it, R.string.set_stat_messages_read, Modifier.weight(1f))
                     }
                 }
             }
@@ -864,22 +864,35 @@ private fun StatusCard(
     }
 }
 
-/** One count under the status: an icon and the figure in words, on a tonal pill. */
+/**
+ * One count under the status, on a tonal tile: the figure with its icon, and what it
+ * counts under it. Figure first and the word a label, so each tile keeps to its share:
+ * as one phrase each ("1720 records"), three did not fit on a line.
+ */
 @Composable
-private fun StatusPill(@DrawableRes icon: Int, text: String) {
-    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHighest) {
-        Row(
-            Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Icon(
-                painterResource(icon),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp),
+private fun StatusTile(@DrawableRes icon: Int, count: Int, @StringRes label: Int, modifier: Modifier) {
+    Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHighest, modifier = modifier) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(
+                    painterResource(icon),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp),
+                )
+                Text(count.toString(), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+            }
+            Text(
+                stringResource(label),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 9.sp,
+                    maxFontSize = MaterialTheme.typography.labelMedium.fontSize,
+                ),
             )
-            Text(text, style = MaterialTheme.typography.labelLarge)
         }
     }
 }

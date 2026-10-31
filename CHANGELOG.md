@@ -13,6 +13,9 @@ is attached there.
   fonts. Arabic is a step heavier than English at each weight: the phone's own Arabic,
   Naskh on most phones, read thin and small beside it. The charts' labels and the release
   notes are in it too.
+- Settings' counts sit on one line, each a figure over its name, where the third used to
+  drop under the other two. Home's "needs your attention" rows keep to a line each: the
+  page they open, and how much is waiting there.
 - Swiping a record in Arabic moves the row with your finger. It slid the other way, and
   uncovered the action on the side the finger was moving away from.
 - Holding the scroll thumb and dragging through a long list is smoother. Each step of

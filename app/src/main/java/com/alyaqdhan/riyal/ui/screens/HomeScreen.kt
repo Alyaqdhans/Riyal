@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
@@ -32,6 +33,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -147,17 +149,18 @@ fun HomeScreen(
                 Attention(
                     R.drawable.ic_sym_inbox,
                     stringResource(R.string.review_title),
-                    stringResource(R.string.home_needs_review_subtitle, parts.joinToString(" · ")),
+                    parts.joinToString(" · "),
                     onOpenReview,
                 )
+        // Like the row above: the page it opens, and how much is waiting there.
             )
         }
         if (needsCategory > 0) {
             add(
                 Attention(
                     R.drawable.ic_sym_category,
-                    counted(R.plurals.home_needs_category_title, needsCategory),
-                    stringResource(R.string.home_needs_category_subtitle),
+                    stringResource(R.string.needs_title),
+                    counted(R.plurals.count_records, needsCategory),
                     onOpenNeedsCategory,
                 )
             )
@@ -446,16 +449,30 @@ private fun AttentionCard(items: List<Attention>) {
             ListItem(
                 onClick = a.onClick,
                 leadingContent = { Icon(painterResource(a.icon), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                supportingContent = { Text(a.subtitle) },
+                supportingContent = { OneLine(a.subtitle) },
                 trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            ) { Text(a.title) }
+            ) { OneLine(a.title) }
         }
     }
 }
 
 /** Where the money went: the biggest categories of the period, each with its share. */
 @Composable
+/**
+ * An attention row's line, kept to one: a little smaller rather than broken, when a large
+ * count or two reasons at once make it long.
+ */
+@Composable
+private fun OneLine(text: String) {
+    Text(
+        text,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = LocalTextStyle.current.fontSize),
+    )
+}
+
 private fun TopSpendingCard(slices: List<Stats.Slice>, currency: String, onOpenAnalysis: () -> Unit) {
     Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Row(
