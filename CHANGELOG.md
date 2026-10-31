@@ -22,6 +22,8 @@ is attached there.
 - The update prompt's buttons sit on one line. Update - and after it the download,
   Install or Retry - is a filled button, and "Skip this version" is now "Skip", which
   still skips only that version; the long name used to push the buttons onto two lines.
+- Update on the Updates page opens the update prompt there. It used to open behind the
+  page, and showed only after going back.
 
 ## 1.8.1 — 2026-10-30
 

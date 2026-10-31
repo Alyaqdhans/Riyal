@@ -3,7 +3,9 @@
 package com.alyaqdhan.riyal.ui.screens
 
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.net.Uri
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -59,6 +62,7 @@ import com.alyaqdhan.riyal.ui.MainViewModel.UpdateState
 import com.alyaqdhan.riyal.ui.compose.FlatWheel
 import com.alyaqdhan.riyal.ui.compose.ReleaseNotes
 import com.alyaqdhan.riyal.ui.compose.ScrollThumb
+import com.alyaqdhan.riyal.ui.compose.UpdateDialogHost
 import com.alyaqdhan.riyal.ui.compose.appVersion
 import com.alyaqdhan.riyal.ui.compose.megabytes
 import com.alyaqdhan.riyal.ui.compose.relativeTime
@@ -147,6 +151,9 @@ fun UpdatesScreen(vm: MainViewModel, onBack: () -> Unit, onOpenChangelog: () -> 
         }
         }
     }
+    // This page is an activity of its own, so the prompt its Update button opens has to
+    // be shown here; the one MainActivity hosts would open behind the page.
+    UpdateDialogHost(vm)
 }
 
 /**
@@ -256,6 +263,9 @@ fun ChangelogScreen(vm: MainViewModel, onBack: () -> Unit) {
     val failed by vm.releasesFailed.collectAsState()
     val listState = rememberLazyListState()
     LaunchedEffect(Unit) { if (vm.releases.value == null) vm.loadReleases() }
+    // A debug build is never behind a release, so its prompt never opens by itself: there,
+    // a long press on a release opens the prompt for it, to see how it looks.
+    val debuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     fun open(url: String) {
         runCatching {
@@ -302,17 +312,34 @@ fun ChangelogScreen(vm: MainViewModel, onBack: () -> Unit) {
                             release = release,
                             installed = Updates.sameVersion(release.tag, installed),
                             onOpen = ::open,
+                            onPreview = if (debuggable) ({ vm.openUpdatePrompt(release) }) else null,
                         )
                     }
                 }
             }
         }
     }
+    UpdateDialogHost(vm)
 }
 
 @Composable
-private fun ReleaseCard(release: Updates.Release, installed: Boolean, onOpen: (String) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+private fun ReleaseCard(
+    release: Updates.Release,
+    installed: Boolean,
+    onOpen: (String) -> Unit,
+    onPreview: (() -> Unit)?,
+) {
+    Card(
+        Modifier
+            .fillMaxWidth()
+            .then(
+                if (onPreview == null) {
+                    Modifier
+                } else {
+                    Modifier.pointerInput(onPreview) { detectTapGestures(onLongPress = { onPreview() }) }
+                }
+            ),
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(release.tag, style = MaterialTheme.typography.titleMedium)

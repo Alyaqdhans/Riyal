@@ -97,6 +97,8 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 - Libraries must be built for that Kotlin or older (2.4.x). A library on a newer Kotlin
   means raising `kotlinComposePlugin` first.
 - Count the tests in `app/build/test-results` rather than trusting the exit code alone.
+- A debug build is never behind a release, so its update prompt never opens by itself:
+  long-press a release in Settings › Updates › Changelog to open the prompt for it.
 - JitPack is a repository only for LazyColumnScrollbar, which publishes nowhere else;
   `settings.gradle.kts` keeps it to that group.
 - Release steps, signing and the keystore history are in [RELEASE.md](RELEASE.md).
