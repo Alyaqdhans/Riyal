@@ -24,14 +24,21 @@ import android.graphics.fonts.FontStyle as PlatformFontStyle
 private const val ARABIC_HEAVIER = 100
 
 /**
+ * How much heavier Latin is drawn: half the Arabic step. At the weight asked for, English
+ * read thinner than the Arabic beside it; Arabic keeps the larger step, its letters being
+ * the lighter at one weight.
+ */
+private const val LATIN_HEAVIER = 50
+
+/**
  * The type scale in the app's own faces: Noto Sans for Latin, Noto Sans Arabic UI for
  * Arabic, the pair drawn to sit together, in either language.
  *
  * The phone's own fonts were the default before: Roboto, or whatever font the phone is set
  * to, and for Arabic Noto Naskh on most phones, a calligraphic hand whose thin strokes and
  * small letters read faint beside the Latin at the same size. Noto Sans Arabic UI has even
- * strokes and UI line heights, and is drawn a step heavier ([ARABIC_HEAVIER]) than the
- * Latin at each weight.
+ * strokes and UI line heights. Both are drawn heavier than the weight asked for, Arabic a
+ * step ([ARABIC_HEAVIER]) and Latin half one ([LATIN_HEAVIER]), so the two read alike.
  *
  * The files in `res/font` (OFL, the licence in each name table) are the upstream variable
  * fonts with their width axis pinned, each cut to its own script: the Arabic file has no
@@ -71,7 +78,7 @@ private object RiyalLoader : AndroidFont.TypefaceLoader {
     @Synchronized
     fun base(context: Context): Typeface = base ?: run {
         val res = context.resources
-        Typeface.CustomFallbackBuilder(family(res, R.font.noto_sans, heavier = 0))
+        Typeface.CustomFallbackBuilder(family(res, R.font.noto_sans, heavier = LATIN_HEAVIER))
             .addCustomFallback(family(res, R.font.noto_sans_arabic_ui, heavier = ARABIC_HEAVIER))
             .setSystemFallback("sans-serif")
             .setStyle(PlatformFontStyle())

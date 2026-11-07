@@ -19,6 +19,7 @@ is attached there.
   lists what it was made of, separates any of them again, and renames it. Records keep
   the names the bank gave them, so a rescan keeps the merge, and backups carry it with
   the learned categories.
+- English text is a touch heavier, closer to the Arabic beside it.
 - **An archived record counts towards nothing.** Home, Analysis, categories, budgets,
   account balances and the record count all leave it out, and it stays in Archived until
   you bring it back. A balance still starts from the figure the bank quoted, so a record

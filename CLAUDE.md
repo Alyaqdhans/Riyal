@@ -205,8 +205,8 @@ everything.
   or `legible(...)` (ui/theme/Contrast.kt), never `Color(Categories.colorFor(id))`: the raw
   palette falls under 3:1 on light cards. `ContrastTest` holds every colour to it.
 - The app's type is Noto Sans with Noto Sans Arabic UI (`ui/theme/Type.kt`:
-  `RiyalTypography`, and `riyalTypeface` for Android views), Arabic a step heavier
-  (`ARABIC_HEAVIER`). The files in `res/font` are the upstream variable fonts (notofonts,
+  `RiyalTypography`, and `riyalTypeface` for Android views), drawn heavier than asked:
+  Arabic a step (`ARABIC_HEAVIER`), Latin half one (`LATIN_HEAVIER`). The files in `res/font` are the upstream variable fonts (notofonts,
   unhinted) with `wdth` pinned at 100, each cut with fonttools to its own script plus the
   space; a replacement must stay that way, or one script's file draws the other's digits.
   One `Typeface.CustomFallbackBuilder` holds both at weights 100-900, and each Compose
