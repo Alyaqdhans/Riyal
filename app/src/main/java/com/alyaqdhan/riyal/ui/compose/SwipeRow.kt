@@ -49,6 +49,7 @@ import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -163,6 +164,10 @@ fun SwipeRow(
     Box(
         modifier
             .fillMaxWidth()
+            // A row slid open stays open, and slid, it reaches past its own edge: on a page
+            // beside another (Records and Archived) that end showed on the next page. What
+            // slides past the row is cut there.
+            .clipToBounds()
             .onSizeChanged { size ->
                 val min = with(density) { MinReveal.toPx() }
                 val max = with(density) { MaxReveal.toPx() }
