@@ -26,6 +26,9 @@ is attached there.
   everywhere: a merged place's names, Review's dismissed messages, the empty
   categories, the rest of a budget and a backlog row's records. They used to sit behind Show, Hide or Show all
   buttons, and the empty categories opened back up among the others.
+- Archived records are a tab of their own on Transactions, beside Records, and the type,
+  filters and order apply to both. The archive used to be a button that swapped the list
+  for it and back.
 - Material 3 1.5.0-rc01, from alpha29. It sits on stable Compose 1.12, where alpha29 had
   brought in an alpha of Compose's foundation.
 - **An archived record counts towards nothing.** Home, Analysis, categories, budgets,

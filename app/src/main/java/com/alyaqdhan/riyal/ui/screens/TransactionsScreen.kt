@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Badge
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChipDefaults
 import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import com.alyaqdhan.riyal.ui.compose.typeIcon
@@ -38,15 +37,18 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -58,6 +60,7 @@ import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.MatchedIcon
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.MoneyAwareText
 import com.alyaqdhan.riyal.ui.compose.FilterSheet
@@ -78,6 +81,9 @@ import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 
+/** Transactions' two pages: the records that count, and the ones archived. */
+private enum class TxnPage { RECORDS, ARCHIVED }
+
 @Composable
 fun TransactionsScreen(vm: MainViewModel) {
     val txns by vm.txns.collectAsState()
@@ -90,7 +96,6 @@ fun TransactionsScreen(vm: MainViewModel) {
     var accountFilter by rememberSaveable { mutableStateOf(listOf<String>()) }
     var showFilters by rememberSaveable { mutableStateOf(false) }
     var sort by rememberSaveable { mutableStateOf(TxnSort.NEWEST.name) }
-    var showArchived by rememberSaveable { mutableStateOf(false) }
     var picker by remember { mutableStateOf<Txn?>(null) }
     val archivedIds by vm.archivedIds.collectAsState()
     val snackbar = remember { SnackbarHostState() }
@@ -107,24 +112,19 @@ fun TransactionsScreen(vm: MainViewModel) {
         onDone = { vm.prefs.swipeTourSeen = true },
     )
 
-    // Unarchiving the last record used to strand you here. The way back out is only
-    // drawn while something is archived, and the choice outlives leaving the screen, so
-    // an emptied archive became a view with nothing in it and no exit. Fall back to the
-    // ordinary list the moment the archive empties.
-    LaunchedEffect(archivedIds.isEmpty()) {
-        if (archivedIds.isEmpty()) showArchived = false
-    }
-
-    // In any of the chosen categories, touching any of the chosen accounts.
-    val filtered = remember(txns, categoryFilter, typeFilter, accountFilter, archivedIds, showArchived) {
+    // In any of the chosen categories, touching any of the chosen accounts. The records
+    // that count are one page and the archived ones the other, and the filters, the type
+    // and the order apply to both.
+    val matching = remember(txns, categoryFilter, typeFilter, accountFilter) {
         val categories = categoryFilter.toSet()
         txns.filter { t ->
             (categories.isEmpty() || t.categoryId in categories) &&
                 (typeFilter == null || t.type.name == typeFilter) &&
-                (accountFilter.isEmpty() || accountFilter.any(t::touches)) &&
-                (showArchived == (t.id in archivedIds))
+                (accountFilter.isEmpty() || accountFilter.any(t::touches))
         }
     }
+    val live = remember(matching, archivedIds) { matching.filter { it.id !in archivedIds } }
+    val archive = remember(matching, archivedIds) { matching.filter { it.id in archivedIds } }
     val order = TxnSort.valueOf(sort)
     // How many of the sheet's choices are on, so the button can say so without
     // opening it.
@@ -134,18 +134,99 @@ fun TransactionsScreen(vm: MainViewModel) {
     val categoriesPresent = remember(txns) {
         Categories.ALL.filter { cat -> txns.any { it.categoryId == cat.id } }
     }
-    // Sorted by date the list reads as days; sorted by size it reads as one ranking,
-    // and day headers would just chop the ranking into meaningless pieces.
-    val grouped = remember(filtered, order) {
-        if (order.byDate) filtered.groupBy { localDateOf(it.atMillis) } else emptyMap()
-    }
-    val ranked = remember(filtered, order) {
-        if (order.byDate) emptyList() else order.applyTo(filtered)
-    }
-    // The archive's rows bring records back rather than archive them, which is not what
-    // the bubbles say, so the tour waits for the ordinary list.
-    val touring = if (showArchived) null else {
-        if (order.byDate) grouped.values.firstOrNull()?.firstOrNull()?.id else ranked.firstOrNull()?.id
+    val pager = rememberPagerState { TxnPage.entries.size }
+
+    /** One page of records: the ones that count, or the archive. */
+    @Composable
+    fun RecordPage(records: List<Txn>, archived: Boolean) {
+        // Sorted by date the list reads as days; sorted by size it reads as one ranking,
+        // and day headers would just chop the ranking into meaningless pieces.
+        val grouped = remember(records, order) {
+            if (order.byDate) records.groupBy { localDateOf(it.atMillis) } else emptyMap()
+        }
+        val ranked = remember(records, order) {
+            if (order.byDate) emptyList() else order.applyTo(records)
+        }
+        // The archive's rows bring records back rather than archive them, which is not what
+        // the bubbles say, so the tour plays on the records, once the pager rests there.
+        val onRecords = pager.settledPage == TxnPage.RECORDS.ordinal && !pager.isScrollInProgress
+        val touring = if (archived || !onRecords) null else {
+            if (order.byDate) grouped.values.firstOrNull()?.firstOrNull()?.id else ranked.firstOrNull()?.id
+        }
+        if (records.isEmpty()) {
+            // Scrollable so pull-to-refresh works even with nothing in the list.
+            val scroll = rememberScrollState()
+            ScrollThumb(scroll, Modifier.fillMaxSize(), bottom = toolbarSpace) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scroll),
+            ) {
+                EmptyState(
+                    title = stringResource(R.string.txn_empty_title),
+                    subtitle = stringResource(
+                        when {
+                            archived && typeFilter == null && hiddenFilterCount == 0 -> R.string.txn_empty_archived
+                            typeFilter != null || hiddenFilterCount > 0 -> R.string.txn_empty_filtered
+                            else -> R.string.txn_empty_none
+                        }
+                    ),
+                )
+            }
+            }
+            return
+        }
+        // Rows are list items with their own inset, so the list adds none at the
+        // sides; the end leaves room for the bar and the Add button over it.
+        val list = rememberLazyListState()
+        ScrollThumb(list, bottom = toolbarSpace) {
+        LazyColumn(
+            state = list,
+            contentPadding = PaddingValues(top = 4.dp, bottom = toolbarSpace),
+        ) {
+            // Content types let a jump of the thumb build its new screen from the
+            // rows it left, a record from a record and a day from a day.
+            if (order.byDate) {
+                grouped.forEach { (date, dayTxns) ->
+                    item(key = "header-$date", contentType = "day") { DayHeader(date, dayTxns) }
+                    items(dayTxns, key = { it.id }, contentType = { "record" }) { txn ->
+                        SwipeableTxnRow(
+                            archived = archived,
+                            onArchive = { archiveWithUndo(vm, snackbar, scope, txn, !archived) },
+                            onRemove = { removeForGood(vm, snackbar, scope, txn) },
+                            removeLabel = removeLabelOf(txn),
+                            tour = tour.takeIf { txn.id == touring },
+                        ) {
+                            TxnRow(
+                                txn,
+                                onClick = { picker = txn },
+                                accounts = accounts,
+                                showDate = false,
+                                showAccount = showAccount,
+                            )
+                        }
+                    }
+                }
+            } else {
+                items(ranked, key = { it.id }, contentType = { "record" }) { txn ->
+                    SwipeableTxnRow(
+                        archived = archived,
+                        onArchive = { archiveWithUndo(vm, snackbar, scope, txn, !archived) },
+                        onRemove = { removeForGood(vm, snackbar, scope, txn) },
+                        removeLabel = removeLabelOf(txn),
+                        tour = tour.takeIf { txn.id == touring },
+                    ) {
+                        TxnRow(
+                            txn,
+                            onClick = { picker = txn },
+                            accounts = accounts,
+                            showAccount = showAccount,
+                        )
+                    }
+                }
+            }
+        }
+        }
     }
 
     Scaffold(
@@ -181,6 +262,25 @@ fun TransactionsScreen(vm: MainViewModel) {
     ) { padding ->
         ScanRefresh(vm, Modifier.padding(padding)) {
         Column(Modifier.fillMaxSize()) {
+            // The archive is a page beside the records, as Lists' and Analysis's are: a tab
+            // slides over to it, and a finger can drag from one to the other.
+            PrimaryTabRow(selectedTabIndex = pager.targetPage) {
+                TxnPage.entries.forEach { p ->
+                    Tab(
+                        selected = pager.targetPage == p.ordinal,
+                        onClick = { scope.launch { pager.animateScrollToPage(p.ordinal) } },
+                        text = {
+                            Text(
+                                when {
+                                    p == TxnPage.RECORDS -> stringResource(R.string.txn_tab_records)
+                                    archivedIds.isEmpty() -> stringResource(R.string.txn_tab_archived)
+                                    else -> stringResource(R.string.txn_archived_count, archivedIds.size)
+                                }
+                            )
+                        },
+                    )
+                }
+            }
             // One row, four chips: the answers to "what kind of thing am I looking at?".
             // Categories and accounts have dozens of options each and live in the sheet.
             Row(
@@ -204,7 +304,7 @@ fun TransactionsScreen(vm: MainViewModel) {
                         onClick = { typeFilter = if (typeFilter == type.name) null else type.name },
                         label = { Text(stringResource(typeLabel(type))) },
                         leadingIcon = {
-                            Icon(painterResource(typeIcon(type)), contentDescription = null, modifier = Modifier.size(18.dp))
+                            MatchedIcon(typeIcon(type), MaterialTheme.typography.labelLarge, Modifier.size(18.dp))
                         },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = tone,
@@ -214,95 +314,16 @@ fun TransactionsScreen(vm: MainViewModel) {
                     )
                 }
             }
-            if (archivedIds.isNotEmpty() || showArchived) {
-                TextButton(
-                    onClick = { showArchived = !showArchived },
-                    modifier = Modifier.padding(start = 8.dp),
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(
-                        if (showArchived) {
-                            stringResource(R.string.txn_back_to_yours)
-                        } else {
-                            stringResource(R.string.txn_archived_count, archivedIds.size)
-                        },
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                }
-            }
-            if (filtered.isEmpty()) {
-                // Scrollable so pull-to-refresh works even with nothing in the list.
-                val scroll = rememberScrollState()
-                ScrollThumb(scroll, Modifier.fillMaxSize(), bottom = toolbarSpace) {
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(scroll),
-                ) {
-                    EmptyState(
-                        title = stringResource(R.string.txn_empty_title),
-                        subtitle = stringResource(
-                            when {
-                                showArchived -> R.string.txn_empty_archived
-                                typeFilter != null || hiddenFilterCount > 0 ->
-                                    R.string.txn_empty_filtered
-                                else -> R.string.txn_empty_none
-                            }
-                        ),
-                    )
-                }
-                }
-            } else {
-                // Rows are list items with their own inset, so the list adds none at the
-                // sides; the end leaves room for the bar and the Add button over it.
-                val list = rememberLazyListState()
-                ScrollThumb(list, bottom = toolbarSpace) {
-                LazyColumn(
-                    state = list,
-                    contentPadding = PaddingValues(top = 4.dp, bottom = toolbarSpace),
-                ) {
-                    // Content types let a jump of the thumb build its new screen from the
-                    // rows it left, a record from a record and a day from a day.
-                    if (order.byDate) {
-                        grouped.forEach { (date, dayTxns) ->
-                            item(key = "header-$date", contentType = "day") { DayHeader(date, dayTxns) }
-                            items(dayTxns, key = { it.id }, contentType = { "record" }) { txn ->
-                                SwipeableTxnRow(
-                                    archived = txn.id in archivedIds,
-                                    onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
-                                    onRemove = { removeForGood(vm, snackbar, scope, txn) },
-                                    removeLabel = removeLabelOf(txn),
-                                    tour = tour.takeIf { txn.id == touring },
-                                ) {
-                                    TxnRow(
-                                        txn,
-                                        onClick = { picker = txn },
-                                        accounts = accounts,
-                                        showDate = false,
-                                        showAccount = showAccount,
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        items(ranked, key = { it.id }, contentType = { "record" }) { txn ->
-                            SwipeableTxnRow(
-                                archived = txn.id in archivedIds,
-                                onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
-                                onRemove = { removeForGood(vm, snackbar, scope, txn) },
-                                removeLabel = removeLabelOf(txn),
-                                tour = tour.takeIf { txn.id == touring },
-                            ) {
-                                TxnRow(
-                                    txn,
-                                    onClick = { picker = txn },
-                                    accounts = accounts,
-                                    showAccount = showAccount,
-                                )
-                            }
-                        }
-                    }
-                }
+            HorizontalPager(
+                state = pager,
+                modifier = Modifier.fillMaxSize(),
+                // Both stay built, so neither loses its place or rebuilds as it slides in.
+                beyondViewportPageCount = 1,
+                verticalAlignment = Alignment.Top,
+            ) { page ->
+                when (TxnPage.entries[page]) {
+                    TxnPage.RECORDS -> RecordPage(live, archived = false)
+                    TxnPage.ARCHIVED -> RecordPage(archive, archived = true)
                 }
             }
         }

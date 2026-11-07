@@ -300,8 +300,9 @@
     <string name="home_other_currencies">+%1$s in other currencies</string>
 
     <string name="txn_filters">Filters</string>
-    <string name="txn_back_to_yours">Back to your transactions</string>
     <string name="txn_archived_count">Archived (%d)</string>
+    <string name="txn_tab_records">Records</string>
+    <string name="txn_tab_archived">Archived</string>
     <string name="txn_empty_title">No transactions here</string>
     <string name="txn_empty_archived">Nothing archived. Swipe a row right to put it here.</string>
     <string name="tour_remove_title">Swipe left to remove</string>

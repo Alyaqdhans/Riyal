@@ -340,8 +340,9 @@
     <string name="home_other_currencies">+%1$s في عملات أخرى</string>
 
     <string name="txn_filters">تصفية</string>
-    <string name="txn_back_to_yours">العودة إلى معاملاتك</string>
     <string name="txn_archived_count">المؤرشفة (%d)</string>
+    <string name="txn_tab_records">السجلات</string>
+    <string name="txn_tab_archived">المؤرشفة</string>
     <string name="txn_empty_title">لا معاملات هنا</string>
     <string name="txn_empty_archived">الأرشيف فارغ. اسحب الصف يميناً لوضعه فيه.</string>
     <string name="tour_remove_title">اسحب يساراً للإزالة</string>

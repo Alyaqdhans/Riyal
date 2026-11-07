@@ -51,7 +51,7 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   (`MainActivity.openTab`), so the highlight and the slide start on the same frame.
 - **No decorative motion.** No pop-in or bounce on content, and `MotionScheme.standard()`.
   Charts use `animationSpec = null, animateIn = false`. The owner's exceptions: the tab
-  slide, Lists' and Analysis's tabs (a `HorizontalPager`: a tab slides to its page, a
+  slide, the tabs of Lists, Analysis and Transactions (a `HorizontalPager`: a tab slides to its page, a
   finger drags between them), the swipe tours (the first time Transactions or Lists is seen, one row
   opens by itself under a tooltip saying what its swipe uncovers: `SwipeTour`, shown only
   while the tab is in view, `LocalTabInView`), and every dialog's pop-in with a quick close (`ui/compose/DialogPop.kt`: put
