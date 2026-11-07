@@ -427,6 +427,19 @@ data class ReviewItem(
     }
 }
 
+/**
+ * Places the user said are one: a chain the bank names by branch ("Example Oil - North",
+ * "Example Oil - South") shown in Places as a single place under [name]. [members] are
+ * keyed the way a rule is ([UserRule.patternOf]), not by record, so a rescan - which
+ * rebuilds every record from the inbox - keeps the merge. Each record keeps its own name.
+ */
+data class PlaceGroup(val id: String, val name: String, val members: Set<String>) {
+    companion object {
+        /** Starts every [id], which no place's own key (a shop's name) ever does. */
+        const val ID_PREFIX = "merged:"
+    }
+}
+
 data class UserRule(val pattern: String, val categoryId: String) {
     companion object {
 

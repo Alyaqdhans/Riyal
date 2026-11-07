@@ -641,7 +641,7 @@ private fun Correction(
 @Composable
 private fun DoneStep(vm: MainViewModel, onFinished: () -> Unit) {
     val accounts by vm.accounts.collectAsState()
-    val txns by vm.txns.collectAsState()
+    val txns by vm.countedTxns.collectAsState()
     val taught by vm.taughtCount.collectAsState()
     val ring = remember { Animatable(0f) }
     val tick = remember { Animatable(0f) }

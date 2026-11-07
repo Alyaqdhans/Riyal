@@ -180,6 +180,9 @@
     <string name="lists_senders_intro">كل من راسلك. يقرأ ريال مصارفك ويترك الباقي؛ اضغط على مرسل لتغيير ذلك.</string>
     <string name="lists_senders_empty">يظهر المرسلون هنا بعد أول قراءة لصندوق رسائلك.</string>
     <string name="lists_search">ابحث في المرسلين</string>
+    <string name="lists_search_keywords">ابحث في الكلمات</string>
+    <string name="lists_search_ignored">ابحث في المُتجاهَل</string>
+    <string name="lists_no_match">لا شيء يطابق «%1$s»</string>
     <string name="lists_status_bank">يُقرأ · مصرفك</string>
     <string name="lists_status_added">يُقرأ · أضفته أنت</string>
     <string name="lists_status_left_out">لا يُقرأ · ليس مصرفًا</string>
@@ -340,14 +343,17 @@
     <string name="home_other_currencies">+%1$s في عملات أخرى</string>
 
     <string name="txn_filters">تصفية</string>
-    <string name="txn_back_to_yours">العودة إلى معاملاتك</string>
+    <string name="txn_search">ابحث في المعاملات</string>
+    <string name="txn_no_match">لا معاملة تطابق «%1$s»</string>
     <string name="txn_archived_count">المؤرشفة (%d)</string>
+    <string name="txn_tab_records">السجلات</string>
+    <string name="txn_tab_archived">المؤرشفة</string>
     <string name="txn_empty_title">لا معاملات هنا</string>
     <string name="txn_empty_archived">الأرشيف فارغ. اسحب الصف يميناً لوضعه فيه.</string>
     <string name="tour_remove_title">اسحب يساراً للإزالة</string>
     <string name="tour_remove_text">اسحب السجل يساراً فيظهر خلفه زر إزالته. لا يُزال شيء حتى تضغط ذلك الزر.</string>
     <string name="tour_archive_title">اسحب يميناً للأرشفة</string>
-    <string name="tour_archive_text">اسحبه يميناً واضغط «أرشفة» ليختفي من قائمتك. يبقى محسوباً في رصيدك.</string>
+    <string name="tour_archive_text">اسحبه يميناً واضغط «أرشفة» ليختفي من قائمتك. ولن يُحتسب بعدها في مجاميعك ولا أرصدتك.</string>
     <string name="txn_empty_filtered">لا شيء يطابق هذه التصفية.</string>
     <string name="txn_empty_none">اسحب للأسفل لبدء الفحص، أو أضف معاملة يدوياً بزر +.</string>
 
@@ -357,7 +363,7 @@
     <string name="sort_biggest_in">الأكبر وارداً</string>
 
     <string name="row_archive">أرشفة</string>
-    <string name="row_unarchive">إخراج من الأرشيف</string>
+    <string name="row_unarchive">إلغاء الأرشفة</string>
     <string name="row_remove">إزالة</string>
     <string name="row_remove_both">إزالة الطرفين</string>
     <string name="row_archived">تمت الأرشفة</string>
@@ -456,8 +462,8 @@
     <string name="review_yes_transfer">نعم، إنه تحويل</string>
     <string name="review_remember_similar">تذكَّر هذا للرسائل المشابهة</string>
     <string name="review_add_manually">إضافة يدوية</string>
-    <string name="action_show">إظهار</string>
-    <string name="action_hide">إخفاء</string>
+    <string name="state_expanded">موسَّع</string>
+    <string name="state_collapsed">مطويّ</string>
 
     <string name="needs_title">بحاجة إلى تصنيف</string>
     <string name="needs_left_title">تُركت للمرة القادمة</string>
@@ -495,7 +501,6 @@
     <string name="needs_file_as">صنِّفها تحت</string>
     <string name="needs_choose_records">اختيار السجلات</string>
     <string name="needs_chosen_of">%1$d من %2$d محدَّدة</string>
-    <string name="needs_show_all">عرض الكل (%d)</string>
 
     <string name="acct_generic_name">حساب</string>
     <string name="bank_muscat">بنك مسقط</string>
@@ -580,10 +585,9 @@
     <string name="cat_income">دخل آخر</string>
 
     <string name="cats_title">التصنيفات</string>
+    <string name="cats_empty_header">التصنيفات الفارغة (%d)</string>
     <string name="cats_spending">المصروفات</string>
     <string name="cats_income">الدخل</string>
-    <string name="cats_hide_empty">إخفاء التصنيفات الفارغة</string>
-    <string name="cats_show_all">عرض كل التصنيفات (%d فارغة)</string>
     <string name="cats_transfers_note">%1$s انتقلت بين حساباتك أنت في هذه الفترة. والتحويلات بلا تصنيف: فهي ليست مصروفاً ولا دخلاً.</string>
     <string name="cats_add">إضافة تصنيف</string>
     <string name="cats_learned_title">ما تعلَّمه ريال</string>
@@ -675,13 +679,19 @@
     </plurals>
     <string name="budget_spent_pct">صُرف %d%%</string>
     <string name="budget_outside">صُرف %1$s خارج هذه الحدود</string>
+    <plurals name="budget_more_lines">
+        <item quantity="zero">لا تصنيفات أخرى</item>
+        <item quantity="one">تصنيف آخر واحد</item>
+        <item quantity="two">تصنيفان آخران</item>
+        <item quantity="few">%d تصنيفات أخرى</item>
+        <item quantity="many">%d تصنيفاً آخر</item>
+        <item quantity="other">%d تصنيف آخر</item>
+    </plurals>
     <string name="budget_editor_title">ميزانية %1$s</string>
     <string name="budget_editor_hint">اختر التصنيفات التي تضع لها حدًا، ثم حدّد ما يُصرف في كل منها.</string>
     <string name="budget_spent_before">صُرف %1$s في %2$s</string>
     <string name="budget_total">المجموع</string>
     <string name="budget_plan_runs">الخطة تغطي %1$s</string>
-    <string name="budget_show_less">عرض أقل</string>
-    <string name="budget_show_all">عرض الكل (%d)</string>
     <string name="budget_delete_title">حذف هذه الخطة؟</string>
     <string name="budget_delete_body">ستُحذف \"%1$s\" وحدودها. ومعاملاتك تبقى كما هي.</string>
     <string name="budget_bar_amounts">%1$s / %2$s</string>
@@ -689,6 +699,36 @@
     <string name="an_title">التحليل</string>
     <string name="an_empty_title">لا شيء لتحليله بعد</string>
     <string name="an_empty_subtitle">ما إن تفحص رسائلك حتى تُضيء الرسوم هنا.</string>
+    <string name="an_tab_overview">نظرة عامة</string>
+    <string name="an_tab_places">الأماكن</string>
+    <string name="places_search">ابحث في الأماكن</string>
+    <string name="places_empty_title">لا إنفاق في %s</string>
+    <string name="places_no_match">لا مكان يطابق «%1$s»</string>
+    <plurals name="places_unnamed">
+        <item quantity="zero">لا سجلات بلا اسم مكان</item>
+        <item quantity="one">سجل واحد بلا اسم مكان</item>
+        <item quantity="two">سجلان بلا اسم مكان</item>
+        <item quantity="few">%d سجلات بلا اسم مكان</item>
+        <item quantity="many">%d سجلاً بلا اسم مكان</item>
+        <item quantity="other">%d سجل بلا اسم مكان</item>
+    </plurals>
+    <string name="places_select">تحديد</string>
+    <string name="places_select_all">تحديد الكل</string>
+    <string name="places_merge">دمج</string>
+    <string name="places_merge_title">دمج في مكان واحد</string>
+    <string name="places_merge_body">ستظهر مكاناً واحداً بهذا الاسم. ويبقى لكل سجل الاسم الذي أعطاه البنك، ويمكن فصلها مجدداً من صفحة المكان.</string>
+    <string name="place_rename">إعادة التسمية</string>
+    <string name="place_rename_title">إعادة تسمية هذا المكان</string>
+    <string name="place_merged_from">مدمج من</string>
+    <string name="place_separate">فصل</string>
+    <plurals name="places_selected">
+        <item quantity="zero">لا شيء محدد</item>
+        <item quantity="one">واحد محدد</item>
+        <item quantity="two">اثنان محددان</item>
+        <item quantity="few">%d محددة</item>
+        <item quantity="many">%d محدداً</item>
+        <item quantity="other">%d محدد</item>
+    </plurals>
     <string name="an_all_accounts">كل الحسابات</string>
     <string name="an_moved_label">بين حساباتك</string>
     <string name="an_donut_spent">صُرف</string>
@@ -731,7 +771,7 @@
     <string name="an_not_enough">لا توجد حركة كافية في هذه الفترة لرسمها.</string>
     <string name="an_legend_out">صادر</string>
     <string name="an_legend_in">وارد</string>
-    <string name="an_no_baseline">لا أساس للمقارنة</string>
+    <string name="an_no_baseline">لا مقارنة</string>
     <string name="an_level">مستقر</string>
     <string name="an_delta_up">▲ %1$d%%</string>
     <string name="an_delta_down">▼ %1$d%%</string>
@@ -783,7 +823,7 @@
     <string name="backup_part_categories">التصنيفات</string>
     <string name="backup_part_categories_detail">التصنيفات التي أنشأتها</string>
     <string name="backup_part_rules">التصنيفات المتعلَّمة</string>
-    <string name="backup_part_rules_detail">الأسماء التي تُصنَّف دون سؤال، والأسماء التي يُسأل عنها كل مرة</string>
+    <string name="backup_part_rules_detail">الأسماء التي تُصنَّف دون سؤال، والأسماء التي يُسأل عنها كل مرة، والأماكن المدمجة في مكان واحد</string>
     <string name="backup_part_lists">القوائم</string>
     <string name="backup_part_lists_detail">أنواع الرسائل التي علّمتها أو استبعدتها، والمرسلون المُتجاهَلون أو المضافون</string>
     <string name="backup_part_budgets">الميزانيات</string>
@@ -903,8 +943,11 @@
     <string name="log_no_rule_ask">لم تُحفظ قاعدة لـ \"%1$s\": طلبت أن تُسأل عن هذا الاسم في كل مرة، فستعود إليك الرسالة التالية منه</string>
     <string name="log_rule_saved_filed">حُفظت قاعدة: \"%1$s\" ← %2$s · صُنِّفت %3$s الآن، وأُعيد تصنيف %4$d غيرها، وكل ما يطابقها من الآن يذهب هناك دون سؤال</string>
     <string name="log_left_under_other">تُركت %1$s تحت \"أخرى\" في الوقت الحالي · لم يُجَب عنها، وسيسأل عنها الفحص القادم من جديد</string>
-    <string name="log_archived">أرشفت: %1$s خرجت من القوائم لكنها ما زالت تُحتسب في رصيدك</string>
+    <string name="log_archived">أرشفت: %1$s خرجت من القوائم ولم تعد تُحتسب في أي شيء</string>
     <string name="log_unarchived">أخرجت من الأرشيف: %1$s عادت إلى القوائم</string>
+    <string name="log_places_merged">دمجت أماكن في «%1$s»</string>
+    <string name="log_place_renamed">أعدت تسمية المكان المدمج إلى «%1$s»</string>
+    <string name="log_place_separated">فصلت %1$s عن «%2$s»</string>
     <string name="log_removed">أزلت معاملة: %1$s (%2$s)</string>
     <string name="log_removed_ignored"> · وستبقى هذه الرسالة متجاهَلة في الفحوصات القادمة</string>
     <string name="log_no_rule_ask_short">لم تُحفظ قاعدة لـ \"%1$s\": طلبت أن تُسأل عن هذا الاسم في كل مرة</string>

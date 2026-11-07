@@ -4,7 +4,61 @@ Every release of Riyal, newest first. Released versions are condensed from their
 [GitHub release notes](https://github.com/Alyaqdhans/Riyal/releases); the APK for each
 is attached there.
 
-## 1.8.3 — unreleased (branch `1.8.3`)
+## 1.8.4 — unreleased (branch `1.8.4`)
+
+### Around the app
+
+- **See where your money went, place by place.** Analysis has a Places tab: every shop
+  you paid in the period and account chosen, biggest first, with how many records and
+  what they came to. Search by name, and open a place for its records and how the
+  period compares with the one before. Records that name no place are added up under
+  the list, so it still comes to the period's spending.
+- **Merge places that are one.** A chain the bank names by branch shows as several
+  places; long-press one, tap the others (or Select all after a search), and Merge them
+  under a name, which starts as what their names have in common. A merged place's page
+  keeps what it was made of folded under Show, separates any of them again, and renames
+  it. Records keep
+  the names the bank gave them, so a rescan keeps the merge, and backups carry it with
+  the learned categories.
+- English text is a touch heavier, closer to the Arabic beside it.
+- The welcome screen opens on the app's name, without the logo above it.
+- What is folded away opens under a row of its own, sliding down as its chevron turns,
+  everywhere: a merged place's names, Review's dismissed messages, the empty
+  categories, the rest of a budget and a backlog row's records. They used to sit behind Show, Hide or Show all
+  buttons, and the empty categories opened back up among the others.
+- Archived records are a tab of their own on Transactions, beside Records, and the type,
+  filters and order apply to both. The archive used to be a button that swapped the list
+  for it and back.
+- A record left slid open on one tab no longer shows a strip of itself on the tab beside
+  it.
+- What a swipe uncovers - Archive, Remove, Forget, Restore - has its icon beside its word
+  rather than above it.
+- In Arabic, a swipe's Unarchive reads إلغاء الأرشفة and Analysis's "no baseline" لا مقارنة,
+  short enough for the narrow spaces they sit in.
+- Search stays out of the way. Places, Lists and the currency picker show a
+  search button by their title, and tapping it stretches the button itself into a rounded
+  search field across the title, its icon staying where it was; closing it draws the
+  field back into the icon. The search used to be a field always on the page.
+- **Search your records.** Transactions has the same search button: it finds records by
+  place (a merged place by its name too), category, account, sender or amount ("12.5"
+  finds OMR 12.500, in either script's digits), on Records and Archived alike and
+  together with the filters. Lists' Keywords and Ignored tabs and the exchange rates
+  can be searched too. A search left open on Analysis no longer catches Back on another
+  tab.
+- A notice with Undo goes away by itself after about ten seconds, where it used to stay
+  until something replaced it, and any notice can be swiped away sideways.
+- Notices follow the theme: light in the light theme and dark in the dark one. Material
+  draws them the other way round, so they glared over a dark screen.
+- The download is about 6 MB, from about 35 MB: the release build is shrunk (R8 and
+  resource shrinking), leaving out the code and resources the app never uses.
+- Material 3 1.5.0-rc01, from alpha29. It sits on stable Compose 1.12, where alpha29 had
+  brought in an alpha of Compose's foundation.
+- **An archived record counts towards nothing.** Home, Analysis, categories, budgets,
+  account balances and the record count all leave it out, and it stays in Archived until
+  you bring it back. A balance still starts from the figure the bank quoted, so a record
+  older than that figure stays inside it.
+
+## 1.8.3 — 2026-10-31
 
 ### Around the app
 

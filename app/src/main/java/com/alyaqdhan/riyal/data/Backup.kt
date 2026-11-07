@@ -47,8 +47,8 @@ object Backup {
         /** The categories the user made. */
         CATEGORIES(R.string.backup_part_categories, R.string.backup_part_categories_detail, listOf("categories")),
 
-        /** Names filed under a category without asking, and names always asked about. */
-        RULES(R.string.backup_part_rules, R.string.backup_part_rules_detail, listOf("rules", "askEachTime")),
+        /** Names filed under a category without asking, names always asked about, and places merged. */
+        RULES(R.string.backup_part_rules, R.string.backup_part_rules_detail, listOf("rules", "askEachTime", "placeGroups")),
 
         /** Kinds of message taught and dismissed, and senders ignored or added. */
         LISTS(
@@ -101,7 +101,8 @@ object Backup {
     private fun sizeOf(root: JSONObject, part: Part): Int = when (part) {
         Part.RECORDS -> root.optJSONArray("txns")?.length() ?: 0
         Part.CATEGORIES -> root.optJSONArray("categories")?.length() ?: 0
-        Part.RULES -> (root.optJSONArray("rules")?.length() ?: 0) + (root.optJSONArray("askEachTime")?.length() ?: 0)
+        Part.RULES -> (root.optJSONArray("rules")?.length() ?: 0) + (root.optJSONArray("askEachTime")?.length() ?: 0) +
+            (root.optJSONArray("placeGroups")?.length() ?: 0)
         Part.LISTS -> (root.optJSONObject("labels")?.length() ?: 0) + (root.optJSONArray("muted")?.length() ?: 0) +
             (root.optJSONArray(IGNORED_SENDERS)?.length() ?: 0) + (root.optJSONArray(ADDED_SENDERS)?.length() ?: 0)
         Part.BUDGETS -> root.optJSONArray("budgets")?.length() ?: 0
@@ -219,6 +220,16 @@ object Backup {
             if (name in patterns || name in askedNames) continue
             asked.put(name)
             askedNames += name
+        }
+        // Merged places: one whose names are all new here comes in whole; one sharing a
+        // name with a place merged here would put that name in two, and this phone's wins.
+        val groups = mine.optJSONArray("placeGroups") ?: JSONArray().also { mine.put("placeGroups", it) }
+        val merged = groups.objects().flatMapTo(HashSet()) { it.optJSONArray("m").strings() }
+        for (g in theirs.optJSONArray("placeGroups").objects()) {
+            val names = g.optJSONArray("m").strings()
+            if (names.any { it in merged }) continue
+            groups.put(JSONObject(g.toString()))
+            merged += names
         }
     }
 

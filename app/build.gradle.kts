@@ -18,8 +18,8 @@ android {
         applicationId = "com.alyaqdhan.riyal"
         minSdk = 29
         targetSdk = 36
-        versionCode = 11
-        versionName = "1.8.3"
+        versionCode = 12
+        versionName = "1.8.4"
 
         androidResources {
             localeFilters += listOf("en", "ar")
@@ -58,7 +58,10 @@ android {
             versionNameSuffix = "-debug"
         }
         release {
-            isMinifyEnabled = false
+            // Resources nothing uses are left out of the APK, which needs R8 to shrink
+            // the code first: a resource is unused once the code that named it is gone.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

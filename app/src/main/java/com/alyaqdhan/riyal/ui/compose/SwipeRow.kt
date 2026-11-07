@@ -14,18 +14,19 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RichTooltip
@@ -49,10 +50,10 @@ import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -60,6 +61,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.alyaqdhan.riyal.R
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -163,6 +165,10 @@ fun SwipeRow(
     Box(
         modifier
             .fillMaxWidth()
+            // A row slid open stays open, and slid, it reaches past its own edge: on a page
+            // beside another (Records and Archived) that end showed on the next page. What
+            // slides past the row is cut there.
+            .clipToBounds()
             .onSizeChanged { size ->
                 val min = with(density) { MinReveal.toPx() }
                 val max = with(density) { MaxReveal.toPx() }
@@ -299,22 +305,31 @@ fun SwipeableTxnRow(
 }
 
 /**
- * The action itself. It fills the strip the swipe opened, so the whole revealed area is
- * the target and the gesture does not have to be finished accurately.
+ * The action itself, its icon beside its word. It fills the strip the swipe opened, so the
+ * whole revealed area is the target and the gesture does not have to be finished
+ * accurately. A long word (Arabic's Unarchive) shrinks a little rather than wrap.
  */
 @Composable
 private fun RevealedAction(action: SwipeAction, width: Dp, onClick: () -> Unit) {
     val tint = if (action.danger) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer
-    Column(
+    val style = MaterialTheme.typography.labelLarge
+    Row(
         Modifier
             .width(width)
             .fillMaxHeight()
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(painterResource(action.icon), contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
-        Text(action.label, style = MaterialTheme.typography.labelLarge, color = tint)
+        MatchedIcon(action.icon, style, Modifier.size(20.dp), tint = tint)
+        Text(
+            action.label,
+            style = style,
+            color = tint,
+            maxLines = 1,
+            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = style.fontSize),
+        )
     }
 }
 

@@ -67,11 +67,36 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val store get() = riyal.store
 
     val txns = store.txns
+
+    /** The records that count, archived ones left out. Every figure reads these. */
+    val countedTxns = store.countedTxns
     val reviews = store.reviews
     val rules = store.rules
 
     /** Counterparties the user asked to be asked about every time, never rule-able. */
     val askEachTime = store.askEachTime
+
+    /** Places the user merged into one. */
+    val placeGroups = store.placeGroups
+
+    fun mergePlaces(keys: Set<String>, name: String) = viewModelScope.launch(Dispatchers.IO) {
+        store.mergePlaces(keys, name)
+        Verbose.info(R.string.log_places_merged, name.trim())
+        Verbose.flush()
+    }
+
+    fun renamePlace(id: String, name: String) = viewModelScope.launch(Dispatchers.IO) {
+        store.renamePlace(id, name)
+        Verbose.info(R.string.log_place_renamed, name.trim())
+        Verbose.flush()
+    }
+
+    fun separatePlace(id: String, member: String, memberName: String, placeName: String) =
+        viewModelScope.launch(Dispatchers.IO) {
+            store.separatePlace(id, member)
+            Verbose.info(R.string.log_place_separated, memberName, placeName)
+            Verbose.flush()
+        }
     val senders = store.senders
     val lastSummary = store.lastSummary
     val accounts = store.accounts
@@ -263,7 +288,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ─────────────────────────── accounts ───────────────────────────
 
-    fun balanceOf(account: Account): Long = AccountDiscovery.balanceOf(account, txns.value)
+    fun balanceOf(account: Account): Long = AccountDiscovery.balanceOf(account, countedTxns.value)
 
     fun saveAccount(account: Account) = viewModelScope.launch(Dispatchers.IO) {
         val existing = accounts.value.any { it.id == account.id }

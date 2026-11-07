@@ -180,6 +180,9 @@
     <string name="lists_senders_intro">Everyone who has texted you. Riyal reads your banks and leaves the rest out; tap a sender to change that.</string>
     <string name="lists_senders_empty">Senders show here after the first read of your inbox.</string>
     <string name="lists_search">Search senders</string>
+    <string name="lists_search_keywords">Search keywords</string>
+    <string name="lists_search_ignored">Search ignored</string>
+    <string name="lists_no_match">Nothing matches \"%1$s\"</string>
     <string name="lists_status_bank">Read · your bank</string>
     <string name="lists_status_added">Read · you added it</string>
     <string name="lists_status_left_out">Not read · not a bank</string>
@@ -300,14 +303,17 @@
     <string name="home_other_currencies">+%1$s in other currencies</string>
 
     <string name="txn_filters">Filters</string>
-    <string name="txn_back_to_yours">Back to your transactions</string>
+    <string name="txn_search">Search records</string>
+    <string name="txn_no_match">No record matches \"%1$s\"</string>
     <string name="txn_archived_count">Archived (%d)</string>
+    <string name="txn_tab_records">Records</string>
+    <string name="txn_tab_archived">Archived</string>
     <string name="txn_empty_title">No transactions here</string>
     <string name="txn_empty_archived">Nothing archived. Swipe a row right to put it here.</string>
     <string name="tour_remove_title">Swipe left to remove</string>
     <string name="tour_remove_text">Slide a record left and the button that removes it appears behind it. Nothing goes until you tap that button.</string>
     <string name="tour_archive_title">Swipe right to archive</string>
-    <string name="tour_archive_text">Slide it right and tap Archive to clear it from your list. It still counts towards your balance.</string>
+    <string name="tour_archive_text">Slide it right and tap Archive to clear it from your list. It stops counting towards your totals and balances.</string>
     <string name="txn_empty_filtered">Nothing matches these filters.</string>
     <string name="txn_empty_none">Pull down to scan, or add one manually with +.</string>
 
@@ -412,8 +418,8 @@
     <string name="review_yes_transfer">Yes, it\'s a transfer</string>
     <string name="review_remember_similar">Remember for similar messages</string>
     <string name="review_add_manually">Add manually</string>
-    <string name="action_show">Show</string>
-    <string name="action_hide">Hide</string>
+    <string name="state_expanded">Expanded</string>
+    <string name="state_collapsed">Collapsed</string>
 
     <string name="needs_title">Needs a category</string>
     <string name="needs_left_title">Left for next time</string>
@@ -447,7 +453,6 @@
     <string name="needs_file_as">File as</string>
     <string name="needs_choose_records">Choose records</string>
     <string name="needs_chosen_of">%1$d of %2$d ticked</string>
-    <string name="needs_show_all">Show all %d</string>
 
     <string name="acct_generic_name">Account</string>
     <string name="bank_muscat">Bank Muscat</string>
@@ -532,10 +537,9 @@
     <string name="cat_income">Other Income</string>
 
     <string name="cats_title">Categories</string>
+    <string name="cats_empty_header">Empty categories (%d)</string>
     <string name="cats_spending">Spending</string>
     <string name="cats_income">Income</string>
-    <string name="cats_hide_empty">Hide empty categories</string>
-    <string name="cats_show_all">Show all categories (%d empty)</string>
     <string name="cats_transfers_note">%1$s moved between your own accounts in this period. Transfers have no category: they\'re neither spending nor income.</string>
     <string name="cats_add">Add a category</string>
     <string name="cats_learned_title">What Riyal has learned</string>
@@ -623,13 +627,15 @@
     </plurals>
     <string name="budget_spent_pct">%d%% spent</string>
     <string name="budget_outside">%1$s spent outside these caps</string>
+    <plurals name="budget_more_lines">
+        <item quantity="one">%d more category</item>
+        <item quantity="other">%d more categories</item>
+    </plurals>
     <string name="budget_editor_title">Budget for %1$s</string>
     <string name="budget_editor_hint">Tap the categories to cap, then say what each may spend.</string>
     <string name="budget_spent_before">Spent %1$s in %2$s</string>
     <string name="budget_total">Total</string>
     <string name="budget_plan_runs">Plan runs %1$s</string>
-    <string name="budget_show_less">Show less</string>
-    <string name="budget_show_all">Show all %d</string>
     <string name="budget_delete_title">Delete this plan?</string>
     <string name="budget_delete_body">\"%1$s\" and its caps will be removed. Your transactions are untouched.</string>
     <string name="budget_bar_amounts">%1$s / %2$s</string>
@@ -637,6 +643,28 @@
     <string name="an_title">Analysis</string>
     <string name="an_empty_title">Nothing to analyze yet</string>
     <string name="an_empty_subtitle">Once you scan your messages, the charts light up here.</string>
+    <string name="an_tab_overview">Overview</string>
+    <string name="an_tab_places">Places</string>
+    <string name="places_search">Search places</string>
+    <string name="places_empty_title">No spending in %s</string>
+    <string name="places_no_match">No place matches \"%1$s\"</string>
+    <plurals name="places_unnamed">
+        <item quantity="one">%d record names no place</item>
+        <item quantity="other">%d records name no place</item>
+    </plurals>
+    <string name="places_select">Select</string>
+    <string name="places_select_all">Select all</string>
+    <string name="places_merge">Merge</string>
+    <string name="places_merge_title">Merge into one place</string>
+    <string name="places_merge_body">They show as one place under this name. Each record keeps the name the bank gave it, and the place\'s page can separate them again.</string>
+    <string name="place_rename">Rename</string>
+    <string name="place_rename_title">Rename this place</string>
+    <string name="place_merged_from">Merged from</string>
+    <string name="place_separate">Separate</string>
+    <plurals name="places_selected">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
     <string name="an_all_accounts">All accounts</string>
     <string name="an_moved_label">Between your accounts</string>
     <string name="an_donut_spent">spent</string>
@@ -727,7 +755,7 @@
     <string name="backup_part_categories">Categories</string>
     <string name="backup_part_categories_detail">The categories you made</string>
     <string name="backup_part_rules">Learned categories</string>
-    <string name="backup_part_rules_detail">Names filed under a category without asking, and names always asked about</string>
+    <string name="backup_part_rules_detail">Names filed under a category without asking, names always asked about, and places merged into one</string>
     <string name="backup_part_lists">Lists</string>
     <string name="backup_part_lists_detail">Kinds of message taught or dismissed, and senders ignored or added</string>
     <string name="backup_part_budgets">Budgets</string>
@@ -831,8 +859,11 @@
     <string name="log_no_rule_ask">no rule saved for \"%1$s\": you asked to be asked about this name every time, so the next message from it comes back to you</string>
     <string name="log_rule_saved_filed">rule saved: \"%1$s\" → %2$s · %3$s filed now, %4$d more re-categorized, and anything matching from now on lands there without being asked</string>
     <string name="log_left_under_other">%1$s left under Other for now · they were not answered, and the next scan asks about them again</string>
-    <string name="log_archived">archived by you: %1$s is out of the lists but still counts towards your balance</string>
+    <string name="log_archived">archived by you: %1$s is out of the lists and no longer counts towards anything</string>
     <string name="log_unarchived">unarchived by you: %1$s is back in the lists</string>
+    <string name="log_places_merged">places merged by you into \"%1$s\"</string>
+    <string name="log_place_renamed">merged place renamed by you to \"%1$s\"</string>
+    <string name="log_place_separated">%1$s separated by you from \"%2$s\"</string>
     <string name="log_removed">transaction removed by you: %1$s (%2$s)</string>
     <string name="log_removed_ignored"> · this message will stay ignored on future scans</string>
     <string name="log_no_rule_ask_short">no rule saved for \"%1$s\": you asked to be asked about this name every time</string>

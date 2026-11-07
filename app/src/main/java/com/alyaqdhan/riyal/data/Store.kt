@@ -70,6 +70,10 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private val _askEachTime = MutableStateFlow<Set<String>>(emptySet())
     val askEachTime: StateFlow<Set<String>> = _askEachTime
 
+    /** Places the user merged into one, each under the name they gave it. */
+    private val _placeGroups = MutableStateFlow<List<PlaceGroup>>(emptyList())
+    val placeGroups: StateFlow<List<PlaceGroup>> = _placeGroups
+
     private val _senders = MutableStateFlow<Set<String>>(emptySet())
     val senders: StateFlow<Set<String>> = _senders
 
@@ -109,12 +113,6 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private val _templates = MutableStateFlow<List<TemplateStat>>(emptyList())
     val templates: StateFlow<List<TemplateStat>> = _templates
 
-    /** Live balance per account id, the one place every screen reads a balance from. */
-    val balances: StateFlow<Map<String, Long>> =
-        combine(_accounts, _txns) { accounts, txns ->
-            accounts.associate { it.id to AccountDiscovery.balanceOf(it, txns) }
-        }.stateIn(scope, SharingStarted.Eagerly, emptyMap())
-
     /** txnId → categoryId chosen by the user; reapplied after every rescan. */
     private val overrides = HashMap<String, String>()
 
@@ -139,14 +137,29 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private val ignored = HashSet<String>()
 
     /**
-     * Txn ids the user archived: still real, still counted in the account balance, but
-     * out of the way in the lists. Unlike [ignored] the record is kept, so archiving is
-     * the safe half of a swipe and deleting is the deliberate one.
+     * Txn ids the user archived: out of the lists and counted in nothing, not a total, a
+     * budget or a balance ([countedTxns]). Unlike [ignored] the record is kept, so
+     * archiving is the safe half of a swipe and deleting is the deliberate one.
      */
     private val archived = HashSet<String>()
 
     private val _archivedIds = MutableStateFlow<Set<String>>(emptySet())
     val archivedIds: StateFlow<Set<String>> = _archivedIds
+
+    /**
+     * The records that count: all of them but the archived. Every figure on every screen
+     * reads this; [txns] is for what has to see an archived record, which is the archive's
+     * own list, a scan, the export and a backup.
+     */
+    val countedTxns: StateFlow<List<Txn>> =
+        combine(_txns, _archivedIds) { txns, archived -> Stats.counted(txns, archived) }
+            .stateIn(scope, SharingStarted.Eagerly, emptyList())
+
+    /** Live balance per account id, the one place every screen reads a balance from. */
+    val balances: StateFlow<Map<String, Long>> =
+        combine(_accounts, countedTxns) { accounts, txns ->
+            accounts.associate { it.id to AccountDiscovery.balanceOf(it, txns) }
+        }.stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
     /**
      * Txn ids the user left under Other for now rather than answering. Not an answer -
@@ -750,6 +763,42 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
      * this gets used is the moment a rule turns out to have been a mistake. Returns how
      * many records the deleted rule had claimed.
      */
+    /**
+     * Makes the places with [keys] one, under [name]. A key is a place's own or a merged
+     * place's id, whose names come along; a merged place keeps its id when it takes more
+     * in, so a page open on it still finds it. No name is ever in two merged places.
+     */
+    suspend fun mergePlaces(keys: Set<String>, name: String) = mutex.withLock {
+        val groups = _placeGroups.value
+        val joining = groups.filter { it.id in keys }
+        val members = keys.filterNot { it.startsWith(PlaceGroup.ID_PREFIX) }.toSet() +
+            joining.flatMap { it.members }
+        if (members.size < 2 || name.isBlank()) return@withLock
+        val merged = PlaceGroup(
+            id = joining.firstOrNull()?.id ?: (PlaceGroup.ID_PREFIX + UUID.randomUUID()),
+            name = name.trim(),
+            members = members,
+        )
+        _placeGroups.value = groups.filter { it !in joining }
+            .map { it.copy(members = it.members - members) }
+            .filter { it.members.size >= 2 } + merged
+        persistLocked()
+    }
+
+    suspend fun renamePlace(id: String, name: String) = mutex.withLock {
+        if (name.isBlank()) return@withLock
+        _placeGroups.value = _placeGroups.value.map { if (it.id == id) it.copy(name = name.trim()) else it }
+        persistLocked()
+    }
+
+    /** Takes [member] back out of a merged place; one left on its own is no merge at all. */
+    suspend fun separatePlace(id: String, member: String) = mutex.withLock {
+        _placeGroups.value = _placeGroups.value
+            .map { if (it.id == id) it.copy(members = it.members - member) else it }
+            .filter { it.members.size >= 2 }
+        persistLocked()
+    }
+
     suspend fun setAskEachTime(pattern: String, on: Boolean): Int = mutex.withLock {
         val key = UserRule.patternOf(pattern)
         if (key.isBlank()) return@withLock 0
@@ -910,6 +959,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         _reviews.value = emptyList()
         _rules.value = emptyList()
         _askEachTime.value = emptySet()
+        _placeGroups.value = emptyList()
         _senders.value = emptySet()
         _muted.value = emptyList()
         _needed.value = emptySet()
@@ -1010,6 +1060,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             _reviews.value = root.optJSONArray("reviews").toListOf(::reviewFromJson).sortedByDescending { it.atMillis }
             _rules.value = root.optJSONArray("rules").toListOf(::ruleFromJson)
             _askEachTime.value = root.optJSONArray("askEachTime").toStringSet()
+            _placeGroups.value = root.optJSONArray("placeGroups").toListOf(::placeGroupFromJson)
             _senders.value = root.optJSONArray("senders").toStringSet()
             // Keyed afresh from the message each time: a kind dismissed under an older
             // fingerprint (names and all) still matches its messages under this one.
@@ -1124,6 +1175,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             root.put("reviews", JSONArray().apply { _reviews.value.forEach { put(reviewToJson(it)) } })
             root.put("rules", JSONArray().apply { _rules.value.forEach { put(ruleToJson(it)) } })
             root.put("askEachTime", JSONArray().apply { _askEachTime.value.forEach { put(it) } })
+            root.put("placeGroups", JSONArray().apply { _placeGroups.value.forEach { put(placeGroupToJson(it)) } })
             root.put("senders", JSONArray().apply { _senders.value.forEach { put(it) } })
             root.put("muted", JSONArray().apply { _muted.value.forEach { put(mutedToJson(it)) } })
             root.put("needed", JSONArray().apply { _needed.value.forEach { put(it) } })
@@ -1353,6 +1405,16 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     }
 
     private fun ruleFromJson(o: JSONObject) = UserRule(o.getString("p"), o.getString("c"))
+
+    private fun placeGroupToJson(g: PlaceGroup) = JSONObject().apply {
+        put("id", g.id); put("n", g.name); put("m", JSONArray().apply { g.members.forEach { put(it) } })
+    }
+
+    private fun placeGroupFromJson(o: JSONObject) = PlaceGroup(
+        id = o.getString("id"),
+        name = o.getString("n"),
+        members = o.optJSONArray("m").toStringSet(),
+    )
 
     private fun categoryToJson(c: Category) = JSONObject().apply {
         put("id", c.id); put("name", c.name); put("income", c.income); put("color", c.color)

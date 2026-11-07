@@ -98,7 +98,7 @@ fun HomeScreen(
     onOpenTransactions: () -> Unit,
     onOpenAnalysis: () -> Unit,
 ) {
-    val txns by vm.txns.collectAsState()
+    val txns by vm.countedTxns.collectAsState()
     val hasPerm by vm.hasSmsPermission.collectAsState()
     val reviews by vm.reviews.collectAsState()
     val accounts by vm.accounts.collectAsState()
@@ -110,7 +110,6 @@ fun HomeScreen(
     val setupDone by vm.setupDone.collectAsState()
     val pendingTransfers by vm.pendingTransfers.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
-    val archivedIds by vm.archivedIds.collectAsState()
     val slice by vm.homeSlice.collectAsState()
 
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
@@ -122,8 +121,8 @@ fun HomeScreen(
     }
     val pending = remember(reviews) { reviews.filter { it.state == ReviewItem.STATE_PENDING } }
     // The newest records of the period chosen above, so the dates switch the list too.
-    val recent = remember(txns, archivedIds, slice) {
-        txns.asSequence().filter { it.id !in archivedIds && slice.contains(it.atMillis) }.take(8).toList()
+    val recent = remember(txns, slice) {
+        txns.asSequence().filter { slice.contains(it.atMillis) }.take(8).toList()
             .groupBy { localDateOf(it.atMillis) }
     }
     var picker by remember { mutableStateOf<Txn?>(null) }

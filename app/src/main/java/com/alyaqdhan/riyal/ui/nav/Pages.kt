@@ -20,6 +20,7 @@ import com.alyaqdhan.riyal.core.Verbose
 import com.alyaqdhan.riyal.riyalViewModel
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.Words
+import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.screens.CategoriesScreen
 import com.alyaqdhan.riyal.ui.screens.CategoryDetailScreen
@@ -27,6 +28,7 @@ import com.alyaqdhan.riyal.ui.screens.ListsScreen
 import com.alyaqdhan.riyal.ui.screens.ChangelogScreen
 import com.alyaqdhan.riyal.ui.screens.NeedsCategoryScreen
 import com.alyaqdhan.riyal.ui.screens.OnboardingScreen
+import com.alyaqdhan.riyal.ui.screens.PlaceDetailScreen
 import com.alyaqdhan.riyal.ui.screens.ReviewScreen
 import com.alyaqdhan.riyal.ui.screens.SetupScreen
 import com.alyaqdhan.riyal.ui.screens.UpdatesScreen
@@ -191,6 +193,24 @@ class CategoryDetailActivity : PageActivity() {
     }
 }
 
+/** One place's records. Its key, name, period and account travel in the intent. */
+class PlaceDetailActivity : PageActivity() {
+    override val layout get() = R.layout.activity_place_detail
+
+    @Composable
+    override fun Page() {
+        PlaceDetailScreen(
+            vm,
+            placeKey = intent.getStringExtra(ARG_PLACE_KEY).orEmpty(),
+            placeName = intent.getStringExtra(ARG_PLACE_NAME).orEmpty(),
+            categoryId = intent.getStringExtra(ARG_CATEGORY_ID).orEmpty(),
+            initialSlice = intent.extras.sliceArg(),
+            initialAccountId = intent.getStringExtra(ARG_ACCOUNT_ID),
+            onBack = { finish() },
+        )
+    }
+}
+
 /** The first screen of a first run: what Riyal reads, and how far back. */
 class OnboardingActivity : PageActivity() {
     override val layout get() = R.layout.activity_onboarding
@@ -252,6 +272,8 @@ class OnboardingActivity : PageActivity() {
 }
 
 const val ARG_CATEGORY_ID = "categoryId"
+const val ARG_PLACE_KEY = "placeKey"
+const val ARG_PLACE_NAME = "placeName"
 const val ARG_SLICE_START = "sliceStart"
 const val ARG_SLICE_END = "sliceEnd"
 const val ARG_SLICE_LABEL = "sliceLabel"
@@ -268,18 +290,32 @@ fun openCategory(context: Context, categoryId: String, slice: TimeSlice, account
     context.startActivity(
         Intent(context, CategoryDetailActivity::class.java)
             .putExtra(ARG_CATEGORY_ID, categoryId)
-            .putExtra(ARG_ACCOUNT_ID, accountId)
-            .putExtra(ARG_SLICE_START, slice.start)
-            .putExtra(ARG_SLICE_END, slice.endExclusive)
-            .putExtra(
-                ARG_SLICE_LABEL,
-                slice.labelRes?.let { context.getString(it, *slice.labelArgs.toTypedArray()) } ?: slice.label,
-            )
-            // Kept so the chevrons keep stepping whole calendar months rather than
-            // drifting by the month's own length in days.
-            .putExtra(ARG_SLICE_MONTH, slice.month?.toString()),
+            .scopedTo(context, slice, accountId),
     )
 }
+
+/** Opens a place with the period and account its row was read under, as [openCategory]. */
+fun openPlace(context: Context, place: Stats.Place, slice: TimeSlice, accountId: String? = null) {
+    context.startActivity(
+        Intent(context, PlaceDetailActivity::class.java)
+            .putExtra(ARG_PLACE_KEY, place.key)
+            .putExtra(ARG_PLACE_NAME, place.name)
+            .putExtra(ARG_CATEGORY_ID, place.categoryId)
+            .scopedTo(context, slice, accountId),
+    )
+}
+
+private fun Intent.scopedTo(context: Context, slice: TimeSlice, accountId: String?): Intent =
+    putExtra(ARG_ACCOUNT_ID, accountId)
+        .putExtra(ARG_SLICE_START, slice.start)
+        .putExtra(ARG_SLICE_END, slice.endExclusive)
+        .putExtra(
+            ARG_SLICE_LABEL,
+            slice.labelRes?.let { context.getString(it, *slice.labelArgs.toTypedArray()) } ?: slice.label,
+        )
+        // Kept so the chevrons keep stepping whole calendar months rather than
+        // drifting by the month's own length in days.
+        .putExtra(ARG_SLICE_MONTH, slice.month?.toString())
 
 private fun Bundle?.sliceArg(): TimeSlice? {
     val args = this ?: return null

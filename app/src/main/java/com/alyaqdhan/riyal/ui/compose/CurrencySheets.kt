@@ -2,6 +2,8 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -24,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -77,33 +78,32 @@ fun CurrencyPickerSheet(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    var query by rememberSaveable { mutableStateOf("") }
+    // The search is in the title row: an icon until wanted, growing into the field.
+    val search = rememberTextFieldState()
+    var searching by rememberSaveable { mutableStateOf(false) }
+    val query = search.text.toString()
     val all = remember { Currencies.ALL }
-    val shown = remember(query) {
-        val q = query.trim()
-        if (q.isEmpty()) all
-        else all.filter { it.code.contains(q, ignoreCase = true) || context.getString(it.name).contains(q, ignoreCase = true) }
-    }
+    val shown = remember(query) { all.filter { it.matches(query, context) } }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden),
     ) {
         Column(Modifier.fillMaxHeight(0.9f)) {
-            Text(
-                stringResource(R.string.cur_pick_title),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                placeholder = { Text(stringResource(R.string.cur_search)) },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            )
+            Box(Modifier.padding(start = 24.dp, end = 12.dp, bottom = 8.dp)) {
+                SearchTitle(
+                    title = stringResource(R.string.cur_pick_title),
+                    searchable = true,
+                    open = searching,
+                    field = search,
+                    placeholder = stringResource(R.string.cur_search),
+                    onOpen = { searching = true },
+                    onClose = {
+                        searching = false
+                        search.clearText()
+                    },
+                    titleStyle = MaterialTheme.typography.titleLarge,
+                )
+            }
             if (shown.isEmpty()) {
                 Text(
                     stringResource(R.string.cur_none_match),
@@ -237,25 +237,50 @@ fun ExchangeRatesSheet(
     onSetRate: (code: String, omrPerUnit: BigDecimal?) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
     var editing by remember { mutableStateOf<CurrencyInfo?>(null) }
+    // The same list as the picker's, so it is searched the same way, from its title.
+    val search = rememberTextFieldState()
+    var searching by rememberSaveable { mutableStateOf(false) }
+    val query = search.text.toString()
     // Read again whenever an override changes, so a saved rate shows at once.
-    val rows = remember(overrides, base) { Currencies.ALL.filter { it.code != base } }
+    val rows = remember(overrides, base, query) {
+        Currencies.ALL.filter { it.code != base && it.matches(query, context) }
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden),
     ) {
         Column(Modifier.fillMaxHeight(0.9f)) {
-            Text(
-                stringResource(R.string.cur_rates_title),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
+            Box(Modifier.padding(start = 24.dp, end = 12.dp)) {
+                SearchTitle(
+                    title = stringResource(R.string.cur_rates_title),
+                    searchable = true,
+                    open = searching,
+                    field = search,
+                    placeholder = stringResource(R.string.cur_search),
+                    onOpen = { searching = true },
+                    onClose = {
+                        searching = false
+                        search.clearText()
+                    },
+                    titleStyle = MaterialTheme.typography.titleLarge,
+                )
+            }
             Text(
                 stringResource(R.string.cur_rates_intro),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
             )
+            if (rows.isEmpty()) {
+                Text(
+                    stringResource(R.string.cur_none_match),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(24.dp),
+                )
+            }
             val list = rememberLazyListState()
             ScrollThumb(list) {
             LazyColumn(state = list) {
@@ -364,4 +389,10 @@ private fun RateDialog(
             TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) { Text(stringResource(R.string.action_cancel)) }
         },
     )
+}
+
+/** Whether a search for [query] finds this currency, by its code or its name. */
+private fun CurrencyInfo.matches(query: String, context: android.content.Context): Boolean {
+    val q = query.trim()
+    return q.isEmpty() || code.contains(q, ignoreCase = true) || context.getString(name).contains(q, ignoreCase = true)
 }

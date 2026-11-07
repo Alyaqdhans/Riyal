@@ -51,8 +51,8 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   (`MainActivity.openTab`), so the highlight and the slide start on the same frame.
 - **No decorative motion.** No pop-in or bounce on content, and `MotionScheme.standard()`.
   Charts use `animationSpec = null, animateIn = false`. The owner's exceptions: the tab
-  slide, Lists' tabs (a `HorizontalPager`: a tab slides to its list, a finger drags
-  between them), the swipe tours (the first time Transactions or Lists is seen, one row
+  slide, the tabs of Lists, Analysis and Transactions (a `HorizontalPager`: a tab slides to its page, a
+  finger drags between them), the swipe tours (the first time Transactions or Lists is seen, one row
   opens by itself under a tooltip saying what its swipe uncovers: `SwipeTour`, shown only
   while the tab is in view, `LocalTabInView`), and every dialog's pop-in with a quick close (`ui/compose/DialogPop.kt`: put
   `Modifier.popIn(pop)` on the dialog and send every way of closing it through
@@ -72,18 +72,40 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
 - **Out and in side by side, the rest under them.** A `ConnectedChoice` of kinds puts
   Expense and Income on one row and the third answer (Transfer, Not a transaction) on
   the row under them, with `perRow = 2`, in every language.
+- **What is folded opens under a details row.** Anything shown only now and then (a
+  merged place's names, what Review dismissed, the empty categories, the rest of a budget,
+  a backlog row's records) sits in a `Disclosure` (`ui/compose/Disclosure.kt`): a list
+  item with a count and a chevron that turns as the content slides down out from under
+  it and back up. In a lazy list it is one item. Never a Show/Hide or Show all/less
+  button beside a title.
+- **Search is a button that grows into the field.** Anything searchable has
+  `SearchTitle` (`ui/compose/Search.kt`) as its title, a top bar's or a sheet's: a search
+  icon at its end that, tapped, stretches from where it stands across the title into
+  Material's pill search field (the icon stays put, now the field's), keyboard up, with a
+  close button at its start; Back closes it, but only while its tab is in view. Never a
+  fade between the two, and never a text field always on the page. Searched now:
+  Transactions (`Stats.search`: what a row says, or its amount), Analysis's Places, every
+  Lists tab, the currency picker and the exchange rates.
+- **Notices follow the theme.** A screen's snackbars show through `NoticeHost`
+  (`ui/compose/Notice.kt`), never a bare `SnackbarHost`: Material draws them in the
+  inverse colours (light over a dark theme, dark over a light one), and the owner wants
+  them in the theme's own, so they take its highest surface. Material 3 has no newer
+  notice component.
 - **Choices of dates are tiles** (`ui/compose/Presets.kt`: `PresetSheet`/`PresetGrid`),
   never a plain list of words. Each tile says what it covers, and all tiles are one size.
-- **Exact versions.** `androidx.compose.material3:material3:1.5.0-alpha29` with
+- **Exact versions.** `androidx.compose.material3:material3:1.5.0-rc01` with
   `@OptIn(ExperimentalMaterial3Api / ExperimentalMaterial3ExpressiveApi)`. Use its
   current APIs: `ListItem(onClick | checked/onCheckedChange, …) { headline }`,
   `rememberBottomSheetState(initialValue = SheetValue.Hidden)`,
   `SelectableDropdownMenuItem` for a menu choice, and `ToggleButtonDefaults.shapesFor` /
-  `colors` instead of the deprecated forms. The owner raises the alpha when asked; it
-  sits on Compose 1.12 (foundation 1.13 alpha).
+  `colors` instead of the deprecated forms. The owner raises it when asked; rc01 sits
+  on stable Compose 1.12 (foundation and ui 1.12.0).
 - **Every string in both languages.** `res/values/strings.xml` and
   `res/values-ar/strings.xml` must keep the same names and placeholders, with Arabic
-  plurals given all six forms. Never hard-code user-visible text.
+  plurals given all six forms. Never hard-code user-visible text. A label in a tight
+  space (a swipe's action, a small tile) keeps its Arabic about as long as its English
+  (إلغاء الأرشفة, لا مقارنة); where there is room, the clearer phrase stays, as a word cut
+  to fit can lose its meaning.
 - **Money shows signs, not codes.** Show amounts with `MoneyText` (one amount) or
   `MoneyAwareText` (a sentence containing `Money.format` output). These draw the
   currency's own sign; the new Omani rial sign comes from firePOS's path data.
@@ -126,16 +148,16 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `data/SmsParser.kt` | Pure extraction: amount, currency, balance, account tail, merchant. `parse` uses word cues; `parseAs` reads a message as a known direction. **Bump `VERSION` when parsing output changes** |
 | `data/Learning.kt` | `Skeleton` (message → template key), `BalanceChain` (direction proven by balance deltas), `TemplateInference`, `Tutor` (setup questions + stopping rule) |
 | `data/ScanEngine.kt` | One pass: read → decide (taught label > balance proof > proven template > words) → accounts → records (with FX conversion) → transfers → store |
-| `data/Store.kt` | One JSON file, written atomically. Records, accounts, rules, labels, template stats. **Bumping `SCHEMA_VERSION` wipes user data** |
+| `data/Store.kt` | One JSON file, written atomically. Records, accounts, rules, labels, template stats, merged places (`PlaceGroup`, keyed by `UserRule.patternOf` so rescans keep them). **Bumping `SCHEMA_VERSION` wipes user data** |
 | `data/SenderLists.kt` | Whether each sender is read, as the scan's sender gate decides (Settings › Lists) |
 | `data/AccountDiscovery.kt` | Banks list, accounts proposed from messages, routing a message to an account |
 | `data/TransferMatcher.kt` | Pairs an expense and an income across your own accounts |
 | `data/Updates.kt` | **All network code**: GitHub releases list + APK download. `ApkInstaller.kt` hands the file to Android via FileProvider |
 | `ui/MainViewModel.kt` | One VM for every screen, owned by `RiyalApp` (`Context.riyalViewModel`): scanning, setup flow, updates, edits |
 | `ui/nav/Fragments.kt` | The five tabs (`Tab` in `MainActivity.kt`): fragments, each with its `fragment_*.xml` layout; hidden ones stay laid out but `INVISIBLE` |
-| `ui/nav/Pages.kt` | `PageActivity` and every page opened from a tab (onboarding, setup, review, categories, lists, updates, changelog), each with its `activity_*.xml` layout |
+| `ui/nav/Pages.kt` | `PageActivity` and every page opened from a tab (onboarding, setup, review, categories, a category, a place, lists, updates, changelog), each with its `activity_*.xml` layout |
 | `MainActivity.kt` | The tabs, the floating toolbar (`HorizontalFloatingToolbar` + Add FAB), global dialogs (update prompt, manual add); sends a first run to `OnboardingActivity` |
-| `ui/screens/*` | Home, Transactions, Analysis, Accounts, Settings (tabs); Setup, Review, Updates, Changelog, Categories… (pages) |
+| `ui/screens/*` | Home, Transactions, Analysis (with its Places tab, `PlacesScreen.kt`: spending by shop, searched by name, each opening its records), Accounts, Settings (tabs); Setup, Review, Updates, Changelog, Categories… (pages) |
 | `ui/compose/*` | Shared pieces: `MoneyText`, `CurrencySheets`, `Indicators` (`CategoryWheel`, `ScanBar`), `Presets` (date tiles), `MenuChoice`/`ChoiceMenu` (Expressive menus with icons), `ConnectedChoice` (connected button groups), `SignGlyph` (currency signs, and icons through `MatchedIcon`, at the text's measured stroke weight), `ScrollThumb` (the thumb every scrolling list carries; it can be held and dragged, and its size follows how many items are on screen), `SwipeRow` (a swipe uncovers an action - a record's Archive/Remove, a list entry's Forget/Restore - and a tap on it confirms; `SwipeTour` shows it once; on `anchoredDraggable`), `UpdateUi`, `Sheets` (record sheet, manual entry, category chips), `BudgetSection` (Home's budget card under the net, and its editor) |
 
 ## How a message is read (1.8.0+)
@@ -205,8 +227,8 @@ everything.
   or `legible(...)` (ui/theme/Contrast.kt), never `Color(Categories.colorFor(id))`: the raw
   palette falls under 3:1 on light cards. `ContrastTest` holds every colour to it.
 - The app's type is Noto Sans with Noto Sans Arabic UI (`ui/theme/Type.kt`:
-  `RiyalTypography`, and `riyalTypeface` for Android views), Arabic a step heavier
-  (`ARABIC_HEAVIER`). The files in `res/font` are the upstream variable fonts (notofonts,
+  `RiyalTypography`, and `riyalTypeface` for Android views), drawn heavier than asked:
+  Arabic a step (`ARABIC_HEAVIER`), Latin half one (`LATIN_HEAVIER`). The files in `res/font` are the upstream variable fonts (notofonts,
   unhinted) with `wdth` pinned at 100, each cut with fonttools to its own script plus the
   space; a replacement must stay that way, or one script's file draws the other's digits.
   One `Typeface.CustomFallbackBuilder` holds both at weights 100-900, and each Compose
@@ -214,6 +236,12 @@ everything.
   loaded at the file's default weight and varied through the paint, fallback font and
   all. Text drawn outside the theme takes the family itself (Vico's axis labels,
   Markwon's TextView and headings).
+- An archived record counts towards nothing: no total, chart, budget, balance or count.
+  Anything that shows a figure reads `vm.countedTxns` (`Store.countedTxns`, through
+  `Stats.counted`), never `vm.txns`, which also holds the archived ones and is for the
+  archive's own list, a scan, the export and a backup. An account's balance is the bank's
+  opening figure plus the counted records after it, so a record older than that figure
+  stays inside the bank's own number.
 - A held scroll thumb jumps the list each frame, and each frame builds a screen of rows.
   Long lists give their items a `contentType` (a record from a record, a day from a day),
   so the rows just left are reused, and a row makes no layer, measurer or state it does

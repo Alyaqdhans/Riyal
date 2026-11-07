@@ -3,11 +3,6 @@
 package com.alyaqdhan.riyal.ui.compose
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -54,6 +50,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -232,7 +229,6 @@ private fun PlanSummary(
     onEdit: () -> Unit,
 ) {
     var showAll by remember { mutableStateOf(false) }
-    val motion = MaterialTheme.motionScheme
     val plan = progress.plan
     val now = System.currentTimeMillis()
     val ended = now >= plan.endExclusiveMillis
@@ -333,40 +329,25 @@ private fun PlanSummary(
         val rest = remember(progress, shown) { progress.lines - shown.toSet() }
         shown.forEach { BudgetLine(it, currency) }
         if (rest.isNotEmpty()) {
-            AnimatedVisibility(
-                visible = showAll,
-                enter = expandVertically(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
-                exit = shrinkVertically(motion.defaultSpatialSpec()) + fadeOut(motion.defaultEffectsSpec()),
+            Disclosure(
+                title = pluralStringResource(R.plurals.budget_more_lines, rest.size, rest.size),
+                expanded = showAll,
+                onToggle = { showAll = !showAll },
+                contentPadding = PaddingValues(0.dp),
+                spacing = 12.dp,
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    rest.forEach { BudgetLine(it, currency) }
-                }
+                rest.forEach { BudgetLine(it, currency) }
             }
         }
-        if (rest.isNotEmpty() || progress.unbudgetedMinor > 0) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (progress.unbudgetedMinor > 0) {
-                    MoneyAwareText(
-                        stringResource(
-                            R.string.budget_outside,
-                            bidi(Money.format(progress.unbudgetedMinor, currency)),
-                        ),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
-                    )
-                } else {
-                    Spacer(Modifier.weight(1f))
-                }
-                if (rest.isNotEmpty()) {
-                    TextButton(onClick = { showAll = !showAll }, shapes = ButtonDefaults.shapes()) {
-                        Text(
-                            if (showAll) stringResource(R.string.budget_show_less)
-                            else stringResource(R.string.budget_show_all, progress.lines.size),
-                        )
-                    }
-                }
-            }
+        if (progress.unbudgetedMinor > 0) {
+            MoneyAwareText(
+                stringResource(
+                    R.string.budget_outside,
+                    bidi(Money.format(progress.unbudgetedMinor, currency)),
+                ),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

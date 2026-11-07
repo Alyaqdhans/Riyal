@@ -1,6 +1,8 @@
 package com.alyaqdhan.riyal.data
 
 import com.alyaqdhan.riyal.core.Dates
+import com.alyaqdhan.riyal.core.Money
+import com.alyaqdhan.riyal.core.Numerals
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -15,8 +17,15 @@ import kotlin.math.abs
  * the withdrawal side is not an expense; counting either would inflate both halves of
  * every total at once. [flows] is the single gate that enforces it, and every figure
  * on every screen comes through it.
+ *
+ * The other rule sits one step earlier: what comes in here has already been through
+ * [counted], so an archived record reaches none of these sums.
  */
 object Stats {
+
+    /** Every record but the [archived] ones: what a figure is allowed to add up. */
+    fun counted(txns: List<Txn>, archived: Set<String>): List<Txn> =
+        if (archived.isEmpty()) txns else txns.filter { it.id !in archived }
 
     fun ym(millis: Long): YearMonth =
         YearMonth.from(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
@@ -353,6 +362,165 @@ object Stats {
             .entries
             .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key.length })
             .first().key
+
+    // ── where the money went ──
+
+    /**
+     * One place the money went in a period: every expense naming it. [key] is the way a
+     * rule is keyed, so the spellings a bank produces fold into the one shop they are.
+     */
+    data class Place(
+        val key: String,
+        val name: String,
+        val amountMinor: Long,
+        val count: Int,
+        /** The category most of the money here was filed under. */
+        val categoryId: String,
+        /** For a place the user merged, the names it was made of; empty for any other. */
+        val mergedFrom: List<String> = emptyList(),
+    ) {
+        val merged: Boolean get() = key.startsWith(PlaceGroup.ID_PREFIX)
+
+        /**
+         * Is [query] in the name, or in a name it was merged from, whatever its case? An
+         * empty query matches every place.
+         */
+        fun matches(query: String): Boolean {
+            val q = query.trim()
+            return name.contains(q, ignoreCase = true) || mergedFrom.any { it.contains(q, ignoreCase = true) }
+        }
+    }
+
+    /** Which place a record is at: the merged place its name was put in, or its own. */
+    private fun placeKeyOf(t: Txn, into: Map<String, PlaceGroup>): String? {
+        val own = t.merchant?.takeIf { it.isNotBlank() }?.let { UserRule.patternOf(it) } ?: return null
+        return into[own]?.id ?: own
+    }
+
+    private fun membersOf(groups: List<PlaceGroup>): Map<String, PlaceGroup> =
+        groups.flatMap { g -> g.members.map { it to g } }.toMap()
+
+    /**
+     * What each of [keys] is called in the records, the way its row would be; a key no
+     * record carries any more is shown as it is.
+     */
+    fun placeNames(txns: List<Txn>, keys: Set<String>): Map<String, String> {
+        val found = txns.filter { t -> t.merchant?.takeIf { it.isNotBlank() }?.let { UserRule.patternOf(it) } in keys }
+            .groupBy { UserRule.patternOf(it.merchant!!) }
+            .mapValues { (_, list) -> displayName(list) }
+        return keys.associateWith { found[it] ?: it }
+    }
+
+    /**
+     * A name for places about to be merged: what their names begin with, when that is a
+     * word or more ("Example Oil" for "Example Oil - North" and "Example Oil-South"), else
+     * the first of them. [names] come biggest first.
+     */
+    fun suggestedName(names: List<String>): String {
+        val first = names.firstOrNull()?.trim() ?: return ""
+        var shared = first.length
+        for (other in names.drop(1)) {
+            val o = other.trim()
+            var i = 0
+            while (i < shared && i < o.length && first[i].equals(o[i], ignoreCase = true)) i++
+            shared = i
+        }
+        val prefix = first.take(shared).trimEnd { !it.isLetterOrDigit() }
+        return if (prefix.length >= 3) prefix else first
+    }
+
+    /**
+     * A period's spending by place, biggest first. Records that name no place have no row
+     * to go on, so they are added up beside the list: the two together come to the
+     * period's whole spending.
+     */
+    data class Places(val places: List<Place>, val unnamedMinor: Long, val unnamedCount: Int)
+
+    fun placesIn(
+        txns: List<Txn>,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String? = null,
+        groups: List<PlaceGroup> = emptyList(),
+    ): Places {
+        val into = membersOf(groups)
+        val byId = groups.associateBy { it.id }
+        val (named, unnamed) = flows(txns, start, endExclusive, currency, accountId)
+            .filter { it.isExpense }
+            .partition { !it.merchant.isNullOrBlank() }
+        val places = named.groupBy { placeKeyOf(it, into)!! }
+            .map { (key, list) ->
+                val group = byId[key]
+                Place(
+                    key = key,
+                    name = group?.name ?: displayName(list),
+                    amountMinor = list.sumOf { it.amountMinor },
+                    count = list.size,
+                    categoryId = list.groupBy { it.categoryId }
+                        .maxBy { (_, filed) -> filed.sumOf { it.amountMinor } }.key,
+                    mergedFrom = if (group == null) emptyList() else {
+                        list.groupBy { UserRule.patternOf(it.merchant!!) }.values.map(::displayName).sorted()
+                    },
+                )
+            }
+            .sortedWith(compareByDescending<Place> { it.amountMinor }.thenBy { it.name })
+        return Places(places, unnamed.sumOf { it.amountMinor }, unnamed.size)
+    }
+
+    /** The expenses behind the [Place] with this [key], merged places included. */
+    fun recordsAt(
+        txns: List<Txn>,
+        key: String,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String? = null,
+        groups: List<PlaceGroup> = emptyList(),
+    ): List<Txn> {
+        val into = membersOf(groups)
+        return flows(txns, start, endExclusive, currency, accountId).filter { t ->
+            t.isExpense && placeKeyOf(t, into) == key
+        }
+    }
+
+    // ── searching the records ──
+
+    /**
+     * The records a search for [query] finds, by what their rows say: the place (or the
+     * name the places merged into it go by), the category, either account, the sender.
+     * Or by the amount: "12.5" finds OMR 12.500, and what a shop abroad charged counts
+     * too. Digits may be typed in either script. A blank search finds them all.
+     */
+    fun search(
+        txns: List<Txn>,
+        query: String,
+        accounts: List<Account> = emptyList(),
+        groups: List<PlaceGroup> = emptyList(),
+    ): List<Txn> {
+        val q = Numerals.latin(query).trim()
+        if (q.isEmpty()) return txns
+        val names = accounts.associate { it.id to it.displayName }
+        val into = membersOf(groups)
+        // A figure as it is written plainly ("1234.5"), so the grouping a row shows does
+        // not stand in its way.
+        val figure = q.replace(",", "").takeIf { s -> s.any(Char::isDigit) && s.all { it.isDigit() || it == '.' } }
+        fun has(text: String?) = text != null && text.contains(q, ignoreCase = true)
+        fun amounts(t: Txn) = listOfNotNull(
+            Money.toMajor(t.amountMinor, t.currency),
+            t.originalAmountMinor?.let { minor -> t.originalCurrency?.let { Money.toMajor(minor, it) } },
+        )
+        return txns.filter { t ->
+            val place = t.merchant?.takeIf { it.isNotBlank() }
+            has(place) ||
+                (place != null && has(into[UserRule.patternOf(place)]?.name)) ||
+                has(Categories.byId(t.categoryId).name) ||
+                has(t.fromAccountId?.let(names::get)) ||
+                has(t.toAccountId?.let(names::get)) ||
+                has(t.sender) ||
+                (figure != null && amounts(t).any { it.toPlainString().contains(figure) })
+        }
+    }
 
     // ── the shape of a period's spending ──
 
