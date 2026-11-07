@@ -35,6 +35,9 @@ is attached there.
   rather than above it.
 - In Arabic, a swipe's Unarchive reads إلغاء الأرشفة and Analysis's "no baseline" لا مقارنة,
   short enough for the narrow spaces they sit in.
+- Search stays out of the way. Places and Lists' senders show a search icon in the top
+  bar, and tapping it grows a rounded search bar out of it across the title; closing it
+  empties the search and folds it back. The search used to be a field always on the page.
 - Notices follow the theme: light in the light theme and dark in the dark one. Material
   draws them the other way round, so they glared over a dark screen.
 - Material 3 1.5.0-rc01, from alpha29. It sits on stable Compose 1.12, where alpha29 had

@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,7 +33,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -49,6 +47,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import com.alyaqdhan.riyal.ui.compose.SearchAction
+import com.alyaqdhan.riyal.ui.compose.SearchTitle
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -111,16 +116,40 @@ fun ListsScreen(vm: MainViewModel, onBack: () -> Unit) {
         steps = listOf(SwipeTour.Step(SwipeWay.LEFT, R.string.lists_tour_title, R.string.lists_tour_text)),
         onDone = { vm.prefs.listsTourSeen = true },
     )
+    // The senders' search lives in the bar: an icon until it is wanted.
+    val search = rememberTextFieldState()
+    var searching by rememberSaveable { mutableStateOf(false) }
+    fun closeSearch() {
+        searching = false
+        search.clearText()
+    }
+    BackHandler(enabled = searching) { closeSearch() }
+    LaunchedEffect(pager.targetPage) {
+        if (pager.targetPage != ListsTab.SENDERS.ordinal) closeSearch()
+    }
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.set_lists)) },
+                title = {
+                    SearchTitle(
+                        title = stringResource(R.string.set_lists),
+                        open = searching,
+                        field = search,
+                        placeholder = stringResource(R.string.lists_search),
+                        onClose = ::closeSearch,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.action_back),
                         )
+                    }
+                },
+                actions = {
+                    if (!searching && pager.targetPage == ListsTab.SENDERS.ordinal) {
+                        SearchAction(stringResource(R.string.lists_search)) { searching = true }
                     }
                 },
             )
@@ -146,7 +175,7 @@ fun ListsScreen(vm: MainViewModel, onBack: () -> Unit) {
                 val pageTour = tour.takeIf { pager.settledPage == page && !pager.isScrollInProgress }
                 when (ListsTab.entries[page]) {
                     ListsTab.KEYWORDS -> KeywordsList(vm, pageTour)
-                    ListsTab.SENDERS -> SendersList(vm)
+                    ListsTab.SENDERS -> SendersList(vm, search)
                     ListsTab.IGNORED -> IgnoredList(vm, pageTour, onFindSender = { show(ListsTab.SENDERS) })
                 }
             }
@@ -286,21 +315,18 @@ private enum class SenderChoice(@param:StringRes val label: Int, @param:Drawable
     IGNORE(R.string.lists_choice_ignore, R.drawable.ic_sym_block),
 }
 
-/** Search appears once the list is longer than a screen is likely to show. */
-private const val SEARCH_FROM = 8
-
 /**
  * Everyone who has texted, as the scans found them: read first, then left out, then
  * ignored. A tap opens what the sender can be - read, left out, ignored - with the one
  * it is now ticked; ignoring one that holds accounts asks first, because they go too.
  */
 @Composable
-private fun SendersList(vm: MainViewModel) {
+private fun SendersList(vm: MainViewModel, search: TextFieldState) {
     val senders by vm.senders.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val ignored by vm.ignoredSenders.collectAsState()
     val added by vm.addedSenders.collectAsState()
-    var query by rememberSaveable { mutableStateOf("") }
+    val query = search.text.toString()
     var confirming by remember { mutableStateOf<String?>(null) }
     val rows = remember(senders, accounts, ignored, added) { SenderLists.rows(senders, accounts, ignored, added) }
     val shown = remember(rows, query) {
@@ -315,18 +341,6 @@ private fun SendersList(vm: MainViewModel) {
                 stringResource(if (rows.isEmpty()) R.string.lists_senders_empty else R.string.lists_senders_intro),
                 Modifier.padding(horizontal = 16.dp),
             )
-        }
-        if (rows.size > SEARCH_FROM) {
-            item(key = "search") {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text(stringResource(R.string.lists_search)) },
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                )
-            }
         }
         items(shown, key = { "sender-" + it.sender.lowercase() }, contentType = { "sender" }) { row ->
             SenderRow(row) { choice ->

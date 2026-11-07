@@ -70,6 +70,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.alyaqdhan.riyal.ui.compose.SearchAction
+import com.alyaqdhan.riyal.ui.compose.SearchTitle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -209,8 +215,44 @@ fun AnalysisScreen(
         }
     }
 
+    // The tabs lie side by side, as Lists' do: a tab slides over to its page, and a finger
+    // can drag from one to the other. Held here, so the bar knows which one is showing.
+    val pager = rememberPagerState { AnalysisTab.entries.size }
+    val tabs = rememberCoroutineScope()
+    // Places' search lives in the bar: an icon until it is wanted.
+    val search = rememberTextFieldState()
+    var searching by rememberSaveable { mutableStateOf(false) }
+    fun closeSearch() {
+        searching = false
+        search.clearText()
+    }
+    BackHandler(enabled = searching) { closeSearch() }
+    // A search left open would hold the keyboard over the charts, and searches only Places.
+    val focus = LocalFocusManager.current
+    LaunchedEffect(pager.targetPage) {
+        focus.clearFocus()
+        if (pager.targetPage != AnalysisTab.PLACES.ordinal) closeSearch()
+    }
+
     Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.an_title)) }) },
+        topBar = {
+            TopAppBar(
+                title = {
+                    SearchTitle(
+                        title = stringResource(R.string.an_title),
+                        open = searching,
+                        field = search,
+                        placeholder = stringResource(R.string.places_search),
+                        onClose = ::closeSearch,
+                    )
+                },
+                actions = {
+                    if (!searching && txns.isNotEmpty() && pager.targetPage == AnalysisTab.PLACES.ordinal) {
+                        SearchAction(stringResource(R.string.places_search)) { searching = true }
+                    }
+                },
+            )
+        },
     ) { padding ->
         ScanRefresh(vm, Modifier.padding(padding)) {
         Column {
@@ -227,13 +269,6 @@ fun AnalysisScreen(
                 return@Column
             }
 
-            // The tabs lie side by side, as Lists' do: a tab slides over to its page, and a
-            // finger can drag from one to the other.
-            val pager = rememberPagerState { AnalysisTab.entries.size }
-            val tabs = rememberCoroutineScope()
-            // A search left open would hold the keyboard over the charts.
-            val focus = LocalFocusManager.current
-            LaunchedEffect(pager.targetPage) { focus.clearFocus() }
             PrimaryTabRow(selectedTabIndex = pager.targetPage) {
                 AnalysisTab.entries.forEach { t ->
                     Tab(
@@ -264,6 +299,7 @@ fun AnalysisScreen(
                     currency = currency,
                     accountId = accountId,
                     groups = placeGroups,
+                    search = search,
                     onOpen = { onOpenPlace(it, slice, accountId) },
                     onMerge = { keys, name -> vm.mergePlaces(keys, name) },
                 )

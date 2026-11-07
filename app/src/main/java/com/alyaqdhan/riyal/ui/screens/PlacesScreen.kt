@@ -21,13 +21,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -59,10 +57,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
@@ -99,7 +95,8 @@ import com.alyaqdhan.riyal.ui.compose.unmasked
  * search over the names. It lives here rather than beside the records because a total
  * for a shop only means something over a period and an account, and Analysis has both.
  *
- * The period and the search scroll with the list, so the rows get the screen. Records
+ * The search is the bar's ([search]), out of sight until it is wanted, and the period
+ * scrolls with the list, so the rows get the screen. Records
  * that name no place are added up under the list, so what it shows never quietly falls
  * short of the period's spending.
  *
@@ -116,10 +113,11 @@ internal fun PlacesTab(
     currency: String,
     accountId: String?,
     groups: List<PlaceGroup>,
+    search: TextFieldState,
     onOpen: (Stats.Place) -> Unit,
     onMerge: (keys: Set<String>, name: String) -> Unit,
 ) {
-    var query by rememberSaveable { mutableStateOf("") }
+    val query = search.text.toString()
     val spending = remember(txns, slice, currency, accountId, groups) {
         Stats.placesIn(txns, slice.start, slice.endExclusive, currency, accountId, groups)
     }
@@ -138,7 +136,6 @@ internal fun PlacesTab(
         chosen = if (key in chosen) chosen - key else chosen + key
     }
     val list = rememberLazyListState()
-    val focus = LocalFocusManager.current
     Box {
     // Edge to edge, the keyboard opens over the page: this keeps the last rows reachable.
     ScrollThumb(list, Modifier.imePadding(), bottom = toolbarSpace) {
@@ -149,25 +146,6 @@ internal fun PlacesTab(
         ) {
             item(key = "period") {
                 PeriodBar(slice = slice, onChange = onSlice, txns = txns, modifier = Modifier.padding(horizontal = 16.dp))
-            }
-            item(key = "search") {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text(stringResource(R.string.places_search)) },
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (query.isNotEmpty()) {
-                            IconButton(onClick = { query = "" }) {
-                                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_clear))
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                )
             }
             when {
                 shown.isNotEmpty() -> {
