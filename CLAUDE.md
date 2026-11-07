@@ -94,9 +94,10 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   on stable Compose 1.12 (foundation and ui 1.12.0).
 - **Every string in both languages.** `res/values/strings.xml` and
   `res/values-ar/strings.xml` must keep the same names and placeholders, with Arabic
-  plurals given all six forms. Never hard-code user-visible text. A short label (a
-  button, a chip, a tab, a swipe's action) keeps its Arabic about as long as its English:
-  the word an Arabic app uses (إلغاء الأرشفة, انسَ, إعادة, حول), not a phrase.
+  plurals given all six forms. Never hard-code user-visible text. A label in a tight
+  space (a swipe's action, a small tile) keeps its Arabic about as long as its English
+  (إلغاء الأرشفة, لا مقارنة); where there is room, the clearer phrase stays, as a word cut
+  to fit can lose its meaning.
 - **Money shows signs, not codes.** Show amounts with `MoneyText` (one amount) or
   `MoneyAwareText` (a sentence containing `Money.format` output). These draw the
   currency's own sign; the new Omani rial sign comes from firePOS's path data.

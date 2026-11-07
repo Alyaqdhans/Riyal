@@ -33,8 +33,8 @@ is attached there.
   it.
 - What a swipe uncovers - Archive, Remove, Forget, Restore - has its icon beside its word
   rather than above it.
-- Arabic's short labels are about as long as their English: Unarchive is إلغاء الأرشفة,
-  Forget انسَ, Retry إعادة, and the like, where whole phrases used to wrap or shrink.
+- In Arabic, a swipe's Unarchive reads إلغاء الأرشفة and Analysis's "no baseline" لا مقارنة,
+  short enough for the narrow spaces they sit in.
 - Notices follow the theme: light in the light theme and dark in the dark one. Material
   draws them the other way round, so they glared over a dark screen.
 - Material 3 1.5.0-rc01, from alpha29. It sits on stable Compose 1.12, where alpha29 had

@@ -81,7 +81,7 @@
     <string name="upd_allow_installs">اسمح لريال بتثبيت التحديثات في الشاشة التي فُتحت، ثم عُد ليكتمل التثبيت. سيطلب منك أندرويد تأكيده بنفسه.</string>
     <string name="upd_no_apk">لا يحتوي هذا الإصدار على ملف APK. يمكن تنزيله من صفحته على GitHub.</string>
     <string name="upd_install">تثبيت</string>
-    <string name="upd_retry">إعادة</string>
+    <string name="upd_retry">إعادة المحاولة</string>
     <string name="upd_update">تحديث</string>
     <string name="upd_open_github">فتح في GitHub</string>
     <string name="upd_skip">تخطَّ</string>
@@ -188,7 +188,7 @@
     <string name="lists_choice_read">اقرأه</string>
     <string name="lists_choice_leave_out">اتركه</string>
     <string name="lists_choice_ignore">تجاهله</string>
-    <string name="lists_ignored_senders">مرسلون متجاهَلون</string>
+    <string name="lists_ignored_senders">المرسلون المُتجاهَلون</string>
     <string name="lists_ignored_senders_intro">لا يُقرأ شيء مما يرسله هؤلاء، أيًّا كان.</string>
     <string name="lists_ignored_senders_empty">لا يوجد مرسل مُتجاهَل.</string>
     <string name="lists_find_sender">تجاهل مرسلًا</string>
@@ -197,7 +197,7 @@
     <string name="lists_dismissed_empty">لا شيء مستبعَد نهائيًا.</string>
     <string name="lists_kind_detail">%1$s · %2$s</string>
     <string name="lists_tour_title">اسحب العنصر يساراً</string>
-    <string name="lists_tour_text">يظهر خلفه زرّه: «انسَ» أو «استعادة». لا يتغير شيء حتى تضغط ذلك الزر.</string>
+    <string name="lists_tour_text">يظهر خلفه زرّه: «انسَ القاعدة» أو «استعادة». لا يتغير شيء حتى تضغط ذلك الزر.</string>
     <string name="cats_learned_in_lists">الكلمات والأسماء التي يُسأل عنها كل مرة في الإعدادات › القوائم</string>
     <string name="log_sender_left_out">%1$s · تُرك مجددًا: لا يُقرأ ولا يُتجاهَل</string>
     <string name="log_taught_forgotten">%1$s · نُسي كيف يُقرأ نوع من الرسائل</string>
@@ -574,7 +574,7 @@
     <string name="cat_rental">إيجار مُستلَم</string>
     <string name="cat_reimbursement">استرداد نفقات</string>
     <string name="cat_cashback">استرجاع نقدي ومكافآت</string>
-    <string name="cat_refund">مستردّات</string>
+    <string name="cat_refund">مبالغ مُعادة</string>
     <string name="cat_gift">هدايا ودعم</string>
     <string name="cat_borrowed">قرض مُستلَم</string>
     <string name="cat_income">دخل آخر</string>
@@ -588,9 +588,9 @@
     <string name="cats_learned_title">ما تعلَّمه ريال</string>
     <string name="cats_learned_empty">لا شيء بعد. تصنيف سجل مع إبقاء \"دائماً\" يحفظ الاسم هنا، فتُصنَّف كل رسالة لاحقة تذكره بالطريقة نفسها دون سؤال. ويمكنك أيضاً إضافة كلمة بنفسك أدناه.</string>
     <string name="cats_learned_intro">أسماء تُصنَّف دون سؤال، وأسماء يُسأل عنها في كل مرة. ونسيان قاعدة يعيد فتح السجلات التي صنَّفتها.</string>
-    <string name="cats_add_keyword">إضافة كلمة</string>
+    <string name="cats_add_keyword">إضافة كلمة مفتاحية</string>
     <string name="cats_filed_as">يُصنَّف تحت %s</string>
-    <string name="cats_forget">انسَ</string>
+    <string name="cats_forget">انسَ القاعدة</string>
     <string name="cats_asked_every_time">يُسأل عنها في كل مرة</string>
     <string name="cats_never_rule">لا تُحفظ له قاعدة أبداً</string>
     <string name="cats_delete_body">تنتقل السجلات المصنَّفة تحته إلى %1$s. ولا يُفقد شيء.</string>
@@ -616,7 +616,7 @@
     <string name="scan_noun_messages">رسالة</string>
     <string name="scan_noun_records">سجل</string>
     <string name="scan_progress">%1$d / %2$d %3$s</string>
-    <string name="scan_querying">جارٍ البحث في الوارد…</string>
+    <string name="scan_querying">جاري الاستعلام من صندوق الوارد…</string>
     <string name="scan_phase_ellipsis">%1$s…</string>
     <string name="scan_done">اكتمل الفحص</string>
     <string name="scan_took">استغرق %1$s ثانية · فُحصت %2$s</string>
@@ -656,7 +656,7 @@
     <string name="budget_copy_from">انسخ الحدود من %1$s</string>
     <string name="budget_start_fresh">ابدأ من جديد</string>
     <string name="budget_left_label">المتبقي للصرف</string>
-    <string name="budget_over_label">فوق الميزانية بـ</string>
+    <string name="budget_over_label">تجاوزت الميزانية بـ</string>
     <string name="budget_of_total">من %1$s</string>
     <string name="budget_status_on_pace">على المسار</string>
     <string name="budget_status_ahead">الإنفاق أسرع من الأيام</string>
@@ -712,7 +712,7 @@
     <string name="places_merge">دمج</string>
     <string name="places_merge_title">دمج في مكان واحد</string>
     <string name="places_merge_body">ستظهر مكاناً واحداً بهذا الاسم. ويبقى لكل سجل الاسم الذي أعطاه البنك، ويمكن فصلها مجدداً من صفحة المكان.</string>
-    <string name="place_rename">تسمية</string>
+    <string name="place_rename">إعادة التسمية</string>
     <string name="place_rename_title">إعادة تسمية هذا المكان</string>
     <string name="place_merged_from">مدمج من</string>
     <string name="place_separate">فصل</string>
@@ -759,8 +759,8 @@
     <string name="an_kept">المُحتفَظ به مما ورد</string>
     <string name="an_overspent">الصرف فوق ما ورد</string>
     <string name="an_other_currencies">الرسوم تعرض %1$s فقط، و%2$s بعملات أخرى مُدرجة في المعاملات.</string>
-    <string name="an_cashflow">التدفق</string>
-    <string name="an_running_total">التراكمي</string>
+    <string name="an_cashflow">التدفق النقدي</string>
+    <string name="an_running_total">الإجمالي التراكمي</string>
     <string name="an_running_total_note">الإجماليات التراكمية: انحدار أحمر حاد يعني أياماً ثقيلة الصرف، والمسافة إلى الأخضر هي ما تبقّى.</string>
     <string name="an_cashflow_note">الوارد مقابل الصادر، جنباً إلى جنب، فتظهر الفترات الشحيحة بوضوح.</string>
     <string name="an_not_enough">لا توجد حركة كافية في هذه الفترة لرسمها.</string>
@@ -792,7 +792,7 @@
     <string name="set_allowed">مسموح</string>
     <string name="set_off">متوقف</string>
     <string name="set_scan_on_open">افحص عند فتح التطبيق</string>
-    <string name="set_how_far_back">منذ متى</string>
+    <string name="set_how_far_back">إلى أي مدى في الماضي</string>
     <string name="set_range_everything">كل شيء</string>
     <string name="set_range_one_month">شهر واحد</string>
     <string name="set_range_one_year">سنة واحدة</string>
@@ -810,7 +810,7 @@
     <string name="set_export_txns">تصدير المعاملات</string>
     <string name="set_verbose_log">السجل التفصيلي</string>
     <string name="set_where_it_lives">أين تُحفظ</string>
-    <string name="set_backup">نسخ احتياطي</string>
+    <string name="set_backup">النسخ الاحتياطي</string>
     <string name="set_restore">استيراد من نسخة احتياطية</string>
     <string name="set_backup_messages">تضمين نص الرسائل</string>
     <string name="backup_part_records">السجلات والحسابات</string>
@@ -832,7 +832,7 @@
     <string name="log_import_done">استُورد من النسخة الاحتياطية: %1$s</string>
     <string name="log_import_nothing">لا تحوي تلك النسخة شيئًا للاستيراد، فلم يتغير شيء</string>
     <string name="set_this_phone_only">على هذا الهاتف وحده</string>
-    <string name="set_card_about">حول</string>
+    <string name="set_card_about">عن التطبيق</string>
     <string name="set_checking">جارٍ التحقق…</string>
     <string name="set_update_available">%1$s متاح</string>
     <string name="set_wipe_title">حذف كل شيء؟</string>
