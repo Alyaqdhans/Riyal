@@ -52,6 +52,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -72,7 +73,7 @@ import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
-import com.alyaqdhan.riyal.ui.compose.DisclosureRow
+import com.alyaqdhan.riyal.ui.compose.Disclosure
 import com.alyaqdhan.riyal.ui.compose.EmptyState
 import com.alyaqdhan.riyal.ui.compose.MatchedIcon
 import com.alyaqdhan.riyal.ui.compose.MoneySign
@@ -522,30 +523,34 @@ fun PlaceDetailScreen(
                         if (group != null) {
                             // What it was made of matters when undoing a merge, not when reading
                             // the place, so it waits folded under its count.
-                            item(key = "merged-title") {
-                                DisclosureRow(
+                            item(key = "merged") {
+                                Disclosure(
                                     title = stringResource(R.string.place_merged_from),
                                     supporting = counted(R.plurals.count_places, mergedFrom.size),
                                     expanded = showMerged,
                                     onToggle = { showMerged = !showMerged },
-                                )
-                            }
-                            if (showMerged) items(mergedFrom.entries.sortedBy { it.value }, key = { "member-" + it.key }) { (member, name) ->
-                                Row(
-                                    Modifier.fillMaxWidth().padding(start = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
+                                    spacing = 0.dp,
                                 ) {
-                                    Text(
-                                        unmasked(name),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    TextButton(
-                                        onClick = { vm.separatePlace(group.id, member, name, group.name) },
-                                        shapes = ButtonDefaults.shapes(),
-                                    ) { Text(stringResource(R.string.place_separate)) }
+                                    mergedFrom.entries.sortedBy { it.value }.forEach { (member, name) ->
+                                        key(member) {
+                                            Row(
+                                                Modifier.fillMaxWidth().padding(start = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                Text(
+                                                    unmasked(name),
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    modifier = Modifier.weight(1f),
+                                                )
+                                                TextButton(
+                                                    onClick = { vm.separatePlace(group.id, member, name, group.name) },
+                                                    shapes = ButtonDefaults.shapes(),
+                                                ) { Text(stringResource(R.string.place_separate)) }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             item(key = "records-title") { SectionTitle(stringResource(R.string.cat_detail_records)) }

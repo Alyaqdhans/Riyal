@@ -69,7 +69,7 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
-import com.alyaqdhan.riyal.ui.compose.DisclosureRow
+import com.alyaqdhan.riyal.ui.compose.Disclosure
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Stats
@@ -469,38 +469,32 @@ private fun MerchantCard(
                 )
                 HorizontalDivider()
                 val plain = ListItemDefaults.colors(containerColor = Color.Transparent)
-                DisclosureRow(
+                Disclosure(
                     title = stringResource(R.string.needs_choose_records),
                     supporting = stringResource(R.string.needs_chosen_of, chosen.size, group.count),
                     expanded = choosing,
                     onToggle = { choosing = !choosing },
                     contentPadding = PaddingValues(0.dp),
-                )
-                AnimatedVisibility(
-                    visible = choosing,
-                    enter = expandVertically(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
-                    exit = shrinkVertically(motion.defaultSpatialSpec()) + fadeOut(motion.defaultEffectsSpec()),
+                    spacing = 4.dp,
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        // Opened on purpose, so every record, not the first few behind another tap.
-                        for (txn in group.txns) {
-                            RecordRow(
-                                txn = txn,
-                                checked = txn.id !in excluded,
-                                showing = txn.id in showing,
-                                onToggle = {
-                                    excluded = if (txn.id in excluded) excluded - txn.id else excluded + txn.id
-                                },
-                                onShow = {
-                                    showing = if (txn.id in showing) showing - txn.id else showing + txn.id
-                                },
-                            )
-                        }
-                        // Only worth a control once there is a mixed state to get out of.
-                        if (excluded.isNotEmpty()) {
-                            TextButton(onClick = { excluded = emptyList() }, shapes = ButtonDefaults.shapes()) {
-                                Text(stringResource(R.string.needs_select_all, group.count))
-                            }
+                    // Opened on purpose, so every record, not the first few behind another tap.
+                    for (txn in group.txns) {
+                        RecordRow(
+                            txn = txn,
+                            checked = txn.id !in excluded,
+                            showing = txn.id in showing,
+                            onToggle = {
+                                excluded = if (txn.id in excluded) excluded - txn.id else excluded + txn.id
+                            },
+                            onShow = {
+                                showing = if (txn.id in showing) showing - txn.id else showing + txn.id
+                            },
+                        )
+                    }
+                    // Only worth a control once there is a mixed state to get out of.
+                    if (excluded.isNotEmpty()) {
+                        TextButton(onClick = { excluded = emptyList() }, shapes = ButtonDefaults.shapes()) {
+                            Text(stringResource(R.string.needs_select_all, group.count))
                         }
                     }
                 }

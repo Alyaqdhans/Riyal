@@ -62,6 +62,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -72,7 +73,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
-import com.alyaqdhan.riyal.ui.compose.DisclosureRow
+import com.alyaqdhan.riyal.ui.compose.Disclosure
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Account
@@ -301,31 +302,29 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                         )
                     }
                     if (dismissed.isNotEmpty()) {
-                        item(key = "dismissed-header") {
-                            DisclosureRow(
+                        item(key = "dismissed") {
+                            Disclosure(
                                 title = stringResource(R.string.review_dismissed_header, dismissed.size),
                                 expanded = showDismissed,
                                 onToggle = { showDismissed = !showDismissed },
                                 modifier = Modifier.padding(top = 8.dp),
-                            )
-                        }
-                        if (showDismissed) {
-                            item(key = "dismissed-hint") {
+                            ) {
                                 Text(
                                     stringResource(R.string.review_dismissed_hint),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                            }
-                            items(dismissed, key = { "d-" + it.id }, contentType = { "dismissed" }) { item ->
-                                DismissedCard(
-                                    item = item,
-                                    modifier = Modifier.animateItem(),
-                                    onRestore = {
-                                        vm.restoreReview(item)
-                                        scope.launch { snackbar.showSnackbar(restored) }
-                                    },
-                                )
+                                dismissed.forEach { item ->
+                                    key(item.id) {
+                                        DismissedCard(
+                                            item = item,
+                                            onRestore = {
+                                                vm.restoreReview(item)
+                                                scope.launch { snackbar.showSnackbar(restored) }
+                                            },
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

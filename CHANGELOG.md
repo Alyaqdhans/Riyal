@@ -22,9 +22,9 @@ is attached there.
   the learned categories.
 - English text is a touch heavier, closer to the Arabic beside it.
 - The welcome screen opens on the app's name, without the logo above it.
-- What is folded away opens under a row of its own with a chevron, everywhere: a merged
-  place's names, Review's dismissed messages, the empty categories, the rest of a
-  budget and a backlog row's records. They used to sit behind Show, Hide or Show all
+- What is folded away opens under a row of its own, sliding down as its chevron turns,
+  everywhere: a merged place's names, Review's dismissed messages, the empty
+  categories, the rest of a budget and a backlog row's records. They used to sit behind Show, Hide or Show all
   buttons, and the empty categories opened back up among the others.
 - Material 3 1.5.0-rc01, from alpha29. It sits on stable Compose 1.12, where alpha29 had
   brought in an alpha of Compose's foundation.

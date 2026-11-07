@@ -56,6 +56,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -67,7 +68,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
-import com.alyaqdhan.riyal.ui.compose.DisclosureRow
+import com.alyaqdhan.riyal.ui.compose.Disclosure
 import com.alyaqdhan.riyal.ui.compose.ActionButton
 import com.alyaqdhan.riyal.ui.compose.ConfirmDeleteButton
 import com.alyaqdhan.riyal.ui.compose.DeleteButton
@@ -212,26 +213,28 @@ fun CategoriesScreen(
             // and eight rows of "nothing in this period · OMR 0.000" is most of what was
             // on it. They wait folded under one row instead.
             if (empty.isNotEmpty()) {
-                item(key = "show-empty") {
-                    DisclosureRow(
+                item(key = "empty") {
+                    Disclosure(
                         title = stringResource(R.string.cats_empty_header, empty.size),
                         expanded = showEmpty,
                         onToggle = { showEmpty = !showEmpty },
                         modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
-                if (showEmpty) {
-                    items(empty, key = { (if (it.income) "i-" else "e-") + it.id }) { cat ->
-                        CategoryRow(
-                            category = cat,
-                            amountMinor = 0L,
-                            fraction = 0f,
-                            count = 0,
-                            currency = currency,
-                            income = cat.income,
-                            onClick = { onOpenCategory(cat.id, slice) },
-                            onEdit = if (cat.custom) ({ editing = cat }) else null,
-                        )
+                        spacing = 6.dp,
+                    ) {
+                        empty.forEach { cat ->
+                            key(cat.id) {
+                                CategoryRow(
+                                    category = cat,
+                                    amountMinor = 0L,
+                                    fraction = 0f,
+                                    count = 0,
+                                    currency = currency,
+                                    income = cat.income,
+                                    onClick = { onOpenCategory(cat.id, slice) },
+                                    onEdit = if (cat.custom) ({ editing = cat }) else null,
+                                )
+                            }
+                        }
                     }
                 }
             }

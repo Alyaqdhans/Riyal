@@ -3,11 +3,6 @@
 package com.alyaqdhan.riyal.ui.compose
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -234,7 +229,6 @@ private fun PlanSummary(
     onEdit: () -> Unit,
 ) {
     var showAll by remember { mutableStateOf(false) }
-    val motion = MaterialTheme.motionScheme
     val plan = progress.plan
     val now = System.currentTimeMillis()
     val ended = now >= plan.endExclusiveMillis
@@ -335,20 +329,14 @@ private fun PlanSummary(
         val rest = remember(progress, shown) { progress.lines - shown.toSet() }
         shown.forEach { BudgetLine(it, currency) }
         if (rest.isNotEmpty()) {
-            DisclosureRow(
+            Disclosure(
                 title = pluralStringResource(R.plurals.budget_more_lines, rest.size, rest.size),
                 expanded = showAll,
                 onToggle = { showAll = !showAll },
                 contentPadding = PaddingValues(0.dp),
-            )
-            AnimatedVisibility(
-                visible = showAll,
-                enter = expandVertically(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
-                exit = shrinkVertically(motion.defaultSpatialSpec()) + fadeOut(motion.defaultEffectsSpec()),
+                spacing = 12.dp,
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    rest.forEach { BudgetLine(it, currency) }
-                }
+                rest.forEach { BudgetLine(it, currency) }
             }
         }
         if (progress.unbudgetedMinor > 0) {

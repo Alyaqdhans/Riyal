@@ -74,9 +74,10 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   the row under them, with `perRow = 2`, in every language.
 - **What is folded opens under a details row.** Anything shown only now and then (a
   merged place's names, what Review dismissed, the empty categories, the rest of a budget,
-  a backlog row's records) sits under `DisclosureRow` (`ui/compose/Disclosure.kt`): a
-  list item with a count and a turning chevron, its content right under it. Never a
-  Show/Hide or Show all/less button beside a title.
+  a backlog row's records) sits in a `Disclosure` (`ui/compose/Disclosure.kt`): a list
+  item with a count and a chevron that turns as the content slides down out from under
+  it and back up. In a lazy list it is one item. Never a Show/Hide or Show all/less
+  button beside a title.
 - **Choices of dates are tiles** (`ui/compose/Presets.kt`: `PresetSheet`/`PresetGrid`),
   never a plain list of words. Each tile says what it covers, and all tiles are one size.
 - **Exact versions.** `androidx.compose.material3:material3:1.5.0-rc01` with
