@@ -13,6 +13,12 @@ is attached there.
   what they came to. Search by name, and open a place for its records and how the
   period compares with the one before. Records that name no place are added up under
   the list, so it still comes to the period's spending.
+- **Merge places that are one.** A chain the bank names by branch shows as several
+  places; long-press one, tap the others (or Select all after a search), and Merge them
+  under a name, which starts as what their names have in common. A merged place's page
+  lists what it was made of, separates any of them again, and renames it. Records keep
+  the names the bank gave them, so a rescan keeps the merge, and backups carry it with
+  the learned categories.
 - **An archived record counts towards nothing.** Home, Analysis, categories, budgets,
   account balances and the record count all leave it out, and it stays in Archived until
   you bring it back. A balance still starts from the figure the bank quoted, so a record

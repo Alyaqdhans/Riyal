@@ -153,6 +153,7 @@ fun AnalysisScreen(
     val accounts by vm.accounts.collectAsState()
     val budgets by vm.budgets.collectAsState()
     val budgetsOn by vm.budgetsOn.collectAsState()
+    val placeGroups by vm.placeGroups.collectAsState()
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
 
     val slice by vm.analysisSlice.collectAsState()
@@ -262,7 +263,9 @@ fun AnalysisScreen(
                     onSlice = { vm.setAnalysisSlice(it) },
                     currency = currency,
                     accountId = accountId,
+                    groups = placeGroups,
                     onOpen = { onOpenPlace(it, slice, accountId) },
+                    onMerge = { keys, name -> vm.mergePlaces(keys, name) },
                 )
                 return@HorizontalPager
             }

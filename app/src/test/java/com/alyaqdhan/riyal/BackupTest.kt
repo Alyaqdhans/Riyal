@@ -150,6 +150,24 @@ class BackupTest {
     }
 
     @Test
+    fun `merged places come with the learned categories, and a name merged here stays here`() {
+        val here = mine().put(
+            "placeGroups",
+            JSONArray("""[{"id":"merged:a","n":"Example Oil","m":["example oil - north","example oil - south"]}]"""),
+        )
+        val friend = theirs(
+            """{"v":2,"placeGroups":[
+                 {"id":"merged:b","n":"Sample Mart","m":["sample mart 1","sample mart 2"]},
+                 {"id":"merged:c","n":"Oil","m":["example oil - south","example oil - east"]}]}"""
+        )
+        val groups = Backup.merge(here, friend, setOf(Part.RULES), builtIn).getJSONArray("placeGroups")
+        assertEquals(
+            listOf("Example Oil", "Sample Mart"),
+            (0 until groups.length()).map { groups.getJSONObject(it).getString("n") },
+        )
+    }
+
+    @Test
     fun `lists add what is missing without crossing what is here`() {
         val friend = theirs(
             """{"v":2,"skeleton":3,

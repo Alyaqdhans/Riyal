@@ -702,6 +702,23 @@
         <item quantity="many">%d سجلاً بلا اسم مكان</item>
         <item quantity="other">%d سجل بلا اسم مكان</item>
     </plurals>
+    <string name="places_select">تحديد</string>
+    <string name="places_select_all">تحديد الكل</string>
+    <string name="places_merge">دمج</string>
+    <string name="places_merge_title">دمج في مكان واحد</string>
+    <string name="places_merge_body">ستظهر مكاناً واحداً بهذا الاسم. ويبقى لكل سجل الاسم الذي أعطاه البنك، ويمكن فصلها مجدداً من صفحة المكان.</string>
+    <string name="place_rename">إعادة التسمية</string>
+    <string name="place_rename_title">إعادة تسمية هذا المكان</string>
+    <string name="place_merged_from">مدمج من</string>
+    <string name="place_separate">فصل</string>
+    <plurals name="places_selected">
+        <item quantity="zero">لا شيء محدد</item>
+        <item quantity="one">واحد محدد</item>
+        <item quantity="two">اثنان محددان</item>
+        <item quantity="few">%d محددة</item>
+        <item quantity="many">%d محدداً</item>
+        <item quantity="other">%d محدد</item>
+    </plurals>
     <string name="an_all_accounts">كل الحسابات</string>
     <string name="an_moved_label">بين حساباتك</string>
     <string name="an_donut_spent">صُرف</string>
@@ -796,7 +813,7 @@
     <string name="backup_part_categories">التصنيفات</string>
     <string name="backup_part_categories_detail">التصنيفات التي أنشأتها</string>
     <string name="backup_part_rules">التصنيفات المتعلَّمة</string>
-    <string name="backup_part_rules_detail">الأسماء التي تُصنَّف دون سؤال، والأسماء التي يُسأل عنها كل مرة</string>
+    <string name="backup_part_rules_detail">الأسماء التي تُصنَّف دون سؤال، والأسماء التي يُسأل عنها كل مرة، والأماكن المدمجة في مكان واحد</string>
     <string name="backup_part_lists">القوائم</string>
     <string name="backup_part_lists_detail">أنواع الرسائل التي علّمتها أو استبعدتها، والمرسلون المُتجاهَلون أو المضافون</string>
     <string name="backup_part_budgets">الميزانيات</string>
@@ -918,6 +935,9 @@
     <string name="log_left_under_other">تُركت %1$s تحت \"أخرى\" في الوقت الحالي · لم يُجَب عنها، وسيسأل عنها الفحص القادم من جديد</string>
     <string name="log_archived">أرشفت: %1$s خرجت من القوائم ولم تعد تُحتسب في أي شيء</string>
     <string name="log_unarchived">أخرجت من الأرشيف: %1$s عادت إلى القوائم</string>
+    <string name="log_places_merged">دمجت أماكن في «%1$s»</string>
+    <string name="log_place_renamed">أعدت تسمية المكان المدمج إلى «%1$s»</string>
+    <string name="log_place_separated">فصلت %1$s عن «%2$s»</string>
     <string name="log_removed">أزلت معاملة: %1$s (%2$s)</string>
     <string name="log_removed_ignored"> · وستبقى هذه الرسالة متجاهَلة في الفحوصات القادمة</string>
     <string name="log_no_rule_ask_short">لم تُحفظ قاعدة لـ \"%1$s\": طلبت أن تُسأل عن هذا الاسم في كل مرة</string>

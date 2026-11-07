@@ -70,6 +70,10 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private val _askEachTime = MutableStateFlow<Set<String>>(emptySet())
     val askEachTime: StateFlow<Set<String>> = _askEachTime
 
+    /** Places the user merged into one, each under the name they gave it. */
+    private val _placeGroups = MutableStateFlow<List<PlaceGroup>>(emptyList())
+    val placeGroups: StateFlow<List<PlaceGroup>> = _placeGroups
+
     private val _senders = MutableStateFlow<Set<String>>(emptySet())
     val senders: StateFlow<Set<String>> = _senders
 
@@ -759,6 +763,42 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
      * this gets used is the moment a rule turns out to have been a mistake. Returns how
      * many records the deleted rule had claimed.
      */
+    /**
+     * Makes the places with [keys] one, under [name]. A key is a place's own or a merged
+     * place's id, whose names come along; a merged place keeps its id when it takes more
+     * in, so a page open on it still finds it. No name is ever in two merged places.
+     */
+    suspend fun mergePlaces(keys: Set<String>, name: String) = mutex.withLock {
+        val groups = _placeGroups.value
+        val joining = groups.filter { it.id in keys }
+        val members = keys.filterNot { it.startsWith(PlaceGroup.ID_PREFIX) }.toSet() +
+            joining.flatMap { it.members }
+        if (members.size < 2 || name.isBlank()) return@withLock
+        val merged = PlaceGroup(
+            id = joining.firstOrNull()?.id ?: (PlaceGroup.ID_PREFIX + UUID.randomUUID()),
+            name = name.trim(),
+            members = members,
+        )
+        _placeGroups.value = groups.filter { it !in joining }
+            .map { it.copy(members = it.members - members) }
+            .filter { it.members.size >= 2 } + merged
+        persistLocked()
+    }
+
+    suspend fun renamePlace(id: String, name: String) = mutex.withLock {
+        if (name.isBlank()) return@withLock
+        _placeGroups.value = _placeGroups.value.map { if (it.id == id) it.copy(name = name.trim()) else it }
+        persistLocked()
+    }
+
+    /** Takes [member] back out of a merged place; one left on its own is no merge at all. */
+    suspend fun separatePlace(id: String, member: String) = mutex.withLock {
+        _placeGroups.value = _placeGroups.value
+            .map { if (it.id == id) it.copy(members = it.members - member) else it }
+            .filter { it.members.size >= 2 }
+        persistLocked()
+    }
+
     suspend fun setAskEachTime(pattern: String, on: Boolean): Int = mutex.withLock {
         val key = UserRule.patternOf(pattern)
         if (key.isBlank()) return@withLock 0
@@ -919,6 +959,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         _reviews.value = emptyList()
         _rules.value = emptyList()
         _askEachTime.value = emptySet()
+        _placeGroups.value = emptyList()
         _senders.value = emptySet()
         _muted.value = emptyList()
         _needed.value = emptySet()
@@ -1019,6 +1060,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             _reviews.value = root.optJSONArray("reviews").toListOf(::reviewFromJson).sortedByDescending { it.atMillis }
             _rules.value = root.optJSONArray("rules").toListOf(::ruleFromJson)
             _askEachTime.value = root.optJSONArray("askEachTime").toStringSet()
+            _placeGroups.value = root.optJSONArray("placeGroups").toListOf(::placeGroupFromJson)
             _senders.value = root.optJSONArray("senders").toStringSet()
             // Keyed afresh from the message each time: a kind dismissed under an older
             // fingerprint (names and all) still matches its messages under this one.
@@ -1133,6 +1175,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             root.put("reviews", JSONArray().apply { _reviews.value.forEach { put(reviewToJson(it)) } })
             root.put("rules", JSONArray().apply { _rules.value.forEach { put(ruleToJson(it)) } })
             root.put("askEachTime", JSONArray().apply { _askEachTime.value.forEach { put(it) } })
+            root.put("placeGroups", JSONArray().apply { _placeGroups.value.forEach { put(placeGroupToJson(it)) } })
             root.put("senders", JSONArray().apply { _senders.value.forEach { put(it) } })
             root.put("muted", JSONArray().apply { _muted.value.forEach { put(mutedToJson(it)) } })
             root.put("needed", JSONArray().apply { _needed.value.forEach { put(it) } })
@@ -1362,6 +1405,16 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     }
 
     private fun ruleFromJson(o: JSONObject) = UserRule(o.getString("p"), o.getString("c"))
+
+    private fun placeGroupToJson(g: PlaceGroup) = JSONObject().apply {
+        put("id", g.id); put("n", g.name); put("m", JSONArray().apply { g.members.forEach { put(it) } })
+    }
+
+    private fun placeGroupFromJson(o: JSONObject) = PlaceGroup(
+        id = o.getString("id"),
+        name = o.getString("n"),
+        members = o.optJSONArray("m").toStringSet(),
+    )
 
     private fun categoryToJson(c: Category) = JSONObject().apply {
         put("id", c.id); put("name", c.name); put("income", c.income); put("color", c.color)

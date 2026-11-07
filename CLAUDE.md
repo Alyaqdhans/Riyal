@@ -126,7 +126,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `data/SmsParser.kt` | Pure extraction: amount, currency, balance, account tail, merchant. `parse` uses word cues; `parseAs` reads a message as a known direction. **Bump `VERSION` when parsing output changes** |
 | `data/Learning.kt` | `Skeleton` (message → template key), `BalanceChain` (direction proven by balance deltas), `TemplateInference`, `Tutor` (setup questions + stopping rule) |
 | `data/ScanEngine.kt` | One pass: read → decide (taught label > balance proof > proven template > words) → accounts → records (with FX conversion) → transfers → store |
-| `data/Store.kt` | One JSON file, written atomically. Records, accounts, rules, labels, template stats. **Bumping `SCHEMA_VERSION` wipes user data** |
+| `data/Store.kt` | One JSON file, written atomically. Records, accounts, rules, labels, template stats, merged places (`PlaceGroup`, keyed by `UserRule.patternOf` so rescans keep them). **Bumping `SCHEMA_VERSION` wipes user data** |
 | `data/SenderLists.kt` | Whether each sender is read, as the scan's sender gate decides (Settings › Lists) |
 | `data/AccountDiscovery.kt` | Banks list, accounts proposed from messages, routing a message to an account |
 | `data/TransferMatcher.kt` | Pairs an expense and an income across your own accounts |

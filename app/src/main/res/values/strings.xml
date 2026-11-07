@@ -646,6 +646,19 @@
         <item quantity="one">%d record names no place</item>
         <item quantity="other">%d records name no place</item>
     </plurals>
+    <string name="places_select">Select</string>
+    <string name="places_select_all">Select all</string>
+    <string name="places_merge">Merge</string>
+    <string name="places_merge_title">Merge into one place</string>
+    <string name="places_merge_body">They show as one place under this name. Each record keeps the name the bank gave it, and the place\'s page can separate them again.</string>
+    <string name="place_rename">Rename</string>
+    <string name="place_rename_title">Rename this place</string>
+    <string name="place_merged_from">Merged from</string>
+    <string name="place_separate">Separate</string>
+    <plurals name="places_selected">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
     <string name="an_all_accounts">All accounts</string>
     <string name="an_moved_label">Between your accounts</string>
     <string name="an_donut_spent">spent</string>
@@ -736,7 +749,7 @@
     <string name="backup_part_categories">Categories</string>
     <string name="backup_part_categories_detail">The categories you made</string>
     <string name="backup_part_rules">Learned categories</string>
-    <string name="backup_part_rules_detail">Names filed under a category without asking, and names always asked about</string>
+    <string name="backup_part_rules_detail">Names filed under a category without asking, names always asked about, and places merged into one</string>
     <string name="backup_part_lists">Lists</string>
     <string name="backup_part_lists_detail">Kinds of message taught or dismissed, and senders ignored or added</string>
     <string name="backup_part_budgets">Budgets</string>
@@ -842,6 +855,9 @@
     <string name="log_left_under_other">%1$s left under Other for now · they were not answered, and the next scan asks about them again</string>
     <string name="log_archived">archived by you: %1$s is out of the lists and no longer counts towards anything</string>
     <string name="log_unarchived">unarchived by you: %1$s is back in the lists</string>
+    <string name="log_places_merged">places merged by you into \"%1$s\"</string>
+    <string name="log_place_renamed">merged place renamed by you to \"%1$s\"</string>
+    <string name="log_place_separated">%1$s separated by you from \"%2$s\"</string>
     <string name="log_removed">transaction removed by you: %1$s (%2$s)</string>
     <string name="log_removed_ignored"> · this message will stay ignored on future scans</string>
     <string name="log_no_rule_ask_short">no rule saved for \"%1$s\": you asked to be asked about this name every time</string>

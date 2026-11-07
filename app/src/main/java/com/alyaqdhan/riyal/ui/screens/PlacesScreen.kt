@@ -1,8 +1,16 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,8 +26,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -30,7 +43,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,28 +60,34 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.data.Categories
+import com.alyaqdhan.riyal.data.PlaceGroup
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.ui.MainViewModel
 import com.alyaqdhan.riyal.ui.compose.CategoryBadge
 import com.alyaqdhan.riyal.ui.compose.EmptyState
+import com.alyaqdhan.riyal.ui.compose.MatchedIcon
 import com.alyaqdhan.riyal.ui.compose.MoneySign
 import com.alyaqdhan.riyal.ui.compose.MoneyText
 import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
 import com.alyaqdhan.riyal.ui.compose.ScrollThumb
+import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.SortChip
 import com.alyaqdhan.riyal.ui.compose.SwipeableTxnRow
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.TxnSort
 import com.alyaqdhan.riyal.ui.compose.counted
+import com.alyaqdhan.riyal.ui.compose.popIn
+import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
 import com.alyaqdhan.riyal.ui.compose.title
 import com.alyaqdhan.riyal.ui.compose.toolbarSpace
 import com.alyaqdhan.riyal.ui.compose.unmasked
@@ -78,6 +100,11 @@ import com.alyaqdhan.riyal.ui.compose.unmasked
  * The period and the search scroll with the list, so the rows get the screen. Records
  * that name no place are added up under the list, so what it shows never quietly falls
  * short of the period's spending.
+ *
+ * A chain the bank names by branch is several rows for one place. A long press starts
+ * choosing, a tap adds or drops a row, and Merge makes the chosen rows one place under a
+ * name, which [onMerge] keeps. The bar that says so lies over the top of the list rather
+ * than pushing it down under the finger.
  */
 @Composable
 internal fun PlacesTab(
@@ -86,16 +113,31 @@ internal fun PlacesTab(
     onSlice: (TimeSlice) -> Unit,
     currency: String,
     accountId: String?,
+    groups: List<PlaceGroup>,
     onOpen: (Stats.Place) -> Unit,
+    onMerge: (keys: Set<String>, name: String) -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
-    val spending = remember(txns, slice, currency, accountId) {
-        Stats.placesIn(txns, slice.start, slice.endExclusive, currency, accountId)
+    val spending = remember(txns, slice, currency, accountId, groups) {
+        Stats.placesIn(txns, slice.start, slice.endExclusive, currency, accountId, groups)
     }
     val shown = remember(spending, query) { spending.places.filter { it.matches(query) } }
     val searching = query.isNotBlank()
+    // A list, as a screen's saved state keeps one; read as a set.
+    var chosen by rememberSaveable { mutableStateOf(listOf<String>()) }
+    val choosing = chosen.isNotEmpty()
+    var naming by remember { mutableStateOf(false) }
+    // A row that left the list - a new period, a merge - is no longer chosen.
+    LaunchedEffect(spending) {
+        chosen = chosen.filter { key -> spending.places.any { it.key == key } }
+    }
+    BackHandler(enabled = choosing) { chosen = emptyList() }
+    fun toggle(key: String) {
+        chosen = if (key in chosen) chosen - key else chosen + key
+    }
     val list = rememberLazyListState()
     val focus = LocalFocusManager.current
+    Box {
     // Edge to edge, the keyboard opens over the page: this keeps the last rows reachable.
     ScrollThumb(list, Modifier.imePadding(), bottom = toolbarSpace) {
         LazyColumn(
@@ -131,7 +173,13 @@ internal fun PlacesTab(
                         PlacesLine(counted(R.plurals.count_places, shown.size), shown.sumOf { it.amountMinor }, currency)
                     }
                     items(shown, key = { it.key }, contentType = { "place" }) { place ->
-                        PlaceRow(place, currency, onClick = { onOpen(place) })
+                        PlaceRow(
+                            place,
+                            currency,
+                            chosen = if (choosing) place.key in chosen else null,
+                            onClick = { if (choosing) toggle(place.key) else onOpen(place) },
+                            onLongClick = { toggle(place.key) },
+                        )
                     }
                 }
                 searching -> item(key = "no-match") {
@@ -156,7 +204,137 @@ internal fun PlacesTab(
             }
         }
     }
+    if (choosing) {
+        ChoosingBar(
+            count = chosen.size,
+            canChooseMore = shown.any { it.key !in chosen },
+            onCancel = { chosen = emptyList() },
+            onChooseAll = { chosen = (chosen + shown.map { it.key }).distinct() },
+            onMerge = { naming = true },
+        )
+    }
+    }
+
+    if (naming) {
+        val names = remember(chosen, spending) {
+            spending.places.filter { it.key in chosen }.map { unmasked(it.name) }
+        }
+        PlaceNameDialog(
+            title = R.string.places_merge_title,
+            confirm = R.string.places_merge,
+            body = stringResource(R.string.places_merge_body),
+            initial = Stats.suggestedName(names),
+            suggestions = names,
+            onConfirm = { name ->
+                onMerge(chosen.toSet(), name)
+                chosen = emptyList()
+                naming = false
+            },
+            onDismiss = { naming = false },
+        )
+    }
 }
+
+/**
+ * What a long press began: how many rows are chosen, a way to take every row the search
+ * left, and Merge, which wants two at least.
+ */
+@Composable
+private fun ChoosingBar(
+    count: Int,
+    canChooseMore: Boolean,
+    onCancel: () -> Unit,
+    onChooseAll: () -> Unit,
+    onMerge: () -> Unit,
+) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.padding(start = 4.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            IconButton(onClick = onCancel) {
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_cancel))
+            }
+            Text(
+                counted(R.plurals.places_selected, count),
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+            if (canChooseMore) {
+                TextButton(onClick = onChooseAll, shapes = ButtonDefaults.shapes()) {
+                    Text(stringResource(R.string.places_select_all))
+                }
+            }
+            Button(onClick = onMerge, enabled = count >= 2, shapes = ButtonDefaults.shapes()) {
+                MatchedIcon(R.drawable.ic_sym_merge, MaterialTheme.typography.labelLarge, Modifier.size(18.dp))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text(stringResource(R.string.places_merge))
+            }
+        }
+    }
+}
+
+/**
+ * A name for a merged place, written or picked from the names it is made of. Merging and
+ * renaming both ask it, with their own title and button.
+ */
+@Composable
+private fun PlaceNameDialog(
+    @StringRes title: Int,
+    @StringRes confirm: Int,
+    body: String?,
+    initial: String,
+    suggestions: List<String>,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var name by rememberSaveable { mutableStateOf(initial) }
+    val pop = rememberDialogPop()
+    AlertDialog(
+        onDismissRequest = { pop.leave(onDismiss) },
+        modifier = Modifier.popIn(pop),
+        icon = { Icon(painterResource(R.drawable.ic_sym_merge), contentDescription = null) },
+        title = { Text(stringResource(title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                body?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.label_name)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                // The names it is made of, a tap away, for when one of them is the name.
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    suggestions.distinct().take(MAX_SUGGESTIONS).forEach { s ->
+                        SuggestionChip(
+                            onClick = { name = s },
+                            label = { Text(s, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { pop.leave { onConfirm(name.trim()) } },
+                enabled = name.isNotBlank(),
+                shapes = ButtonDefaults.shapes(),
+            ) { Text(stringResource(confirm)) }
+        },
+        dismissButton = {
+            TextButton(onClick = { pop.leave(onDismiss) }, shapes = ButtonDefaults.shapes()) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+/** Enough names to pick from without the dialog outgrowing the screen. */
+private const val MAX_SUGGESTIONS = 6
 
 /** A quiet line in the list: what it is on one side, what it comes to on the other. */
 @Composable
@@ -182,29 +360,46 @@ private fun PlacesLine(text: String, minor: Long, currency: String) {
     }
 }
 
-/** One place: its name, how many records and under what, and what they came to. */
+/**
+ * One place: its name, how many records and under what - or, merged, what it was made of -
+ * and what they came to. [chosen] is null unless rows are being chosen, when the row
+ * toggles and shows a box where its badge was.
+ */
 @Composable
-private fun PlaceRow(place: Stats.Place, currency: String, onClick: () -> Unit) {
-    ListItem(
-        onClick = onClick,
-        leadingContent = { CategoryBadge(place.categoryId, size = 40.dp) },
-        supportingContent = {
-            Text(
-                counted(R.plurals.count_records, place.count) + " · " + Categories.byId(place.categoryId).name,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        trailingContent = {
-            MoneyText(
-                place.amountMinor,
-                currency,
-                sign = MoneySign.NONE,
-                style = MaterialTheme.typography.titleSmall,
-            )
-        },
-    ) {
-        Text(unmasked(place.name), maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun PlaceRow(
+    place: Stats.Place,
+    currency: String,
+    chosen: Boolean?,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
+    val detail = counted(R.plurals.count_records, place.count) + " · " +
+        if (place.merged) place.mergedFrom.joinToString(", ") { unmasked(it) }
+        else Categories.byId(place.categoryId).name
+    val amount: @Composable () -> Unit = {
+        MoneyText(place.amountMinor, currency, sign = MoneySign.NONE, style = MaterialTheme.typography.titleSmall)
+    }
+    val supporting: @Composable () -> Unit = { Text(detail, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+    val headline: @Composable () -> Unit = { Text(unmasked(place.name), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+    if (chosen == null) {
+        ListItem(
+            onClick = onClick,
+            onLongClick = onLongClick,
+            onLongClickLabel = stringResource(R.string.places_select),
+            leadingContent = { CategoryBadge(place.categoryId, size = 40.dp) },
+            supportingContent = supporting,
+            trailingContent = amount,
+            content = headline,
+        )
+    } else {
+        ListItem(
+            checked = chosen,
+            onCheckedChange = { onClick() },
+            leadingContent = { Checkbox(checked = chosen, onCheckedChange = null) },
+            supportingContent = supporting,
+            trailingContent = amount,
+            content = headline,
+        )
     }
 }
 
@@ -224,7 +419,15 @@ fun PlaceDetailScreen(
 ) {
     val txns by vm.countedTxns.collectAsState()
     val accounts by vm.accounts.collectAsState()
+    val groups by vm.placeGroups.collectAsState()
+    val group = groups.firstOrNull { it.id == placeKey }
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
+    var renaming by remember { mutableStateOf(false) }
+    // Separated down to one name, a merged place is gone, and so is its page.
+    LaunchedEffect(group) {
+        if (placeKey.startsWith(PlaceGroup.ID_PREFIX) && group == null) onBack()
+    }
+    val mergedFrom = remember(txns, group) { group?.let { Stats.placeNames(txns, it.members) }.orEmpty() }
     // The period and account the row was read under, as a category page opens with them.
     var slice by remember { mutableStateOf(initialSlice ?: TimeSlice.thisMonth()) }
     var accountId by rememberSaveable { mutableStateOf(initialAccountId) }
@@ -238,20 +441,21 @@ fun PlaceDetailScreen(
     }
 
     val order = TxnSort.valueOf(sort)
-    val records = remember(txns, placeKey, slice, accountId, currency, order) {
-        order.applyTo(Stats.recordsAt(txns, placeKey, slice.start, slice.endExclusive, currency, accountId))
+    val records = remember(txns, placeKey, slice, accountId, currency, order, groups) {
+        order.applyTo(Stats.recordsAt(txns, placeKey, slice.start, slice.endExclusive, currency, accountId, groups))
     }
     val total = remember(records) { records.sumOf { it.amountMinor } }
-    val previousTotal = remember(txns, placeKey, slice, accountId, currency) {
+    val previousTotal = remember(txns, placeKey, slice, accountId, currency, groups) {
         val (prevStart, prevEnd) = Stats.previousWindow(slice.start, slice.endExclusive)
-        Stats.recordsAt(txns, placeKey, prevStart, prevEnd, currency, accountId).sumOf { it.amountMinor }
+        Stats.recordsAt(txns, placeKey, prevStart, prevEnd, currency, accountId, groups).sumOf { it.amountMinor }
     }
+    val title = group?.name ?: placeName
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
-                title = { Text(unmasked(placeName), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = { Text(unmasked(title), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -260,7 +464,14 @@ fun PlaceDetailScreen(
                         )
                     }
                 },
-                actions = { SortChip(current = order, onSelect = { sort = it.name }) },
+                actions = {
+                    if (group != null) {
+                        IconButton(onClick = { renaming = true }) {
+                            Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.place_rename))
+                        }
+                    }
+                    SortChip(current = order, onSelect = { sort = it.name })
+                },
             )
         },
     ) { padding ->
@@ -306,6 +517,28 @@ fun PlaceDetailScreen(
                                 }
                             }
                         }
+                        if (group != null) {
+                            item(key = "merged-title") { SectionTitle(stringResource(R.string.place_merged_from)) }
+                            items(mergedFrom.entries.sortedBy { it.value }, key = { "member-" + it.key }) { (member, name) ->
+                                Row(
+                                    Modifier.fillMaxWidth().padding(start = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        unmasked(name),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    TextButton(
+                                        onClick = { vm.separatePlace(group.id, member, name, group.name) },
+                                        shapes = ButtonDefaults.shapes(),
+                                    ) { Text(stringResource(R.string.place_separate)) }
+                                }
+                            }
+                            item(key = "records-title") { SectionTitle(stringResource(R.string.cat_detail_records)) }
+                        }
                         if (records.isEmpty()) {
                             item(key = "empty") {
                                 EmptyState(
@@ -332,4 +565,19 @@ fun PlaceDetailScreen(
     }
 
     editing?.let { txn -> RecordSheet(vm, txn, accounts, onClose = { editing = null }) }
+
+    if (renaming && group != null) {
+        PlaceNameDialog(
+            title = R.string.place_rename_title,
+            confirm = R.string.action_save,
+            body = null,
+            initial = group.name,
+            suggestions = mergedFrom.values.map { unmasked(it) },
+            onConfirm = { name ->
+                vm.renamePlace(group.id, name)
+                renaming = false
+            },
+            onDismiss = { renaming = false },
+        )
+    }
 }

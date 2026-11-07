@@ -1,5 +1,6 @@
 package com.alyaqdhan.riyal
 
+import com.alyaqdhan.riyal.data.PlaceGroup
 import com.alyaqdhan.riyal.data.Stats
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.data.TxnType
@@ -121,6 +122,75 @@ class PlacesTest {
         val place = places(txn("1", 2_000, "TESTXXXXXXXXNAME")).places.single()
         assertTrue(place.matches("test"))
         assertTrue(place.matches("name"))
+    }
+
+    // ── places merged into one ──
+
+    private val oil = PlaceGroup(
+        id = PlaceGroup.ID_PREFIX + "1",
+        name = "Example Oil",
+        members = setOf("example oil - north", "example oil - south"),
+    )
+
+    @Test
+    fun `merged places are one row under the name given`() {
+        val rows = Stats.placesIn(
+            listOf(
+                txn("1", 2_000, "EXAMPLE OIL - NORTH"),
+                txn("2", 3_000, "Example Oil - South"),
+                txn("3", 4_000, "Sample Market"),
+            ),
+            base, end, "OMR", groups = listOf(oil),
+        ).places
+        assertEquals(listOf("Example Oil", "Sample Market"), rows.map { it.name })
+        val merged = rows.first()
+        assertTrue(merged.merged)
+        assertEquals(5_000L, merged.amountMinor)
+        assertEquals(2, merged.count)
+        assertEquals(listOf("EXAMPLE OIL - NORTH", "Example Oil - South"), merged.mergedFrom)
+    }
+
+    @Test
+    fun `a merged place is found by any of its names`() {
+        val merged = Stats.placesIn(
+            listOf(txn("1", 2_000, "Example Oil - North"), txn("2", 3_000, "Example Oil - South")),
+            base, end, "OMR", groups = listOf(oil),
+        ).places.single()
+        assertTrue(merged.matches("example oil"))
+        assertTrue(merged.matches("south"))
+        assertFalse(merged.matches("market"))
+    }
+
+    @Test
+    fun `a merged place's records are every name's`() {
+        val records = listOf(
+            txn("1", 2_000, "Example Oil - North"),
+            txn("2", 3_000, "Example Oil - South"),
+            txn("3", 4_000, "Sample Market"),
+        )
+        val behind = Stats.recordsAt(records, oil.id, base, end, "OMR", groups = listOf(oil))
+        assertEquals(setOf("1", "2"), behind.map { it.id }.toSet())
+        // A name taken into a merged place is no longer a place of its own.
+        assertTrue(Stats.recordsAt(records, "example oil - north", base, end, "OMR", groups = listOf(oil)).isEmpty())
+    }
+
+    @Test
+    fun `merged names are shown as the records have them`() {
+        val names = Stats.placeNames(
+            listOf(txn("1", 2_000, "Example Oil - North")),
+            setOf("example oil - north", "example oil - gone"),
+        )
+        assertEquals("Example Oil - North", names["example oil - north"])
+        assertEquals("example oil - gone", names["example oil - gone"])
+    }
+
+    @Test
+    fun `a merge is offered the name its places begin with`() {
+        assertEquals("Example Oil", Stats.suggestedName(listOf("Example Oil - North", "EXAMPLE OIL-South")))
+        assertEquals("Sample Mart", Stats.suggestedName(listOf("Sample Mart", "Sample Mart City")))
+        // Nothing worth a name in common: the first, the biggest, is offered.
+        assertEquals("Example Cafe", Stats.suggestedName(listOf("Example Cafe", "Sample Market")))
+        assertEquals("Example Cafe", Stats.suggestedName(listOf("Example Cafe")))
     }
 
     @Test

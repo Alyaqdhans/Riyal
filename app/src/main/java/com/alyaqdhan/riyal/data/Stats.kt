@@ -374,9 +374,57 @@ object Stats {
         val count: Int,
         /** The category most of the money here was filed under. */
         val categoryId: String,
+        /** For a place the user merged, the names it was made of; empty for any other. */
+        val mergedFrom: List<String> = emptyList(),
     ) {
-        /** Is [query] in the name, whatever its case? An empty query matches every place. */
-        fun matches(query: String): Boolean = name.contains(query.trim(), ignoreCase = true)
+        val merged: Boolean get() = key.startsWith(PlaceGroup.ID_PREFIX)
+
+        /**
+         * Is [query] in the name, or in a name it was merged from, whatever its case? An
+         * empty query matches every place.
+         */
+        fun matches(query: String): Boolean {
+            val q = query.trim()
+            return name.contains(q, ignoreCase = true) || mergedFrom.any { it.contains(q, ignoreCase = true) }
+        }
+    }
+
+    /** Which place a record is at: the merged place its name was put in, or its own. */
+    private fun placeKeyOf(t: Txn, into: Map<String, PlaceGroup>): String? {
+        val own = t.merchant?.takeIf { it.isNotBlank() }?.let { UserRule.patternOf(it) } ?: return null
+        return into[own]?.id ?: own
+    }
+
+    private fun membersOf(groups: List<PlaceGroup>): Map<String, PlaceGroup> =
+        groups.flatMap { g -> g.members.map { it to g } }.toMap()
+
+    /**
+     * What each of [keys] is called in the records, the way its row would be; a key no
+     * record carries any more is shown as it is.
+     */
+    fun placeNames(txns: List<Txn>, keys: Set<String>): Map<String, String> {
+        val found = txns.filter { t -> t.merchant?.takeIf { it.isNotBlank() }?.let { UserRule.patternOf(it) } in keys }
+            .groupBy { UserRule.patternOf(it.merchant!!) }
+            .mapValues { (_, list) -> displayName(list) }
+        return keys.associateWith { found[it] ?: it }
+    }
+
+    /**
+     * A name for places about to be merged: what their names begin with, when that is a
+     * word or more ("Example Oil" for "Example Oil - North" and "Example Oil-South"), else
+     * the first of them. [names] come biggest first.
+     */
+    fun suggestedName(names: List<String>): String {
+        val first = names.firstOrNull()?.trim() ?: return ""
+        var shared = first.length
+        for (other in names.drop(1)) {
+            val o = other.trim()
+            var i = 0
+            while (i < shared && i < o.length && first[i].equals(o[i], ignoreCase = true)) i++
+            shared = i
+        }
+        val prefix = first.take(shared).trimEnd { !it.isLetterOrDigit() }
+        return if (prefix.length >= 3) prefix else first
     }
 
     /**
@@ -392,26 +440,33 @@ object Stats {
         endExclusive: Long,
         currency: String,
         accountId: String? = null,
+        groups: List<PlaceGroup> = emptyList(),
     ): Places {
+        val into = membersOf(groups)
+        val byId = groups.associateBy { it.id }
         val (named, unnamed) = flows(txns, start, endExclusive, currency, accountId)
             .filter { it.isExpense }
             .partition { !it.merchant.isNullOrBlank() }
-        val places = named.groupBy { UserRule.patternOf(it.merchant!!) }
+        val places = named.groupBy { placeKeyOf(it, into)!! }
             .map { (key, list) ->
+                val group = byId[key]
                 Place(
                     key = key,
-                    name = displayName(list),
+                    name = group?.name ?: displayName(list),
                     amountMinor = list.sumOf { it.amountMinor },
                     count = list.size,
                     categoryId = list.groupBy { it.categoryId }
                         .maxBy { (_, filed) -> filed.sumOf { it.amountMinor } }.key,
+                    mergedFrom = if (group == null) emptyList() else {
+                        list.groupBy { UserRule.patternOf(it.merchant!!) }.values.map(::displayName).sorted()
+                    },
                 )
             }
             .sortedWith(compareByDescending<Place> { it.amountMinor }.thenBy { it.name })
         return Places(places, unnamed.sumOf { it.amountMinor }, unnamed.size)
     }
 
-    /** The expenses behind the [Place] with this [key]. */
+    /** The expenses behind the [Place] with this [key], merged places included. */
     fun recordsAt(
         txns: List<Txn>,
         key: String,
@@ -419,8 +474,12 @@ object Stats {
         endExclusive: Long,
         currency: String,
         accountId: String? = null,
-    ): List<Txn> = flows(txns, start, endExclusive, currency, accountId).filter { t ->
-        t.isExpense && t.merchant?.let { UserRule.patternOf(it) } == key
+        groups: List<PlaceGroup> = emptyList(),
+    ): List<Txn> {
+        val into = membersOf(groups)
+        return flows(txns, start, endExclusive, currency, accountId).filter { t ->
+            t.isExpense && placeKeyOf(t, into) == key
+        }
     }
 
     // ── the shape of a period's spending ──
