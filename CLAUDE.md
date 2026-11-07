@@ -78,6 +78,10 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   item with a count and a chevron that turns as the content slides down out from under
   it and back up. In a lazy list it is one item. Never a Show/Hide or Show all/less
   button beside a title.
+- **Notices stay dark.** A screen's snackbars show through `NoticeHost`
+  (`ui/compose/Notice.kt`), never a bare `SnackbarHost`: Material draws them in the
+  inverse colours, light over a dark theme, so in a dark theme they take the theme's
+  highest surface instead. Material 3 has no newer notice component.
 - **Choices of dates are tiles** (`ui/compose/Presets.kt`: `PresetSheet`/`PresetGrid`),
   never a plain list of words. Each tile says what it covers, and all tiles are one size.
 - **Exact versions.** `androidx.compose.material3:material3:1.5.0-rc01` with

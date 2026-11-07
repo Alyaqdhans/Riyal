@@ -34,7 +34,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -55,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.ui.compose.NoticeHost
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Txn
@@ -233,7 +233,7 @@ fun TransactionsScreen(vm: MainViewModel) {
         // Clear of the floating toolbar, which is drawn over this screen by the activity
         // and otherwise sits on top of the message and its Undo.
         snackbarHost = {
-            SnackbarHost(snackbar, modifier = Modifier.padding(bottom = toolbarSpace))
+            NoticeHost(snackbar, modifier = Modifier.padding(bottom = toolbarSpace))
         },
         topBar = {
             TopAppBar(

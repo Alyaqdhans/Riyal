@@ -41,7 +41,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
@@ -67,6 +66,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.ui.compose.NoticeHost
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.PlaceGroup
 import com.alyaqdhan.riyal.data.Stats
@@ -455,7 +455,7 @@ fun PlaceDetailScreen(
     val title = group?.name ?: placeName
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { NoticeHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = { Text(unmasked(title), maxLines = 1, overflow = TextOverflow.Ellipsis) },
