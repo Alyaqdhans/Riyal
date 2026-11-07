@@ -52,7 +52,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import com.alyaqdhan.riyal.ui.compose.SearchAction
 import com.alyaqdhan.riyal.ui.compose.SearchTitle
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -133,9 +132,11 @@ fun ListsScreen(vm: MainViewModel, onBack: () -> Unit) {
                 title = {
                     SearchTitle(
                         title = stringResource(R.string.set_lists),
+                        searchable = pager.targetPage == ListsTab.SENDERS.ordinal,
                         open = searching,
                         field = search,
                         placeholder = stringResource(R.string.lists_search),
+                        onOpen = { searching = true },
                         onClose = ::closeSearch,
                     )
                 },
@@ -145,11 +146,6 @@ fun ListsScreen(vm: MainViewModel, onBack: () -> Unit) {
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.action_back),
                         )
-                    }
-                },
-                actions = {
-                    if (!searching && pager.targetPage == ListsTab.SENDERS.ordinal) {
-                        SearchAction(stringResource(R.string.lists_search)) { searching = true }
                     }
                 },
             )

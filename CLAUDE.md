@@ -78,10 +78,12 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   item with a count and a chevron that turns as the content slides down out from under
   it and back up. In a lazy list it is one item. Never a Show/Hide or Show all/less
   button beside a title.
-- **Search is in the top bar, an icon until wanted.** A page or tab that can be searched
-  shows `SearchAction` in its bar; tapped, `SearchTitle` (`ui/compose/Search.kt`) grows
-  Material's pill search field out of it across the title, keyboard up, and its close
-  button empties and folds it. Never a text field always on the page.
+- **Search is a button that grows into the field.** Anything searchable has
+  `SearchTitle` (`ui/compose/Search.kt`) as its title, a top bar's or a sheet's: a search
+  icon at its end that, tapped, stretches from where it stands across the title into
+  Material's pill search field (the icon stays put, now the field's), keyboard up, with a
+  close button at its start. Never a fade between the two, and never a text field always
+  on the page.
 - **Notices follow the theme.** A screen's snackbars show through `NoticeHost`
   (`ui/compose/Notice.kt`), never a bare `SnackbarHost`: Material draws them in the
   inverse colours (light over a dark theme, dark over a light one), and the owner wants

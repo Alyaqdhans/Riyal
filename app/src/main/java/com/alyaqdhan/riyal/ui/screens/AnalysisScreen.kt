@@ -74,7 +74,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.saveable.rememberSaveable
-import com.alyaqdhan.riyal.ui.compose.SearchAction
 import com.alyaqdhan.riyal.ui.compose.SearchTitle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
@@ -240,16 +239,13 @@ fun AnalysisScreen(
                 title = {
                     SearchTitle(
                         title = stringResource(R.string.an_title),
+                        searchable = txns.isNotEmpty() && pager.targetPage == AnalysisTab.PLACES.ordinal,
                         open = searching,
                         field = search,
                         placeholder = stringResource(R.string.places_search),
+                        onOpen = { searching = true },
                         onClose = ::closeSearch,
                     )
-                },
-                actions = {
-                    if (!searching && txns.isNotEmpty() && pager.targetPage == AnalysisTab.PLACES.ordinal) {
-                        SearchAction(stringResource(R.string.places_search)) { searching = true }
-                    }
                 },
             )
         },

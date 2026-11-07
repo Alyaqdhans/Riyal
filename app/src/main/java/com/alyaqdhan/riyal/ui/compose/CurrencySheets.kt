@@ -2,6 +2,9 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -24,7 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -77,7 +79,10 @@ fun CurrencyPickerSheet(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    var query by rememberSaveable { mutableStateOf("") }
+    // The search is in the title row: an icon until wanted, growing into the field.
+    val search = rememberTextFieldState()
+    var searching by rememberSaveable { mutableStateOf(false) }
+    val query = search.text.toString()
     val all = remember { Currencies.ALL }
     val shown = remember(query) {
         val q = query.trim()
@@ -89,21 +94,25 @@ fun CurrencyPickerSheet(
         sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden),
     ) {
         Column(Modifier.fillMaxHeight(0.9f)) {
-            Text(
-                stringResource(R.string.cur_pick_title),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                placeholder = { Text(stringResource(R.string.cur_search)) },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            )
+            BackHandler(enabled = searching) {
+                searching = false
+                search.clearText()
+            }
+            Box(Modifier.padding(start = 24.dp, end = 12.dp, bottom = 8.dp)) {
+                SearchTitle(
+                    title = stringResource(R.string.cur_pick_title),
+                    searchable = true,
+                    open = searching,
+                    field = search,
+                    placeholder = stringResource(R.string.cur_search),
+                    onOpen = { searching = true },
+                    onClose = {
+                        searching = false
+                        search.clearText()
+                    },
+                    titleStyle = MaterialTheme.typography.titleLarge,
+                )
+            }
             if (shown.isEmpty()) {
                 Text(
                     stringResource(R.string.cur_none_match),
