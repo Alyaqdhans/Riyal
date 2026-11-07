@@ -31,6 +31,8 @@ is attached there.
   for it and back.
 - A record left slid open on one tab no longer shows a strip of itself on the tab beside
   it.
+- What a swipe uncovers - Archive, Remove, Forget, Restore - has its icon beside its word
+  rather than above it.
 - Notices follow the theme: light in the light theme and dark in the dark one. Material
   draws them the other way round, so they glared over a dark screen.
 - Material 3 1.5.0-rc01, from alpha29. It sits on stable Compose 1.12, where alpha29 had
