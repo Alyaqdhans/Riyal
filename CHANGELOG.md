@@ -26,6 +26,8 @@ is attached there.
   place's names, Review's dismissed messages, the empty categories, the rest of a
   budget and a backlog row's records. They used to sit behind Show, Hide or Show all
   buttons, and the empty categories opened back up among the others.
+- Material 3 1.5.0-rc01, from alpha29. It sits on stable Compose 1.12, where alpha29 had
+  brought in an alpha of Compose's foundation.
 - **An archived record counts towards nothing.** Home, Analysis, categories, budgets,
   account balances and the record count all leave it out, and it stays in Archived until
   you bring it back. A balance still starts from the figure the bank quoted, so a record

@@ -79,13 +79,13 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   Show/Hide or Show all/less button beside a title.
 - **Choices of dates are tiles** (`ui/compose/Presets.kt`: `PresetSheet`/`PresetGrid`),
   never a plain list of words. Each tile says what it covers, and all tiles are one size.
-- **Exact versions.** `androidx.compose.material3:material3:1.5.0-alpha29` with
+- **Exact versions.** `androidx.compose.material3:material3:1.5.0-rc01` with
   `@OptIn(ExperimentalMaterial3Api / ExperimentalMaterial3ExpressiveApi)`. Use its
   current APIs: `ListItem(onClick | checked/onCheckedChange, …) { headline }`,
   `rememberBottomSheetState(initialValue = SheetValue.Hidden)`,
   `SelectableDropdownMenuItem` for a menu choice, and `ToggleButtonDefaults.shapesFor` /
-  `colors` instead of the deprecated forms. The owner raises the alpha when asked; it
-  sits on Compose 1.12 (foundation 1.13 alpha).
+  `colors` instead of the deprecated forms. The owner raises it when asked; rc01 sits
+  on stable Compose 1.12 (foundation and ui 1.12.0).
 - **Every string in both languages.** `res/values/strings.xml` and
   `res/values-ar/strings.xml` must keep the same names and placeholders, with Arabic
   plurals given all six forms. Never hard-code user-visible text.
