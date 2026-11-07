@@ -69,6 +69,7 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.ui.compose.DisclosureRow
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Stats
@@ -364,7 +365,6 @@ private fun MerchantCard(
     // usually means reading both.
     var showing by rememberSaveable(cardKey) { mutableStateOf(listOf<String>()) }
     var choosing by rememberSaveable(cardKey) { mutableStateOf(false) }
-    var everyRecord by rememberSaveable(cardKey) { mutableStateOf(false) }
     // The category picked for this name, waiting for Save.
     var picked by rememberSaveable(cardKey) { mutableStateOf<String?>(null) }
     val chosen = remember(group.txnIds, excluded) { group.txnIds.filter { it !in excluded } }
@@ -469,30 +469,21 @@ private fun MerchantCard(
                 )
                 HorizontalDivider()
                 val plain = ListItemDefaults.colors(containerColor = Color.Transparent)
-                val chooseTurn by animateFloatAsState(if (choosing) 180f else 0f, motion.defaultSpatialSpec())
-                ListItem(
-                    onClick = { choosing = !choosing },
-                    colors = plain,
+                DisclosureRow(
+                    title = stringResource(R.string.needs_choose_records),
+                    supporting = stringResource(R.string.needs_chosen_of, chosen.size, group.count),
+                    expanded = choosing,
+                    onToggle = { choosing = !choosing },
                     contentPadding = PaddingValues(0.dp),
-                    supportingContent = {
-                        Text(stringResource(R.string.needs_chosen_of, chosen.size, group.count))
-                    },
-                    trailingContent = {
-                        Icon(
-                            Icons.Filled.KeyboardArrowDown,
-                            contentDescription = null,
-                            modifier = Modifier.rotate(chooseTurn),
-                        )
-                    },
-                ) { Text(stringResource(R.string.needs_choose_records)) }
+                )
                 AnimatedVisibility(
                     visible = choosing,
                     enter = expandVertically(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
                     exit = shrinkVertically(motion.defaultSpatialSpec()) + fadeOut(motion.defaultEffectsSpec()),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        val listed = if (everyRecord) group.txns else group.txns.take(RECORDS_AT_FIRST)
-                        for (txn in listed) {
+                        // Opened on purpose, so every record, not the first few behind another tap.
+                        for (txn in group.txns) {
                             RecordRow(
                                 txn = txn,
                                 checked = txn.id !in excluded,
@@ -505,17 +496,10 @@ private fun MerchantCard(
                                 },
                             )
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (!everyRecord && group.txns.size > RECORDS_AT_FIRST) {
-                                TextButton(onClick = { everyRecord = true }, shapes = ButtonDefaults.shapes()) {
-                                    Text(stringResource(R.string.needs_show_all, group.count))
-                                }
-                            }
-                            // Only worth a control once there is a mixed state to get out of.
-                            if (excluded.isNotEmpty()) {
-                                TextButton(onClick = { excluded = emptyList() }, shapes = ButtonDefaults.shapes()) {
-                                    Text(stringResource(R.string.needs_select_all, group.count))
-                                }
+                        // Only worth a control once there is a mixed state to get out of.
+                        if (excluded.isNotEmpty()) {
+                            TextButton(onClick = { excluded = emptyList() }, shapes = ButtonDefaults.shapes()) {
+                                Text(stringResource(R.string.needs_select_all, group.count))
                             }
                         }
                     }
@@ -548,9 +532,6 @@ private fun MerchantCard(
         }
     }
 }
-
-/** Records listed when a card's records are first opened; the rest are one tap away. */
-private const val RECORDS_AT_FIRST = 5
 
 /**
  * One record inside a merchant's card: enough to recognise it, a tick to leave it out,

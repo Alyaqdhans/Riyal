@@ -72,6 +72,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.ui.compose.DisclosureRow
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Account
@@ -301,29 +302,12 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                     }
                     if (dismissed.isNotEmpty()) {
                         item(key = "dismissed-header") {
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    stringResource(
-                                        R.string.review_dismissed_header,
-                                        dismissed.size,
-                                    ),
-                                    style = MaterialTheme.typography.titleSmall,
-                                )
-                                TextButton(onClick = { showDismissed = !showDismissed }, shapes = ButtonDefaults.shapes()) {
-                                    Text(
-                                        stringResource(
-                                            if (showDismissed) R.string.action_hide
-                                            else R.string.action_show
-                                        )
-                                    )
-                                }
-                            }
+                            DisclosureRow(
+                                title = stringResource(R.string.review_dismissed_header, dismissed.size),
+                                expanded = showDismissed,
+                                onToggle = { showDismissed = !showDismissed },
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
                         }
                         if (showDismissed) {
                             item(key = "dismissed-hint") {

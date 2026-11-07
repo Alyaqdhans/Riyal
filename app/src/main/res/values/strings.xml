@@ -412,8 +412,8 @@
     <string name="review_yes_transfer">Yes, it\'s a transfer</string>
     <string name="review_remember_similar">Remember for similar messages</string>
     <string name="review_add_manually">Add manually</string>
-    <string name="action_show">Show</string>
-    <string name="action_hide">Hide</string>
+    <string name="state_expanded">Expanded</string>
+    <string name="state_collapsed">Collapsed</string>
 
     <string name="needs_title">Needs a category</string>
     <string name="needs_left_title">Left for next time</string>
@@ -447,7 +447,6 @@
     <string name="needs_file_as">File as</string>
     <string name="needs_choose_records">Choose records</string>
     <string name="needs_chosen_of">%1$d of %2$d ticked</string>
-    <string name="needs_show_all">Show all %d</string>
 
     <string name="acct_generic_name">Account</string>
     <string name="bank_muscat">Bank Muscat</string>
@@ -532,10 +531,9 @@
     <string name="cat_income">Other Income</string>
 
     <string name="cats_title">Categories</string>
+    <string name="cats_empty_header">Empty categories (%d)</string>
     <string name="cats_spending">Spending</string>
     <string name="cats_income">Income</string>
-    <string name="cats_hide_empty">Hide empty categories</string>
-    <string name="cats_show_all">Show all categories (%d empty)</string>
     <string name="cats_transfers_note">%1$s moved between your own accounts in this period. Transfers have no category: they\'re neither spending nor income.</string>
     <string name="cats_add">Add a category</string>
     <string name="cats_learned_title">What Riyal has learned</string>
@@ -623,13 +621,15 @@
     </plurals>
     <string name="budget_spent_pct">%d%% spent</string>
     <string name="budget_outside">%1$s spent outside these caps</string>
+    <plurals name="budget_more_lines">
+        <item quantity="one">%d more category</item>
+        <item quantity="other">%d more categories</item>
+    </plurals>
     <string name="budget_editor_title">Budget for %1$s</string>
     <string name="budget_editor_hint">Tap the categories to cap, then say what each may spend.</string>
     <string name="budget_spent_before">Spent %1$s in %2$s</string>
     <string name="budget_total">Total</string>
     <string name="budget_plan_runs">Plan runs %1$s</string>
-    <string name="budget_show_less">Show less</string>
-    <string name="budget_show_all">Show all %d</string>
     <string name="budget_delete_title">Delete this plan?</string>
     <string name="budget_delete_body">\"%1$s\" and its caps will be removed. Your transactions are untouched.</string>
     <string name="budget_bar_amounts">%1$s / %2$s</string>

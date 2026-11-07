@@ -72,6 +72,11 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
 - **Out and in side by side, the rest under them.** A `ConnectedChoice` of kinds puts
   Expense and Income on one row and the third answer (Transfer, Not a transaction) on
   the row under them, with `perRow = 2`, in every language.
+- **What is folded opens under a details row.** Anything shown only now and then (a
+  merged place's names, what Review dismissed, the empty categories, the rest of a budget,
+  a backlog row's records) sits under `DisclosureRow` (`ui/compose/Disclosure.kt`): a
+  list item with a count and a turning chevron, its content right under it. Never a
+  Show/Hide or Show all/less button beside a title.
 - **Choices of dates are tiles** (`ui/compose/Presets.kt`: `PresetSheet`/`PresetGrid`),
   never a plain list of words. Each tile says what it covers, and all tiles are one size.
 - **Exact versions.** `androidx.compose.material3:material3:1.5.0-alpha29` with
