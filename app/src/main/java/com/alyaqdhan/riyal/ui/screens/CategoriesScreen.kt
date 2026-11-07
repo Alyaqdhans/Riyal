@@ -119,7 +119,7 @@ fun CategoriesScreen(
     onOpenCategory: (String, TimeSlice) -> Unit,
     onOpenLists: () -> Unit,
 ) {
-    val txns by vm.txns.collectAsState()
+    val txns by vm.countedTxns.collectAsState()
     // Read so a create/rename/delete recomposes the list built from the registry.
     val custom by vm.categories.collectAsState()
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }

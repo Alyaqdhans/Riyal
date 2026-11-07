@@ -129,7 +129,7 @@ private val dayFmt: DateTimeFormatter get() = Dates.pattern("d MMM")
  */
 @Composable
 fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice, String?) -> Unit) {
-    val txns by vm.txns.collectAsState()
+    val txns by vm.countedTxns.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val budgets by vm.budgets.collectAsState()
     val budgetsOn by vm.budgetsOn.collectAsState()

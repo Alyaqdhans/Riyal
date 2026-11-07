@@ -121,6 +121,7 @@ fun SettingsScreen(
     val accounts by vm.accounts.collectAsState()
     val budgets by vm.budgets.collectAsState()
     val txns by vm.txns.collectAsState()
+    val countedRecords by vm.countedTxns.collectAsState()
     val lastSummary by vm.lastSummary.collectAsState()
     val currency by vm.defaultCurrency.collectAsState()
     val budgetsOn by vm.budgetsOn.collectAsState()
@@ -154,7 +155,7 @@ fun SettingsScreen(
             StatusCard(
                 scan = scan,
                 lastScanAt = prefs.lastScanAt,
-                records = txns.size,
+                records = countedRecords.size,
                 accounts = accounts.size,
                 messagesRead = lastSummary?.scanned,
             )

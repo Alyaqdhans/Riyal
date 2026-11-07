@@ -81,7 +81,7 @@ fun CategoryDetailScreen(
     initialSlice: TimeSlice? = null,
     initialAccountId: String? = null,
 ) {
-    val txns by vm.txns.collectAsState()
+    val txns by vm.countedTxns.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val categoryUse by vm.categoryUse.collectAsState()
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
@@ -96,7 +96,6 @@ fun CategoryDetailScreen(
     var editing by remember { mutableStateOf<Txn?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val archivedIds by vm.archivedIds.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
 
     LaunchedEffect(accounts) {
@@ -222,8 +221,8 @@ fun CategoryDetailScreen(
                     // Swipe, like every other transaction list: the little × next to
                     // each row was permanent deletion one mis-tap away.
                     SwipeableTxnRow(
-                        archived = txn.id in archivedIds,
-                        onArchive = { archiveWithUndo(vm, snackbar, scope, txn, txn.id !in archivedIds) },
+                        archived = false,
+                        onArchive = { archiveWithUndo(vm, snackbar, scope, txn, archive = true) },
                         onRemove = { removeForGood(vm, snackbar, scope, txn) },
                                     removeLabel = removeLabelOf(txn),
                     ) {

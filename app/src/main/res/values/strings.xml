@@ -307,7 +307,7 @@
     <string name="tour_remove_title">Swipe left to remove</string>
     <string name="tour_remove_text">Slide a record left and the button that removes it appears behind it. Nothing goes until you tap that button.</string>
     <string name="tour_archive_title">Swipe right to archive</string>
-    <string name="tour_archive_text">Slide it right and tap Archive to clear it from your list. It still counts towards your balance.</string>
+    <string name="tour_archive_text">Slide it right and tap Archive to clear it from your list. It stops counting towards your totals and balances.</string>
     <string name="txn_empty_filtered">Nothing matches these filters.</string>
     <string name="txn_empty_none">Pull down to scan, or add one manually with +.</string>
 
@@ -831,7 +831,7 @@
     <string name="log_no_rule_ask">no rule saved for \"%1$s\": you asked to be asked about this name every time, so the next message from it comes back to you</string>
     <string name="log_rule_saved_filed">rule saved: \"%1$s\" → %2$s · %3$s filed now, %4$d more re-categorized, and anything matching from now on lands there without being asked</string>
     <string name="log_left_under_other">%1$s left under Other for now · they were not answered, and the next scan asks about them again</string>
-    <string name="log_archived">archived by you: %1$s is out of the lists but still counts towards your balance</string>
+    <string name="log_archived">archived by you: %1$s is out of the lists and no longer counts towards anything</string>
     <string name="log_unarchived">unarchived by you: %1$s is back in the lists</string>
     <string name="log_removed">transaction removed by you: %1$s (%2$s)</string>
     <string name="log_removed_ignored"> · this message will stay ignored on future scans</string>

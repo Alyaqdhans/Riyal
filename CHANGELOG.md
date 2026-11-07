@@ -8,6 +8,11 @@ is attached there.
 
 ### Around the app
 
+- **An archived record counts towards nothing.** Home, Analysis, categories, budgets,
+  account balances and the record count all leave it out, and it stays in Archived until
+  you bring it back. A balance still starts from the figure the bank quoted, so a record
+  older than that figure stays inside it.
+
 ## 1.8.3 — 2026-10-31
 
 ### Around the app

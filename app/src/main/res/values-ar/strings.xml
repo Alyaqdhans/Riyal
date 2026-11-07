@@ -347,7 +347,7 @@
     <string name="tour_remove_title">اسحب يساراً للإزالة</string>
     <string name="tour_remove_text">اسحب السجل يساراً فيظهر خلفه زر إزالته. لا يُزال شيء حتى تضغط ذلك الزر.</string>
     <string name="tour_archive_title">اسحب يميناً للأرشفة</string>
-    <string name="tour_archive_text">اسحبه يميناً واضغط «أرشفة» ليختفي من قائمتك. يبقى محسوباً في رصيدك.</string>
+    <string name="tour_archive_text">اسحبه يميناً واضغط «أرشفة» ليختفي من قائمتك. ولن يُحتسب بعدها في مجاميعك ولا أرصدتك.</string>
     <string name="txn_empty_filtered">لا شيء يطابق هذه التصفية.</string>
     <string name="txn_empty_none">اسحب للأسفل لبدء الفحص، أو أضف معاملة يدوياً بزر +.</string>
 
@@ -903,7 +903,7 @@
     <string name="log_no_rule_ask">لم تُحفظ قاعدة لـ \"%1$s\": طلبت أن تُسأل عن هذا الاسم في كل مرة، فستعود إليك الرسالة التالية منه</string>
     <string name="log_rule_saved_filed">حُفظت قاعدة: \"%1$s\" ← %2$s · صُنِّفت %3$s الآن، وأُعيد تصنيف %4$d غيرها، وكل ما يطابقها من الآن يذهب هناك دون سؤال</string>
     <string name="log_left_under_other">تُركت %1$s تحت \"أخرى\" في الوقت الحالي · لم يُجَب عنها، وسيسأل عنها الفحص القادم من جديد</string>
-    <string name="log_archived">أرشفت: %1$s خرجت من القوائم لكنها ما زالت تُحتسب في رصيدك</string>
+    <string name="log_archived">أرشفت: %1$s خرجت من القوائم ولم تعد تُحتسب في أي شيء</string>
     <string name="log_unarchived">أخرجت من الأرشيف: %1$s عادت إلى القوائم</string>
     <string name="log_removed">أزلت معاملة: %1$s (%2$s)</string>
     <string name="log_removed_ignored"> · وستبقى هذه الرسالة متجاهَلة في الفحوصات القادمة</string>

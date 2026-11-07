@@ -214,6 +214,12 @@ everything.
   loaded at the file's default weight and varied through the paint, fallback font and
   all. Text drawn outside the theme takes the family itself (Vico's axis labels,
   Markwon's TextView and headings).
+- An archived record counts towards nothing: no total, chart, budget, balance or count.
+  Anything that shows a figure reads `vm.countedTxns` (`Store.countedTxns`, through
+  `Stats.counted`), never `vm.txns`, which also holds the archived ones and is for the
+  archive's own list, a scan, the export and a backup. An account's balance is the bank's
+  opening figure plus the counted records after it, so a record older than that figure
+  stays inside the bank's own number.
 - A held scroll thumb jumps the list each frame, and each frame builds a screen of rows.
   Long lists give their items a `contentType` (a record from a record, a day from a day),
   so the rows just left are reused, and a row makes no layer, measurer or state it does

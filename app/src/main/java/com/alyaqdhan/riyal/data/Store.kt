@@ -109,12 +109,6 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private val _templates = MutableStateFlow<List<TemplateStat>>(emptyList())
     val templates: StateFlow<List<TemplateStat>> = _templates
 
-    /** Live balance per account id, the one place every screen reads a balance from. */
-    val balances: StateFlow<Map<String, Long>> =
-        combine(_accounts, _txns) { accounts, txns ->
-            accounts.associate { it.id to AccountDiscovery.balanceOf(it, txns) }
-        }.stateIn(scope, SharingStarted.Eagerly, emptyMap())
-
     /** txnId → categoryId chosen by the user; reapplied after every rescan. */
     private val overrides = HashMap<String, String>()
 
@@ -139,14 +133,29 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private val ignored = HashSet<String>()
 
     /**
-     * Txn ids the user archived: still real, still counted in the account balance, but
-     * out of the way in the lists. Unlike [ignored] the record is kept, so archiving is
-     * the safe half of a swipe and deleting is the deliberate one.
+     * Txn ids the user archived: out of the lists and counted in nothing, not a total, a
+     * budget or a balance ([countedTxns]). Unlike [ignored] the record is kept, so
+     * archiving is the safe half of a swipe and deleting is the deliberate one.
      */
     private val archived = HashSet<String>()
 
     private val _archivedIds = MutableStateFlow<Set<String>>(emptySet())
     val archivedIds: StateFlow<Set<String>> = _archivedIds
+
+    /**
+     * The records that count: all of them but the archived. Every figure on every screen
+     * reads this; [txns] is for what has to see an archived record, which is the archive's
+     * own list, a scan, the export and a backup.
+     */
+    val countedTxns: StateFlow<List<Txn>> =
+        combine(_txns, _archivedIds) { txns, archived -> Stats.counted(txns, archived) }
+            .stateIn(scope, SharingStarted.Eagerly, emptyList())
+
+    /** Live balance per account id, the one place every screen reads a balance from. */
+    val balances: StateFlow<Map<String, Long>> =
+        combine(_accounts, countedTxns) { accounts, txns ->
+            accounts.associate { it.id to AccountDiscovery.balanceOf(it, txns) }
+        }.stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
     /**
      * Txn ids the user left under Other for now rather than answering. Not an answer -

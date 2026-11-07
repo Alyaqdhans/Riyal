@@ -15,8 +15,15 @@ import kotlin.math.abs
  * the withdrawal side is not an expense; counting either would inflate both halves of
  * every total at once. [flows] is the single gate that enforces it, and every figure
  * on every screen comes through it.
+ *
+ * The other rule sits one step earlier: what comes in here has already been through
+ * [counted], so an archived record reaches none of these sums.
  */
 object Stats {
+
+    /** Every record but the [archived] ones: what a figure is allowed to add up. */
+    fun counted(txns: List<Txn>, archived: Set<String>): List<Txn> =
+        if (archived.isEmpty()) txns else txns.filter { it.id !in archived }
 
     fun ym(millis: Long): YearMonth =
         YearMonth.from(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))

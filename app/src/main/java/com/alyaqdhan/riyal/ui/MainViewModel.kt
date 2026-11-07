@@ -67,6 +67,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val store get() = riyal.store
 
     val txns = store.txns
+
+    /** The records that count, archived ones left out. Every figure reads these. */
+    val countedTxns = store.countedTxns
     val reviews = store.reviews
     val rules = store.rules
 
@@ -263,7 +266,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ─────────────────────────── accounts ───────────────────────────
 
-    fun balanceOf(account: Account): Long = AccountDiscovery.balanceOf(account, txns.value)
+    fun balanceOf(account: Account): Long = AccountDiscovery.balanceOf(account, countedTxns.value)
 
     fun saveAccount(account: Account) = viewModelScope.launch(Dispatchers.IO) {
         val existing = accounts.value.any { it.id == account.id }
