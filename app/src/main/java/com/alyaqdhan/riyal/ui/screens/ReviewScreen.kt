@@ -53,6 +53,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
@@ -293,6 +294,7 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                                             else -> dismissedOne
                                         },
                                         actionLabel = undo,
+                                        duration = SnackbarDuration.Long,
                                     )
                                     if (result == SnackbarResult.ActionPerformed) {
                                         vm.restoreReview(item)

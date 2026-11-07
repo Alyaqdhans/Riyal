@@ -2,6 +2,7 @@ package com.alyaqdhan.riyal.ui.screens
 
 import android.app.Application
 import androidx.annotation.StringRes
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
@@ -34,6 +35,9 @@ internal fun archiveWithUndo(
                 if (archive) R.string.row_archived else R.string.row_unarchived
             ),
             actionLabel = context.getString(R.string.action_undo),
+            // A notice with an action stays until dismissed unless told otherwise; this
+            // one goes by itself, after long enough to reach Undo.
+            duration = SnackbarDuration.Long,
         )
         if (result == SnackbarResult.ActionPerformed) vm.archiveTxn(txn, !archive)
     }
