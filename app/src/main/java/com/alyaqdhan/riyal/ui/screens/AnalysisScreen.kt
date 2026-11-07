@@ -24,6 +24,11 @@ import com.alyaqdhan.riyal.ui.compose.typeIcon
 import com.alyaqdhan.riyal.ui.compose.typeLabel
 import com.alyaqdhan.riyal.ui.compose.ConnectedChoice
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -60,9 +65,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -113,9 +120,18 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import com.alyaqdhan.riyal.ui.compose.categoryColor
+import com.alyaqdhan.riyal.ui.compose.MatchedIcon
 
 private val ChartLabelsKey = ExtraStore.Key<List<String>>()
+
+/** The two faces of the tab, under the same account and period. */
+private enum class AnalysisTab(@param:StringRes val label: Int) {
+    OVERVIEW(R.string.an_tab_overview),
+    PLACES(R.string.an_tab_places),
+}
+
 private val nextDueFmt: DateTimeFormatter get() = Dates.pattern("d MMM")
 private val dayFmt: DateTimeFormatter get() = Dates.pattern("d MMM")
 
@@ -128,7 +144,11 @@ private val dayFmt: DateTimeFormatter get() = Dates.pattern("d MMM")
  * because a number with nothing to compare it to is just a number.
  */
 @Composable
-fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice, String?) -> Unit) {
+fun AnalysisScreen(
+    vm: MainViewModel,
+    onOpenCategory: (String, TimeSlice, String?) -> Unit,
+    onOpenPlace: (Stats.Place, TimeSlice, String?) -> Unit,
+) {
     val txns by vm.countedTxns.collectAsState()
     val accounts by vm.accounts.collectAsState()
     val budgets by vm.budgets.collectAsState()
@@ -206,11 +226,46 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice, String
                 return@Column
             }
 
+            // The tabs lie side by side, as Lists' do: a tab slides over to its page, and a
+            // finger can drag from one to the other.
+            val pager = rememberPagerState { AnalysisTab.entries.size }
+            val tabs = rememberCoroutineScope()
+            // A search left open would hold the keyboard over the charts.
+            val focus = LocalFocusManager.current
+            LaunchedEffect(pager.targetPage) { focus.clearFocus() }
+            PrimaryTabRow(selectedTabIndex = pager.targetPage) {
+                AnalysisTab.entries.forEach { t ->
+                    Tab(
+                        selected = pager.targetPage == t.ordinal,
+                        onClick = { tabs.launch { pager.animateScrollToPage(t.ordinal) } },
+                        text = { Text(stringResource(t.label)) },
+                    )
+                }
+            }
+
             // The account filter sits outside the scroll: it scopes everything below,
             // so it should never scroll out of sight while you read the numbers.
             AccountChips(accounts, accountId, onSelect = { accountId = it })
 
             val scroll = rememberScrollState()
+            HorizontalPager(
+                state = pager,
+                modifier = Modifier.fillMaxSize(),
+                // Both stay built, so neither loses its place or rebuilds as it slides in.
+                beyondViewportPageCount = 1,
+                verticalAlignment = Alignment.Top,
+            ) { page ->
+            if (AnalysisTab.entries[page] == AnalysisTab.PLACES) {
+                PlacesTab(
+                    txns = txns,
+                    slice = slice,
+                    onSlice = { vm.setAnalysisSlice(it) },
+                    currency = currency,
+                    accountId = accountId,
+                    onOpen = { onOpenPlace(it, slice, accountId) },
+                )
+                return@HorizontalPager
+            }
             ScrollThumb(scroll, bottom = toolbarSpace) {
             Column(
                 Modifier
@@ -586,6 +641,7 @@ fun AnalysisScreen(vm: MainViewModel, onOpenCategory: (String, TimeSlice, String
                 ToolbarSpacer()
             }
             }
+            }
         }
         }
     }
@@ -615,7 +671,7 @@ internal fun AccountChips(accounts: List<Account>, selected: String?, onSelect: 
                 onClick = { onSelect(if (selected == acc.id) null else acc.id) },
                 label = { Text(acc.displayName) },
                 leadingIcon = {
-                    Icon(painterResource(iconFor(acc.kind)), contentDescription = null, modifier = Modifier.size(18.dp))
+                    MatchedIcon(iconFor(acc.kind), MaterialTheme.typography.labelLarge, Modifier.size(18.dp))
                 },
             )
         }
@@ -841,11 +897,11 @@ private fun KpiCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Icon(
-                        painterResource(typeIcon(TxnType.TRANSFER)),
-                        contentDescription = null,
+                    MatchedIcon(
+                        typeIcon(TxnType.TRANSFER),
+                        MaterialTheme.typography.bodyMedium,
+                        Modifier.size(18.dp),
                         tint = scheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
                     )
                     Text(
                         stringResource(R.string.an_moved_label),
@@ -894,7 +950,7 @@ private fun Kpi(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             if (icon != null) {
-                Icon(painterResource(icon), contentDescription = null, tint = ink, modifier = Modifier.size(14.dp))
+                MatchedIcon(icon, MaterialTheme.typography.labelMedium, Modifier.size(14.dp), tint = ink)
             }
             Text(
                 label,

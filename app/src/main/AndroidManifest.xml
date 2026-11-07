@@ -72,6 +72,10 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
         <activity
+            android:name=".ui.nav.PlaceDetailActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
             android:name=".ui.nav.UpdatesActivity"
             android:exported="false" />
         <activity

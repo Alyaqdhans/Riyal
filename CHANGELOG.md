@@ -8,6 +8,11 @@ is attached there.
 
 ### Around the app
 
+- **See where your money went, place by place.** Analysis has a Places tab: every shop
+  you paid in the period and account chosen, biggest first, with how many records and
+  what they came to. Search by name, and open a place for its records and how the
+  period compares with the one before. Records that name no place are added up under
+  the list, so it still comes to the period's spending.
 - **An archived record counts towards nothing.** Home, Analysis, categories, budgets,
   account balances and the record count all leave it out, and it stays in Archived until
   you bring it back. A balance still starts from the figure the bank quoted, so a record

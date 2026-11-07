@@ -4,9 +4,14 @@ import android.app.Application
 import androidx.annotation.StringRes
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.alyaqdhan.riyal.R
+import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.Txn
 import com.alyaqdhan.riyal.ui.MainViewModel
+import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -52,6 +57,38 @@ internal fun removeForGood(
             ),
         )
     }
+}
+
+/** A record's sheet, wired to the view model: every change it makes closes it. */
+@Composable
+internal fun RecordSheet(vm: MainViewModel, txn: Txn, accounts: List<Account>, onClose: () -> Unit) {
+    val categoryUse by vm.categoryUse.collectAsState()
+    val askEachTime by vm.askEachTime.collectAsState()
+    TxnEditSheet(
+        txn = txn,
+        accounts = accounts,
+        onApply = { categoryId, rulePattern ->
+            vm.setCategory(txn, categoryId, rulePattern)
+            onClose()
+        },
+        onDismiss = onClose,
+        rememberByDefault = vm.prefs.smartRules,
+        categoryUse = categoryUse,
+        askEachTime = askEachTime,
+        onAskEachTime = { vm.setAskEachTime(txn.merchant.orEmpty(), it) },
+        onSetAccount = {
+            vm.setTxnAccount(txn, it)
+            onClose()
+        },
+        onMarkTransfer = { from, to ->
+            vm.markAsTransfer(txn, from, to)
+            onClose()
+        },
+        onSplitTransfer = {
+            vm.splitTransfer(txn)
+            onClose()
+        },
+    )
 }
 
 /** What removing a record is called: a record you added is deleted; a transfer goes with its other half. */

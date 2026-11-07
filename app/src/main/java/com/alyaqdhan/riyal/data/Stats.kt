@@ -361,6 +361,68 @@ object Stats {
             .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key.length })
             .first().key
 
+    // ── where the money went ──
+
+    /**
+     * One place the money went in a period: every expense naming it. [key] is the way a
+     * rule is keyed, so the spellings a bank produces fold into the one shop they are.
+     */
+    data class Place(
+        val key: String,
+        val name: String,
+        val amountMinor: Long,
+        val count: Int,
+        /** The category most of the money here was filed under. */
+        val categoryId: String,
+    ) {
+        /** Is [query] in the name, whatever its case? An empty query matches every place. */
+        fun matches(query: String): Boolean = name.contains(query.trim(), ignoreCase = true)
+    }
+
+    /**
+     * A period's spending by place, biggest first. Records that name no place have no row
+     * to go on, so they are added up beside the list: the two together come to the
+     * period's whole spending.
+     */
+    data class Places(val places: List<Place>, val unnamedMinor: Long, val unnamedCount: Int)
+
+    fun placesIn(
+        txns: List<Txn>,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String? = null,
+    ): Places {
+        val (named, unnamed) = flows(txns, start, endExclusive, currency, accountId)
+            .filter { it.isExpense }
+            .partition { !it.merchant.isNullOrBlank() }
+        val places = named.groupBy { UserRule.patternOf(it.merchant!!) }
+            .map { (key, list) ->
+                Place(
+                    key = key,
+                    name = displayName(list),
+                    amountMinor = list.sumOf { it.amountMinor },
+                    count = list.size,
+                    categoryId = list.groupBy { it.categoryId }
+                        .maxBy { (_, filed) -> filed.sumOf { it.amountMinor } }.key,
+                )
+            }
+            .sortedWith(compareByDescending<Place> { it.amountMinor }.thenBy { it.name })
+        return Places(places, unnamed.sumOf { it.amountMinor }, unnamed.size)
+    }
+
+    /** The expenses behind the [Place] with this [key]. */
+    fun recordsAt(
+        txns: List<Txn>,
+        key: String,
+        start: Long,
+        endExclusive: Long,
+        currency: String,
+        accountId: String? = null,
+    ): List<Txn> = flows(txns, start, endExclusive, currency, accountId).filter { t ->
+        t.isExpense && t.merchant?.let { UserRule.patternOf(it) } == key
+    }
+
     // ── the shape of a period's spending ──
 
     /**

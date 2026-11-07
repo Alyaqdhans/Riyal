@@ -151,6 +151,7 @@ class AnalysisFragment : ScreenFragment(R.layout.fragment_analysis) {
         AnalysisScreen(
             vm,
             onOpenCategory = { id, slice, account -> openCategory(requireContext(), id, slice, account) },
+            onOpenPlace = { place, slice, account -> openPlace(requireContext(), place, slice, account) },
         )
     }
 }

@@ -58,7 +58,6 @@ import com.alyaqdhan.riyal.ui.compose.PeriodBar
 import com.alyaqdhan.riyal.ui.compose.SectionTitle
 import com.alyaqdhan.riyal.ui.compose.TimeSlice
 import com.alyaqdhan.riyal.ui.compose.title
-import com.alyaqdhan.riyal.ui.compose.TxnEditSheet
 import com.alyaqdhan.riyal.ui.compose.TxnRow
 import com.alyaqdhan.riyal.ui.compose.TxnSort
 import com.alyaqdhan.riyal.ui.compose.ScanRefresh
@@ -83,7 +82,6 @@ fun CategoryDetailScreen(
 ) {
     val txns by vm.countedTxns.collectAsState()
     val accounts by vm.accounts.collectAsState()
-    val categoryUse by vm.categoryUse.collectAsState()
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
     val category = remember(categoryId) { Categories.byId(categoryId) }
     // The period the caller was reading, not today's: this page is opened by tapping a
@@ -96,7 +94,6 @@ fun CategoryDetailScreen(
     var editing by remember { mutableStateOf<Txn?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val askEachTime by vm.askEachTime.collectAsState()
 
     LaunchedEffect(accounts) {
         if (accountId != null && accounts.none { it.id == accountId }) accountId = null
@@ -236,39 +233,12 @@ fun CategoryDetailScreen(
         }
     }
 
-    editing?.let { txn ->
-        TxnEditSheet(
-            txn = txn,
-            accounts = accounts,
-            onApply = { newCategoryId, rulePattern ->
-                vm.setCategory(txn, newCategoryId, rulePattern)
-                editing = null
-            },
-            onDismiss = { editing = null },
-            rememberByDefault = vm.prefs.smartRules,
-            categoryUse = categoryUse,
-            askEachTime = askEachTime,
-            onAskEachTime = { vm.setAskEachTime(txn.merchant.orEmpty(), it) },
-            onSetAccount = {
-                vm.setTxnAccount(txn, it)
-                editing = null
-            },
-            onMarkTransfer = { from, to ->
-                vm.markAsTransfer(txn, from, to)
-                editing = null
-            },
-            onSplitTransfer = {
-                vm.splitTransfer(txn)
-                editing = null
-            },
-        )
-    }
-
+    editing?.let { txn -> RecordSheet(vm, txn, accounts, onClose = { editing = null }) }
 }
 
 /** "up 18% on the period before", or an honest silence when there's nothing to compare. */
 @Composable
-private fun ComparisonLine(now: Long, before: Long, currency: String) {
+internal fun ComparisonLine(now: Long, before: Long, currency: String) {
     if (before <= 0L && now <= 0L) return
     val pct = Stats.deltaPct(now, before)
     val text = when {

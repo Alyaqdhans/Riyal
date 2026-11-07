@@ -637,6 +637,15 @@
     <string name="an_title">Analysis</string>
     <string name="an_empty_title">Nothing to analyze yet</string>
     <string name="an_empty_subtitle">Once you scan your messages, the charts light up here.</string>
+    <string name="an_tab_overview">Overview</string>
+    <string name="an_tab_places">Places</string>
+    <string name="places_search">Search places</string>
+    <string name="places_empty_title">No spending in %s</string>
+    <string name="places_no_match">No place matches \"%1$s\"</string>
+    <plurals name="places_unnamed">
+        <item quantity="one">%d record names no place</item>
+        <item quantity="other">%d records name no place</item>
+    </plurals>
     <string name="an_all_accounts">All accounts</string>
     <string name="an_moved_label">Between your accounts</string>
     <string name="an_donut_spent">spent</string>

@@ -689,6 +689,19 @@
     <string name="an_title">التحليل</string>
     <string name="an_empty_title">لا شيء لتحليله بعد</string>
     <string name="an_empty_subtitle">ما إن تفحص رسائلك حتى تُضيء الرسوم هنا.</string>
+    <string name="an_tab_overview">نظرة عامة</string>
+    <string name="an_tab_places">الأماكن</string>
+    <string name="places_search">ابحث في الأماكن</string>
+    <string name="places_empty_title">لا إنفاق في %s</string>
+    <string name="places_no_match">لا مكان يطابق «%1$s»</string>
+    <plurals name="places_unnamed">
+        <item quantity="zero">لا سجلات بلا اسم مكان</item>
+        <item quantity="one">سجل واحد بلا اسم مكان</item>
+        <item quantity="two">سجلان بلا اسم مكان</item>
+        <item quantity="few">%d سجلات بلا اسم مكان</item>
+        <item quantity="many">%d سجلاً بلا اسم مكان</item>
+        <item quantity="other">%d سجل بلا اسم مكان</item>
+    </plurals>
     <string name="an_all_accounts">كل الحسابات</string>
     <string name="an_moved_label">بين حساباتك</string>
     <string name="an_donut_spent">صُرف</string>
