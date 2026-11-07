@@ -49,6 +49,8 @@ is attached there.
   until something replaced it, and any notice can be swiped away sideways.
 - Notices follow the theme: light in the light theme and dark in the dark one. Material
   draws them the other way round, so they glared over a dark screen.
+- The download is about 6 MB, from about 35 MB: the release build is shrunk (R8 and
+  resource shrinking), leaving out the code and resources the app never uses.
 - Material 3 1.5.0-rc01, from alpha29. It sits on stable Compose 1.12, where alpha29 had
   brought in an alpha of Compose's foundation.
 - **An archived record counts towards nothing.** Home, Analysis, categories, budgets,

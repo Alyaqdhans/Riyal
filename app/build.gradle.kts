@@ -58,7 +58,10 @@ android {
             versionNameSuffix = "-debug"
         }
         release {
-            isMinifyEnabled = false
+            // Resources nothing uses are left out of the APK, which needs R8 to shrink
+            // the code first: a resource is unused once the code that named it is gone.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

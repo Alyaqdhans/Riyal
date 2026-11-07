@@ -201,6 +201,12 @@ must say so at the top of its notes.
 build from 64s to 2s when nothing changed. They do not alter the APK's
 contents, only how the classes are packed between dex files.
 
-**R8 is off.** `isMinifyEnabled = false`, so the APK is around 33 MB. Turning
-it on would shrink that a lot, but it needs a full pass on a real device first
-- reflection and JSON round-trips are where it usually breaks.
+**R8 and resource shrinking are on** (since 1.8.4): `isMinifyEnabled` and
+`isShrinkResources` in the release build, which took the APK from about 35 MB to
+about 6 MB. The debug build is not shrunk, so only a release build shows what R8
+did: before publishing, install the signed release and go through launch, a scan,
+a backup and restore, the update check and its notes, and the charts. Nothing reads
+classes or resources by name today (JSON is `org.json`, by hand), which is what R8
+usually breaks; anything that starts to needs a rule in `proguard-rules.pro`. Keep
+`app/build/outputs/mapping/release/mapping.txt` with each release, as a stack trace
+from it is in R8's renamed classes.
