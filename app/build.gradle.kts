@@ -18,8 +18,8 @@ android {
         applicationId = "com.alyaqdhan.riyal"
         minSdk = 29
         targetSdk = 36
-        versionCode = 11
-        versionName = "1.8.3"
+        versionCode = 12
+        versionName = "1.8.4"
 
         androidResources {
             localeFilters += listOf("en", "ar")
