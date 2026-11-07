@@ -180,6 +180,9 @@
     <string name="lists_senders_intro">Everyone who has texted you. Riyal reads your banks and leaves the rest out; tap a sender to change that.</string>
     <string name="lists_senders_empty">Senders show here after the first read of your inbox.</string>
     <string name="lists_search">Search senders</string>
+    <string name="lists_search_keywords">Search keywords</string>
+    <string name="lists_search_ignored">Search ignored</string>
+    <string name="lists_no_match">Nothing matches \"%1$s\"</string>
     <string name="lists_status_bank">Read · your bank</string>
     <string name="lists_status_added">Read · you added it</string>
     <string name="lists_status_left_out">Not read · not a bank</string>
@@ -300,6 +303,8 @@
     <string name="home_other_currencies">+%1$s in other currencies</string>
 
     <string name="txn_filters">Filters</string>
+    <string name="txn_search">Search records</string>
+    <string name="txn_no_match">No record matches \"%1$s\"</string>
     <string name="txn_archived_count">Archived (%d)</string>
     <string name="txn_tab_records">Records</string>
     <string name="txn_tab_archived">Archived</string>

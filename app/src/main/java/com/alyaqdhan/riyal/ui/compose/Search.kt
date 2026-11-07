@@ -2,6 +2,7 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -55,8 +56,8 @@ private val ButtonSize = 48.dp
  * stays where it is and the button stretches from there across the title into Material's
  * search field - a pill on the search bar's own colours, its fill coming in as it grows -
  * with the keyboard up and a close button at its start. Closing empties the search and
- * draws the field back into the icon. Nothing takes a row of the page until a search is
- * wanted.
+ * draws the field back into the icon, as Back does while it is open. Nothing takes a row
+ * of the page until a search is wanted.
  *
  * The field is laid out at its full width from the first frame, behind a window that grows
  * out of the icon, so nothing in it slides: the window uncovers it. It is
@@ -77,7 +78,11 @@ fun SearchTitle(
 ) {
     val motion = MaterialTheme.motionScheme
     val focusManager = LocalFocusManager.current
-    LaunchedEffect(open) { if (!open) focusManager.clearFocus() }
+    // A tab stays built while another shows, so a search left open in it must neither take
+    // the Back meant for the tab in view nor keep the keyboard up over it. Its words stay.
+    val inView = LocalTabInView.current
+    BackHandler(enabled = open && inView) { onClose() }
+    LaunchedEffect(open, inView) { if (!open || !inView) focusManager.clearFocus() }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val full = maxWidth
         val reveal by animateDpAsState(if (open) full else ButtonSize, motion.defaultSpatialSpec(), label = "search")

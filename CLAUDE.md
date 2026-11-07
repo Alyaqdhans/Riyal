@@ -82,8 +82,10 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   `SearchTitle` (`ui/compose/Search.kt`) as its title, a top bar's or a sheet's: a search
   icon at its end that, tapped, stretches from where it stands across the title into
   Material's pill search field (the icon stays put, now the field's), keyboard up, with a
-  close button at its start. Never a fade between the two, and never a text field always
-  on the page.
+  close button at its start; Back closes it, but only while its tab is in view. Never a
+  fade between the two, and never a text field always on the page. Searched now:
+  Transactions (`Stats.search`: what a row says, or its amount), Analysis's Places, every
+  Lists tab, the currency picker and the exchange rates.
 - **Notices follow the theme.** A screen's snackbars show through `NoticeHost`
   (`ui/compose/Notice.kt`), never a bare `SnackbarHost`: Material draws them in the
   inverse colours (light over a dark theme, dark over a light one), and the owner wants

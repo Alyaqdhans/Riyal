@@ -70,7 +70,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -225,7 +224,6 @@ fun AnalysisScreen(
         searching = false
         search.clearText()
     }
-    BackHandler(enabled = searching) { closeSearch() }
     // A search left open would hold the keyboard over the charts, and searches only Places.
     val focus = LocalFocusManager.current
     LaunchedEffect(pager.targetPage) {

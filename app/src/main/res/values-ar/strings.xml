@@ -180,6 +180,9 @@
     <string name="lists_senders_intro">كل من راسلك. يقرأ ريال مصارفك ويترك الباقي؛ اضغط على مرسل لتغيير ذلك.</string>
     <string name="lists_senders_empty">يظهر المرسلون هنا بعد أول قراءة لصندوق رسائلك.</string>
     <string name="lists_search">ابحث في المرسلين</string>
+    <string name="lists_search_keywords">ابحث في الكلمات</string>
+    <string name="lists_search_ignored">ابحث في المُتجاهَل</string>
+    <string name="lists_no_match">لا شيء يطابق «%1$s»</string>
     <string name="lists_status_bank">يُقرأ · مصرفك</string>
     <string name="lists_status_added">يُقرأ · أضفته أنت</string>
     <string name="lists_status_left_out">لا يُقرأ · ليس مصرفًا</string>
@@ -340,6 +343,8 @@
     <string name="home_other_currencies">+%1$s في عملات أخرى</string>
 
     <string name="txn_filters">تصفية</string>
+    <string name="txn_search">ابحث في المعاملات</string>
+    <string name="txn_no_match">لا معاملة تطابق «%1$s»</string>
     <string name="txn_archived_count">المؤرشفة (%d)</string>
     <string name="txn_tab_records">السجلات</string>
     <string name="txn_tab_archived">المؤرشفة</string>

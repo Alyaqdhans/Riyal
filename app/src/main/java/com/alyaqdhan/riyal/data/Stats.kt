@@ -1,6 +1,8 @@
 package com.alyaqdhan.riyal.data
 
 import com.alyaqdhan.riyal.core.Dates
+import com.alyaqdhan.riyal.core.Money
+import com.alyaqdhan.riyal.core.Numerals
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -479,6 +481,44 @@ object Stats {
         val into = membersOf(groups)
         return flows(txns, start, endExclusive, currency, accountId).filter { t ->
             t.isExpense && placeKeyOf(t, into) == key
+        }
+    }
+
+    // ── searching the records ──
+
+    /**
+     * The records a search for [query] finds, by what their rows say: the place (or the
+     * name the places merged into it go by), the category, either account, the sender.
+     * Or by the amount: "12.5" finds OMR 12.500, and what a shop abroad charged counts
+     * too. Digits may be typed in either script. A blank search finds them all.
+     */
+    fun search(
+        txns: List<Txn>,
+        query: String,
+        accounts: List<Account> = emptyList(),
+        groups: List<PlaceGroup> = emptyList(),
+    ): List<Txn> {
+        val q = Numerals.latin(query).trim()
+        if (q.isEmpty()) return txns
+        val names = accounts.associate { it.id to it.displayName }
+        val into = membersOf(groups)
+        // A figure as it is written plainly ("1234.5"), so the grouping a row shows does
+        // not stand in its way.
+        val figure = q.replace(",", "").takeIf { s -> s.any(Char::isDigit) && s.all { it.isDigit() || it == '.' } }
+        fun has(text: String?) = text != null && text.contains(q, ignoreCase = true)
+        fun amounts(t: Txn) = listOfNotNull(
+            Money.toMajor(t.amountMinor, t.currency),
+            t.originalAmountMinor?.let { minor -> t.originalCurrency?.let { Money.toMajor(minor, it) } },
+        )
+        return txns.filter { t ->
+            val place = t.merchant?.takeIf { it.isNotBlank() }
+            has(place) ||
+                (place != null && has(into[UserRule.patternOf(place)]?.name)) ||
+                has(Categories.byId(t.categoryId).name) ||
+                has(t.fromAccountId?.let(names::get)) ||
+                has(t.toAccountId?.let(names::get)) ||
+                has(t.sender) ||
+                (figure != null && amounts(t).any { it.toPlainString().contains(figure) })
         }
     }
 

@@ -55,6 +55,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.ui.compose.NoticeHost
+import com.alyaqdhan.riyal.ui.compose.SearchTitle
+import com.alyaqdhan.riyal.data.Stats
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.data.Categories
 import com.alyaqdhan.riyal.data.Txn
@@ -98,6 +102,12 @@ fun TransactionsScreen(vm: MainViewModel) {
     var sort by rememberSaveable { mutableStateOf(TxnSort.NEWEST.name) }
     var picker by remember { mutableStateOf<Txn?>(null) }
     val archivedIds by vm.archivedIds.collectAsState()
+    val placeGroups by vm.placeGroups.collectAsState()
+    // The records' search lives in the bar: an icon until it is wanted. Like the filters,
+    // it holds on both pages.
+    val search = rememberTextFieldState()
+    var searching by rememberSaveable { mutableStateOf(false) }
+    val query = search.text.toString().trim()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     // Swiping is the only way to archive or remove a record and nothing on screen says
@@ -112,16 +122,17 @@ fun TransactionsScreen(vm: MainViewModel) {
         onDone = { vm.prefs.swipeTourSeen = true },
     )
 
-    // In any of the chosen categories, touching any of the chosen accounts. The records
-    // that count are one page and the archived ones the other, and the filters, the type
-    // and the order apply to both.
-    val matching = remember(txns, categoryFilter, typeFilter, accountFilter) {
+    // In any of the chosen categories, touching any of the chosen accounts, and found by
+    // the search. The records that count are one page and the archived ones the other, and
+    // the filters, the search, the type and the order apply to both.
+    val matching = remember(txns, categoryFilter, typeFilter, accountFilter, query, accounts, placeGroups) {
         val categories = categoryFilter.toSet()
-        txns.filter { t ->
+        val filtered = txns.filter { t ->
             (categories.isEmpty() || t.categoryId in categories) &&
                 (typeFilter == null || t.type.name == typeFilter) &&
                 (accountFilter.isEmpty() || accountFilter.any(t::touches))
         }
+        Stats.search(filtered, query, accounts, placeGroups)
     }
     val live = remember(matching, archivedIds) { matching.filter { it.id !in archivedIds } }
     val archive = remember(matching, archivedIds) { matching.filter { it.id in archivedIds } }
@@ -162,7 +173,9 @@ fun TransactionsScreen(vm: MainViewModel) {
                     .fillMaxSize()
                     .verticalScroll(scroll),
             ) {
-                EmptyState(
+                if (query.isNotEmpty()) {
+                    EmptyState(title = stringResource(R.string.txn_no_match, query))
+                } else EmptyState(
                     title = stringResource(R.string.txn_empty_title),
                     subtitle = stringResource(
                         when {
@@ -237,7 +250,20 @@ fun TransactionsScreen(vm: MainViewModel) {
         },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.tab_transactions)) },
+                title = {
+                    SearchTitle(
+                        title = stringResource(R.string.tab_transactions),
+                        searchable = txns.isNotEmpty(),
+                        open = searching,
+                        field = search,
+                        placeholder = stringResource(R.string.txn_search),
+                        onOpen = { searching = true },
+                        onClose = {
+                            searching = false
+                            search.clearText()
+                        },
+                    )
+                },
                 actions = {
                     // Sort and Filters live here, not in the chip row: six controls in
                     // one row pushed the Transfers chip off the right edge of something

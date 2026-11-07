@@ -47,7 +47,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.drop
+import com.alyaqdhan.riyal.ui.compose.EmptyState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
@@ -85,10 +87,10 @@ import com.alyaqdhan.riyal.ui.compose.rememberDialogPop
 import kotlinx.coroutines.launch
 
 /** The three lists, in the order their tabs sit. */
-enum class ListsTab(@param:StringRes val label: Int) {
-    KEYWORDS(R.string.lists_tab_keywords),
-    SENDERS(R.string.lists_tab_senders),
-    IGNORED(R.string.lists_tab_ignored),
+enum class ListsTab(@param:StringRes val label: Int, @param:StringRes val search: Int) {
+    KEYWORDS(R.string.lists_tab_keywords, R.string.lists_search_keywords),
+    SENDERS(R.string.lists_tab_senders, R.string.lists_search),
+    IGNORED(R.string.lists_tab_ignored, R.string.lists_search_ignored),
 }
 
 /**
@@ -115,16 +117,16 @@ fun ListsScreen(vm: MainViewModel, onBack: () -> Unit) {
         steps = listOf(SwipeTour.Step(SwipeWay.LEFT, R.string.lists_tour_title, R.string.lists_tour_text)),
         onDone = { vm.prefs.listsTourSeen = true },
     )
-    // The senders' search lives in the bar: an icon until it is wanted.
+    // Each list's search lives in the bar: an icon until it is wanted. It searches the list
+    // showing, so moving to another list closes it.
     val search = rememberTextFieldState()
     var searching by rememberSaveable { mutableStateOf(false) }
     fun closeSearch() {
         searching = false
         search.clearText()
     }
-    BackHandler(enabled = searching) { closeSearch() }
-    LaunchedEffect(pager.targetPage) {
-        if (pager.targetPage != ListsTab.SENDERS.ordinal) closeSearch()
+    LaunchedEffect(pager) {
+        snapshotFlow { pager.targetPage }.drop(1).collect { closeSearch() }
     }
     Scaffold(
         topBar = {
@@ -132,10 +134,10 @@ fun ListsScreen(vm: MainViewModel, onBack: () -> Unit) {
                 title = {
                     SearchTitle(
                         title = stringResource(R.string.set_lists),
-                        searchable = pager.targetPage == ListsTab.SENDERS.ordinal,
+                        searchable = true,
                         open = searching,
                         field = search,
-                        placeholder = stringResource(R.string.lists_search),
+                        placeholder = stringResource(ListsTab.entries[pager.targetPage].search),
                         onOpen = { searching = true },
                         onClose = ::closeSearch,
                     )
@@ -170,9 +172,9 @@ fun ListsScreen(vm: MainViewModel, onBack: () -> Unit) {
                 // dragging would open a row half off the screen.
                 val pageTour = tour.takeIf { pager.settledPage == page && !pager.isScrollInProgress }
                 when (ListsTab.entries[page]) {
-                    ListsTab.KEYWORDS -> KeywordsList(vm, pageTour)
+                    ListsTab.KEYWORDS -> KeywordsList(vm, pageTour, search)
                     ListsTab.SENDERS -> SendersList(vm, search)
-                    ListsTab.IGNORED -> IgnoredList(vm, pageTour, onFindSender = { show(ListsTab.SENDERS) })
+                    ListsTab.IGNORED -> IgnoredList(vm, pageTour, search, onFindSender = { show(ListsTab.SENDERS) })
                 }
             }
         }
@@ -187,7 +189,7 @@ private val listPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, 
  * the user answered, which every message written the same way follows.
  */
 @Composable
-private fun KeywordsList(vm: MainViewModel, tour: SwipeTour?) {
+private fun KeywordsList(vm: MainViewModel, tour: SwipeTour?, search: TextFieldState) {
     val rules by vm.rules.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
     val categoryUse by vm.categoryUse.collectAsState()
@@ -196,9 +198,22 @@ private fun KeywordsList(vm: MainViewModel, tour: SwipeTour?) {
     val accounts by vm.accounts.collectAsState()
     var adding by remember { mutableStateOf(false) }
     val samples = remember(templates) { templates.associateBy { it.key } }
-    val taught = remember(labels) { labels.entries.sortedByDescending { it.value.atMillis } }
-    val sortedRules = remember(rules) { rules.sortedBy { it.pattern } }
-    val asked = remember(askEachTime) { askEachTime.sorted() }
+    val query = search.text.toString().trim()
+    val searching = query.isNotEmpty()
+    // A keyword by its words or its category; a taught kind by its message or its sender.
+    val taught = remember(labels, samples, query) {
+        labels.entries.sortedByDescending { it.value.atMillis }.filter { (key, _) ->
+            val sample = samples[key]
+            listOfNotNull(key, sample?.sampleBody, sample?.sender).any { it.contains(query, ignoreCase = true) }
+        }
+    }
+    val sortedRules = remember(rules, query) {
+        rules.sortedBy { it.pattern }.filter {
+            it.pattern.contains(query, ignoreCase = true) ||
+                Categories.byId(it.categoryId).name.contains(query, ignoreCase = true)
+        }
+    }
+    val asked = remember(askEachTime, query) { askEachTime.sorted().filter { it.contains(query, ignoreCase = true) } }
     // The tour plays on the first entry, whichever list it heads.
     val touring = sortedRules.firstOrNull()?.let { "rule-" + it.pattern + "-" + it.categoryId }
         ?: asked.firstOrNull()?.let { "ask-$it" }
@@ -207,8 +222,14 @@ private fun KeywordsList(vm: MainViewModel, tour: SwipeTour?) {
     val list = rememberLazyListState()
     ScrollThumb(list) {
     LazyColumn(state = list, contentPadding = listPadding, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        item(key = "learned-title") { SectionTitle(stringResource(R.string.cats_learned_title)) }
-        item(key = "learned-intro") {
+        // A search shows only what it found, under the titles of the lists it was found in.
+        if (searching && sortedRules.isEmpty() && asked.isEmpty() && taught.isEmpty()) {
+            item(key = "no-match") { EmptyState(title = stringResource(R.string.lists_no_match, query)) }
+        }
+        if (!searching || sortedRules.isNotEmpty() || asked.isNotEmpty()) {
+            item(key = "learned-title") { SectionTitle(stringResource(R.string.cats_learned_title)) }
+        }
+        if (!searching) item(key = "learned-intro") {
             Intro(
                 stringResource(
                     if (rules.isEmpty() && askEachTime.isEmpty()) R.string.cats_learned_empty
@@ -216,7 +237,7 @@ private fun KeywordsList(vm: MainViewModel, tour: SwipeTour?) {
                 )
             )
         }
-        item(key = "learned-add") {
+        if (!searching) item(key = "learned-add") {
             ActionButton(
                 text = stringResource(R.string.cats_add_keyword),
                 icon = R.drawable.ic_sym_add,
@@ -257,10 +278,10 @@ private fun KeywordsList(vm: MainViewModel, tour: SwipeTour?) {
             }
         }
 
-        item(key = "taught-title") {
+        if (!searching || taught.isNotEmpty()) item(key = "taught-title") {
             SectionTitle(stringResource(R.string.lists_taught_title), Modifier.padding(top = 12.dp))
         }
-        item(key = "taught-intro") {
+        if (!searching) item(key = "taught-intro") {
             Intro(stringResource(if (taught.isEmpty()) R.string.lists_taught_empty else R.string.lists_taught_intro))
         }
         items(taught, key = { "taught-" + it.key }) { (key, label) ->
@@ -337,6 +358,9 @@ private fun SendersList(vm: MainViewModel, search: TextFieldState) {
                 stringResource(if (rows.isEmpty()) R.string.lists_senders_empty else R.string.lists_senders_intro),
                 Modifier.padding(horizontal = 16.dp),
             )
+        }
+        if (query.isNotBlank() && shown.isEmpty()) {
+            item(key = "no-match") { EmptyState(title = stringResource(R.string.lists_no_match, query.trim())) }
         }
         items(shown, key = { "sender-" + it.sender.lowercase() }, contentType = { "sender" }) { row ->
             SenderRow(row) { choice ->
@@ -433,11 +457,20 @@ private fun SenderRow(row: SenderLists.Row, onChoose: (SenderChoice) -> Unit) {
  * from coming back.
  */
 @Composable
-private fun IgnoredList(vm: MainViewModel, tour: SwipeTour?, onFindSender: () -> Unit) {
+private fun IgnoredList(vm: MainViewModel, tour: SwipeTour?, search: TextFieldState, onFindSender: () -> Unit) {
     val ignored by vm.ignoredSenders.collectAsState()
     val muted by vm.muted.collectAsState()
-    val senders = remember(ignored) { ignored.sortedBy { it.lowercase() } }
-    val kinds = remember(muted) { muted.sortedByDescending { it.at } }
+    val query = search.text.toString().trim()
+    val searching = query.isNotEmpty()
+    val senders = remember(ignored, query) {
+        ignored.sortedBy { it.lowercase() }.filter { it.contains(query, ignoreCase = true) }
+    }
+    // A dismissed kind by its message or its sender.
+    val kinds = remember(muted, query) {
+        muted.sortedByDescending { it.at }.filter { kind ->
+            listOf(kind.sample, kind.template, kind.sender).any { it.contains(query, ignoreCase = true) }
+        }
+    }
     val (container, content) = MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
     val touring = senders.firstOrNull()?.let { "ignored-" + it.lowercase() }
         ?: kinds.firstOrNull()?.let { "kind-" + it.template }
@@ -445,8 +478,14 @@ private fun IgnoredList(vm: MainViewModel, tour: SwipeTour?, onFindSender: () ->
     val list = rememberLazyListState()
     ScrollThumb(list) {
     LazyColumn(state = list, contentPadding = listPadding, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        item(key = "senders-title") { SectionTitle(stringResource(R.string.lists_ignored_senders)) }
-        item(key = "senders-intro") {
+        // A search shows only what it found, under the titles of the lists it was found in.
+        if (searching && senders.isEmpty() && kinds.isEmpty()) {
+            item(key = "no-match") { EmptyState(title = stringResource(R.string.lists_no_match, query)) }
+        }
+        if (!searching || senders.isNotEmpty()) {
+            item(key = "senders-title") { SectionTitle(stringResource(R.string.lists_ignored_senders)) }
+        }
+        if (!searching) item(key = "senders-intro") {
             Intro(
                 stringResource(
                     if (senders.isEmpty()) R.string.lists_ignored_senders_empty
@@ -463,16 +502,19 @@ private fun IgnoredList(vm: MainViewModel, tour: SwipeTour?, onFindSender: () ->
                 tour = tour.takeIf { touring == "ignored-" + sender.lowercase() },
             )
         }
-        item(key = "find") {
+        if (!searching) item(key = "find") {
             TextButton(onClick = onFindSender, shapes = ButtonDefaults.shapes()) {
                 Text(stringResource(R.string.lists_find_sender))
             }
         }
 
-        item(key = "kinds-title") {
-            SectionTitle(stringResource(R.string.lists_dismissed_title), Modifier.padding(top = 12.dp))
+        if (!searching || kinds.isNotEmpty()) item(key = "kinds-title") {
+            SectionTitle(
+                stringResource(R.string.lists_dismissed_title),
+                Modifier.padding(top = if (searching && senders.isEmpty()) 0.dp else 12.dp),
+            )
         }
-        item(key = "kinds-intro") {
+        if (!searching) item(key = "kinds-intro") {
             Intro(stringResource(if (kinds.isEmpty()) R.string.lists_dismissed_empty else R.string.lists_dismissed_intro))
         }
         items(kinds, key = { "kind-" + it.template }) { kind ->

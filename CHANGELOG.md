@@ -35,10 +35,16 @@ is attached there.
   rather than above it.
 - In Arabic, a swipe's Unarchive reads إلغاء الأرشفة and Analysis's "no baseline" لا مقارنة,
   short enough for the narrow spaces they sit in.
-- Search stays out of the way. Places, Lists' senders and the currency picker show a
+- Search stays out of the way. Places, Lists and the currency picker show a
   search button by their title, and tapping it stretches the button itself into a rounded
   search field across the title, its icon staying where it was; closing it draws the
   field back into the icon. The search used to be a field always on the page.
+- **Search your records.** Transactions has the same search button: it finds records by
+  place (a merged place by its name too), category, account, sender or amount ("12.5"
+  finds OMR 12.500, in either script's digits), on Records and Archived alike and
+  together with the filters. Lists' Keywords and Ignored tabs and the exchange rates
+  can be searched too. A search left open on Analysis no longer catches Back on another
+  tab.
 - A notice with Undo goes away by itself after about ten seconds, where it used to stay
   until something replaced it, and any notice can be swiped away sideways.
 - Notices follow the theme: light in the light theme and dark in the dark one. Material
