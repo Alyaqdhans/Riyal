@@ -423,6 +423,7 @@ fun PlaceDetailScreen(
     val group = groups.firstOrNull { it.id == placeKey }
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
     var renaming by remember { mutableStateOf(false) }
+    var showMerged by rememberSaveable { mutableStateOf(false) }
     // Separated down to one name, a merged place is gone, and so is its page.
     LaunchedEffect(group) {
         if (placeKey.startsWith(PlaceGroup.ID_PREFIX) && group == null) onBack()
@@ -518,8 +519,21 @@ fun PlaceDetailScreen(
                             }
                         }
                         if (group != null) {
-                            item(key = "merged-title") { SectionTitle(stringResource(R.string.place_merged_from)) }
-                            items(mergedFrom.entries.sortedBy { it.value }, key = { "member-" + it.key }) { (member, name) ->
+                            // What it was made of matters when undoing a merge, not when reading
+                            // the place, so it waits folded under its count.
+                            item(key = "merged-title") {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    SectionTitle(
+                                        stringResource(R.string.place_merged_from) + " · " +
+                                            counted(R.plurals.count_places, mergedFrom.size),
+                                        Modifier.weight(1f),
+                                    )
+                                    TextButton(onClick = { showMerged = !showMerged }, shapes = ButtonDefaults.shapes()) {
+                                        Text(stringResource(if (showMerged) R.string.action_hide else R.string.action_show))
+                                    }
+                                }
+                            }
+                            if (showMerged) items(mergedFrom.entries.sortedBy { it.value }, key = { "member-" + it.key }) { (member, name) ->
                                 Row(
                                     Modifier.fillMaxWidth().padding(start = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically,

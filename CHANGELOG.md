@@ -16,7 +16,8 @@ is attached there.
 - **Merge places that are one.** A chain the bank names by branch shows as several
   places; long-press one, tap the others (or Select all after a search), and Merge them
   under a name, which starts as what their names have in common. A merged place's page
-  lists what it was made of, separates any of them again, and renames it. Records keep
+  keeps what it was made of folded under Show, separates any of them again, and renames
+  it. Records keep
   the names the bank gave them, so a rescan keeps the merge, and backups carry it with
   the learned categories.
 - English text is a touch heavier, closer to the Arabic beside it.
