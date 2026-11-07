@@ -20,6 +20,7 @@ is attached there.
   the names the bank gave them, so a rescan keeps the merge, and backups carry it with
   the learned categories.
 - English text is a touch heavier, closer to the Arabic beside it.
+- The welcome screen opens on the app's name, without the logo above it.
 - **An archived record counts towards nothing.** Home, Analysis, categories, budgets,
   account balances and the record count all leave it out, and it stays in Archived until
   you bring it back. A balance still starts from the figure the bank quoted, so a record

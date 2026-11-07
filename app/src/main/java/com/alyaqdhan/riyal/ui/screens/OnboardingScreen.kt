@@ -22,7 +22,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,7 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.alyaqdhan.riyal.R
 import com.alyaqdhan.riyal.core.Dates
 import com.alyaqdhan.riyal.core.ScanHistory
-import com.alyaqdhan.riyal.ui.compose.CurrencySign
+import com.alyaqdhan.riyal.ui.compose.MatchedIcon
 import com.alyaqdhan.riyal.ui.compose.Preset
 import com.alyaqdhan.riyal.ui.compose.PresetGrid
 import com.alyaqdhan.riyal.ui.compose.ScrollThumb
@@ -77,8 +76,6 @@ fun OnboardingScreen(
                     .padding(top = 32.dp, bottom = ANSWERS_CLEARANCE),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                BrandMark()
-                Spacer(Modifier.height(16.dp))
                 Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall)
                 Spacer(Modifier.height(6.dp))
                 Text(
@@ -162,29 +159,14 @@ fun OnboardingScreen(
     }
 }
 
-/** The app's mark, as on its icon: the rial's sign on the app's colour. */
-@Composable
-private fun BrandMark() {
-    Surface(
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary,
-        modifier = Modifier.size(96.dp),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            CurrencySign("OMR", height = 30.dp, tint = MaterialTheme.colorScheme.onPrimary)
-        }
-    }
-}
-
 @Composable
 private fun Promise(@DrawableRes icon: Int, title: String, detail: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Icon(
-            painterResource(icon),
-            contentDescription = null,
+        MatchedIcon(
+            icon,
+            MaterialTheme.typography.titleSmall,
+            Modifier.size(22.dp),
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(22.dp),
         )
         Column {
             Text(title, style = MaterialTheme.typography.titleSmall)
