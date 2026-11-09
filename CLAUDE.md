@@ -248,6 +248,10 @@ everything.
   `MainActivity` starts fresh, and a page restored after process death checks
   `vm.setupActive` before trusting its saved state.
 - Store JSON field `alias` (account aliases) is optional like the others.
+- An amount under a riyal is written ".543 OMR" or "OMR .543", and in an Arabic message
+  also "543. OMR" (how ".543" looks right to left). `SmsParser.normalize` puts the point
+  back ("0.543") beside a currency only; a regex that needs a digit before the point
+  reads such an amount as 543 riyals.
 - Bumping `Skeleton.VERSION` changes every template key. Fields (`Store.fields`) are
   keyed by it too and are dropped on a new shape: the balances place the learned ones
   again, but what the user showed would be lost, so carry them over as the labels are.

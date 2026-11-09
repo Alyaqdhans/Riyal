@@ -43,9 +43,17 @@ is attached there.
 - A short scan no longer wipes what full scans proved about a kind of message: its few
   proofs are merged with the earlier ones (the most each way) instead of replacing them,
   so a proven kind stays proven after a few launches.
+- **An amount under a riyal is no longer read as hundreds of riyals.** A wallet writes
+  half a riyal ".500 OMR", with nothing before the point, and the reader took the digits
+  after it for the whole number: 500 riyals. In an Arabic message the point can also
+  come after the digits ("500. OMR" - how ".500" looks right to left, where a point at a
+  number's edge goes to its other side), and either can be in Arabic digits ("٫٥٠٠").
+  All of these are read as 0.500 now, but only right beside a currency, so a reference
+  ("Ref.123") or a full stop before the next amount is left alone. The parser's version
+  is raised, so the next scan reads the inbox again.
 - Review's help no longer offers to adopt the word that confused it, which no screen did;
   it says what answering does now.
-- Version 1.8.6 (versionCode 14).
+- Version 1.8.6 (versionCode 14). The parser's version is 13.
 
 ## 1.8.5 — 2026-11-09
 

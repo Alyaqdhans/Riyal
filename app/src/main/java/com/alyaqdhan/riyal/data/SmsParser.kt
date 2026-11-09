@@ -697,6 +697,27 @@ class SmsParser(
         .replace('＃', '#')
         .replace('＊', '*')
         .replace('●', '•')
+        .let(::pointsInPlace)
+
+    /**
+     * An amount under one riyal is written with nothing before its point: ".543 OMR",
+     * "OMR .543", in either script's digits. Read as they stood, the digits after the point
+     * were the whole number, and 543 baisa was recorded as 543 riyals. In an Arabic message
+     * the point can also come after the digits - "543. OMR" is how ".543" looks on a
+     * right-to-left screen, where a point at a number's edge goes to its other side, so a
+     * message written as it looks has it there. Both are put back as "0.543", and only
+     * right beside a currency: "Ref.123" and a sentence's full stop stay as they are, and
+     * a number followed by a currency that starts the next amount ("100. OMR 5.000") is
+     * not one of these.
+     */
+    private fun pointsInPlace(s: String): String {
+        var out = s.replace(pointFirst) { m -> m.groupValues[1] + "0." + m.groupValues[2] }
+            .replace(pointFirstAfterCurrency) { m -> m.groupValues[1] + "0." + m.groupValues[2] }
+        if (out.any(::isArabicLetter)) {
+            out = out.replace(pointLast) { m -> m.groupValues[1] + "0." + m.groupValues[2] }
+        }
+        return out
+    }
 
     private fun wordIn(hay: String, phrase: String): Boolean {
         if (phrase.firstOrNull() !in 'a'..'z') return phrase in hay
@@ -719,7 +740,7 @@ class SmsParser(
          * is out of date and the inbox must be read again. Forgetting to bump it after a
          * parser fix means the fix only reaches messages that arrive afterwards.
          */
-        const val VERSION = 12
+        const val VERSION = 13
 
         /** The runs of digits in an account number, around and between its masks. */
         private val digitGroups = Regex("[0-9]{2,}")
@@ -918,6 +939,15 @@ class SmsParser(
             "(?i)^(?:x+\\d*|\\d+|you|yours?|jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec|" +
                 "omr|r\\.?o|usd|aed|sar|otp|am|pm)$"
         )
+
+        /** ".543 OMR": a point with nothing before it, the currency after. */
+        private val pointFirst = Regex("(?i)(^|[\\s(:])\\.(\\d{1,3})(?=\\s*(?:$CUR)(?![\\p{L}\\d]))")
+
+        /** "OMR .543": the currency first. */
+        private val pointFirstAfterCurrency = Regex("(?i)((?:^|[\\s(:])(?:$CUR)\\s*)\\.(\\d{1,3})(?!\\d)")
+
+        /** "543. OMR": the point after the digits, as ".543" looks right to left. */
+        private val pointLast = Regex("(?i)(^|[\\s(:])(\\d{1,3})\\.(?=\\s*(?:$CUR)(?![\\p{L}\\d])(?!\\s*\\d))")
 
         /** Words in capitals, one after another: a name in a mixed-case English message. */
         private val capsName = Regex("\\b[A-Z][A-Z&'.*\\-]+(?:\\s+[A-Z][A-Z&'.*\\-]*)*")
