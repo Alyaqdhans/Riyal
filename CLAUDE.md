@@ -37,9 +37,10 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   `HorizontalFloatingToolbar`, `SwipeToDismissBox`, `ModalBottomSheet`, `AlertDialog`,
   chips, `FloatingActionButton`) and real libraries (Vico for charts, Markwon for
   release notes, as YTDLnis draws its own, LazyColumnScrollbar for the scroll thumb).
-  Every vertical scroll - a tab, a page, a sheet or a dialog - sits in `ScrollThumb`
+  Every vertical scroll on a tab or a page sits in `ScrollThumb`
   (`ui/compose/ScrollThumb.kt`), with `bottom` set to whatever floats over its foot
-  (`toolbarSpace` on a tab), and size it through the wrapper, not the list. Don't
+  (`toolbarSpace` on a tab), and size it through the wrapper, not the list. A sheet's or
+  a dialog's list has no thumb: the owner wants none on anything modal. Don't
   hand-draw widgets. Wavy progress indicators stay
   wavy components with `amplitude = 0` (`FlatWheel`/`FlatBar` in
   `ui/compose/Indicators.kt`), except `ScanBar` and `SiftBar`: the owner wants a scan's

@@ -441,7 +441,6 @@ internal fun KeywordRuleDialog(
         title = { Text(stringResource(R.string.cats_add_keyword)) },
         text = {
             val scroll = rememberScrollState()
-            ScrollThumb(scroll) {
             Column(
                 Modifier.verticalScroll(scroll),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -496,7 +495,6 @@ internal fun KeywordRuleDialog(
                     }
                 }
             }
-            }
         },
         confirmButton = {
             Button(
@@ -542,7 +540,6 @@ private fun CategoryEditorDialog(
         },
         text = {
             val scroll = rememberScrollState()
-            ScrollThumb(scroll) {
             Column(
                 Modifier.verticalScroll(scroll),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -642,7 +639,6 @@ private fun CategoryEditorDialog(
                     }
                 }
                 if (onDelete != null) DeleteButton(onClick = { pop.leave(onDelete) })
-            }
             }
         },
         confirmButton = {

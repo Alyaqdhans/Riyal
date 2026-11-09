@@ -495,7 +495,6 @@ fun SettingsScreen(
                 title = { Text(stringResource(R.string.backup_save_title)) },
                 text = {
                     val scroll = rememberScrollState()
-                    ScrollThumb(scroll) {
                     Column(Modifier.verticalScroll(scroll)) {
                         Text(
                             stringResource(R.string.backup_save_intro),
@@ -522,7 +521,6 @@ fun SettingsScreen(
                                 switch = true,
                             )
                         }
-                    }
                     }
                 },
                 confirmButton = {
@@ -583,7 +581,6 @@ fun SettingsScreen(
             title = { Text(stringResource(R.string.backup_import_title)) },
             text = {
                 val scroll = rememberScrollState()
-                ScrollThumb(scroll) {
                 Column(Modifier.verticalScroll(scroll)) {
                     Text(
                         stringResource(R.string.backup_import_intro),
@@ -599,7 +596,6 @@ fun SettingsScreen(
                             onChange = { parts = if (it) parts + part else parts - part },
                         )
                     }
-                }
                 }
             },
             confirmButton = {

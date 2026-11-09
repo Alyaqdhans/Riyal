@@ -402,7 +402,6 @@ internal fun AccountEditorDialog(
         },
         text = {
             val scroll = rememberScrollState()
-            ScrollThumb(scroll) {
             Column(
                 Modifier.verticalScroll(scroll),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -531,7 +530,6 @@ internal fun AccountEditorDialog(
                     trailingContent = { Switch(checked = archived, onCheckedChange = null) },
                 ) { Text(stringResource(R.string.acct_archived)) }
                 if (!isNew) DeleteButton(onClick = { pop.leave(onDelete) })
-            }
             }
         },
         confirmButton = {

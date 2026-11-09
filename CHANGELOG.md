@@ -25,6 +25,12 @@ is attached there.
   Arabic after a `<!-- lang:ar -->` line that GitHub's page hides. Releases written only
   in English still show their English.
 
+### Around the app
+
+- Lists in sheets and dialogs - the record sheet, filters, currencies, date choices, the
+  scan's log, the update prompt and the editors - no longer show a scroll thumb. Tabs and
+  pages keep theirs.
+
 ## 1.8.4 — unreleased (branch `1.8.4`)
 
 ### Around the app

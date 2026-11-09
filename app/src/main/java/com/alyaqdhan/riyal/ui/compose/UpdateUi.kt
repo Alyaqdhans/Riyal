@@ -196,7 +196,6 @@ fun UpdateDialogHost(vm: MainViewModel) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 val scroll = rememberScrollState()
-                ScrollThumb(scroll) {
                     Column(
                         Modifier
                             .heightIn(max = 300.dp)
@@ -204,7 +203,6 @@ fun UpdateDialogHost(vm: MainViewModel) {
                     ) {
                         ReleaseNotes(localNotes(release).ifBlank { stringResource(R.string.upd_no_notes) })
                     }
-                }
                 when (state) {
                     is DownloadState.Downloading -> {
                         FlatBar(progress = { state.fraction }, modifier = Modifier.fillMaxWidth())
