@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -51,6 +52,13 @@ import io.noties.markwon.linkify.LinkifyPlugin
 import io.noties.markwon.movement.MovementMethodPlugin
 import java.util.Locale
 import kotlin.math.roundToInt
+
+/** [release]'s notes in the language the app is shown in, English when it has none in it. */
+@Composable
+fun localNotes(release: Updates.Release): String {
+    val language = LocalConfiguration.current.locales[0].language
+    return remember(release.notes, language) { release.notesIn(language) }
+}
 
 /**
  * A release body as GitHub stores it - markdown - drawn by Markwon, the renderer ytdlnis
@@ -194,7 +202,7 @@ fun UpdateDialogHost(vm: MainViewModel) {
                             .heightIn(max = 300.dp)
                             .verticalScroll(scroll),
                     ) {
-                        ReleaseNotes(release.notes.ifBlank { stringResource(R.string.upd_no_notes) })
+                        ReleaseNotes(localNotes(release).ifBlank { stringResource(R.string.upd_no_notes) })
                     }
                 }
                 when (state) {

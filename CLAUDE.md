@@ -24,6 +24,8 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   tag names (`gh release list`; recent ones are `V1.8.1`). Anything that costs the user
   something - a wipe, a permission, an uninstall - gets the first section. A hotfix is
   `# Hotfix` and its bullets. Written to `release/Riyal-vX.Y.Z-notes.md` (gitignored).
+  Then the same notes in Arabic after a `<!-- lang:ar -->` line: the update prompt,
+  Updates and Changelog show the part in the app's language (`Release.notesIn`).
 - **Keep release notes short.** The owner wants them read at a glance: a few headline
   sections of one or two sentences each, and Other stuff bullets of a few words. Say what
   changed for the user. What was updated underneath (Material 3, Kotlin, Gradle, a

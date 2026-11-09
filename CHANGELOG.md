@@ -18,6 +18,13 @@ is attached there.
 - New words: "was charged" for money out, "إضافة مبلغ" for money in. The parser's version
   is raised, so the next scan reads the inbox again.
 
+### Updates
+
+- **Release notes in the app's language.** The update prompt, Updates and Changelog show
+  a release's notes in Arabic when the app is in Arabic. A release carries both, the
+  Arabic after a `<!-- lang:ar -->` line that GitHub's page hides. Releases written only
+  in English still show their English.
+
 ## 1.8.4 — unreleased (branch `1.8.4`)
 
 ### Around the app

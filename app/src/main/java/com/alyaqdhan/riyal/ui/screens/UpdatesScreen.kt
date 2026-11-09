@@ -66,6 +66,7 @@ import com.alyaqdhan.riyal.ui.compose.ReleaseNotes
 import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import com.alyaqdhan.riyal.ui.compose.UpdateDialogHost
 import com.alyaqdhan.riyal.ui.compose.appVersion
+import com.alyaqdhan.riyal.ui.compose.localNotes
 import com.alyaqdhan.riyal.ui.compose.megabytes
 import com.alyaqdhan.riyal.ui.compose.relativeTime
 import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
@@ -256,7 +257,7 @@ private fun StatusCard(
                 Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                ReleaseNotes(release.notes.ifBlank { stringResource(R.string.upd_no_notes) })
+                ReleaseNotes(localNotes(release).ifBlank { stringResource(R.string.upd_no_notes) })
                 when (fetch) {
                     is DownloadState.Downloading -> {
                         FlatBar(
@@ -439,7 +440,7 @@ private fun ReleaseCard(
                     )
                 }
             }
-            if (release.notes.isNotBlank()) ReleaseNotes(release.notes)
+            localNotes(release).takeIf { it.isNotBlank() }?.let { ReleaseNotes(it) }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 release.apk?.let { apk ->
                     AssistChip(

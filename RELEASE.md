@@ -119,6 +119,21 @@ costs the user something - a wipe, a required uninstall, a permission - before
 the features. A hotfix is `# Hotfix` and its bullets. Made-up data only, as in
 CLAUDE.md.
 
+Then the same notes in Arabic, after a line of its own reading `<!-- lang:ar -->`. The
+app shows the part in its own language (`Updates.Release.notesIn`), and English when a
+release has no Arabic. GitHub's page hides the marker and shows both.
+
+```markdown
+# What's Changed
+...
+**Full Changelog**: https://github.com/Alyaqdhans/Riyal/compare/V1.8.4...V1.8.5
+
+<!-- lang:ar -->
+# ما الجديد
+...
+**Full Changelog**: https://github.com/Alyaqdhans/Riyal/compare/V1.8.4...V1.8.5
+```
+
 Keep it short: a few headline sections of one or two sentences and bullets of a few
 words. What was updated underneath (Material 3, Kotlin, Gradle, libraries) is one
 bullet with the new versions. The detail belongs in CHANGELOG.md.
