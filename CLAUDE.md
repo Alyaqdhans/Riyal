@@ -147,7 +147,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `core/Currencies.kt` | Currency registry: flag, name, sign vector, placement, rial value (pegged or editable), `convert` |
 | `core/Prefs.kt` | SharedPreferences: scan range, setup state, update channel, FX overrides, excluded senders |
 | `core/Verbose.kt` | In-memory log of every decision the scan makes (Settings › Activity log) |
-| `data/SmsReader.kt` | The one `READ_SMS` query; scans are manual or on launch, never in the background |
+| `data/SmsReader.kt` | The one `READ_SMS` query; scans are manual or on launch, never in the background. `sendersAfter` is the only other look: who sent what is newer than the last message read, no bodies, when the app comes to the front, so Settings says "Up to date" only when it is (`vm.newMessages`) |
 | `data/SmsParser.kt` | Pure extraction: amount, currency, balance, account tail, merchant. `parse` uses word cues; `parseAs` reads a message as a known direction. **Bump `VERSION` when parsing output changes** |
 | `data/Learning.kt` | `Skeleton` (message → template key), `BalanceChain` (direction proven by balance deltas), `TemplateInference`, `Tutor` (setup questions + stopping rule) |
 | `data/ScanEngine.kt` | One pass: read → decide (taught label > balance proof > proven template > words) → accounts → records (with FX conversion) → transfers → store |

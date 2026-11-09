@@ -780,6 +780,10 @@
     <string name="set_no_scan_yet">No scan yet</string>
     <string name="set_last_scan">Last scan %1$s</string>
     <string name="set_status_up_to_date">Up to date</string>
+    <plurals name="set_status_new_messages">
+        <item quantity="one">%d new message to read</item>
+        <item quantity="other">%d new messages to read</item>
+    </plurals>
     <string name="set_status_scanning">Reading your messages</string>
     <string name="set_status_failed">The last scan didn\'t finish</string>
     <string name="set_status_never_body">Scan to build your records from your bank\'s messages</string>

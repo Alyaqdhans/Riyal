@@ -33,6 +33,10 @@ is attached there.
 - Home's Top spending See all opens Analysis on Home's period, every account and
   spending, so its wheel shows the same categories. It used to open on whatever
   Analysis was last left at.
+- Settings says "Up to date" only when it is. Each time the app is opened or come back
+  to, it looks - at who sent what, never at a message's text - for messages newer than
+  the last one read, from the senders it reads; while there are some, the card says how
+  many are waiting, scan on launch or not.
 
 ## 1.8.4 — unreleased (branch `1.8.4`)
 

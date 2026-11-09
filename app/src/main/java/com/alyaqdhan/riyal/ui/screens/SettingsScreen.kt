@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.layout.layout
@@ -128,6 +129,7 @@ fun SettingsScreen(
     val autoConfirm by vm.autoConfirmOn.collectAsState()
     val updateState by vm.updateState.collectAsState()
     val scan by vm.scanState.collectAsState()
+    val newMessages by vm.newMessages.collectAsState()
     val running = scan as? MainViewModel.ScanState.Running
 
     var rangeMonths by remember { mutableStateOf(prefs.scanRangeMonths) }
@@ -158,6 +160,7 @@ fun SettingsScreen(
                 records = countedRecords.size,
                 accounts = accounts.size,
                 messagesRead = lastSummary?.scanned,
+                newMessages = newMessages,
             )
 
             SectionLabel(R.string.set_section_general)
@@ -788,22 +791,26 @@ private fun StatusCard(
     records: Int,
     accounts: Int,
     messagesRead: Int?,
+    /** Messages a scan would read that came in after the last one; up to date at none. */
+    newMessages: Int,
 ) {
     val scheme = MaterialTheme.colorScheme
     val running = scan as? MainViewModel.ScanState.Running
     val failed = running == null && scan is MainViewModel.ScanState.Failed
     val never = lastScanAt <= 0L
+    val behind = !never && newMessages > 0
     // One state, said once: the icon, the headline and the colour they share. Working
     // is the quiet case; only trouble takes a colour of its own.
     val icon = when {
         running != null -> R.drawable.ic_sym_sync
         failed -> R.drawable.ic_sym_error
         never -> R.drawable.ic_sym_info
+        behind -> R.drawable.ic_sym_sms
         else -> R.drawable.ic_sym_check_circle
     }
     val (tone, onTone) = when {
         failed -> scheme.errorContainer to scheme.onErrorContainer
-        never && running == null -> scheme.tertiaryContainer to scheme.onTertiaryContainer
+        (never || behind) && running == null -> scheme.tertiaryContainer to scheme.onTertiaryContainer
         else -> scheme.primaryContainer to scheme.onPrimaryContainer
     }
     Card(
@@ -819,14 +826,13 @@ private fun StatusCard(
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        stringResource(
-                            when {
-                                running != null -> R.string.set_status_scanning
-                                failed -> R.string.set_status_failed
-                                never -> R.string.set_no_scan_yet
-                                else -> R.string.set_status_up_to_date
-                            }
-                        ),
+                        when {
+                            running != null -> stringResource(R.string.set_status_scanning)
+                            failed -> stringResource(R.string.set_status_failed)
+                            never -> stringResource(R.string.set_no_scan_yet)
+                            behind -> pluralStringResource(R.plurals.set_status_new_messages, newMessages, newMessages)
+                            else -> stringResource(R.string.set_status_up_to_date)
+                        },
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
