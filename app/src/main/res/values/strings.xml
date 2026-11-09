@@ -1087,6 +1087,7 @@
     <string name="skip_no_kw_no_amount">no withdraw/deposit keyword, and no amount either</string>
     <string name="skip_no_kw_many_amounts">no withdraw/deposit keyword, and %1$d amounts to choose from</string>
     <string name="skip_no_kw_unparsable">no withdraw/deposit keyword, and the amount would not parse</string>
+    <string name="skip_amount_zero">the amount is zero: a card check, no money moved</string>
     <string name="skip_no_kw_zero">no withdraw/deposit keyword, and the amount is zero</string>
     <string name="reason_no_amount">no amount found</string>
     <string name="reason_balance_only">only balance-like amounts found</string>

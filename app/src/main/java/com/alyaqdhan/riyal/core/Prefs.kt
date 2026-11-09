@@ -298,6 +298,9 @@ class Prefs(context: Context) {
         val DEFAULT_EXPENSE_KEYWORDS = setOf(
             "withdraw", "withdrawal", "withdrawn",
             "debited", "purchase", "paid", "payment",
+            // "your card was charged OMR 2.000 for annual fees". The phrase, not the
+            // verb: "charged" alone sits inside "recharged", which is money going in.
+            "was charged",
             "سحب", "خصم", "شراء", "دفع",
         )
         val DEFAULT_INCOME_KEYWORDS = setOf(
@@ -308,6 +311,9 @@ class Prefs(context: Context) {
             // earliest keyword decides the direction, every one of these was recorded
             // as spending: money coming in, counted as money going out.
             "إيداع", "ايداع", "راتب", "استلمت",
+            // "تم إضافة مبلغ 5.0 OMR إلى بطاقتك": a top-up. With "مبلغ" after it, because
+            // "إضافة" alone is also "in addition" and "a beneficiary was added".
+            "إضافة مبلغ", "اضافة مبلغ",
         )
     }
 }

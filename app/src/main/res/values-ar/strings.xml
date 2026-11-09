@@ -1215,6 +1215,7 @@
     <string name="skip_no_kw_no_amount">لا كلمة سحب أو إيداع، ولا مبلغ أيضاً</string>
     <string name="skip_no_kw_many_amounts">لا كلمة سحب أو إيداع، و%1$d مبالغ للاختيار بينها</string>
     <string name="skip_no_kw_unparsable">لا كلمة سحب أو إيداع، والمبلغ لا يُقرأ</string>
+    <string name="skip_amount_zero">المبلغ صفر: فحص للبطاقة، لم يتحرك مال</string>
     <string name="skip_no_kw_zero">لا كلمة سحب أو إيداع، والمبلغ صفر</string>
     <string name="reason_no_amount">لا مبلغ موجود</string>
     <string name="reason_balance_only">لا شيء سوى مبالغ تشبه الرصيد</string>

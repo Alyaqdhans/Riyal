@@ -4,6 +4,20 @@ Every release of Riyal, newest first. Released versions are condensed from their
 [GitHub release notes](https://github.com/Alyaqdhans/Riyal/releases); the APK for each
 is attached there.
 
+## 1.8.5 — unreleased (branch `1.8.5`)
+
+### Reading messages
+
+- **Thawani Pay is read.** Its sender is known as a wallet, so its Mojab card alerts are
+  no longer left out: payments ("تم استخدام بطاقة ... لدفع مبلغ"), payments in dollars
+  (converted, with the shop's name free of a trailing "+"), the yearly fee ("was
+  charged OMR 2.000 for annual fees") as spending, and top-ups ("تم إضافة مبلغ") as money
+  in, each with the balance it quotes.
+- A zero charge (a card checked when it is added to a phone's wallet) is skipped rather
+  than asked about in Review. Nothing moved.
+- New words: "was charged" for money out, "إضافة مبلغ" for money in. The parser's version
+  is raised, so the next scan reads the inbox again.
+
 ## 1.8.4 — unreleased (branch `1.8.4`)
 
 ### Around the app
