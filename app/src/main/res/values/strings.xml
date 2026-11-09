@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Riyal</string>
 
     <string name="action_save">Save</string>
@@ -7,21 +7,18 @@
     <string name="action_delete">Delete</string>
     <string name="action_remove">Remove</string>
     <string name="action_edit">Edit</string>
-    <string name="action_add">Add</string>
     <string name="action_close">Close</string>
-    <string name="action_done">Done</string>
     <string name="action_apply">Apply</string>
     <string name="action_clear">Clear</string>
-    <string name="action_change">Change</string>
     <string name="action_copy">Copy</string>
     <string name="action_export">Export</string>
     <string name="action_restore">Restore</string>
     <string name="action_dismiss">Dismiss</string>
     <string name="action_got_it">Got it</string>
     <string name="action_next">Next</string>
-    <string name="sift_left">%1$d left</string>
-    <string name="sift_done_left">%1$d done · %2$d left</string>
-    <string name="sift_all_done">All %1$d done</string>
+    <string name="sift_left" tools:ignore="PluralsCandidate">%1$d left</string>
+    <string name="sift_done_left" tools:ignore="PluralsCandidate">%1$d done · %2$d left</string>
+    <string name="sift_all_done" tools:ignore="PluralsCandidate">All %1$d done</string>
     <string name="action_undo">Undo</string>
     <string name="action_add_transaction">Add transaction</string>
     <string name="action_back">Back</string>
@@ -29,7 +26,6 @@
     <string name="label_amount">Amount</string>
     <string name="label_account">Account</string>
     <string name="label_category">Category</string>
-    <string name="label_period">Period</string>
     <string name="label_name">Name</string>
     <string name="label_icon">Icon</string>
     <string name="label_colour">Colour</string>
@@ -126,7 +122,7 @@
     <string name="setup_missing_body">These senders texted you but were not read as a bank. Tap one to read its messages too.</string>
     <string name="setup_accounts_right">Yes, these are right</string>
     <string name="setup_continue">Continue</string>
-    <string name="setup_question_count">Question %1$d · about %2$d left</string>
+    <string name="setup_question_count" tools:ignore="PluralsCandidate">Question %1$d · about %2$d left</string>
     <string name="setup_question_title">Is this read correctly?</string>
     <string name="setup_read_as">Riyal read it as</string>
     <string name="setup_what_was_it">What was it?</string>
@@ -212,9 +208,9 @@
     <string name="set_backup_messages_detail">Off: records keep their figures, not the message text</string>
     <string name="set_restore_detail">All of a backup or only part of it, such as a friend’s categories</string>
     <string name="set_log_detail">Every step Riyal took while reading</string>
-    <string name="log_taught">%1$s · messages written like this are %2$s (%3$d more like it)</string>
+    <string name="log_taught" tools:ignore="PluralsCandidate">%1$s · messages written like this are %2$s (%3$d more like it)</string>
     <string name="log_taught_account">messages written like this go to %1$s</string>
-    <string name="log_labels_carried">what you taught carried over: %2$d kinds of message are %1$d now that a shop\'s name is no longer part of one</string>
+    <string name="log_labels_carried">what you taught carried over, now that a shop\'s name is no longer part of a kind of message (kinds of message: before %2$d, now %1$d)</string>
     <string name="log_sender_excluded">%1$s is not your bank · its messages are no longer read</string>
     <string name="log_sender_included">%1$s will be read as a bank</string>
     <string name="log_sender_restored">%1$s is no longer ignored</string>
@@ -230,7 +226,7 @@
         <item quantity="one">%d kind of message taught</item>
         <item quantity="other">%d kinds of message taught</item>
     </plurals>
-    <string name="log_github_releases">GitHub lists %1$d releases; the newest is %2$s</string>
+    <string name="log_github_releases">releases on GitHub: %1$d; the newest is %2$s</string>
     <string name="log_download_done">downloaded %1$s · handing it to Android\'s installer is up to you</string>
     <string name="log_update_skipped">you skipped %1$s · a later release will still be offered</string>
     <string name="log_install_opened">opened Android\'s installer on the downloaded update</string>
@@ -345,7 +341,7 @@
     <string name="period_this_month">This month</string>
     <string name="period_last_month">Last month</string>
     <string name="period_this_week">This week</string>
-    <string name="period_last_n_months">Last %d months</string>
+    <string name="period_last_n_months" tools:ignore="PluralsCandidate">Last %d months</string>
     <string name="period_this_year">This year</string>
     <string name="period_all_time">All time</string>
     <string name="period_custom">Custom range…</string>
@@ -403,7 +399,7 @@
     <string name="review_intro_clear">All clear, nothing is waiting for you.</string>
     <string name="review_intro_only_transfers">Nothing unreadable, just the transfers above.</string>
     <string name="review_intro">Nothing was recorded for these. You decide.</string>
-    <string name="review_dismissed_plus_similar">Dismissed, along with %d similar</string>
+    <string name="review_dismissed_plus_similar" tools:ignore="PluralsCandidate">Dismissed, along with %d similar</string>
     <string name="review_dismissed_future">Dismissed, future ones will be too</string>
     <string name="review_dismissed_one">Message dismissed</string>
     <string name="review_dismissed_header">Dismissed (%d)</string>
@@ -446,13 +442,12 @@
     <string name="needs_files_some">Files %1$d of %2$d · no rule saved</string>
     <string name="needs_files_all_asked">Files all %d · asked again next time</string>
     <string name="needs_files_all_future">Files all %d · and future ones</string>
-    <string name="needs_remember_name">Remember this name</string>
     <string name="needs_always_ask_name">Always ask for this name</string>
     <string name="needs_hide_message">Hide the message</string>
     <string name="needs_read_message">Read the message</string>
     <string name="needs_file_as">File as</string>
     <string name="needs_choose_records">Choose records</string>
-    <string name="needs_chosen_of">%1$d of %2$d ticked</string>
+    <string name="needs_chosen_of" tools:ignore="PluralsCandidate">%1$d of %2$d ticked</string>
 
     <string name="acct_generic_name">Account</string>
     <string name="bank_muscat">Bank Muscat</string>
@@ -577,10 +572,10 @@
     <string name="scan_phase_ellipsis">%1$s…</string>
     <string name="scan_done">Scan complete</string>
     <string name="scan_took">took %1$ss · %2$s checked</string>
-    <string name="scan_pill_recorded">✓ %d recorded</string>
+    <string name="scan_pill_recorded" tools:ignore="PluralsCandidate">✓ %d recorded</string>
     <string name="scan_pill_transfers">⇄ %1$s</string>
-    <string name="scan_pill_need_you">\? %d need you</string>
-    <string name="scan_pill_skipped">%d skipped, never stored</string>
+    <string name="scan_pill_need_you" tools:ignore="PluralsCandidate">\? %d need you</string>
+    <string name="scan_pill_skipped" tools:ignore="PluralsCandidate">%d skipped, never stored</string>
     <string name="scan_failed">Scan didn\'t finish</string>
     <string name="scan_log_title">Verbose processing log</string>
     <string name="scan_hide">Hide, scanning continues</string>
@@ -693,7 +688,7 @@
     <string name="an_named_amount">%1$s · %2$s</string>
     <string name="an_median_average">%1$s · average %2$s</string>
     <string name="an_payments">Payments</string>
-    <string name="an_payments_value">%1$d out · %2$d in</string>
+    <string name="an_payments_value" tools:ignore="PluralsCandidate">%1$d out · %2$d in</string>
     <string name="an_days_with_spending">Days with spending</string>
     <string name="an_days_value">%1$d of %2$d</string>
     <string name="an_average_per_day">Average per day</string>
@@ -733,7 +728,7 @@
     <string name="set_range_everything">everything</string>
     <string name="set_range_one_month">1 month</string>
     <string name="set_range_one_year">1 year</string>
-    <string name="set_range_months">%d months</string>
+    <string name="set_range_months" tools:ignore="PluralsCandidate">%d months</string>
     <string name="set_fresh_start">Nothing before %1$s is read, whichever range is picked.</string>
     <string name="set_read_older">Read older messages too</string>
 
@@ -818,7 +813,7 @@
         <item quantity="other">%d learned</item>
     </plurals>
 
-    <string name="help_review">Messages Riyal could not read on its own. Nothing was recorded for any of them. Resolve one to record it, or dismiss it to say it was never a transaction.\n\nSome show an amount and ask only which way the money went. Those are messages whose wording your keywords do not cover yet - \"your card was used for...\" and the like. Answering records the amount as it stands, and you can adopt the word that confused it so the next one is read automatically.\n\nTransfers appear here too: two messages that look like one movement between your own accounts. Confirming a pair stops it counting as both spending and income.</string>
+    <string name="help_review">Messages Riyal could not read on its own. Nothing was recorded for any of them. Resolve one to record it, or dismiss it to say it was never a transaction.\n\nSome show an amount and ask only which way the money went. Those are messages whose wording your keywords do not cover yet - \"your card was used for…\" and the like. Answering records the amount as it stands, and you can adopt the word that confused it so the next one is read automatically.\n\nTransfers appear here too: two messages that look like one movement between your own accounts. Confirming a pair stops it counting as both spending and income.</string>
     <string name="help_needs_category">One row is one place you paid, biggest first. Filing a row files every record under it and remembers the answer, so the same place is never asked about twice.\n\nOpen a row to see its records and read the message each came from. Untick any and only the ticked ones are filed, with no rule saved: part of a name is not an answer about the name.\n\n\"Leave the rest under Other\" clears the list without answering it. Those records keep the category they fell back to, and the next scan asks again.</string>
     <string name="help_categories">Every category and what it came to in the period shown, spending and income kept apart. Open one to see its records; make your own with the button, and edit or delete the ones you made.\n\nBelow them are the names Riyal has learned: the ones it files without asking, and the ones you asked to be asked about every time.</string>
     <string name="help_accounts">The accounts Riyal found in your bank\'s own messages, and the balance each one last quoted. A balance read out of a text is a good first guess and nothing more, so open any account to set the real figure and the date it was true.\n\nAn account also carries the sender names that belong to it, which is how a message gets routed to the right balance. Archiving one keeps its records, because the money still moved.</string>
@@ -861,7 +856,7 @@
     <string name="log_filed">filed by you: %1$s from \"%2$s\" → %3$s</string>
     <string name="log_no_rule_partial">no rule saved for \"%1$s\": you filed %2$d of %3$s from this name, so it does not all belong in one place and the rest are still waiting</string>
     <string name="log_no_rule_ask">no rule saved for \"%1$s\": you asked to be asked about this name every time, so the next message from it comes back to you</string>
-    <string name="log_rule_saved_filed">rule saved: \"%1$s\" → %2$s · %3$s filed now, %4$d more re-categorized, and anything matching from now on lands there without being asked</string>
+    <string name="log_rule_saved_filed" tools:ignore="PluralsCandidate">rule saved: \"%1$s\" → %2$s · %3$s filed now, %4$d more re-categorized, and anything matching from now on lands there without being asked</string>
     <string name="log_left_under_other">%1$s left under Other for now · they were not answered, and the next scan asks about them again</string>
     <string name="log_archived">archived by you: %1$s is out of the lists and no longer counts towards anything</string>
     <string name="log_unarchived">unarchived by you: %1$s is back in the lists</string>
@@ -898,7 +893,7 @@
     <string name="log_restore_cancelled">you cancelled the restore, so nothing changed</string>
     <string name="log_restore_empty">that file was empty, so nothing changed</string>
     <string name="log_restore_unreadable">that file could not be read as a backup: %1$s, so nothing changed</string>
-    <string name="log_restore_wrong_version">that backup is version %1$d and this build reads version %2$d, so nothing changed</string>
+    <string name="log_restore_wrong_version" tools:ignore="PluralsCandidate">that backup is version %1$d and this build reads version %2$d, so nothing changed</string>
     <plurals name="count_past_transactions">
         <item quantity="one">%d past transaction</item>
         <item quantity="other">%d past transactions</item>
@@ -988,7 +983,7 @@
     <string name="scanlog_reason_asked">reading everything again because you asked for it</string>
     <string name="scanlog_reason_rules">reading everything again: the keywords, sender rules or the parser changed, so the records already stored were made under different rules</string>
     <string name="scanlog_reason_first">reading everything: nothing has been read before</string>
-    <string name="scanlog_reason_new">reading only what is new, from %1$s (%2$d hours before the newest message last time, so nothing dated oddly is missed)</string>
+    <string name="scanlog_reason_new">reading only what is new, from %1$s (%2$s before the newest message last time, so nothing dated oddly is missed)</string>
     <string name="scanlog_inbox_query">inbox query returned %1$s from %2$s in %3$dms</string>
     <string name="scanlog_muted_kinds">%1$s: similar messages are auto-dismissed, restore them any time in Review</string>
     <string name="scanlog_more_records">…more records than this log can hold; they are all still read and counted, they are just no longer described one by one</string>
@@ -1020,8 +1015,8 @@
     <string name="scanlog_converted">    · %1$s charged abroad, counted as %2$s</string>
     <string name="scanlog_skip_excluded">%1$s · you said this sender is not your bank</string>
     <string name="scanlog_proven">balances proved which way the money went in %1$s</string>
-    <string name="scanlog_proven_kinds">%1$d kinds of message have their direction proven by balances</string>
-    <string name="scanlog_taught_kinds">%1$d kinds of message are read the way you taught</string>
+    <string name="scanlog_proven_kinds">kinds of message with their direction proven by balances: %1$d</string>
+    <string name="scanlog_taught_kinds">kinds of message read the way you taught: %1$d</string>
     <string name="scanlog_overruled">%1$s · its words read as %2$s, but what you taught or the balance proved comes first</string>
     <string name="skip_taught_none">you said messages like this are not transactions</string>
     <string name="trace_taught">you taught Riyal that messages like this are %1$s</string>
@@ -1089,7 +1084,7 @@
     <string name="skip_advert">advertising, not a transaction (\"%1$s\")</string>
     <string name="skip_not_moved">no money moved (\"%1$s\")</string>
     <string name="skip_no_kw_no_amount">no withdraw/deposit keyword, and no amount either</string>
-    <string name="skip_no_kw_many_amounts">no withdraw/deposit keyword, and %1$d amounts to choose from</string>
+    <string name="skip_no_kw_many_amounts">no withdraw/deposit keyword, and amounts to choose from: %1$d</string>
     <string name="skip_no_kw_unparsable">no withdraw/deposit keyword, and the amount would not parse</string>
     <string name="skip_amount_zero">the amount is zero: a card check, no money moved</string>
     <string name="skip_no_kw_zero">no withdraw/deposit keyword, and the amount is zero</string>
@@ -1098,5 +1093,4 @@
     <string name="reason_amount_unparsable">could not parse amount \"%1$s\"</string>
     <string name="reason_amount_zero">amount is zero</string>
     <string name="reason_direction_unknown">the amount is clear, the direction is not</string>
-    <string name="onboarding_welcome">Welcome</string>
 </resources>

@@ -1,8 +1,8 @@
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.core.net.toUri
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.text.Spanned
 import android.text.style.ClickableSpan
 import android.text.util.Linkify
@@ -125,7 +125,7 @@ private fun notesMarkwon(context: Context): Markwon = Markwon.builder(context)
             builder.linkResolver { view, link ->
                 runCatching {
                     view.context.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse(link)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        Intent(Intent.ACTION_VIEW, link.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     )
                 }
             }
@@ -174,7 +174,7 @@ fun UpdateDialogHost(vm: MainViewModel) {
     fun openOnGitHub() {
         runCatching {
             context.startActivity(
-                Intent(Intent.ACTION_VIEW, Uri.parse(release.htmlUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                Intent(Intent.ACTION_VIEW, release.htmlUrl.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
         }
     }
@@ -196,13 +196,13 @@ fun UpdateDialogHost(vm: MainViewModel) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 val scroll = rememberScrollState()
-                    Column(
-                        Modifier
-                            .heightIn(max = 300.dp)
-                            .verticalScroll(scroll),
-                    ) {
-                        ReleaseNotes(localNotes(release).ifBlank { stringResource(R.string.upd_no_notes) })
-                    }
+                Column(
+                    Modifier
+                        .heightIn(max = 300.dp)
+                        .verticalScroll(scroll),
+                ) {
+                    ReleaseNotes(localNotes(release).ifBlank { stringResource(R.string.upd_no_notes) })
+                }
                 when (state) {
                     is DownloadState.Downloading -> {
                         FlatBar(progress = { state.fraction }, modifier = Modifier.fillMaxWidth())

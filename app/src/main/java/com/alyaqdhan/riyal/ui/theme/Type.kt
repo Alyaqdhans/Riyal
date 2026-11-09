@@ -1,5 +1,6 @@
 package com.alyaqdhan.riyal.ui.theme
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Resources
 import android.graphics.Typeface
@@ -89,6 +90,8 @@ private object RiyalLoader : AndroidFont.TypefaceLoader {
      * Every weight of one variable file, each drawn [heavier] than it is named. The file is
      * read once and shared by its weights, as Android shares its own fonts'.
      */
+    // A font in res/font is a file like any raw resource, and openRawResource reads either.
+    @SuppressLint("ResourceType")
     private fun family(res: Resources, @FontRes id: Int, heavier: Int): PlatformFontFamily {
         val bytes = res.openRawResource(id).use { it.readBytes() }
         val file = ByteBuffer.allocateDirect(bytes.size).put(bytes).apply { rewind() }

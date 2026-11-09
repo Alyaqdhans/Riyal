@@ -126,7 +126,7 @@ class ScanEngine(
             ScanWindow.Reason.ONLY_WHAT_IS_NEW -> Verbose.scan(
                 R.string.scanlog_reason_new,
                 fmtDateTime(from),
-                Prefs.SCAN_OVERLAP_MILLIS / 3_600_000,
+                Verbose.count(R.plurals.count_hours, (Prefs.SCAN_OVERLAP_MILLIS / 3_600_000).toInt()),
             )
         }
 

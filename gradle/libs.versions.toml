@@ -1,27 +1,25 @@
 [versions]
-# AGP 9.2.1: built-in Kotlin (no standalone kotlin-android/compose plugins),
+# AGP 9.5.1: built-in Kotlin (no standalone kotlin-android/compose plugins),
 # required by compose material3 1.5 (needs AGP >= 9.1 and compileSdk 37).
-agp = "9.2.1"
+agp = "9.5.1"
 # The Kotlin the app is compiled with. AGP's built-in Kotlin asks for KGP 2.2.10 at least,
 # and the Compose compiler plugin's Kotlin BOM raises it to this version, so the compiler
 # and the plugin always match. 2.4 because LazyColumnScrollbar 3.0 is built with 2.4.20.
 kotlinComposePlugin = "2.4.21"
-coreKtx = "1.17.0"
+coreKtx = "1.19.1"
 junit = "4.13.2"
-json = "20250107"
-lifecycle = "2.10.0"
-appcompat = "1.7.1"
+json = "20260814"
+lifecycle = "2.11.0"
+appcompat = "1.8.0"
 material = "1.14.0"
-# The tabs are plain fragments that MainActivity keeps and slides itself; the version
-# the rest of the graph already resolves.
-fragment = "1.6.2"
-# The version the rest of the graph already resolves (appcompat 1.7 and the chart
-# library pull it in); declared so screens can use BackHandler directly.
-activityCompose = "1.8.2"
-splashscreen = "1.0.1"
+# The tabs are plain fragments that MainActivity keeps and slides itself.
+fragment = "1.9.1"
+# Declared so screens can use BackHandler directly.
+activityCompose = "1.13.0"
+splashscreen = "1.2.0"
 composeMaterial3 = "1.5.0-rc01"
 composeIconsCore = "1.7.8"
-vico = "3.2.3"
+vico = "3.3.1"
 # Release notes are markdown, drawn by Markwon as ytdlnis draws its own. 4.6.2 is
 # Markwon's last release; it is Java, so the Kotlin version does not reach it.
 markwon = "4.6.2"

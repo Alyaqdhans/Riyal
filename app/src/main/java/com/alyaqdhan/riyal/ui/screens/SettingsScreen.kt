@@ -2,6 +2,8 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import com.alyaqdhan.riyal.ui.compose.CurrencySign
 import com.alyaqdhan.riyal.ui.compose.MatchedIcon
 import androidx.compose.material3.Surface
@@ -132,8 +134,8 @@ fun SettingsScreen(
     val newMessages by vm.newMessages.collectAsState()
     val running = scan as? MainViewModel.ScanState.Running
 
-    var rangeMonths by remember { mutableStateOf(prefs.scanRangeMonths) }
-    var freshStart by remember { mutableStateOf(prefs.scanSinceMillis) }
+    var rangeMonths by remember { mutableIntStateOf(prefs.scanRangeMonths) }
+    var freshStart by remember { mutableLongStateOf(prefs.scanSinceMillis) }
     var scanOnLaunch by remember { mutableStateOf(prefs.scanOnLaunch) }
     var smartRules by remember { mutableStateOf(prefs.smartRules) }
     var dialog by remember { mutableStateOf(SettingsDialog.NONE) }

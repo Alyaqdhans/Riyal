@@ -5,6 +5,11 @@
     <!-- Messages are read on demand when the user taps Scan, never in the background:
          there is no RECEIVE_SMS and no listener. What is read stays on the device. -->
     <uses-permission android:name="android.permission.READ_SMS" />
+    <!-- Reading the inbox implies a phone. Not required: a tablet or Chromebook with no
+         SMS can still install it, and simply has no messages to read. -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
 
     <!-- One destination, one direction. INTERNET exists so the app can ask GitHub's
          public API whether a newer release has been published and download that APK if
@@ -22,6 +27,8 @@
     <application
         android:name=".RiyalApp"
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

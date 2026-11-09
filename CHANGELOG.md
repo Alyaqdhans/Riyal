@@ -27,6 +27,7 @@ is attached there.
 
 ### Around the app
 
+- Version 1.8.5 (versionCode 13).
 - Lists in sheets and dialogs - the record sheet, filters, currencies, date choices, the
   scan's log, the update prompt and the editors - no longer show a scroll thumb. Tabs and
   pages keep theirs.
@@ -37,6 +38,21 @@ is attached there.
   to, it looks - at who sent what, never at a message's text - for messages newer than
   the last one read, from the senders it reads; while there are some, the card says how
   many are waiting, scan on launch or not.
+- The build has no warnings, from the compiler, Gradle or Android lint:
+  - Android Gradle Plugin 9.5.1, from 9.2.1, whose own code set off Gradle's
+    deprecation warnings. Targets Android 17 (API 37); none of what that changes for
+    an app (local network, native code, contacts, background audio, widgets) is
+    anything Riyal does.
+  - Libraries to their current releases: core-ktx 1.19.1, lifecycle 2.11.0,
+    appcompat 1.8.0, fragment 1.9.1, activity-compose 1.13.0, splashscreen 1.2.0,
+    Vico 3.3.1 (charts now skip their opening with `initialAnimationSpec = null`).
+  - Log lines that put a count before a noun ("1 kinds", in Arabic "12 أشهر") give it
+    after the words instead; strings whose number counts nothing after it say so.
+  - Android's own backup is off on every version, as it was meant to be: rules for
+    Android 12 and later beside allowBackup's "false".
+  - A tablet without SMS can install it (telephony is used, not required), and a
+    bundle keeps every language, since the app switches language itself.
+  - Unused strings and drawables gone; settings written through core-ktx's `edit { }`.
 
 ## 1.8.4 — unreleased (branch `1.8.4`)
 

@@ -489,7 +489,7 @@ private fun BudgetEditor(
                 )
                 caps.forEachIndexed { index, (id, text) ->
                     key(id) {
-                        val focus = fields.getOrPut(id) { FocusRequester() }
+                        val focus = remember { fields.getOrPut(id) { FocusRequester() } }
                         val below = caps.getOrNull(index + 1)?.first
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),

@@ -53,7 +53,7 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   slides two already-drawn views sideways in the toolbar's order
   (`MainActivity.openTab`), so the highlight and the slide start on the same frame.
 - **No decorative motion.** No pop-in or bounce on content, and `MotionScheme.standard()`.
-  Charts use `animationSpec = null, animateIn = false`. The owner's exceptions: the tab
+  Charts use `animationSpec = null, initialAnimationSpec = null`. The owner's exceptions: the tab
   slide, the tabs of Lists, Analysis and Transactions (a `HorizontalPager`: a tab slides to its page, a
   finger drags between them), the swipe tours (the first time Transactions or Lists is seen, one row
   opens by itself under a tooltip saying what its swipe uncovers: `SwipeTour`, shown only
@@ -126,12 +126,16 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 .\gradlew.bat :app:assembleDebug :app:testDebugUnitTest --console=plain
 ```
 
-- AGP 9.2.1 with built-in Kotlin 2.4.21 and the Compose compiler plugin; Gradle 9.8.2;
-  compileSdk 37, minSdk 29. AGP only asks for KGP 2.2.10; the Compose compiler plugin's
+- AGP 9.5.1 with built-in Kotlin 2.4.21 and the Compose compiler plugin; Gradle 9.8.2;
+  compileSdk and targetSdk 37, minSdk 29. AGP only asks for KGP 2.2.10; the Compose compiler plugin's
   Kotlin BOM raises it, so `kotlinComposePlugin` is the Kotlin the app compiles with.
 - Libraries must be built for that Kotlin or older (2.4.x). A library on a newer Kotlin
   means raising `kotlinComposePlugin` first.
 - Count the tests in `app/build/test-results` rather than trusting the exit code alone.
+- The build is kept free of warnings: compiler, Gradle (`--warning-mode all`) and
+  `:app:lintDebug` (0 issues). A string whose number counts nothing after it carries
+  `tools:ignore="PluralsCandidate"`; a count of things takes a plural or goes after
+  the words.
 - A debug build is never behind a release, so its update prompt never opens by itself:
   long-press a release in Settings › Updates › Changelog to open the prompt for it.
 - JitPack is a repository only for LazyColumnScrollbar, which publishes nowhere else;

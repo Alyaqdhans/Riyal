@@ -1,8 +1,8 @@
 package com.alyaqdhan.riyal.data
 
+import androidx.core.net.toUri
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import java.io.File
@@ -27,7 +27,7 @@ object ApkInstaller {
     /** The system page where that permission is granted, opened on this app. */
     fun openInstallPermission(context: Context) {
         context.startActivity(
-            Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + context.packageName))
+            Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, ("package:" + context.packageName).toUri())
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
     }

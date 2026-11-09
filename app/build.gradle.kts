@@ -17,9 +17,9 @@ android {
     defaultConfig {
         applicationId = "com.alyaqdhan.riyal"
         minSdk = 29
-        targetSdk = 36
-        versionCode = 12
-        versionName = "1.8.4"
+        targetSdk = 37
+        versionCode = 13
+        versionName = "1.8.5"
 
         androidResources {
             localeFilters += listOf("en", "ar")
@@ -75,6 +75,13 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    // The language is picked inside the app (Settings), so a bundle must carry both:
+    // split by language, Play would install only the phone's.
+    bundle {
+        language {
+            enableSplit = false
+        }
     }
 }
 

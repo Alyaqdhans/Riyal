@@ -6,6 +6,7 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -525,7 +526,7 @@ private fun CategoryEditorDialog(
     var name by remember { mutableStateOf(category.name) }
     var income by remember { mutableStateOf(category.income) }
     var color by remember {
-        mutableStateOf(if (category.color != 0) category.color else Categories.PALETTE.first())
+        mutableIntStateOf(if (category.color != 0) category.color else Categories.PALETTE.first())
     }
     var icon by remember { mutableStateOf(category.icon.ifBlank { CategoryVisuals.KEYS.first() }) }
     val pop = rememberDialogPop()

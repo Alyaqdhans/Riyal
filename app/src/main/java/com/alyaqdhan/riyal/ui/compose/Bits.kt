@@ -258,8 +258,8 @@ fun TxnRow(
 @Composable
 fun EmptyState(
     title: String,
-    subtitle: String? = null,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
     @DrawableRes icon: Int = R.drawable.ic_sym_inbox,
 ) {
     Column(

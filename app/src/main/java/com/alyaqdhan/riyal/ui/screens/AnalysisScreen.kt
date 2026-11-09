@@ -798,7 +798,7 @@ private fun ChartsCard(
                     modifier = Modifier.fillMaxWidth().height(200.dp),
                     // Drawn where it lands: no growing bars, no lines sweeping in.
                     animationSpec = null,
-                    animateIn = false,
+                    initialAnimationSpec = null,
                 )
             } else {
                 val spentVals = remember(flow) { flow.map { it.spent } }
@@ -841,7 +841,7 @@ private fun ChartsCard(
                     modifier = Modifier.fillMaxWidth().height(200.dp),
                     // Drawn where it lands: no growing bars, no lines sweeping in.
                     animationSpec = null,
-                    animateIn = false,
+                    initialAnimationSpec = null,
                 )
             }
 
@@ -1027,7 +1027,7 @@ private fun Kpi(
 private fun DeltaPill(now: Long, previous: Long, upIsGood: Boolean) {
     val pct = Stats.deltaPct(now, previous)
     val flat = pct == null || abs(pct) < 0.005f
-    val good = !flat && (pct!! > 0) == upIsGood
+    val good = !flat && (pct > 0) == upIsGood
     val (container, content) = when {
         flat -> MaterialTheme.colorScheme.surfaceContainerHighest to MaterialTheme.colorScheme.onSurfaceVariant
         good -> successContainer() to onSuccessContainer()

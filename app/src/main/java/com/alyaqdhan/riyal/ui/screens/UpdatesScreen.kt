@@ -2,9 +2,9 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.core.net.toUri
 import android.content.Intent
 import android.content.pm.ApplicationInfo
-import android.net.Uri
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -94,7 +94,7 @@ fun UpdatesScreen(vm: MainViewModel, onBack: () -> Unit, onOpenChangelog: () -> 
 
     fun open(url: String) {
         runCatching {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
     }
 
@@ -341,7 +341,7 @@ fun ChangelogScreen(vm: MainViewModel, onBack: () -> Unit) {
 
     fun open(url: String) {
         runCatching {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
     }
 
