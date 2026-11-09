@@ -317,6 +317,11 @@ fun HomeScreen(
                 vm.splitTransfer(txn)
                 picker = null
             },
+            onReadDifferently = { fields ->
+                vm.teachReading(txn.sender, txn.body, fields)
+                picker = null
+            },
+            defaultCurrency = vm.prefs.defaultCurrency,
         )
     }
 }

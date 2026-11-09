@@ -235,6 +235,9 @@ class ScanEngine(
         val tParse0 = System.currentTimeMillis()
         val excluded = prefs.excludedSenders.mapTo(HashSet()) { it.trim().lowercase() }
         val reads = ArrayList<Read>()
+        // Where kinds of message keep their facts, as the user showed or the balances
+        // proved: read into every message of the kind.
+        val placed = store.fields.value
         // What the gate leaves out is still looked at, never recorded: whether its
         // balance moves by exactly its amounts, which a bank's or a wallet's does and an
         // advert's cannot. A wallet named like nothing on the list ("Example Pay") was
@@ -291,27 +294,53 @@ class ScanEngine(
                 logSkip(Verbose.str(R.string.scanlog_skip_not_bank, msg.sender))
                 return@forEachIndexed
             }
-            val result = parser.parse(msg.body)
-            // Facts that do not depend on the direction - the amount, the balance, the
-            // account - for a message whose words named no direction. They are what the
-            // balance chain below needs, and what a taught or proven kind is applied to.
-            val facts = when (result) {
-                is SmsParser.Result.Parsed -> result
-                is SmsParser.Result.NeedsReview ->
-                    if (result.amountMinor != null) parser.parseAs(msg.body, Direction.EXPENSE) else null
-                is SmsParser.Result.Skipped -> null
-            }
+            val key = Skeleton.of(msg.sender, msg.body)
+            val fields = placed[key]
+            val result = parser.parse(msg.body, fields)
             reads += Read(
                 id = msgId,
                 msg = msg,
                 result = result,
-                facts = facts,
-                key = Skeleton.of(msg.sender, msg.body),
+                facts = factsOf(parser, msg.body, result, fields),
+                key = key,
                 trusted = !bankOnly || bankSender,
+                fields = fields,
             )
         }
 
-        // ── stage 1a: the senders left out, and what they showed ──────────
+        // ── stage 1a: where each kind keeps its amount and its balance ────
+        //
+        // A bank that writes "limit" for its balance, or quotes the fee first, is read
+        // wrong in every message of the kind. The balances say which of its amounts is
+        // which: the pair that moves the balance by the amount, message after message
+        // (FieldInference). A kind learned this way is read again at once; one the user
+        // showed is never second-guessed.
+        val learnedFields = FieldInference.infer(
+            reads.mapNotNull { r ->
+                val facts = r.facts ?: return@mapNotNull null
+                if (!r.trusted || placed[r.key]?.taught == true) return@mapNotNull null
+                val amounts = parser.amountChoices(r.msg.body).takeIf { it.size >= 2 } ?: return@mapNotNull null
+                val amountAt = FieldInference.indexOf(amounts, facts.amountMinor, facts.currency)
+                FieldInference.Sample(
+                    key = r.key,
+                    atMillis = r.msg.atMillis,
+                    amounts = amounts,
+                    readAmount = amountAt,
+                    readBalance = FieldInference.indexOf(amounts, facts.balanceMinor, facts.balanceCurrency, not = amountAt),
+                )
+            }
+        )
+        if (learnedFields.isNotEmpty()) {
+            Verbose.scan(R.string.scanlog_fields_learned, learnedFields.size)
+            for (k in reads.indices) {
+                val r = reads[k]
+                val fields = learnedFields[r.key] ?: continue
+                val result = parser.parse(r.msg.body, fields)
+                reads[k] = r.copy(result = result, facts = factsOf(parser, r.msg.body, result, fields), fields = fields)
+            }
+        }
+
+        // ── stage 1b: the senders left out, and what they showed ──────────
         //
         // Added to what earlier scans found, for senders still left out: one the user
         // has since read or ignored has had its answer.
@@ -333,14 +362,14 @@ class ScanEngine(
             Verbose.scan(R.string.scanlog_money_senders, offered.joinToString(", ") { it.sender })
         }
 
-        // ── stage 1b: what the user taught, and what the inbox proves ─────
+        // ── stage 1c: what the user taught, and what the inbox proves ─────
         //
         // The words a message uses are the weakest evidence there is, and they are what
         // every fixed rule was made of. Three stronger things come first: the user's own
         // answer about a kind of message, a balance that moved by exactly the amount,
         // and a kind of message whose balances have proven its direction several times.
         val labels = store.labels.value
-        val anchors = if (readEverything) emptyList() else anchorsFor(reads, parser)
+        val anchors = if (readEverything) emptyList() else anchorsFor(reads, parser, placed)
         val chains = BalanceChain.chain(
             reads.mapNotNull { it.point() } +
                 anchors.mapNotNull { pointOf(it.txn.id, it.txn.sender, it.txn.atMillis, it.facts) }
@@ -769,6 +798,7 @@ class ScanEngine(
             examinedIds = examined,
             templates = templates.values.toList(),
             senderEvidence = senderEvidence,
+            learnedFields = learnedFields,
         )
         val storeMs = System.currentTimeMillis() - tStore0
         val took = System.currentTimeMillis() - startedAt
@@ -857,6 +887,13 @@ class ScanEngine(
         "taught=" + store.labels.value.entries.sortedBy { it.key }
             .joinToString(",") { it.key + "=" + it.value.kind + (it.value.accountId?.let { id -> "@$id" } ?: "") }
             .hashCode().toString(16),
+        // Where kinds of message keep their facts, shown or worked out: a change is a
+        // different reading of every message of the kind.
+        "fields=" + store.fields.value.entries.sortedBy { it.key }
+            .joinToString(",") { (key, f) ->
+                key + "=" + f.amount + "/" + f.balance + "/" + f.shopAfter + f.shopAfterNth + "/" + f.shopUntil + "/" + f.noShop
+            }
+            .hashCode().toString(16),
     ).joinToString("|")
 
     /** One message the reader got to, with what is needed to decide what it was. */
@@ -868,6 +905,8 @@ class ScanEngine(
         val facts: SmsParser.Result.Parsed?,
         val key: String,
         val trusted: Boolean,
+        /** Where its kind keeps its facts, when that is known. */
+        val fields: TemplateFields? = null,
     ) {
         /** This message as a point on its account's balance line, if it quotes a balance. */
         fun point(): BalanceChain.Point? = facts?.let { pointOf(id, msg.sender, msg.atMillis, it) }
@@ -881,7 +920,7 @@ class ScanEngine(
     private data class Anchor(val txn: Txn, val facts: SmsParser.Result.Parsed)
 
     /** The newest stored records of every bank this pass heard from, read back. */
-    private fun anchorsFor(reads: List<Read>, parser: SmsParser): List<Anchor> {
+    private fun anchorsFor(reads: List<Read>, parser: SmsParser, placed: Map<String, TemplateFields>): List<Anchor> {
         val senders = reads.mapTo(HashSet()) { it.msg.sender.trim().lowercase() }
         val readIds = reads.mapTo(HashSet()) { it.id }
         return store.txns.value
@@ -893,7 +932,7 @@ class ScanEngine(
             .flatMap { (_, list) -> list.sortedByDescending { it.atMillis }.take(ANCHORS_PER_SENDER) }
             .mapNotNull { t ->
                 val direction = if (t.type == TxnType.INCOME) Direction.INCOME else Direction.EXPENSE
-                parser.parseAs(t.body, direction)?.let { Anchor(t, it) }
+                parser.parseAs(t.body, direction, placed[Skeleton.of(t.sender, t.body)])?.let { Anchor(t, it) }
             }
     }
 
@@ -965,6 +1004,19 @@ class ScanEngine(
         return read
     }
 
+    /**
+     * Facts that do not depend on the direction - the amount, the balance, the account -
+     * for a message whose words named no direction. They are what the balance chain
+     * needs, and what a taught or proven kind is applied to.
+     */
+    private fun factsOf(parser: SmsParser, body: String, result: SmsParser.Result, fields: TemplateFields?) =
+        when (result) {
+            is SmsParser.Result.Parsed -> result
+            is SmsParser.Result.NeedsReview ->
+                if (result.amountMinor != null) parser.parseAs(body, Direction.EXPENSE, fields) else null
+            is SmsParser.Result.Skipped -> null
+        }
+
     /** [r] read as [direction], with [why] at the end of its trace. */
     private fun reread(
         r: Read,
@@ -979,7 +1031,7 @@ class ScanEngine(
         }
         // A message with no amount stays what it was: knowing which way money went does
         // not say how much.
-        val again = parser.parseAs(r.msg.body, direction) ?: return read
+        val again = parser.parseAs(r.msg.body, direction, r.fields) ?: return read
         if (read is SmsParser.Result.Parsed) {
             Verbose.info(R.string.scanlog_overruled, r.msg.sender, Verbose.str(kindWord(MessageKind.of(read.direction))))
         }

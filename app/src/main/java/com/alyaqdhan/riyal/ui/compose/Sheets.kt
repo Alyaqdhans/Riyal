@@ -6,6 +6,7 @@
 
 package com.alyaqdhan.riyal.ui.compose
 
+import com.alyaqdhan.riyal.data.TemplateFields
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.DropdownMenuGroup
@@ -430,6 +431,9 @@ fun TxnEditSheet(
     onSetAccount: ((String) -> Unit)? = null,
     onMarkTransfer: ((fromAccountId: String?, toAccountId: String?) -> Unit)? = null,
     onSplitTransfer: (() -> Unit)? = null,
+    /** The user showed where messages like this one keep their facts. */
+    onReadDifferently: ((TemplateFields) -> Unit)? = null,
+    defaultCurrency: String = "OMR",
 ) {
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     // Frozen for this sheet session: applying a category updates the counts at once,
@@ -477,6 +481,31 @@ fun TxnEditSheet(
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                // The reader took this message wrong - the fee for the amount, no shop, the
+                // limit for the balance: put right here, it is put right for every message
+                // written like it.
+                val choices = remember(txn.body, defaultCurrency) { ReadingChoices(txn.body, defaultCurrency) }
+                var reading by remember { mutableStateOf(false) }
+                if (onReadDifferently != null && !txn.manual && txn.legIds.isEmpty() && choices.amounts.isNotEmpty()) {
+                    TextButton(
+                        onClick = { reading = true },
+                        shapes = ButtonDefaults.shapes(),
+                        contentPadding = PaddingValues(0.dp),
+                    ) { Text(stringResource(R.string.reading_wrong)) }
+                }
+                if (reading && onReadDifferently != null) {
+                    ReadingDialog(
+                        choices = choices,
+                        start = remember(choices) {
+                            choices.start(txn.originalAmountMinor ?: txn.amountMinor, txn.originalCurrency ?: txn.currency, txn.merchant)
+                        },
+                        onSave = { fields ->
+                            reading = false
+                            onReadDifferently(fields)
+                        },
+                        onDismiss = { reading = false },
                     )
                 }
             }

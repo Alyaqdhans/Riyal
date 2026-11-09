@@ -157,6 +157,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `data/ScanEngine.kt` | One pass: read → decide (taught label > balance proof > proven template > words > learned words) → accounts → records (with FX conversion) → transfers → store |
 | `data/Store.kt` | One JSON file, written atomically. Records, accounts, rules, labels, template stats, merged places (`PlaceGroup`, keyed by `UserRule.patternOf` so rescans keep them). **Bumping `SCHEMA_VERSION` wipes user data** |
 | `data/SenderLists.kt` | Whether each sender is read, as the scan's sender gate decides (Settings › Lists) |
+| `data/TemplateFields.kt` | Where a kind of message keeps its amount, balance and shop (`TemplateFields`), and `FieldInference`, which finds the amount and the balance from how the balance moves |
 | `data/MoneySenders.kt` | Senders the gate leaves out, judged by what they send: `SenderEvidence` (messages, ones quoting a balance, balance proofs), carried across scans in `Store.senderEvidence` |
 | `data/AccountDiscovery.kt` | Banks list, accounts proposed from messages, routing a message to an account |
 | `data/TransferMatcher.kt` | Pairs an expense and an income across your own accounts |
@@ -185,6 +186,15 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
    A label can also carry an account (`TemplateLabel.accountId`), asked in Review when the
    sender holds none of the user's accounts: its messages route there, pass the "not your
    bank" check, and found no account for their sender (their observations carry it).
+   Where a kind keeps its facts (`TemplateFields`, `Store.fields`, by template key) -
+   which of its amounts moved (counted in the order the message quotes them,
+   `SmsParser.amountChoices`), which is the balance after it, and the shop, found from
+   the word right before it up to the word right after - wins over the parser's rules
+   (`parse`/`parseAs(fields)`). The user shows it (Review's "Read it differently", the
+   record sheet's "Read wrong?"), or `FieldInference` works it out: the pair of amounts
+   that moves the balance by exactly the amount, two times or more and no other pair as
+   often, kept only where the reader takes the kind another way. What the user showed is
+   never replaced; fields are in the fingerprint and travel with the labels in a backup.
 4. `BalanceChain` proves directions; `TemplateInference` marks templates with two or
    more agreeing proofs and none against as *proven*, and spreads their direction. A
    short scan merges a template's proofs with what earlier scans found
@@ -238,7 +248,10 @@ everything.
   `MainActivity` starts fresh, and a page restored after process death checks
   `vm.setupActive` before trusting its saved state.
 - Store JSON field `alias` (account aliases) is optional like the others.
-- Bumping `Skeleton.VERSION` changes every template key. Labels are keyed by it, so
+- Bumping `Skeleton.VERSION` changes every template key. Fields (`Store.fields`) are
+  keyed by it too and are dropped on a new shape: the balances place the learned ones
+  again, but what the user showed would be lost, so carry them over as the labels are.
+  Labels are keyed by it, so
   `Store.loadLocked` carries the previous shape's labels over (`Skeleton.carryOver`,
   through stored samples, records and Review items) and muted kinds are re-keyed from
   their sample; keep `legacyOf` producing the previous shape exactly.

@@ -92,6 +92,11 @@ internal fun RecordSheet(vm: MainViewModel, txn: Txn, accounts: List<Account>, o
             vm.splitTransfer(txn)
             onClose()
         },
+        onReadDifferently = { fields ->
+            vm.teachReading(txn.sender, txn.body, fields)
+            onClose()
+        },
+        defaultCurrency = vm.prefs.defaultCurrency,
     )
 }
 

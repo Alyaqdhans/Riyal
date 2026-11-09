@@ -27,6 +27,19 @@ is attached there.
   out at one bank reads a wallet's "was charged" the same). Less sure, it is still asked,
   with the learned reading as the guess to confirm instead of a blind "money out". A kind
   the user dismissed is never read this way.
+- **Where a message keeps its facts is learned too.** The reader finds the amount nearest
+  the keyword, a balance behind "bal" or "رصيد", a shop after "at" or "إلى", and a kind of
+  message written otherwise - "Available limit" for its balance, the fee first, the shop
+  with no word in front - was read wrong in every message alike. Now each kind can keep
+  its own places: which of its amounts moved, which is the balance after it, and where
+  its shop sits (the word right before it, up to the word right after). The balances
+  work the first two out on their own - the pair of amounts that moves the balance by
+  exactly the amount, again and again - and the user can show all three: Review's
+  "Read it differently" (open at once for a message whose every figure looked like a
+  balance, which can now be answered instead of typed in by hand), and a record's
+  "Read wrong? Show Riyal". Shown once, every message written like it is read the same
+  way, and what the user showed is never second-guessed. Backed up with the kinds
+  taught.
 - A short scan no longer wipes what full scans proved about a kind of message: its few
   proofs are merged with the earlier ones (the most each way) instead of replacing them,
   so a proven kind stays proven after a few launches.
