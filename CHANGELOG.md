@@ -30,6 +30,9 @@ is attached there.
 - Lists in sheets and dialogs - the record sheet, filters, currencies, date choices, the
   scan's log, the update prompt and the editors - no longer show a scroll thumb. Tabs and
   pages keep theirs.
+- Home's Top spending See all opens Analysis on Home's period, every account and
+  spending, so its wheel shows the same categories. It used to open on whatever
+  Analysis was last left at.
 
 ## 1.8.4 — unreleased (branch `1.8.4`)
 

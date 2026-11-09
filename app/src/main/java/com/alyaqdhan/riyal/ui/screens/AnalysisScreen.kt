@@ -278,6 +278,18 @@ fun AnalysisScreen(
             AccountChips(accounts, accountId, onSelect = { accountId = it })
 
             val scroll = rememberScrollState()
+            // Sent by Home's Top spending: its period is already this one, and the rest of
+            // what that card counts is every account's spending, so the wheel shows the
+            // same categories, at the top of the overview.
+            val fromHome by vm.analysisFromHome.collectAsState()
+            LaunchedEffect(fromHome) {
+                if (!fromHome) return@LaunchedEffect
+                accountId = null
+                donutType = TxnType.EXPENSE
+                pager.scrollToPage(AnalysisTab.OVERVIEW.ordinal)
+                scroll.scrollTo(0)
+                vm.analysisFromHomeShown()
+            }
             HorizontalPager(
                 state = pager,
                 modifier = Modifier.fillMaxSize(),

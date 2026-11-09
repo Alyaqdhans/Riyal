@@ -834,6 +834,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _homeSlice.value = slice
     }
 
+    /**
+     * Set while Analysis has yet to show what Home's Top spending card asked for: the
+     * same categories, so every account, spending, and the overview from its top. Home's
+     * period is copied over once, by [showHomeSpendingInAnalysis]; the two still move
+     * apart after it.
+     */
+    private val _analysisFromHome = MutableStateFlow(false)
+    val analysisFromHome: StateFlow<Boolean> = _analysisFromHome
+
+    fun showHomeSpendingInAnalysis() {
+        _analysisSlice.value = _homeSlice.value
+        _analysisFromHome.value = true
+    }
+
+    fun analysisFromHomeShown() {
+        _analysisFromHome.value = false
+    }
+
     val archivedIds = store.archivedIds
 
     fun archiveTxn(txn: Txn, archive: Boolean) = viewModelScope.launch(Dispatchers.IO) {
