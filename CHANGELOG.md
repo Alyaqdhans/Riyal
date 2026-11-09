@@ -4,7 +4,58 @@ Every release of Riyal, newest first. Released versions are condensed from their
 [GitHub release notes](https://github.com/Alyaqdhans/Riyal/releases); the APK for each
 is attached there.
 
-## 1.8.5 — unreleased (branch `1.8.5`)
+## 1.8.6 — unreleased (branch `1.8.6`)
+
+### Reading messages
+
+- **A wallet or card with a name like no bank's is found by what it sends.** The gate
+  reads only senders named like a bank, ones holding an account, and ones added by hand,
+  so a wallet named for itself ("Example Pay") was never read at all - not recorded, not
+  proven by its balance, not asked about. The scan now also looks at what the gate leaves
+  out, recording none of it: a sender whose balance moves by exactly its amounts (twice
+  or more), or most of whose messages quote an amount and a balance, is asked about on
+  Home ("Example Pay looks like a bank or wallet"), first in the setup's list of senders,
+  and in Lists. Read them, and it is read like a bank from then on; Not mine, and it is
+  ignored. An advert or a bill quotes an amount but no balance that moves, so a telecom
+  is not offered.
+- **New wording is learned, not added in code.** A message whose words name no direction
+  ("your card was charged ...", "تم إضافة مبلغ ...") went to Review, one question per kind,
+  and the answer taught nothing about the next sender to write it the same way. Now the
+  words of every kind of message already settled - by its balances, or by the user's
+  answers, which count three times as much - are learned each way, and a message nothing
+  else settles is read from them when it is nine-in-ten sure ("charged" proven as money
+  out at one bank reads a wallet's "was charged" the same). Less sure, it is still asked,
+  with the learned reading as the guess to confirm instead of a blind "money out". A kind
+  the user dismissed is never read this way.
+- **Where a message keeps its facts is learned too.** The reader finds the amount nearest
+  the keyword, a balance behind "bal" or "رصيد", a shop after "at" or "إلى", and a kind of
+  message written otherwise - "Available limit" for its balance, the fee first, the shop
+  with no word in front - was read wrong in every message alike. Now each kind can keep
+  its own places: which of its amounts moved, which is the balance after it, and where
+  its shop sits (the word right before it, up to the word right after). The balances
+  work the first two out on their own - the pair of amounts that moves the balance by
+  exactly the amount, again and again - and the user can show all three: Review's
+  "Read it differently" (open at once for a message whose every figure looked like a
+  balance, which can now be answered instead of typed in by hand), and a record's
+  "Read wrong? Show Riyal". Shown once, every message written like it is read the same
+  way, and what the user showed is never second-guessed. Backed up with the kinds
+  taught.
+- A short scan no longer wipes what full scans proved about a kind of message: its few
+  proofs are merged with the earlier ones (the most each way) instead of replacing them,
+  so a proven kind stays proven after a few launches.
+- **An amount under a riyal is no longer read as hundreds of riyals.** A wallet writes
+  half a riyal ".500 OMR", with nothing before the point, and the reader took the digits
+  after it for the whole number: 500 riyals. In an Arabic message the point can also
+  come after the digits ("500. OMR" - how ".500" looks right to left, where a point at a
+  number's edge goes to its other side), and either can be in Arabic digits ("٫٥٠٠").
+  All of these are read as 0.500 now, but only right beside a currency, so a reference
+  ("Ref.123") or a full stop before the next amount is left alone. The parser's version
+  is raised, so the next scan reads the inbox again.
+- Review's help no longer offers to adopt the word that confused it, which no screen did;
+  it says what answering does now.
+- Version 1.8.6 (versionCode 14). The parser's version is 13.
+
+## 1.8.5 — 2026-11-09
 
 ### Reading messages
 
@@ -54,7 +105,7 @@ is attached there.
     bundle keeps every language, since the app switches language itself.
   - Unused strings and drawables gone; settings written through core-ktx's `edit { }`.
 
-## 1.8.4 — unreleased (branch `1.8.4`)
+## 1.8.4 — 2026-11-07
 
 ### Around the app
 

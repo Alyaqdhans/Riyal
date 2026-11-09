@@ -115,7 +115,12 @@ class SmsParser(
     private val expense = expenseKeywords.map { it.trim().lowercase() }.filter { it.isNotEmpty() }
     private val income = incomeKeywords.map { it.trim().lowercase() }.filter { it.isNotEmpty() }
 
-    fun parse(rawBody: String): Result {
+    /**
+     * [fields] are where messages like this one keep their facts, when that was shown by
+     * the user or worked out from the balances ([TemplateFields]); they win over the rules
+     * below for the parts they place.
+     */
+    fun parse(rawBody: String, fields: TemplateFields? = null): Result {
         val trace = mutableListOf<ParseNote>()
         val body = normalize(rawBody)
         if (body != rawBody) trace += ParseNote(R.string.trace_normalized)
@@ -161,7 +166,7 @@ class SmsParser(
         // does not cover yet ("your card was used for", "an amount of ... has been
         // applied to"), and the old behaviour was that those purchases simply never
         // existed, with nothing on any screen to say so.
-        if (hits.isEmpty()) return unknownDirection(body, lower, trace)
+        if (hits.isEmpty()) return unknownDirection(body, lower, trace, fields)
         hits.sortBy { it.pos }
         val hit = hits.first()
         var confidence = 100
@@ -179,7 +184,7 @@ class SmsParser(
             confidence -= 20
             trace += ParseNote(R.string.trace_both_directions)
         }
-        return read(body, lower, hit, trace, confidence)
+        return read(body, lower, hit, trace, confidence, fields)
     }
 
     /**
@@ -192,16 +197,18 @@ class SmsParser(
      * Null when there is no usable amount, which no amount of knowing the direction can
      * fix.
      */
-    fun parseAs(rawBody: String, direction: Direction): Result.Parsed? {
+    fun parseAs(rawBody: String, direction: Direction, fields: TemplateFields? = null): Result.Parsed? {
         val body = normalize(rawBody)
         val lower = body.lowercase()
-        val usable = findAmounts(body, lower).filter { !it.nearBalance }
-        val anchor = usable.firstOrNull { c -> c.currencyToken?.let { tokenToIso(it) } == defaultCurrency }
+        val all = findAmounts(body, lower)
+        val usable = all.filter { !it.nearBalance }
+        val anchor = fields?.amount?.let { all.getOrNull(it) }
+            ?: usable.firstOrNull { c -> c.currencyToken?.let { tokenToIso(it) } == defaultCurrency }
             ?: usable.firstOrNull()
             ?: return null
         val trace = mutableListOf<ParseNote>()
         if (body != rawBody) trace += ParseNote(R.string.trace_normalized)
-        return read(body, lower, KeywordHit("", anchor.pos, direction), trace, 90) as? Result.Parsed
+        return read(body, lower, KeywordHit("", anchor.pos, direction), trace, 90, fields) as? Result.Parsed
     }
 
     /** Everything after the direction is settled: amount, counterparty, account. */
@@ -211,6 +218,7 @@ class SmsParser(
         hit: KeywordHit,
         trace: MutableList<ParseNote>,
         startConfidence: Int,
+        fields: TemplateFields? = null,
     ): Result {
         var confidence = startConfidence
 
@@ -232,14 +240,17 @@ class SmsParser(
             }
         }
         if (candidates.isEmpty()) return Result.NeedsReview(ReviewReason.NO_AMOUNT, trace)
+        // Where this kind of message keeps its amount, when that is known: even a figure
+        // the rules took for a balance ("Avl limit OMR 5.000" written before the amount).
+        val placed = fields?.amount?.let { candidates.getOrNull(it) }
         val usable = candidates.filter { !it.nearBalance }
-        if (usable.isEmpty()) return Result.NeedsReview(ReviewReason.BALANCE_ONLY, trace)
+        if (usable.isEmpty() && placed == null) return Result.NeedsReview(ReviewReason.BALANCE_ONLY, trace)
         // A purchase abroad is often quoted twice - "USD 9.99 (OMR 3.841)" - and the
         // figure in the account's own currency is the one that actually left it, fees
         // and the bank's rate included. Only when there is none is the foreign figure
         // taken, to be converted when the record is built.
         val home = usable.filter { c -> c.currencyToken?.let { tokenToIso(it) } == defaultCurrency }
-        val chosen = home.ifEmpty { usable }.minByOrNull { abs(it.pos - hit.pos) }!!
+        val chosen = placed ?: home.ifEmpty { usable }.minByOrNull { abs(it.pos - hit.pos) }!!
 
         var currency = chosen.currencyToken?.let { tokenToIso(it) }
         if (currency == null) {
@@ -262,7 +273,11 @@ class SmsParser(
         trace += ParseNote(R.string.trace_amount, listOf(currency, value.toPlainString()))
 
         // 3 ── merchant / counterparty
-        val merchant = findMerchant(body, hit.pos, hit.direction, lower)
+        val merchant = when {
+            fields?.noShop == true -> null
+            fields?.shopAfter != null -> shopIn(body, fields) ?: findMerchant(body, hit.pos, hit.direction, lower)
+            else -> findMerchant(body, hit.pos, hit.direction, lower)
+        }
         if (merchant != null) {
             trace += ParseNote(R.string.trace_merchant, listOf(merchant))
         } else {
@@ -272,7 +287,11 @@ class SmsParser(
 
         // 4 ── account context: the balance-like numbers the amount step rejected are
         // exactly what an account needs, so keep the last one instead of dropping it.
-        val balanceCandidate = candidates.lastOrNull { it.nearBalance }
+        val balanceCandidate = when (val placedBalance = fields?.balance) {
+            null -> candidates.lastOrNull { it.nearBalance && it.pos != chosen.pos }
+            TemplateFields.NO_BALANCE -> null
+            else -> candidates.getOrNull(placedBalance)?.takeIf { it.pos != chosen.pos }
+        }
         val balanceCurrency = balanceCandidate?.currencyToken?.let { tokenToIso(it) } ?: currency
         val balanceMinor = balanceCandidate?.let { c ->
             runCatching { Money.toMinor(BigDecimal(c.raw.replace(",", "")), balanceCurrency) }.getOrNull()
@@ -303,6 +322,9 @@ class SmsParser(
         }
         val bankStamp = findBankStamp(body)
         if (bankStamp != null) trace += ParseNote(R.string.trace_bank_stamp, listOf(bankStamp))
+        if (fields?.placesAnything == true) {
+            trace += ParseNote(if (fields.taught) R.string.trace_fields_taught else R.string.trace_fields_learned)
+        }
 
         return Result.Parsed(
             amountMinor = minor,
@@ -323,6 +345,82 @@ class SmsParser(
         )
     }
 
+    // ─────────────────── where a kind keeps its facts ───────────────────
+
+    /** One amount a message quotes, in the order it quotes them: what [TemplateFields] counts. */
+    data class AmountChoice(
+        val raw: String,
+        val currency: String,
+        /** In the currency's minor units; null when the figure does not read. */
+        val minor: Long?,
+        /** Behind "bal" or "رصيد", where the rules look for a balance. */
+        val nearBalance: Boolean,
+    )
+
+    /** Every amount [rawBody] quotes, in order. */
+    fun amountChoices(rawBody: String): List<AmountChoice> {
+        val body = normalize(rawBody)
+        return findAmounts(body, body.lowercase()).map { c ->
+            val currency = c.currencyToken?.let { tokenToIso(it) } ?: defaultCurrency
+            AmountChoice(
+                raw = c.raw,
+                currency = currency,
+                minor = runCatching { Money.toMinor(BigDecimal(c.raw.replace(",", "")), currency) }.getOrNull(),
+                nearBalance = c.nearBalance,
+            )
+        }
+    }
+
+    /** Names in [rawBody] that could be the shop or the person, as the reader would clean them. */
+    fun shopChoices(rawBody: String): List<String> {
+        val body = normalize(rawBody)
+        val out = LinkedHashSet<String>()
+        for (rx in listOf(atPattern, toPattern, fromPattern, viaPattern, atPatternAr, toPatternAr, fromPatternAr, viaPatternAr)) {
+            for (m in rx.findAll(body)) cleanMerchant(m.groupValues[1])?.let { out += it }
+        }
+        // A name with no word in front of it: in an Arabic message the Latin words, in an
+        // English one the words in capitals ("... OMR 5.000 EXAMPLE STORE on ...").
+        val names = if (body.any(::isArabicLetter)) latinRun else capsName
+        for (m in names.findAll(body)) {
+            if (m.value.length < 3 || currencyOnly.matches(m.value.trim())) continue
+            cleanMerchant(m.value)?.let { out += it }
+        }
+        return out.take(MAX_SHOP_CHOICES)
+    }
+
+    /**
+     * [fields] with where [shop] sits in [rawBody]: the word written right before it, the
+     * how-manieth time that word comes, and the word right after it. Null when [shop] is
+     * not in the message, or nothing but numbers comes before it.
+     */
+    fun placeShop(rawBody: String, shop: String, fields: TemplateFields): TemplateFields? {
+        val body = normalize(rawBody)
+        val at = body.indexOf(shop, ignoreCase = true).takeIf { it >= 0 } ?: return null
+        val before = letters.findAll(body.substring(0, at)).lastOrNull() ?: return null
+        val nth = wordPattern(before.value).findAll(body.substring(0, before.range.first)).count()
+        val next = nextWord.find(body.substring(at + shop.length))?.groupValues?.get(1)
+        return fields.copy(
+            shopAfter = before.value.lowercase(),
+            shopAfterNth = nth,
+            shopUntil = next?.lowercase(),
+            noShop = false,
+        )
+    }
+
+    /** The shop where [fields] say this kind of message keeps it. */
+    private fun shopIn(body: String, fields: TemplateFields): String? {
+        val after = fields.shopAfter ?: return null
+        val m = wordPattern(after).findAll(body).elementAtOrNull(fields.shopAfterNth) ?: return null
+        // The amount, a date or a card number can sit between the word and the name.
+        val rest = body.substring(m.range.last + 1).replace(leadingNoise, "")
+        val end = fields.shopUntil?.let { until -> wordPattern(until).find(rest)?.range?.first }
+            ?: shopEnd.find(rest)?.range?.first
+            ?: rest.length
+        return cleanMerchant(rest.substring(0, minOf(end, SHOP_SPAN)))
+    }
+
+    private fun wordPattern(word: String) = Regex("(?i)(?<!\\p{L})" + Regex.escape(word) + "(?!\\p{L})")
+
     // ───────────────────────────── internals ─────────────────────────────
 
     /**
@@ -334,10 +432,17 @@ class SmsParser(
      * balance-like ones, means the message is something else - a statement summary, a
      * promotion - and asking would be noise.
      */
-    private fun unknownDirection(body: String, lower: String, trace: MutableList<ParseNote>): Result {
+    private fun unknownDirection(
+        body: String,
+        lower: String,
+        trace: MutableList<ParseNote>,
+        fields: TemplateFields?,
+    ): Result {
         val candidates = findAmounts(body, lower)
+        // Several amounts is a summary or a promotion - unless it is known which one moved.
+        val placed = fields?.amount?.let { candidates.getOrNull(it) }
         val usable = candidates.filter { !it.nearBalance }
-        if (usable.size != 1) {
+        if (placed == null && usable.size != 1) {
             return Result.Skipped(
                 if (usable.isEmpty()) {
                     ParseNote(R.string.skip_no_kw_no_amount)
@@ -346,7 +451,7 @@ class SmsParser(
                 }
             )
         }
-        val chosen = usable.first()
+        val chosen = placed ?: usable.first()
         val currency = chosen.currencyToken?.let { tokenToIso(it) } ?: defaultCurrency
         val value = try {
             BigDecimal(chosen.raw.replace(",", ""))
@@ -368,8 +473,8 @@ class SmsParser(
             amountMinor = Money.toMinor(value, currency),
             currency = currency,
             // Direction decides which "at/to/from" pattern applies, so with no direction
-            // there is no merchant to read. The user names it if they want one.
-            merchant = null,
+            // there is no merchant to read - unless it is known where this kind keeps it.
+            merchant = fields?.takeIf { it.shopAfter != null && !it.noShop }?.let { shopIn(body, it) },
             suggestedWords = words,
         )
     }
@@ -592,6 +697,27 @@ class SmsParser(
         .replace('＃', '#')
         .replace('＊', '*')
         .replace('●', '•')
+        .let(::pointsInPlace)
+
+    /**
+     * An amount under one riyal is written with nothing before its point: ".543 OMR",
+     * "OMR .543", in either script's digits. Read as they stood, the digits after the point
+     * were the whole number, and 543 baisa was recorded as 543 riyals. In an Arabic message
+     * the point can also come after the digits - "543. OMR" is how ".543" looks on a
+     * right-to-left screen, where a point at a number's edge goes to its other side, so a
+     * message written as it looks has it there. Both are put back as "0.543", and only
+     * right beside a currency: "Ref.123" and a sentence's full stop stay as they are, and
+     * a number followed by a currency that starts the next amount ("100. OMR 5.000") is
+     * not one of these.
+     */
+    private fun pointsInPlace(s: String): String {
+        var out = s.replace(pointFirst) { m -> m.groupValues[1] + "0." + m.groupValues[2] }
+            .replace(pointFirstAfterCurrency) { m -> m.groupValues[1] + "0." + m.groupValues[2] }
+        if (out.any(::isArabicLetter)) {
+            out = out.replace(pointLast) { m -> m.groupValues[1] + "0." + m.groupValues[2] }
+        }
+        return out
+    }
 
     private fun wordIn(hay: String, phrase: String): Boolean {
         if (phrase.firstOrNull() !in 'a'..'z') return phrase in hay
@@ -614,7 +740,7 @@ class SmsParser(
          * is out of date and the inbox must be read again. Forgetting to bump it after a
          * parser fix means the fix only reaches messages that arrive afterwards.
          */
-        const val VERSION = 12
+        const val VERSION = 13
 
         /** The runs of digits in an account number, around and between its masks. */
         private val digitGroups = Regex("[0-9]{2,}")
@@ -814,7 +940,39 @@ class SmsParser(
                 "omr|r\\.?o|usd|aed|sar|otp|am|pm)$"
         )
 
+        /** ".543 OMR": a point with nothing before it, the currency after. */
+        private val pointFirst = Regex("(?i)(^|[\\s(:])\\.(\\d{1,3})(?=\\s*(?:$CUR)(?![\\p{L}\\d]))")
+
+        /** "OMR .543": the currency first. */
+        private val pointFirstAfterCurrency = Regex("(?i)((?:^|[\\s(:])(?:$CUR)\\s*)\\.(\\d{1,3})(?!\\d)")
+
+        /** "543. OMR": the point after the digits, as ".543" looks right to left. */
+        private val pointLast = Regex("(?i)(^|[\\s(:])(\\d{1,3})\\.(?=\\s*(?:$CUR)(?![\\p{L}\\d])(?!\\s*\\d))")
+
+        /** Words in capitals, one after another: a name in a mixed-case English message. */
+        private val capsName = Regex("\\b[A-Z][A-Z&'.*\\-]+(?:\\s+[A-Z][A-Z&'.*\\-]*)*")
+
+        /** A currency's code or sign and nothing else. */
+        private val currencyOnly = Regex("(?i)(?:$CUR)")
+
+        /** At most this many names are offered as the shop. */
+        const val MAX_SHOP_CHOICES = 6
+
+        /** The longest stretch read as a shop's name. */
+        private const val SHOP_SPAN = 60
+
+        private val letters = Regex("\\p{L}+")
+
+        /** The first word after a name, past the punctuation a card network puts there. */
+        private val nextWord = Regex("^[\\s\\\\/*+,.-]*(\\p{L}+)")
+
+        /** Spaces, numbers and currencies between a shop's word and the shop. */
+        private val leadingNoise = Regex("^(?:\\s+|\\S*\\d\\S*|(?:$CUR)(?!\\p{L}))+", RegexOption.IGNORE_CASE)
+
+        /** Where a name with no word after it ends: punctuation, or a number. */
+        private val shopEnd = Regex("[.,;\\n]|\\s\\S*\\d")
+
         // "+" too: the card network's name field can end in one ("EXAMPLE* STREAM SUB +").
-        val TRIM_CHARS = ".,;:-_*'\"()+".toSet()
+        val TRIM_CHARS =".,;:-_*'\"()+".toSet()
     }
 }

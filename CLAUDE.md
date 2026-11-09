@@ -154,9 +154,11 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `data/SmsReader.kt` | The one `READ_SMS` query; scans are manual or on launch, never in the background. `sendersAfter` is the only other look: who sent what is newer than the last message read, no bodies, when the app comes to the front, so Settings says "Up to date" only when it is (`vm.newMessages`) |
 | `data/SmsParser.kt` | Pure extraction: amount, currency, balance, account tail, merchant. `parse` uses word cues; `parseAs` reads a message as a known direction. **Bump `VERSION` when parsing output changes** |
 | `data/Learning.kt` | `Skeleton` (message → template key), `BalanceChain` (direction proven by balance deltas), `TemplateInference`, `Tutor` (setup questions + stopping rule) |
-| `data/ScanEngine.kt` | One pass: read → decide (taught label > balance proof > proven template > words) → accounts → records (with FX conversion) → transfers → store |
+| `data/ScanEngine.kt` | One pass: read → decide (taught label > balance proof > proven template > words > learned words) → accounts → records (with FX conversion) → transfers → store |
 | `data/Store.kt` | One JSON file, written atomically. Records, accounts, rules, labels, template stats, merged places (`PlaceGroup`, keyed by `UserRule.patternOf` so rescans keep them). **Bumping `SCHEMA_VERSION` wipes user data** |
 | `data/SenderLists.kt` | Whether each sender is read, as the scan's sender gate decides (Settings › Lists) |
+| `data/TemplateFields.kt` | Where a kind of message keeps its amount, balance and shop (`TemplateFields`), and `FieldInference`, which finds the amount and the balance from how the balance moves |
+| `data/MoneySenders.kt` | Senders the gate leaves out, judged by what they send: `SenderEvidence` (messages, ones quoting a balance, balance proofs), carried across scans in `Store.senderEvidence` |
 | `data/AccountDiscovery.kt` | Banks list, accounts proposed from messages, routing a message to an account |
 | `data/TransferMatcher.kt` | Pairs an expense and an income across your own accounts |
 | `data/Updates.kt` | **All network code**: GitHub releases list + APK download. `ApkInstaller.kt` hands the file to Android via FileProvider |
@@ -170,7 +172,11 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 ## How a message is read (1.8.0+)
 
 1. Sender gate: phone numbers, senders the user excluded, and non-bank senders are
-   skipped (unless approved during setup).
+   skipped (unless approved during setup or in Lists). What the gate leaves out is still
+   looked at, never recorded (`MoneySenders`): a sender whose balance moves by exactly
+   its amounts, or whose messages mostly quote an amount and a balance, is asked about
+   (`vm.moneySenders`: Home, the setup's senders, Lists), because a wallet named for
+   itself is otherwise never read.
 2. `SmsParser.parse` extracts the facts. Messages with an amount but no direction words
    still get their facts through `parseAs`.
 3. `Skeleton.of(sender, body)` gives the template key: masks, amounts, numbers and names
@@ -180,8 +186,24 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
    A label can also carry an account (`TemplateLabel.accountId`), asked in Review when the
    sender holds none of the user's accounts: its messages route there, pass the "not your
    bank" check, and found no account for their sender (their observations carry it).
+   Where a kind keeps its facts (`TemplateFields`, `Store.fields`, by template key) -
+   which of its amounts moved (counted in the order the message quotes them,
+   `SmsParser.amountChoices`), which is the balance after it, and the shop, found from
+   the word right before it up to the word right after - wins over the parser's rules
+   (`parse`/`parseAs(fields)`). The user shows it (Review's "Read it differently", the
+   record sheet's "Read wrong?"), or `FieldInference` works it out: the pair of amounts
+   that moves the balance by exactly the amount, two times or more and no other pair as
+   often, kept only where the reader takes the kind another way. What the user showed is
+   never replaced; fields are in the fingerprint and travel with the labels in a backup.
 4. `BalanceChain` proves directions; `TemplateInference` marks templates with two or
-   more agreeing proofs and none against as *proven*, and spreads their direction.
+   more agreeing proofs and none against as *proven*, and spreads their direction. A
+   short scan merges a template's proofs with what earlier scans found
+   (`TemplateInference.merge`: the most each way), never replaces them.
+   `WordLearner` learns which words go with money out and in from the kinds already
+   settled (proven templates, and taught labels at three times the weight), and reads a
+   message nothing else settles and whose words named no direction - never a dismissed
+   kind - when it is nine-in-ten sure with one firm word; less sure, its reading is the
+   template's guess the setup asks to confirm. Rebuilt every scan, nothing stored.
 5. Accounts follow the balance, not the digits. `BalanceChain` joins each message to the
    earlier one from the same bank whose balance it continues, and the joins make lines:
    one line is one account. A number is an account only when a line mostly quotes it and
@@ -226,7 +248,14 @@ everything.
   `MainActivity` starts fresh, and a page restored after process death checks
   `vm.setupActive` before trusting its saved state.
 - Store JSON field `alias` (account aliases) is optional like the others.
-- Bumping `Skeleton.VERSION` changes every template key. Labels are keyed by it, so
+- An amount under a riyal is written ".543 OMR" or "OMR .543", and in an Arabic message
+  also "543. OMR" (how ".543" looks right to left). `SmsParser.normalize` puts the point
+  back ("0.543") beside a currency only; a regex that needs a digit before the point
+  reads such an amount as 543 riyals.
+- Bumping `Skeleton.VERSION` changes every template key. Fields (`Store.fields`) are
+  keyed by it too and are dropped on a new shape: the balances place the learned ones
+  again, but what the user showed would be lost, so carry them over as the labels are.
+  Labels are keyed by it, so
   `Store.loadLocked` carries the previous shape's labels over (`Skeleton.carryOver`,
   through stored samples, records and Review items) and muted kinds are re-keyed from
   their sample; keep `legacyOf` producing the previous shape exactly.

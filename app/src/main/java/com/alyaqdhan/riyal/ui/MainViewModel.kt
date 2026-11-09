@@ -1,5 +1,7 @@
 package com.alyaqdhan.riyal.ui
 
+import com.alyaqdhan.riyal.data.TemplateFields
+import com.alyaqdhan.riyal.data.SenderEvidence
 import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
@@ -1357,6 +1359,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val templates = store.templates
     val muted = store.muted
 
+    /**
+     * Senders the gate leaves out whose messages look like a bank's or a wallet's
+     * ([MoneySenders]), the strongest evidence first: Home, the setup and Lists ask about
+     * them. Gone once the user has read, ignored or added the sender.
+     */
+    val moneySenders: StateFlow<List<SenderEvidence>> =
+        combine(store.senderEvidence, _ignoredSenders, _addedSenders, store.accounts) { evidence, ignored, added, accounts ->
+            evidence.filter { e ->
+                e.looksLikeMoney && SenderLists.statusOf(e.sender, accounts, ignored, added) == SenderLists.Status.LEFT_OUT
+            }.sortedWith(compareByDescending<SenderEvidence> { it.proofs }.thenByDescending { it.withBalance })
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     private fun refreshSenderLists() {
         _ignoredSenders.value = prefs.excludedSenders
         _addedSenders.value = prefs.senderAllowlist
@@ -1454,7 +1468,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * the user's accounts - which account its money moved in ([accountId]); null leaves
      * the scan to give the sender an account of its own, as it would anyway.
      */
-    fun teach(item: ReviewItem, kind: MessageKind, accountId: String? = null) = viewModelScope.launch(Dispatchers.IO) {
+    fun teach(
+        item: ReviewItem,
+        kind: MessageKind,
+        accountId: String? = null,
+        fields: TemplateFields? = null,
+    ) = viewModelScope.launch(Dispatchers.IO) {
+        // Where its facts sit first, so the reading the label brings uses them.
+        if (fields != null) store.setFields(Skeleton.of(item.sender, item.body), fields.taughtNow())
         store.setLabel(Skeleton.of(item.sender, item.body), kind, accountId)
         Verbose.ok(
             R.string.log_taught,
@@ -1475,6 +1496,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Verbose.flush()
         startScan(showSheet = false, full = true)
     }
+
+    /**
+     * The user showed where messages like [body] from [sender] keep their facts: which
+     * amount moved, the balance after it, the shop. Every message of the kind is read
+     * again with it.
+     */
+    fun teachReading(sender: String, body: String, fields: TemplateFields) = viewModelScope.launch(Dispatchers.IO) {
+        store.setFields(Skeleton.of(sender, body), fields.taughtNow())
+        Verbose.ok(R.string.log_reading_taught, sender)
+        Verbose.flush()
+        startScan(showSheet = false, full = true)
+    }
+
+    private fun TemplateFields.taughtNow() = copy(taught = true, atMillis = System.currentTimeMillis())
 
     fun addManual(
         amountMinor: Long,

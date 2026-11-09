@@ -2,6 +2,8 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import com.alyaqdhan.riyal.ui.compose.moneyEvidence
+import com.alyaqdhan.riyal.data.SenderEvidence
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
@@ -343,6 +345,8 @@ private fun SendersList(vm: MainViewModel, search: TextFieldState) {
     val accounts by vm.accounts.collectAsState()
     val ignored by vm.ignoredSenders.collectAsState()
     val added by vm.addedSenders.collectAsState()
+    val moneySenders by vm.moneySenders.collectAsState()
+    val evidence = remember(moneySenders) { moneySenders.associateBy { it.sender.trim().lowercase() } }
     val query = search.text.toString()
     var confirming by remember { mutableStateOf<String?>(null) }
     val rows = remember(senders, accounts, ignored, added) { SenderLists.rows(senders, accounts, ignored, added) }
@@ -363,7 +367,7 @@ private fun SendersList(vm: MainViewModel, search: TextFieldState) {
             item(key = "no-match") { EmptyState(title = stringResource(R.string.lists_no_match, query.trim())) }
         }
         items(shown, key = { "sender-" + it.sender.lowercase() }, contentType = { "sender" }) { row ->
-            SenderRow(row) { choice ->
+            SenderRow(row, evidence[row.sender.trim().lowercase()]) { choice ->
                 when (choice) {
                     SenderChoice.READ ->
                         if (row.status == SenderLists.Status.IGNORED && row.bank) vm.restoreSender(row.sender)
@@ -405,7 +409,7 @@ private fun SendersList(vm: MainViewModel, search: TextFieldState) {
 }
 
 @Composable
-private fun SenderRow(row: SenderLists.Row, onChoose: (SenderChoice) -> Unit) {
+private fun SenderRow(row: SenderLists.Row, money: SenderEvidence?, onChoose: (SenderChoice) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val (icon, status) = when (row.status) {
         SenderLists.Status.BANK -> R.drawable.ic_sym_account_balance to R.string.lists_status_bank
@@ -431,7 +435,16 @@ private fun SenderRow(row: SenderLists.Row, onChoose: (SenderChoice) -> Unit) {
                     tint = if (row.read) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             },
-            supportingContent = { Text(stringResource(status)) },
+            // Left out by its name, though its balance says it holds money: why to read it.
+            supportingContent = {
+                Text(
+                    if (money != null && row.status == SenderLists.Status.LEFT_OUT) {
+                        stringResource(status) + " · " + moneyEvidence(money)
+                    } else {
+                        stringResource(status)
+                    }
+                )
+            },
             trailingContent = { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null) },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         ) { Text(row.sender, maxLines = 1, overflow = TextOverflow.Ellipsis) }

@@ -2,6 +2,9 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import com.alyaqdhan.riyal.ui.compose.ReadingPicker
+import com.alyaqdhan.riyal.ui.compose.ReadingChoices
+import com.alyaqdhan.riyal.data.TemplateFields
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.res.painterResource
 import androidx.compose.animation.AnimatedVisibility
@@ -276,8 +279,9 @@ fun ReviewScreen(vm: MainViewModel, onBack: () -> Unit) {
                             modifier = Modifier.animateItem(),
                             rememberDefault = vm.prefs.smartRules,
                             onResolve = { learn -> resolving = Resolving(item, learn) },
-                            onTeach = { kind, accountId ->
-                                vm.teach(item, kind, accountId)
+                            defaultCurrency = vm.prefs.defaultCurrency,
+                            onTeach = { kind, accountId, fields ->
+                                vm.teach(item, kind, accountId, fields)
                                 scope.launch { snackbar.showSnackbar(taught) }
                             },
                             onDismiss = { alsoSimilar ->
@@ -498,8 +502,9 @@ private fun ReviewCard(
     item: ReviewItem,
     accounts: List<Account>,
     rememberDefault: Boolean,
+    defaultCurrency: String,
     onResolve: (learnSimilar: Boolean) -> Unit,
-    onTeach: (kind: MessageKind, accountId: String?) -> Unit,
+    onTeach: (kind: MessageKind, accountId: String?, fields: TemplateFields?) -> Unit,
     onDismiss: (alsoSimilar: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -570,8 +575,15 @@ private fun ReviewCard(
                         .padding(12.dp),
                 )
             }
+            // Its amounts and names. A message the reader could settle no amount in - every
+            // figure looked like a balance - is still answered here when it quotes any:
+            // the user picks which moved, and every message like it is read so.
+            val choices = remember(item.body, defaultCurrency) { ReadingChoices(item.body, defaultCurrency) }
+            val answerable = item.directionOnly || choices.amounts.isNotEmpty()
+            val start = remember(choices) { choices.start(item.amountMinor, item.currency, null) }
+            var pick by remember(choices) { mutableStateOf(start) }
             var rememberChoice by remember { mutableStateOf(rememberDefault) }
-            if (!item.directionOnly) {
+            if (!answerable) {
                 val plain = ListItemDefaults.colors(containerColor = Color.Transparent)
                 ListItem(
                     checked = rememberChoice,
@@ -592,7 +604,19 @@ private fun ReviewCard(
             // others like it are answered in the same moment. Picked first, saved second,
             // so a stray tap never sends the card away.
             var kind by remember { mutableStateOf<MessageKind?>(null) }
-            if (item.directionOnly) {
+            if (answerable && !item.directionOnly) {
+                ReadingPicker(choices, pick) { pick = it }
+            } else if (answerable && choices.worthAsking) {
+                // Read well enough to ask only the direction; what it read is a tap away.
+                var reading by remember { mutableStateOf(false) }
+                Disclosure(
+                    title = stringResource(R.string.reading_title),
+                    expanded = reading,
+                    onToggle = { reading = !reading },
+                    contentPadding = PaddingValues(0.dp),
+                ) { ReadingPicker(choices, pick) { pick = it } }
+            }
+            if (answerable) {
                 ConnectedChoice(
                     options = KINDS,
                     selected = kind,
@@ -610,7 +634,7 @@ private fun ReviewCard(
             // in an account at another bank. Left to the scan, the sender became a bank of
             // its own, with an account nobody has. "New account" is that, chosen.
             val live = remember(accounts) { accounts.filter { !it.archived } }
-            val asksAccount = item.directionOnly &&
+            val asksAccount = answerable &&
                 (kind == MessageKind.IN || kind == MessageKind.OUT) &&
                 live.isNotEmpty() && !AccountDiscovery.isKnownSender(accounts, item.sender)
             var account by remember { mutableStateOf<String?>(null) }
@@ -669,14 +693,23 @@ private fun ReviewCard(
                 TextButton(onClick = { onDismiss(rememberChoice) }, shapes = ButtonDefaults.shapes()) {
                     Text(stringResource(R.string.action_dismiss))
                 }
-                if (item.directionOnly) {
+                if (answerable) {
                     Button(
-                        onClick = { kind?.let { k -> onTeach(k, account.takeIf { asksAccount && !newAccount }) } },
-                        enabled = kind != null && (!asksAccount || account != null || newAccount),
+                        onClick = {
+                            kind?.let { k ->
+                                onTeach(
+                                    k,
+                                    account.takeIf { asksAccount && !newAccount },
+                                    choices.fields(start, pick, amountNeeded = !item.directionOnly),
+                                )
+                            }
+                        },
+                        enabled = kind != null && (!asksAccount || account != null || newAccount) &&
+                            (item.directionOnly || pick.amount != null),
                         shapes = ButtonDefaults.shapes(),
                     ) { Text(stringResource(R.string.action_save)) }
                 }
-                if (!item.directionOnly) {
+                if (!answerable) {
                     Button(
                         onClick = { onResolve(rememberChoice) },
                         shapes = ButtonDefaults.shapes(),

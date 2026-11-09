@@ -113,6 +113,14 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private val _templates = MutableStateFlow<List<TemplateStat>>(emptyList())
     val templates: StateFlow<List<TemplateStat>> = _templates
 
+    /** Where kinds of message keep their facts, by template ([TemplateFields]). */
+    private val _fields = MutableStateFlow<Map<String, TemplateFields>>(emptyMap())
+    val fields: StateFlow<Map<String, TemplateFields>> = _fields
+
+    /** What the senders the gate leaves out have shown of holding money ([MoneySenders]). */
+    private val _senderEvidence = MutableStateFlow<List<SenderEvidence>>(emptyList())
+    val senderEvidence: StateFlow<List<SenderEvidence>> = _senderEvidence
+
     /** txnId → categoryId chosen by the user; reapplied after every rescan. */
     private val overrides = HashMap<String, String>()
 
@@ -215,6 +223,8 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         summary: ScanSummary,
         examinedIds: Set<String>? = null,
         templates: List<TemplateStat> = emptyList(),
+        senderEvidence: List<SenderEvidence>? = null,
+        learnedFields: Map<String, TemplateFields> = emptyMap(),
     ) = mutex.withLock {
         // A message answered by hand can become readable later: adopting a gate keyword
         // is exactly that, and so is a parser fix. The scan then produces a record for a
@@ -291,9 +301,22 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         } else {
             val fresh = templates.associateBy { it.key }
             val kept = _templates.value.map { old ->
-                fresh[old.key]?.let { it.copy(count = maxOf(it.count, old.count)) } ?: old
+                fresh[old.key]?.let { TemplateInference.merge(old, it) } ?: old
             }
             kept + templates.filter { t -> kept.none { it.key == t.key } }
+        }
+        // The counts move with every message a telecom sends, which is not worth writing
+        // the file for: only a sender coming to look like money, or no longer, is. Until
+        // then the counts ride along with the next write.
+        fun offered() = _senderEvidence.value.filter { it.looksLikeMoney }.mapTo(HashSet()) { it.sender.lowercase() }
+        val offeredBefore = offered()
+        if (senderEvidence != null) _senderEvidence.value = senderEvidence
+        val offeredChanged = offered() != offeredBefore
+        // What the balances placed, over what they placed before, never over what the
+        // user showed.
+        val beforeFields = _fields.value
+        if (learnedFields.isNotEmpty()) {
+            _fields.value = _fields.value + learnedFields.filterKeys { _fields.value[it]?.taught != true }
         }
         // "You'll be asked about these again next time" was the deal. This is next time.
         if (deferred.isNotEmpty()) {
@@ -313,7 +336,9 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             _reviews.value != beforeReviews ||
             _transfers.value != beforeTransfers ||
             _senders.value != beforeSenders ||
-            _templates.value != beforeTemplates
+            _templates.value != beforeTemplates ||
+            _fields.value != beforeFields ||
+            offeredChanged
         if (changed) {
             persistLocked()
         } else {
@@ -376,6 +401,12 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
      * Teaches what a kind of message means, and with [accountId] which account its money
      * moved in. The next scan re-reads with it.
      */
+    /** The user showed where messages of [key]'s kind keep their facts. */
+    suspend fun setFields(key: String, fields: TemplateFields) = mutex.withLock {
+        _fields.value = _fields.value + (key to fields)
+        persistLocked()
+    }
+
     suspend fun setLabel(key: String, kind: MessageKind, accountId: String? = null) = mutex.withLock {
         _labels.value = _labels.value + (key to TemplateLabel(kind, System.currentTimeMillis(), accountId))
         persistLocked()
@@ -971,6 +1002,8 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         _lastSummary.value = null
         _labels.value = emptyMap()
         _templates.value = emptyList()
+        _senderEvidence.value = emptyList()
+        _fields.value = emptyMap()
         overrides.clear()
         accountOverrides.clear()
         transferDecisions.clear()
@@ -1068,6 +1101,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
                 .map { m -> if (m.sample.isBlank()) m else m.copy(template = Skeleton.of(m.sender, m.sample)) }
                 .distinctBy { it.template }
             _needed.value = root.optJSONArray("needed").toStringSet()
+            _senderEvidence.value = root.optJSONArray("moneySenders").toListOf(::evidenceFromJson)
             _categories.value = root.optJSONArray("categories").toListOf(::categoryFromJson)
             Categories.setCustom(_categories.value)
             _accounts.value = root.optJSONArray("accounts").toListOf(::accountFromJson).distinctBy { it.id }
@@ -1115,6 +1149,11 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
                 Skeleton.VERSION -> {
                     _labels.value = labels
                     _templates.value = templates
+                    // Keyed by template like the labels; a new shape drops them, and the
+                    // balances place the kinds again.
+                    _fields.value = root.optJSONObject("fields")?.let { o ->
+                        o.keys().asSequence().associateWith { fieldsFromJson(o.getJSONObject(it)) }
+                    }.orEmpty()
                 }
                 // The shape before shop names were set aside. What was taught is carried
                 // over through the stored messages it applies to - each kind of message's
@@ -1179,6 +1218,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             root.put("senders", JSONArray().apply { _senders.value.forEach { put(it) } })
             root.put("muted", JSONArray().apply { _muted.value.forEach { put(mutedToJson(it)) } })
             root.put("needed", JSONArray().apply { _needed.value.forEach { put(it) } })
+            root.put("moneySenders", JSONArray().apply { _senderEvidence.value.forEach { put(evidenceToJson(it)) } })
             root.put("categories", JSONArray().apply { _categories.value.forEach { put(categoryToJson(it)) } })
             root.put("accounts", JSONArray().apply { _accounts.value.forEach { put(accountToJson(it)) } })
             root.put("budgets", JSONArray().apply { _budgets.value.forEach { put(budgetToJson(it)) } })
@@ -1208,6 +1248,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
                 }
             })
             root.put("templates", JSONArray().apply { _templates.value.forEach { put(templateToJson(it)) } })
+            root.put("fields", JSONObject().apply { _fields.value.forEach { (key, f) -> put(key, fieldsToJson(f)) } })
             _lastSummary.value?.let { s ->
                 root.put("summary", JSONObject().apply {
                     put("at", s.at); put("took", s.tookMs); put("scanned", s.scanned)
@@ -1398,6 +1439,45 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         confidence = o.optDouble("conf", 0.0).toFloat(),
         provenOut = o.optInt("pout"),
         provenIn = o.optInt("pin"),
+    )
+
+    private fun fieldsToJson(f: TemplateFields) = JSONObject().apply {
+        f.amount?.let { put("a", it) }
+        f.balance?.let { put("b", it) }
+        f.shopAfter?.let { put("sa", it); put("sn", f.shopAfterNth) }
+        f.shopUntil?.let { put("su", it) }
+        if (f.noShop) put("ns", true)
+        if (f.taught) put("t", true)
+        put("at", f.atMillis)
+    }
+
+    private fun fieldsFromJson(o: JSONObject) = TemplateFields(
+        amount = if (o.has("a")) o.getInt("a") else null,
+        balance = if (o.has("b")) o.getInt("b") else null,
+        shopAfter = o.optNullableString("sa"),
+        shopAfterNth = o.optInt("sn"),
+        shopUntil = o.optNullableString("su"),
+        noShop = o.optBoolean("ns"),
+        taught = o.optBoolean("t"),
+        atMillis = o.optLong("at"),
+    )
+
+    private fun evidenceToJson(e: SenderEvidence) = JSONObject().apply {
+        put("s", e.sender); put("n", e.messages); put("b", e.withBalance); put("p", e.proofs)
+        put("at", e.newestAt); put("la", e.lastAt)
+        e.lastBalanceMinor?.let { put("lb", it) }
+        e.lastBalanceCurrency?.let { put("lc", it) }
+    }
+
+    private fun evidenceFromJson(o: JSONObject) = SenderEvidence(
+        sender = o.getString("s"),
+        messages = o.optInt("n"),
+        withBalance = o.optInt("b"),
+        proofs = o.optInt("p"),
+        newestAt = o.optLong("at"),
+        lastBalanceMinor = if (o.has("lb")) o.getLong("lb") else null,
+        lastBalanceCurrency = o.optNullableString("lc"),
+        lastAt = o.optLong("la"),
     )
 
     private fun ruleToJson(r: UserRule) = JSONObject().apply {

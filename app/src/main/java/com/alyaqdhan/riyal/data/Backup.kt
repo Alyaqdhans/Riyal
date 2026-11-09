@@ -54,7 +54,7 @@ object Backup {
         LISTS(
             R.string.backup_part_lists,
             R.string.backup_part_lists_detail,
-            listOf("skeleton", "labels", "muted", IGNORED_SENDERS, ADDED_SENDERS),
+            listOf("skeleton", "labels", "fields", "muted", IGNORED_SENDERS, ADDED_SENDERS),
         ),
 
         /** Budget plans, and whether budgets are on. */
@@ -253,6 +253,14 @@ object Backup {
                 else -> emptyMap()
             }
             for ((key, label) in incoming) if (!labels.has(key)) labels.put(key, label)
+        }
+
+        // Where kinds keep their facts: keyed by the fingerprint too, so only this one's
+        // carry over; a kind this phone has its own answer for keeps it.
+        val theirFields = theirs.optJSONObject("fields")
+        if (theirFields != null && theirs.optInt("skeleton", Skeleton.VERSION) == Skeleton.VERSION) {
+            val fields = mine.optJSONObject("fields") ?: JSONObject().also { mine.put("fields", it) }
+            for (key in theirFields.keys()) if (!fields.has(key)) fields.put(key, theirFields.getJSONObject(key))
         }
 
         // Dismissed kinds, keyed afresh from their sample, the way the store loads them.
