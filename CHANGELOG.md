@@ -4,6 +4,56 @@ Every release of Riyal, newest first. Released versions are condensed from their
 [GitHub release notes](https://github.com/Alyaqdhans/Riyal/releases); the APK for each
 is attached there.
 
+## 1.8.5 — unreleased (branch `1.8.5`)
+
+### Reading messages
+
+- **Thawani Pay is read.** Its sender is known as a wallet, so its Mojab card alerts are
+  no longer left out: payments ("تم استخدام بطاقة ... لدفع مبلغ"), payments in dollars
+  (converted, with the shop's name free of a trailing "+"), the yearly fee ("was
+  charged OMR 2.000 for annual fees") as spending, and top-ups ("تم إضافة مبلغ") as money
+  in, each with the balance it quotes.
+- A zero charge (a card checked when it is added to a phone's wallet) is skipped rather
+  than asked about in Review. Nothing moved.
+- New words: "was charged" for money out, "إضافة مبلغ" for money in. The parser's version
+  is raised, so the next scan reads the inbox again.
+
+### Updates
+
+- **Release notes in the app's language.** The update prompt, Updates and Changelog show
+  a release's notes in Arabic when the app is in Arabic. A release carries both, the
+  Arabic after a `<!-- lang:ar -->` line that GitHub's page hides. Releases written only
+  in English still show their English.
+
+### Around the app
+
+- Version 1.8.5 (versionCode 13).
+- Lists in sheets and dialogs - the record sheet, filters, currencies, date choices, the
+  scan's log, the update prompt and the editors - no longer show a scroll thumb. Tabs and
+  pages keep theirs.
+- Home's Top spending See all opens Analysis on Home's period, every account and
+  spending, so its wheel shows the same categories. It used to open on whatever
+  Analysis was last left at.
+- Settings says "Up to date" only when it is. Each time the app is opened or come back
+  to, it looks - at who sent what, never at a message's text - for messages newer than
+  the last one read, from the senders it reads; while there are some, the card says how
+  many are waiting, scan on launch or not.
+- The build has no warnings, from the compiler, Gradle or Android lint:
+  - Android Gradle Plugin 9.5.1, from 9.2.1, whose own code set off Gradle's
+    deprecation warnings. Targets Android 17 (API 37); none of what that changes for
+    an app (local network, native code, contacts, background audio, widgets) is
+    anything Riyal does.
+  - Libraries to their current releases: core-ktx 1.19.1, lifecycle 2.11.0,
+    appcompat 1.8.0, fragment 1.9.1, activity-compose 1.13.0, splashscreen 1.2.0,
+    Vico 3.3.1 (charts now skip their opening with `initialAnimationSpec = null`).
+  - Log lines that put a count before a noun ("1 kinds", in Arabic "12 أشهر") give it
+    after the words instead; strings whose number counts nothing after it say so.
+  - Android's own backup is off on every version, as it was meant to be: rules for
+    Android 12 and later beside allowBackup's "false".
+  - A tablet without SMS can install it (telephony is used, not required), and a
+    bundle keeps every language, since the app switches language itself.
+  - Unused strings and drawables gone; settings written through core-ktx's `edit { }`.
+
 ## 1.8.4 — unreleased (branch `1.8.4`)
 
 ### Around the app

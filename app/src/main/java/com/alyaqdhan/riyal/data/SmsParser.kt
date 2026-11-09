@@ -255,7 +255,9 @@ class SmsParser(
                 trace,
             )
         }
-        if (value.signum() <= 0) return Result.NeedsReview(ReviewReason.AMOUNT_ZERO, trace)
+        // A zero charge is a card being checked - added to a phone's wallet, or verified
+        // by a shop - and moves nothing. Asking about it is a question with no answer.
+        if (value.signum() <= 0) return Result.Skipped(ParseNote(R.string.skip_amount_zero))
         val minor = Money.toMinor(value, currency)
         trace += ParseNote(R.string.trace_amount, listOf(currency, value.toPlainString()))
 
@@ -612,7 +614,7 @@ class SmsParser(
          * is out of date and the inbox must be read again. Forgetting to bump it after a
          * parser fix means the fix only reaches messages that arrive afterwards.
          */
-        const val VERSION = 11
+        const val VERSION = 12
 
         /** The runs of digits in an account number, around and between its masks. */
         private val digitGroups = Regex("[0-9]{2,}")
@@ -812,6 +814,7 @@ class SmsParser(
                 "omr|r\\.?o|usd|aed|sar|otp|am|pm)$"
         )
 
-        val TRIM_CHARS = ".,;:-_*'\"()".toSet()
+        // "+" too: the card network's name field can end in one ("EXAMPLE* STREAM SUB +").
+        val TRIM_CHARS = ".,;:-_*'\"()+".toSet()
     }
 }

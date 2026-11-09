@@ -14,6 +14,8 @@ import com.alyaqdhan.riyal.RiyalApp
 import com.alyaqdhan.riyal.core.Currencies
 import com.alyaqdhan.riyal.core.Money
 import com.alyaqdhan.riyal.core.Verbose
+import com.alyaqdhan.riyal.data.SenderLists
+import com.alyaqdhan.riyal.data.SmsReader
 import com.alyaqdhan.riyal.data.Account
 import com.alyaqdhan.riyal.data.ApkInstaller
 import com.alyaqdhan.riyal.data.reasonText
@@ -259,6 +261,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 prefs.lastScanAt = summary.at
                 refreshSenderLists()
                 _scanState.value = ScanState.Done(summary)
+                // Anything that came in while it read.
+                countNewMessages()
                 // The figures roll again, changed or not: a refresh should be seen to land.
                 com.alyaqdhan.riyal.ui.compose.Rolls.replay()
             } catch (e: SecurityException) {
@@ -277,6 +281,37 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 Verbose.flush()
                 val unknown = getApplication<Application>().getString(R.string.scan_unknown_error)
                 _scanState.value = ScanState.Failed(e.message ?: unknown)
+            }
+        }
+    }
+
+    /**
+     * Messages the scan would read that have come in since it last read the inbox, so
+     * Settings says "Up to date" only when there are none. Counted each time the app
+     * comes to the front, whether or not it scans on launch, and after every scan; the
+     * count asks the inbox only who sent what is newer than the last message read
+     * ([SmsReader.sendersAfter]), never for a message's text.
+     */
+    private val _newMessages = MutableStateFlow(0)
+    val newMessages: StateFlow<Int> = _newMessages
+
+    fun countNewMessages() {
+        val after = prefs.scanHighWaterMillis
+        // Nothing read yet is a first scan, which Settings already asks for.
+        if (!_hasSmsPermission.value || after <= 0L) {
+            _newMessages.value = 0
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            store.awaitLoaded()
+            val accounts = store.accounts.value
+            val ignored = prefs.excludedSenders
+            val added = prefs.senderAllowlist
+            _newMessages.value = try {
+                SmsReader.sendersAfter(getApplication(), after)
+                    .count { SenderLists.reads(it, accounts, ignored, added) }
+            } catch (e: SecurityException) {
+                0
             }
         }
     }
@@ -832,6 +867,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setHomeSlice(slice: TimeSlice) {
         _homeSlice.value = slice
+    }
+
+    /**
+     * Set while Analysis has yet to show what Home's Top spending card asked for: the
+     * same categories, so every account, spending, and the overview from its top. Home's
+     * period is copied over once, by [showHomeSpendingInAnalysis]; the two still move
+     * apart after it.
+     */
+    private val _analysisFromHome = MutableStateFlow(false)
+    val analysisFromHome: StateFlow<Boolean> = _analysisFromHome
+
+    fun showHomeSpendingInAnalysis() {
+        _analysisSlice.value = _homeSlice.value
+        _analysisFromHome.value = true
+    }
+
+    fun analysisFromHomeShown() {
+        _analysisFromHome.value = false
     }
 
     val archivedIds = store.archivedIds

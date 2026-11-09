@@ -1,8 +1,8 @@
 package com.alyaqdhan.riyal.ui.compose
 
+import androidx.core.net.toUri
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.text.Spanned
 import android.text.style.ClickableSpan
 import android.text.util.Linkify
@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -51,6 +52,13 @@ import io.noties.markwon.linkify.LinkifyPlugin
 import io.noties.markwon.movement.MovementMethodPlugin
 import java.util.Locale
 import kotlin.math.roundToInt
+
+/** [release]'s notes in the language the app is shown in, English when it has none in it. */
+@Composable
+fun localNotes(release: Updates.Release): String {
+    val language = LocalConfiguration.current.locales[0].language
+    return remember(release.notes, language) { release.notesIn(language) }
+}
 
 /**
  * A release body as GitHub stores it - markdown - drawn by Markwon, the renderer ytdlnis
@@ -117,7 +125,7 @@ private fun notesMarkwon(context: Context): Markwon = Markwon.builder(context)
             builder.linkResolver { view, link ->
                 runCatching {
                     view.context.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse(link)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        Intent(Intent.ACTION_VIEW, link.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     )
                 }
             }
@@ -166,7 +174,7 @@ fun UpdateDialogHost(vm: MainViewModel) {
     fun openOnGitHub() {
         runCatching {
             context.startActivity(
-                Intent(Intent.ACTION_VIEW, Uri.parse(release.htmlUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                Intent(Intent.ACTION_VIEW, release.htmlUrl.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
         }
     }
@@ -188,14 +196,12 @@ fun UpdateDialogHost(vm: MainViewModel) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 val scroll = rememberScrollState()
-                ScrollThumb(scroll) {
-                    Column(
-                        Modifier
-                            .heightIn(max = 300.dp)
-                            .verticalScroll(scroll),
-                    ) {
-                        ReleaseNotes(release.notes.ifBlank { stringResource(R.string.upd_no_notes) })
-                    }
+                Column(
+                    Modifier
+                        .heightIn(max = 300.dp)
+                        .verticalScroll(scroll),
+                ) {
+                    ReleaseNotes(localNotes(release).ifBlank { stringResource(R.string.upd_no_notes) })
                 }
                 when (state) {
                     is DownloadState.Downloading -> {

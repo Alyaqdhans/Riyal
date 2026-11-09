@@ -24,6 +24,8 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   tag names (`gh release list`; recent ones are `V1.8.1`). Anything that costs the user
   something - a wipe, a permission, an uninstall - gets the first section. A hotfix is
   `# Hotfix` and its bullets. Written to `release/Riyal-vX.Y.Z-notes.md` (gitignored).
+  Then the same notes in Arabic after a `<!-- lang:ar -->` line: the update prompt,
+  Updates and Changelog show the part in the app's language (`Release.notesIn`).
 - **Keep release notes short.** The owner wants them read at a glance: a few headline
   sections of one or two sentences each, and Other stuff bullets of a few words. Say what
   changed for the user. What was updated underneath (Material 3, Kotlin, Gradle, a
@@ -35,9 +37,10 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   `HorizontalFloatingToolbar`, `SwipeToDismissBox`, `ModalBottomSheet`, `AlertDialog`,
   chips, `FloatingActionButton`) and real libraries (Vico for charts, Markwon for
   release notes, as YTDLnis draws its own, LazyColumnScrollbar for the scroll thumb).
-  Every vertical scroll - a tab, a page, a sheet or a dialog - sits in `ScrollThumb`
+  Every vertical scroll on a tab or a page sits in `ScrollThumb`
   (`ui/compose/ScrollThumb.kt`), with `bottom` set to whatever floats over its foot
-  (`toolbarSpace` on a tab), and size it through the wrapper, not the list. Don't
+  (`toolbarSpace` on a tab), and size it through the wrapper, not the list. A sheet's or
+  a dialog's list has no thumb: the owner wants none on anything modal. Don't
   hand-draw widgets. Wavy progress indicators stay
   wavy components with `amplitude = 0` (`FlatWheel`/`FlatBar` in
   `ui/compose/Indicators.kt`), except `ScanBar` and `SiftBar`: the owner wants a scan's
@@ -50,7 +53,7 @@ Arabic, RTL), light and dark. Package `com.alyaqdhan.riyal`. GitHub: Alyaqdhans/
   slides two already-drawn views sideways in the toolbar's order
   (`MainActivity.openTab`), so the highlight and the slide start on the same frame.
 - **No decorative motion.** No pop-in or bounce on content, and `MotionScheme.standard()`.
-  Charts use `animationSpec = null, animateIn = false`. The owner's exceptions: the tab
+  Charts use `animationSpec = null, initialAnimationSpec = null`. The owner's exceptions: the tab
   slide, the tabs of Lists, Analysis and Transactions (a `HorizontalPager`: a tab slides to its page, a
   finger drags between them), the swipe tours (the first time Transactions or Lists is seen, one row
   opens by itself under a tooltip saying what its swipe uncovers: `SwipeTour`, shown only
@@ -123,12 +126,16 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 .\gradlew.bat :app:assembleDebug :app:testDebugUnitTest --console=plain
 ```
 
-- AGP 9.2.1 with built-in Kotlin 2.4.21 and the Compose compiler plugin; Gradle 9.8.2;
-  compileSdk 37, minSdk 29. AGP only asks for KGP 2.2.10; the Compose compiler plugin's
+- AGP 9.5.1 with built-in Kotlin 2.4.21 and the Compose compiler plugin; Gradle 9.8.2;
+  compileSdk and targetSdk 37, minSdk 29. AGP only asks for KGP 2.2.10; the Compose compiler plugin's
   Kotlin BOM raises it, so `kotlinComposePlugin` is the Kotlin the app compiles with.
 - Libraries must be built for that Kotlin or older (2.4.x). A library on a newer Kotlin
   means raising `kotlinComposePlugin` first.
 - Count the tests in `app/build/test-results` rather than trusting the exit code alone.
+- The build is kept free of warnings: compiler, Gradle (`--warning-mode all`) and
+  `:app:lintDebug` (0 issues). A string whose number counts nothing after it carries
+  `tools:ignore="PluralsCandidate"`; a count of things takes a plural or goes after
+  the words.
 - A debug build is never behind a release, so its update prompt never opens by itself:
   long-press a release in Settings › Updates › Changelog to open the prompt for it.
 - JitPack is a repository only for LazyColumnScrollbar, which publishes nowhere else;
@@ -144,7 +151,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `core/Currencies.kt` | Currency registry: flag, name, sign vector, placement, rial value (pegged or editable), `convert` |
 | `core/Prefs.kt` | SharedPreferences: scan range, setup state, update channel, FX overrides, excluded senders |
 | `core/Verbose.kt` | In-memory log of every decision the scan makes (Settings › Activity log) |
-| `data/SmsReader.kt` | The one `READ_SMS` query; scans are manual or on launch, never in the background |
+| `data/SmsReader.kt` | The one `READ_SMS` query; scans are manual or on launch, never in the background. `sendersAfter` is the only other look: who sent what is newer than the last message read, no bodies, when the app comes to the front, so Settings says "Up to date" only when it is (`vm.newMessages`) |
 | `data/SmsParser.kt` | Pure extraction: amount, currency, balance, account tail, merchant. `parse` uses word cues; `parseAs` reads a message as a known direction. **Bump `VERSION` when parsing output changes** |
 | `data/Learning.kt` | `Skeleton` (message → template key), `BalanceChain` (direction proven by balance deltas), `TemplateInference`, `Tutor` (setup questions + stopping rule) |
 | `data/ScanEngine.kt` | One pass: read → decide (taught label > balance proof > proven template > words) → accounts → records (with FX conversion) → transfers → store |

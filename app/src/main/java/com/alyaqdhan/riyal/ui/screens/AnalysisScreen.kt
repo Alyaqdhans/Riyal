@@ -278,6 +278,18 @@ fun AnalysisScreen(
             AccountChips(accounts, accountId, onSelect = { accountId = it })
 
             val scroll = rememberScrollState()
+            // Sent by Home's Top spending: its period is already this one, and the rest of
+            // what that card counts is every account's spending, so the wheel shows the
+            // same categories, at the top of the overview.
+            val fromHome by vm.analysisFromHome.collectAsState()
+            LaunchedEffect(fromHome) {
+                if (!fromHome) return@LaunchedEffect
+                accountId = null
+                donutType = TxnType.EXPENSE
+                pager.scrollToPage(AnalysisTab.OVERVIEW.ordinal)
+                scroll.scrollTo(0)
+                vm.analysisFromHomeShown()
+            }
             HorizontalPager(
                 state = pager,
                 modifier = Modifier.fillMaxSize(),
@@ -786,7 +798,7 @@ private fun ChartsCard(
                     modifier = Modifier.fillMaxWidth().height(200.dp),
                     // Drawn where it lands: no growing bars, no lines sweeping in.
                     animationSpec = null,
-                    animateIn = false,
+                    initialAnimationSpec = null,
                 )
             } else {
                 val spentVals = remember(flow) { flow.map { it.spent } }
@@ -829,7 +841,7 @@ private fun ChartsCard(
                     modifier = Modifier.fillMaxWidth().height(200.dp),
                     // Drawn where it lands: no growing bars, no lines sweeping in.
                     animationSpec = null,
-                    animateIn = false,
+                    initialAnimationSpec = null,
                 )
             }
 
@@ -1015,7 +1027,7 @@ private fun Kpi(
 private fun DeltaPill(now: Long, previous: Long, upIsGood: Boolean) {
     val pct = Stats.deltaPct(now, previous)
     val flat = pct == null || abs(pct) < 0.005f
-    val good = !flat && (pct!! > 0) == upIsGood
+    val good = !flat && (pct > 0) == upIsGood
     val (container, content) = when {
         flat -> MaterialTheme.colorScheme.surfaceContainerHighest to MaterialTheme.colorScheme.onSurfaceVariant
         good -> successContainer() to onSuccessContainer()

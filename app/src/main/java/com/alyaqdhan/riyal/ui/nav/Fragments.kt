@@ -122,7 +122,12 @@ class HomeFragment : ScreenFragment(R.layout.fragment_home) {
             // through the same switch the toolbar uses.
             onOpenAccounts = { openTab(Tab.ACCOUNTS) },
             onOpenTransactions = { openTab(Tab.TRANSACTIONS) },
-            onOpenAnalysis = { openTab(Tab.ANALYSIS) },
+            // Top spending's See all: Analysis on Home's period, so it shows the same
+            // categories.
+            onOpenAnalysis = {
+                vm.showHomeSpendingInAnalysis()
+                openTab(Tab.ANALYSIS)
+            },
         )
     }
 }

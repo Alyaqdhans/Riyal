@@ -2,9 +2,9 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import androidx.core.net.toUri
 import android.content.Intent
 import android.content.pm.ApplicationInfo
-import android.net.Uri
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -66,6 +66,7 @@ import com.alyaqdhan.riyal.ui.compose.ReleaseNotes
 import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import com.alyaqdhan.riyal.ui.compose.UpdateDialogHost
 import com.alyaqdhan.riyal.ui.compose.appVersion
+import com.alyaqdhan.riyal.ui.compose.localNotes
 import com.alyaqdhan.riyal.ui.compose.megabytes
 import com.alyaqdhan.riyal.ui.compose.relativeTime
 import com.alyaqdhan.riyal.ui.theme.onSuccessContainer
@@ -93,7 +94,7 @@ fun UpdatesScreen(vm: MainViewModel, onBack: () -> Unit, onOpenChangelog: () -> 
 
     fun open(url: String) {
         runCatching {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
     }
 
@@ -256,7 +257,7 @@ private fun StatusCard(
                 Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                ReleaseNotes(release.notes.ifBlank { stringResource(R.string.upd_no_notes) })
+                ReleaseNotes(localNotes(release).ifBlank { stringResource(R.string.upd_no_notes) })
                 when (fetch) {
                     is DownloadState.Downloading -> {
                         FlatBar(
@@ -340,7 +341,7 @@ fun ChangelogScreen(vm: MainViewModel, onBack: () -> Unit) {
 
     fun open(url: String) {
         runCatching {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
     }
 
@@ -439,7 +440,7 @@ private fun ReleaseCard(
                     )
                 }
             }
-            if (release.notes.isNotBlank()) ReleaseNotes(release.notes)
+            localNotes(release).takeIf { it.isNotBlank() }?.let { ReleaseNotes(it) }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 release.apk?.let { apk ->
                     AssistChip(

@@ -1,3 +1,4 @@
+
 *.iml
 /local.properties
 # Every dot folder (.idea, .gradle, .kotlin, ...) and every release output
@@ -9,3 +10,5 @@ release/
 .externalNativeBuild
 .cxx
 local.properties
+# graphify knowledge-graph output
+graphify-out/

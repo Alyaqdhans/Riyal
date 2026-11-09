@@ -144,7 +144,7 @@ class SmsParserTest {
             "تم خصم 20.000 OMR من حسابك رقم  0630XXXXXXXX0001بتاريخ 26/08/2026 " +
                 "13:41:05عن طريق MBI.رصيدك الحالي في الحساب هو 150.500 OMR."
         )
-        assertTrue(m == null || !m!!.contains("حساب"))
+        assertTrue(m == null || !m.contains("حساب"))
     }
 
     @Test

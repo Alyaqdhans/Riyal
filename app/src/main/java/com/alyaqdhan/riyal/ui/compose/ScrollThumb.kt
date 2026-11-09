@@ -16,9 +16,10 @@ import my.nanihadesuka.compose.ScrollbarSelectionActionable
 import my.nanihadesuka.compose.ScrollbarSettings
 
 /**
- * The scroll thumb every list in the app carries, LazyColumnScrollbar's in Material's
- * colours: it shows while its list moves and for a moment after, as ytdlnis's does, and it
- * can be held and dragged to run down the list. Held, it takes the accent colour.
+ * The scroll thumb every list on a tab or a page carries, LazyColumnScrollbar's in
+ * Material's colours (a sheet's or a dialog's list has none): it shows while its list
+ * moves and for a moment after, as ytdlnis's does, and it can be held and dragged to run
+ * down the list. Held, it takes the accent colour.
  *
  * It keeps to the end edge (the left in Arabic) and fades rather than sliding away. It only
  * takes touches while it shows, so the end of a row stays tappable the rest of the time.

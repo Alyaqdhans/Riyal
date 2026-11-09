@@ -7,12 +7,9 @@
     <string name="action_delete">حذف</string>
     <string name="action_remove">إزالة</string>
     <string name="action_edit">تعديل</string>
-    <string name="action_add">إضافة</string>
     <string name="action_close">إغلاق</string>
-    <string name="action_done">تم</string>
     <string name="action_apply">تطبيق</string>
     <string name="action_clear">مسح</string>
-    <string name="action_change">تغيير</string>
     <string name="action_copy">نسخ</string>
     <string name="action_export">تصدير</string>
     <string name="action_restore">استعادة</string>
@@ -29,7 +26,6 @@
     <string name="label_amount">المبلغ</string>
     <string name="label_account">الحساب</string>
     <string name="label_category">التصنيف</string>
-    <string name="label_period">الفترة</string>
     <string name="label_name">الاسم</string>
     <string name="label_icon">الأيقونة</string>
     <string name="label_colour">اللون</string>
@@ -214,7 +210,7 @@
     <string name="set_log_detail">كل خطوة قام بها ريال أثناء القراءة</string>
     <string name="log_taught">%1$s · الرسائل المكتوبة بهذا الشكل %2$s (و%3$d مثلها)</string>
     <string name="log_taught_account">الرسائل المكتوبة هكذا تذهب إلى %1$s</string>
-    <string name="log_labels_carried">نُقل ما علّمته: %2$d نوعًا من الرسائل صارت %1$d بعد أن لم يعد اسم المتجر جزءًا من النوع</string>
+    <string name="log_labels_carried">نُقل ما علّمته بعد أن لم يعد اسم المتجر جزءًا من نوع الرسالة (أنواع الرسائل: قبل %2$d، والآن %1$d)</string>
     <string name="log_sender_excluded">%1$s ليس بنكك · لن تُقرأ رسائله بعد الآن</string>
     <string name="log_sender_included">سيُقرأ %1$s كبنك</string>
     <string name="log_sender_restored">%1$s لم يعد مُتجاهَلًا</string>
@@ -242,7 +238,7 @@
         <item quantity="many">%d نوعًا من الرسائل تعلّمها ريال</item>
         <item quantity="other">%d نوع رسائل تعلّمه ريال</item>
     </plurals>
-    <string name="log_github_releases">يعرض GitHub %1$d إصدارات؛ أحدثها %2$s</string>
+    <string name="log_github_releases">الإصدارات على GitHub: %1$d؛ أحدثها %2$s</string>
     <string name="log_download_done">تم تنزيل %1$s · تسليمه لمثبّت أندرويد قرارك</string>
     <string name="log_update_skipped">تخطيت %1$s · ستُعرض الإصدارات اللاحقة كالمعتاد</string>
     <string name="log_install_opened">فُتح مثبّت أندرويد على التحديث المُنزَّل</string>
@@ -494,7 +490,6 @@
     <string name="needs_files_some">يُصنِّف %1$d من %2$d · بلا قاعدة محفوظة</string>
     <string name="needs_files_all_asked">يُصنِّف الكل (%d) · ويُسأل عنه في المرة القادمة</string>
     <string name="needs_files_all_future">يُصنِّف الكل (%d) · وما يأتي لاحقاً</string>
-    <string name="needs_remember_name">تذكَّر هذا الاسم</string>
     <string name="needs_always_ask_name">اسألني دائماً عن هذا الاسم</string>
     <string name="needs_hide_message">إخفاء الرسالة</string>
     <string name="needs_read_message">قراءة الرسالة</string>
@@ -848,6 +843,14 @@
     <string name="set_no_scan_yet">لا فحص بعد</string>
     <string name="set_last_scan">آخر فحص %1$s</string>
     <string name="set_status_up_to_date">كل شيء محدّث</string>
+    <plurals name="set_status_new_messages">
+        <item quantity="zero">لا رسائل جديدة</item>
+        <item quantity="one">رسالة جديدة بانتظار القراءة</item>
+        <item quantity="two">رسالتان جديدتان بانتظار القراءة</item>
+        <item quantity="few">%d رسائل جديدة بانتظار القراءة</item>
+        <item quantity="many">%d رسالة جديدة بانتظار القراءة</item>
+        <item quantity="other">%d رسالة جديدة بانتظار القراءة</item>
+    </plurals>
     <string name="set_status_scanning">جارٍ قراءة رسائلك</string>
     <string name="set_status_failed">لم تكتمل آخر قراءة</string>
     <string name="set_status_never_body">ابدأ القراءة لتُبنى سجلاتك من رسائل بنكك</string>
@@ -898,7 +901,7 @@
         <item quantity="other">%d قاعدة</item>
     </plurals>
 
-    <string name="help_review">رسائل لم يستطع ريال قراءتها وحده. ولم يُسجَّل عنها شيء. عالِج الرسالة لتُسجَّل، أو تجاهلها لتقول إنها لم تكن معاملة أصلاً.\n\nبعضها يعرض مبلغاً ولا يسأل إلا عن اتجاه المال. هذه رسائل لا تغطي كلماتك المفتاحية صياغتها بعد، مثل \"تم استخدام بطاقتك في...\" وما شابهها. والإجابة تسجّل المبلغ كما هو، ويمكنك اعتماد الكلمة التي أربكته ليُقرأ ما يشبهها تلقائياً.\n\nوالتحويلات تظهر هنا أيضاً: رسالتان تبدوان حركةً واحدة بين حساباتك أنت. وتأكيد الزوج يمنع احتسابه مصروفاً ودخلاً معاً.</string>
+    <string name="help_review">رسائل لم يستطع ريال قراءتها وحده. ولم يُسجَّل عنها شيء. عالِج الرسالة لتُسجَّل، أو تجاهلها لتقول إنها لم تكن معاملة أصلاً.\n\nبعضها يعرض مبلغاً ولا يسأل إلا عن اتجاه المال. هذه رسائل لا تغطي كلماتك المفتاحية صياغتها بعد، مثل \"تم استخدام بطاقتك في…\" وما شابهها. والإجابة تسجّل المبلغ كما هو، ويمكنك اعتماد الكلمة التي أربكته ليُقرأ ما يشبهها تلقائياً.\n\nوالتحويلات تظهر هنا أيضاً: رسالتان تبدوان حركةً واحدة بين حساباتك أنت. وتأكيد الزوج يمنع احتسابه مصروفاً ودخلاً معاً.</string>
     <string name="help_needs_category">كل صف مكانٌ دفعت فيه، والأكبر أولاً. وتصنيف الصف يصنّف كل سجل تحته ويحفظ الإجابة، فلا يُسأل عن المكان نفسه مرتين.\n\nافتح الصف لترى سجلاته ولتقرأ الرسالة التي جاء منها كل سجل. وإن ألغيت تحديد بعضها، صُنِّف المحدَّد وحده دون حفظ قاعدة: فجزء من الاسم ليس إجابةً عن الاسم.\n\nو\"اترك البقية تحت أخرى\" يُفرغ القائمة دون الإجابة عنها. تحتفظ تلك السجلات بالتصنيف الذي آلت إليه، ويسأل عنها الفحص القادم من جديد.</string>
     <string name="help_categories">كل تصنيف وما بلغه في الفترة المعروضة، والمصروفات والدخل كلٌّ على حدة. افتح تصنيفاً لترى سجلاته، وأنشئ تصنيفك بالزر، وعدِّل أو احذف ما أنشأته أنت.\n\nوتحتها الأسماء التي تعلَّمها ريال: ما يصنّفه دون سؤال، وما طلبت أن تُسأل عنه في كل مرة.</string>
     <string name="help_accounts">الحسابات التي وجدها ريال في رسائل بنكك نفسها، وآخر رصيد ذكرته كل واحدة منها. والرصيد المقروء من رسالة تخمينٌ أول جيد لا أكثر، فافتح أي حساب لضبط الرقم الحقيقي والتاريخ الذي كان صحيحاً فيه.\n\nويحمل الحساب أيضاً أسماء المرسلين التابعين له، وبها تُوجَّه الرسالة إلى الرصيد الصحيح. وأرشفة حساب تُبقي سجلاته، لأن المال قد تحرّك فعلاً.</string>
@@ -1096,7 +1099,7 @@
     <string name="scanlog_reason_asked">إعادة قراءة كل شيء لأنك طلبت ذلك</string>
     <string name="scanlog_reason_rules">إعادة قراءة كل شيء: تغيَّرت الكلمات أو قواعد المرسلين أو المحلِّل، فالسجلات المخزَّنة صُنعت وفق قواعد أخرى</string>
     <string name="scanlog_reason_first">قراءة كل شيء: لم يُقرأ شيء من قبل</string>
-    <string name="scanlog_reason_new">قراءة الجديد فقط، من %1$s (أي %2$d ساعات قبل أحدث رسالة في المرة الماضية، حتى لا تفوت رسالة تاريخها غريب)</string>
+    <string name="scanlog_reason_new">قراءة الجديد فقط، من %1$s (أي %2$s قبل أحدث رسالة في المرة الماضية، حتى لا تفوت رسالة تاريخها غريب)</string>
     <string name="scanlog_inbox_query">أعاد استعلام صندوق الوارد %1$s من %2$s في %3$d مللي ثانية</string>
     <string name="scanlog_muted_kinds">%1$s: الرسائل المشابهة تُتجاهَل تلقائياً، ويمكن استعادتها متى شئت من المراجعة</string>
     <string name="scanlog_more_records">…سجلات أكثر مما يتسع له هذا السجل؛ وكلها تُقرأ وتُحتسب، غير أنها لم تعد توصَف واحداً واحداً</string>
@@ -1128,8 +1131,8 @@
     <string name="scanlog_converted">    · %1$s مدفوعة بعملة أجنبية، وحُسبت بقيمة %2$s</string>
     <string name="scanlog_skip_excluded">%1$s · قلت إن هذا المرسل ليس بنكك</string>
     <string name="scanlog_proven">أثبتت الأرصدة اتجاه المال في %1$s</string>
-    <string name="scanlog_proven_kinds">%1$d أنواع من الرسائل أثبتت الأرصدة اتجاهها</string>
-    <string name="scanlog_taught_kinds">%1$d أنواع من الرسائل تُقرأ كما علّمتها</string>
+    <string name="scanlog_proven_kinds">أنواع رسائل أثبتت الأرصدة اتجاهها: %1$d</string>
+    <string name="scanlog_taught_kinds">أنواع رسائل تُقرأ كما علّمتها: %1$d</string>
     <string name="scanlog_overruled">%1$s · كلماتها توحي بأنها %2$s، لكن ما علّمته أو ما أثبته الرصيد يأتي أولًا</string>
     <string name="skip_taught_none">قلت إن الرسائل المشابهة ليست معاملات</string>
     <string name="trace_taught">علّمت ريال أن الرسائل المشابهة %1$s</string>
@@ -1213,13 +1216,13 @@
     <string name="skip_advert">إعلان، لا معاملة (\"%1$s\")</string>
     <string name="skip_not_moved">لم يتحرك مال (\"%1$s\")</string>
     <string name="skip_no_kw_no_amount">لا كلمة سحب أو إيداع، ولا مبلغ أيضاً</string>
-    <string name="skip_no_kw_many_amounts">لا كلمة سحب أو إيداع، و%1$d مبالغ للاختيار بينها</string>
+    <string name="skip_no_kw_many_amounts">لا كلمة سحب أو إيداع، ومبالغ للاختيار بينها: %1$d</string>
     <string name="skip_no_kw_unparsable">لا كلمة سحب أو إيداع، والمبلغ لا يُقرأ</string>
+    <string name="skip_amount_zero">المبلغ صفر: فحص للبطاقة، لم يتحرك مال</string>
     <string name="skip_no_kw_zero">لا كلمة سحب أو إيداع، والمبلغ صفر</string>
     <string name="reason_no_amount">لا مبلغ موجود</string>
     <string name="reason_balance_only">لا شيء سوى مبالغ تشبه الرصيد</string>
     <string name="reason_amount_unparsable">تعذّرت قراءة المبلغ \"%1$s\"</string>
     <string name="reason_amount_zero">المبلغ صفر</string>
     <string name="reason_direction_unknown">المبلغ واضح، والاتجاه غير واضح</string>
-    <string name="onboarding_welcome">أهلاً بك</string>
 </resources>

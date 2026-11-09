@@ -1,5 +1,6 @@
 package com.alyaqdhan.riyal.core
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import androidx.annotation.PluralsRes
@@ -31,6 +32,9 @@ data class LogLine(val atMillis: Long, val kind: Kind, val text: String) {
     }
 }
 
+// It holds the application's context only (attach), which lives exactly as long as the
+// app: nothing an activity owns is kept.
+@SuppressLint("StaticFieldLeak")
 object Verbose {
 
     private const val MAX_LINES = 4000
@@ -73,6 +77,7 @@ object Verbose {
     fun fail(text: String) = log(LogLine.Kind.FAIL, text)
     fun scan(text: String) = log(LogLine.Kind.SCAN, text)
 
+    @SuppressLint("StaticFieldLeak")
     @Volatile
     private var strings: Context? = null
 

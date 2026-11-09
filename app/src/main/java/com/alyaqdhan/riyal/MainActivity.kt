@@ -210,6 +210,14 @@ class MainActivity : AppCompatActivity() {
         }, if (fresh) SPIN_MS + 300L else 0L)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Opened, or come back to: whether the inbox has anything a scan has not read,
+        // for Settings to say so. A look at senders only, so it runs scan on launch or not.
+        vm.refreshPermission()
+        vm.countNewMessages()
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putString(KEY_TAB, currentTab.value.name)

@@ -28,6 +28,18 @@ class SenderListsTest {
     }
 
     @Test
+    fun `new messages count only from senders the scan reads`() {
+        fun reads(sender: String, ignored: Set<String> = emptySet(), added: Set<String> = emptySet()) =
+            SenderLists.reads(sender, accounts, ignored, added)
+        assertTrue(reads("BankMuscat"))
+        assertTrue(reads("WalletCo"))
+        assertTrue(reads("COLLEGE", added = setOf("college")))
+        assertFalse(reads("COLLEGE"))
+        assertFalse(reads("+968 9123 4567"))
+        assertFalse(reads("BankMuscat", ignored = setOf("BankMuscat")))
+    }
+
+    @Test
     fun `anyone else is left out, a phone number as a person`() {
         assertEquals(Status.LEFT_OUT, status("COLLEGE"))
         assertEquals(Status.PHONE, status("+968 9123 4567"))

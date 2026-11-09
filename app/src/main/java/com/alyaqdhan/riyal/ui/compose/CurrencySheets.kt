@@ -113,7 +113,6 @@ fun CurrencyPickerSheet(
                 )
             }
             val list = rememberLazyListState()
-            ScrollThumb(list) {
             LazyColumn(state = list) {
                 items(shown, key = { it.code }) { info ->
                     ListItem(
@@ -133,7 +132,6 @@ fun CurrencyPickerSheet(
                         },
                     ) { Text(stringResource(info.name)) }
                 }
-            }
             }
         }
     }
@@ -282,7 +280,6 @@ fun ExchangeRatesSheet(
                 )
             }
             val list = rememberLazyListState()
-            ScrollThumb(list) {
             LazyColumn(state = list) {
                 items(rows, key = { it.code }) { info ->
                     val rate = Currencies.rate(info.code, base)
@@ -320,7 +317,6 @@ fun ExchangeRatesSheet(
                         },
                     ) { Text(stringResource(info.name)) }
                 }
-            }
             }
         }
     }

@@ -12,10 +12,30 @@ data class RawSms(
 
 /**
  * One-shot, read-only query of the SMS inbox. There is deliberately no broadcast
- * receiver and no background work anywhere in this app: messages are read only at
- * the moment the user taps Scan, and only rows within the chosen time range.
+ * receiver and no background work anywhere in this app: messages are read only when a
+ * scan runs, and only rows within the chosen time range. The one other look is
+ * [sendersAfter], when the app comes to the front, which reads no message's text.
  */
 object SmsReader {
+
+    /**
+     * Who sent each message newer than [afterMillis], and nothing else: enough to tell
+     * whether a scan has anything new to read, without reading a single body.
+     */
+    fun sendersAfter(context: Context, afterMillis: Long): List<String> {
+        val out = ArrayList<String>()
+        context.contentResolver.query(
+            Telephony.Sms.Inbox.CONTENT_URI,
+            arrayOf(Telephony.Sms.ADDRESS),
+            "${Telephony.Sms.DATE} > ?",
+            arrayOf(afterMillis.toString()),
+            null,
+        )?.use { cursor ->
+            val iAddress = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
+            while (cursor.moveToNext()) out += cursor.getString(iAddress) ?: "unknown"
+        }
+        return out
+    }
 
     fun readInbox(context: Context, sinceMillis: Long): List<RawSms> {
         val projection = arrayOf(

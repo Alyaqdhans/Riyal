@@ -32,6 +32,9 @@ object Banks {
         "cbd" to "Commercial Bank of Dubai",
         "sib" to "Sharjah Islamic Bank",
         "sbi" to "State Bank of India",
+        // A wallet, not a bank, but its Mojab card holds a balance and is paid from like
+        // an account, and its alerts quote that balance after every payment.
+        "thawani" to "Thawani Pay",
         "muscat" to "Bank Muscat",
     )
 

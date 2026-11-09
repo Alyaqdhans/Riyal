@@ -54,6 +54,10 @@ object SenderLists {
         }
     }
 
+    /** Whether the scan reads what [sender] sends: a bank, or a sender the user added. */
+    fun reads(sender: String, accounts: List<Account>, ignored: Set<String>, added: Set<String>): Boolean =
+        statusOf(sender, accounts, ignored, added).let { it == Status.BANK || it == Status.ADDED }
+
     fun isBank(sender: String, accounts: List<Account>) =
         Banks.looksLikeBank(sender) || AccountDiscovery.isKnownSender(accounts, sender)
 

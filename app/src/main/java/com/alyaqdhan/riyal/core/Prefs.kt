@@ -1,5 +1,6 @@
 package com.alyaqdhan.riyal.core
 
+import androidx.core.content.edit
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.annotation.StringRes
@@ -34,7 +35,7 @@ class Prefs(context: Context) {
 
     var onboardingDone: Boolean
         get() = sp.getBoolean("onboarding_done", false)
-        set(v) = sp.edit().putBoolean("onboarding_done", v).apply()
+        set(v) = sp.edit { putBoolean("onboarding_done", v) }
 
     /**
      * 0 means "everything in the inbox", the default: even a few thousand messages
@@ -42,7 +43,7 @@ class Prefs(context: Context) {
      */
     var scanRangeMonths: Int
         get() = sp.getInt("scan_range_months", 0)
-        set(v) = sp.edit().putInt("scan_range_months", v).apply()
+        set(v) = sp.edit { putInt("scan_range_months", v) }
 
     /**
      * A fixed floor on what any scan reads: no message older than this is queried at
@@ -54,7 +55,7 @@ class Prefs(context: Context) {
      */
     var scanSinceMillis: Long
         get() = sp.getLong("scan_since_millis", 0L)
-        set(v) = sp.edit().putLong("scan_since_millis", v).apply()
+        set(v) = sp.edit { putLong("scan_since_millis", v) }
 
     /** Applies a first-run history choice to the two settings that carry it. */
     fun applyScanHistory(choice: ScanHistory) {
@@ -64,7 +65,7 @@ class Prefs(context: Context) {
 
     var defaultCurrency: String
         get() = sp.getString("default_currency", "OMR") ?: "OMR"
-        set(v) = sp.edit().putString("default_currency", v).apply()
+        set(v) = sp.edit { putString("default_currency", v) }
 
     /**
      * Exchange rates the user corrected, as "CODE=rials per unit" lines. Only floating
@@ -73,17 +74,17 @@ class Prefs(context: Context) {
      */
     var fxRates: Set<String>
         get() = sp.getStringSet("fx_rates", emptySet())!!.toSet()
-        set(v) = sp.edit().putStringSet("fx_rates", v.toSet()).apply()
+        set(v) = sp.edit { putStringSet("fx_rates", v.toSet()) }
 
     /** Only read senders whose name looks like a bank (contains bank/بنك/مصرف) or is allowlisted. */
     var bankSendersOnly: Boolean
         get() = sp.getBoolean("bank_senders_only", true)
-        set(v) = sp.edit().putBoolean("bank_senders_only", v).apply()
+        set(v) = sp.edit { putBoolean("bank_senders_only", v) }
 
     /** Kick off a scan automatically when the app opens (still one-shot, still verbose). */
     var scanOnLaunch: Boolean
         get() = sp.getBoolean("scan_on_launch", true)
-        set(v) = sp.edit().putBoolean("scan_on_launch", v).apply()
+        set(v) = sp.edit { putBoolean("scan_on_launch", v) }
 
     /**
      * Learn from corrections: when the user fixes a category on a transaction with a
@@ -92,7 +93,7 @@ class Prefs(context: Context) {
      */
     var smartRules: Boolean
         get() = sp.getBoolean("smart_rules", true)
-        set(v) = sp.edit().putBoolean("smart_rules", v).apply()
+        set(v) = sp.edit { putBoolean("smart_rules", v) }
 
     /**
      * Whether budget planning is switched on. Off by default: the budget section only
@@ -102,7 +103,7 @@ class Prefs(context: Context) {
      */
     var budgetsEnabled: Boolean
         get() = sp.getBoolean("budgets_enabled", false)
-        set(v) = sp.edit().putBoolean("budgets_enabled", v).apply()
+        set(v) = sp.edit { putBoolean("budgets_enabled", v) }
 
     /**
      * Set once the user has checked the accounts the first scan proposed. Until then
@@ -111,7 +112,7 @@ class Prefs(context: Context) {
      */
     var accountsConfirmed: Boolean
         get() = sp.getBoolean("accounts_confirmed", false)
-        set(v) = sp.edit().putBoolean("accounts_confirmed", v).apply()
+        set(v) = sp.edit { putBoolean("accounts_confirmed", v) }
 
     /**
      * Whether a matched pair is treated as a transfer without being asked. On by
@@ -123,7 +124,7 @@ class Prefs(context: Context) {
      */
     var autoConfirmTransfers: Boolean
         get() = sp.getBoolean("auto_confirm_transfers", true)
-        set(v) = sp.edit().putBoolean("auto_confirm_transfers", v).apply()
+        set(v) = sp.edit { putBoolean("auto_confirm_transfers", v) }
 
     /**
      * Whether the transactions list has shown, once, what its rows' swipes uncover: a row
@@ -135,24 +136,24 @@ class Prefs(context: Context) {
      */
     var swipeTourSeen: Boolean
         get() = sp.getBoolean("swipe_tour_seen", false)
-        set(v) = sp.edit().putBoolean("swipe_tour_seen", v).apply()
+        set(v) = sp.edit { putBoolean("swipe_tour_seen", v) }
 
     /** The same, once, for Settings › Lists, whose entries hide Forget and Restore the same way. */
     var listsTourSeen: Boolean
         get() = sp.getBoolean("lists_tour_seen", false)
-        set(v) = sp.edit().putBoolean("lists_tour_seen", v).apply()
+        set(v) = sp.edit { putBoolean("lists_tour_seen", v) }
 
     var backupIncludeMessages: Boolean
         get() = sp.getBoolean("backup_include_messages", true)
-        set(v) = sp.edit().putBoolean("backup_include_messages", v).apply()
+        set(v) = sp.edit { putBoolean("backup_include_messages", v) }
 
     var senderFilterEnabled: Boolean
         get() = sp.getBoolean("sender_filter_enabled", false)
-        set(v) = sp.edit().putBoolean("sender_filter_enabled", v).apply()
+        set(v) = sp.edit { putBoolean("sender_filter_enabled", v) }
 
     var senderAllowlist: Set<String>
         get() = sp.getStringSet("sender_allowlist", emptySet())!!.toSet()
-        set(v) = sp.edit().putStringSet("sender_allowlist", v.toSet()).apply()
+        set(v) = sp.edit { putStringSet("sender_allowlist", v.toSet()) }
 
     /**
      * Whether the scan has dropped the senders an earlier version approved by itself.
@@ -160,7 +161,7 @@ class Prefs(context: Context) {
      */
     var allowlistCleaned: Boolean
         get() = sp.getBoolean("allowlist_cleaned", false)
-        set(v) = sp.edit().putBoolean("allowlist_cleaned", v).apply()
+        set(v) = sp.edit { putBoolean("allowlist_cleaned", v) }
 
     /**
      * Senders the user said are not their bank - a telecom that quotes a balance, a shop
@@ -168,7 +169,7 @@ class Prefs(context: Context) {
      */
     var excludedSenders: Set<String>
         get() = sp.getStringSet("excluded_senders", emptySet())!!.toSet()
-        set(v) = sp.edit().putStringSet("excluded_senders", v.toSet()).apply()
+        set(v) = sp.edit { putStringSet("excluded_senders", v.toSet()) }
 
     /**
      * Whether the setup - accounts checked, a few messages confirmed - has been gone
@@ -176,24 +177,24 @@ class Prefs(context: Context) {
      */
     var setupDone: Boolean
         get() = sp.getBoolean("setup_done", false)
-        set(v) = sp.edit().putBoolean("setup_done", v).apply()
+        set(v) = sp.edit { putBoolean("setup_done", v) }
 
     /** Setup answers so far: how often the app's reading was right, and wrong. */
     var teachRight: Int
         get() = sp.getInt("teach_right", 0)
-        set(v) = sp.edit().putInt("teach_right", v).apply()
+        set(v) = sp.edit { putInt("teach_right", v) }
 
     var teachWrong: Int
         get() = sp.getInt("teach_wrong", 0)
-        set(v) = sp.edit().putInt("teach_wrong", v).apply()
+        set(v) = sp.edit { putInt("teach_wrong", v) }
 
     var expenseKeywords: Set<String>
         get() = sp.getStringSet("kw_expense", null)?.toSet() ?: DEFAULT_EXPENSE_KEYWORDS
-        set(v) = sp.edit().putStringSet("kw_expense", v.toSet()).apply()
+        set(v) = sp.edit { putStringSet("kw_expense", v.toSet()) }
 
     var incomeKeywords: Set<String>
         get() = sp.getStringSet("kw_income", null)?.toSet() ?: DEFAULT_INCOME_KEYWORDS
-        set(v) = sp.edit().putStringSet("kw_income", v.toSet()).apply()
+        set(v) = sp.edit { putStringSet("kw_income", v.toSet()) }
 
     /**
      * When GitHub was last asked about a release. At most once a day: a new version
@@ -202,7 +203,7 @@ class Prefs(context: Context) {
      */
     var lastUpdateCheckAt: Long
         get() = sp.getLong("last_update_check_at", 0L)
-        set(v) = sp.edit().putLong("last_update_check_at", v).apply()
+        set(v) = sp.edit { putLong("last_update_check_at", v) }
 
     /**
      * The last release GitHub reported, remembered so its notes are on the (i) as soon
@@ -211,26 +212,26 @@ class Prefs(context: Context) {
      */
     var lastReleaseTag: String?
         get() = sp.getString("last_release_tag", null)
-        set(v) = sp.edit().putString("last_release_tag", v).apply()
+        set(v) = sp.edit { putString("last_release_tag", v) }
 
     var lastReleaseNotes: String
         get() = sp.getString("last_release_notes", "") ?: ""
-        set(v) = sp.edit().putString("last_release_notes", v).apply()
+        set(v) = sp.edit { putString("last_release_notes", v) }
 
     /** Whether opening the app looks for a new release at all (still at most once a day). */
     var checkUpdatesOnStart: Boolean
         get() = sp.getBoolean("check_updates_on_start", true)
-        set(v) = sp.edit().putBoolean("check_updates_on_start", v).apply()
+        set(v) = sp.edit { putBoolean("check_updates_on_start", v) }
 
     /** Offer GitHub pre-releases too. Off: a beta is something you opt into. */
     var updateIncludeBeta: Boolean
         get() = sp.getBoolean("update_include_beta", false)
-        set(v) = sp.edit().putBoolean("update_include_beta", v).apply()
+        set(v) = sp.edit { putBoolean("update_include_beta", v) }
 
     /** Versions the user said not to be offered. Only that version: a later one is offered. */
     var skippedUpdates: Set<String>
         get() = sp.getStringSet("skipped_updates", emptySet())!!.toSet()
-        set(v) = sp.edit().putStringSet("skipped_updates", v.toSet()).apply()
+        set(v) = sp.edit { putStringSet("skipped_updates", v.toSet()) }
 
     /**
      * The date of the newest message the last successful scan read.
@@ -240,7 +241,7 @@ class Prefs(context: Context) {
      */
     var scanHighWaterMillis: Long
         get() = sp.getLong("scan_high_water", 0L)
-        set(v) = sp.edit().putLong("scan_high_water", v).apply()
+        set(v) = sp.edit { putLong("scan_high_water", v) }
 
     /**
      * What the last scan was reading *with*: the keywords, the sender rules, the range,
@@ -250,14 +251,14 @@ class Prefs(context: Context) {
      */
     var scanFingerprint: String
         get() = sp.getString("scan_fingerprint", "") ?: ""
-        set(v) = sp.edit().putString("scan_fingerprint", v).apply()
+        set(v) = sp.edit { putString("scan_fingerprint", v) }
 
     var lastScanAt: Long
         get() = sp.getLong("last_scan_at", 0L)
-        set(v) = sp.edit().putLong("last_scan_at", v).apply()
+        set(v) = sp.edit { putLong("last_scan_at", v) }
 
     fun resetKeywords() {
-        sp.edit().remove("kw_expense").remove("kw_income").apply()
+        sp.edit { remove("kw_expense").remove("kw_income") }
     }
 
     /**
@@ -266,7 +267,7 @@ class Prefs(context: Context) {
      */
     fun wipe() {
         val backupMessages = backupIncludeMessages
-        sp.edit().clear().commit()
+        sp.edit(commit = true) { clear() }
         backupIncludeMessages = backupMessages
     }
 
@@ -298,6 +299,9 @@ class Prefs(context: Context) {
         val DEFAULT_EXPENSE_KEYWORDS = setOf(
             "withdraw", "withdrawal", "withdrawn",
             "debited", "purchase", "paid", "payment",
+            // "your card was charged OMR 2.000 for annual fees". The phrase, not the
+            // verb: "charged" alone sits inside "recharged", which is money going in.
+            "was charged",
             "سحب", "خصم", "شراء", "دفع",
         )
         val DEFAULT_INCOME_KEYWORDS = setOf(
@@ -308,6 +312,9 @@ class Prefs(context: Context) {
             // earliest keyword decides the direction, every one of these was recorded
             // as spending: money coming in, counted as money going out.
             "إيداع", "ايداع", "راتب", "استلمت",
+            // "تم إضافة مبلغ 5.0 OMR إلى بطاقتك": a top-up. With "مبلغ" after it, because
+            // "إضافة" alone is also "in addition" and "a beneficiary was added".
+            "إضافة مبلغ", "اضافة مبلغ",
         )
     }
 }

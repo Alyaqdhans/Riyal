@@ -53,7 +53,31 @@ object Updates {
             }
 
         val hasApk: Boolean get() = apk != null
+
+        /**
+         * The notes in [language] ("ar"), for the app to show in its own language.
+         *
+         * GitHub keeps one body per release, so a release written in both languages puts
+         * English first and each other language after a `<!-- lang:ar -->` line, which
+         * GitHub's page does not show. A release with no such part, and every release from
+         * before there were any, shows its English.
+         */
+        fun notesIn(language: String): String {
+            val marks = LANGUAGE_MARK.findAll(notes).toList()
+            if (marks.isEmpty()) return notes
+            val english = notes.substring(0, marks.first().range.first).trim()
+            marks.forEachIndexed { i, m ->
+                if (m.groupValues[1].equals(language, ignoreCase = true)) {
+                    val end = marks.getOrNull(i + 1)?.range?.first ?: notes.length
+                    notes.substring(m.range.last + 1, end).trim().takeIf { it.isNotBlank() }?.let { return it }
+                }
+            }
+            return english
+        }
     }
+
+    /** `<!-- lang:ar -->`: where a release's notes switch to another language. */
+    private val LANGUAGE_MARK = Regex("<!--\\s*lang:\\s*([A-Za-z-]+)\\s*-->")
 
     /**
      * A tag as the numbers it is made of: "v1.51" is [1, 51].
