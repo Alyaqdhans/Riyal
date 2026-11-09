@@ -16,7 +16,10 @@ import com.alyaqdhan.riyal.core.Numerals
  *     is money out or money in, whatever the message called it.
  *  3. [TemplateInference] spreads what was proven to every message of the template,
  *     including the ones that quote no balance.
- *  4. What is still uncertain is asked, by [Tutor], a few templates at a time - and an
+ *  4. What the settled templates say about words is learned ([WordLearner]), and read
+ *     into a template nothing settles: "was charged" proven as money out at one bank is
+ *     how a new sender's "was charged" is read.
+ *  5. What is still uncertain is asked, by [Tutor], a few templates at a time - and an
  *     answer about one message is an answer about its whole template.
  */
 
@@ -341,10 +344,26 @@ object TemplateInference {
     /** How many agreeing proofs, and none against, make a template proven. */
     const val PROVEN_AT = 2
 
-    fun infer(observations: List<Observation>): Map<String, TemplateStat> =
-        observations.groupBy { it.key }.mapValues { (key, group) -> statOf(key, group) }
+    /**
+     * [learned] reads a template from its words ([WordLearner.guess]), for the ones
+     * nothing else settles: what the setup then asks to confirm, rather than a blind
+     * "money out".
+     */
+    fun infer(
+        observations: List<Observation>,
+        learned: ((String) -> WordLearner.Guess?)? = null,
+    ): Map<String, TemplateStat> =
+        observations.groupBy { it.key }.mapValues { (key, group) -> statOf(key, group, learned) }
 
-    private fun statOf(key: String, group: List<Observation>): TemplateStat {
+    /** How sure a template read from learned words is: under words of its own, over nothing. */
+    private const val LEARNED_FLOOR = 0.45f
+    private const val LEARNED_SPAN = 0.3f
+
+    private fun statOf(
+        key: String,
+        group: List<Observation>,
+        learned: ((String) -> WordLearner.Guess?)?,
+    ): TemplateStat {
         val provenOut = group.count { it.proven == Direction.EXPENSE }
         val provenIn = group.count { it.proven == Direction.INCOME }
         val readOut = group.count { it.read == Direction.EXPENSE }
@@ -370,7 +389,9 @@ object TemplateInference {
                 (if (out) MessageKind.OUT else MessageKind.IN) to (0.5f + 0.35f * share)
             }
             skipped == group.size -> MessageKind.NONE to 0.6f
-            group.any { it.hasAmount } -> MessageKind.OUT to 0.3f
+            group.any { it.hasAmount } -> learned?.invoke(key)?.let { g ->
+                MessageKind.of(g.direction) to (LEARNED_FLOOR + LEARNED_SPAN * (g.probability - 0.5f) * 2f)
+            } ?: (MessageKind.OUT to 0.3f)
             else -> null to 0f
         }
         val sample = group.filter { it.hasAmount }.maxByOrNull { it.atMillis } ?: group.maxBy { it.atMillis }
@@ -396,6 +417,30 @@ object TemplateInference {
     fun isProven(stat: TemplateStat): Boolean =
         (stat.provenOut >= PROVEN_AT && stat.provenIn == 0) ||
             (stat.provenIn >= PROVEN_AT && stat.provenOut == 0)
+
+    /**
+     * A template as a short scan saw it, [fresh], over what earlier scans knew, [old].
+     *
+     * A short scan reads a day or two of messages, so its proofs are a few at most: taken
+     * as they were, they replaced the dozens a full scan had found, and a proven template
+     * stopped being proven after a few launches. The proofs each way are the most either
+     * scan found - overlapping scans read the same messages, so they are not added - and
+     * one against the other unsettles the template, as it should. The rest is the fresh
+     * scan's: its sample is the newer one.
+     */
+    fun merge(old: TemplateStat, fresh: TemplateStat): TemplateStat {
+        val out = maxOf(old.provenOut, fresh.provenOut)
+        val inn = maxOf(old.provenIn, fresh.provenIn)
+        val merged = fresh.copy(count = maxOf(old.count, fresh.count), provenOut = out, provenIn = inn)
+        // The fresh reading stands when it had every proof itself, or is about transfers.
+        if (fresh.guess == MessageKind.TRANSFER || (out == fresh.provenOut && inn == fresh.provenIn)) return merged
+        val agree = maxOf(out, inn)
+        val against = minOf(out, inn)
+        return merged.copy(
+            guess = if (out >= inn) MessageKind.OUT else MessageKind.IN,
+            confidence = ((agree + 1f) / (agree + against + 2f)).coerceAtMost(0.99f),
+        )
+    }
 }
 
 /**

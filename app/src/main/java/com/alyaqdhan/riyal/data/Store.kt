@@ -296,7 +296,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         } else {
             val fresh = templates.associateBy { it.key }
             val kept = _templates.value.map { old ->
-                fresh[old.key]?.let { it.copy(count = maxOf(it.count, old.count)) } ?: old
+                fresh[old.key]?.let { TemplateInference.merge(old, it) } ?: old
             }
             kept + templates.filter { t -> kept.none { it.key == t.key } }
         }

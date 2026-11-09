@@ -164,6 +164,7 @@ class ScanEngine(
         var autoDismissed = 0
         var duplicates = 0
         var skipLinesLogged = 0
+        var learnedReads = 0
 
         // The same idea as logSkip, for the per-record narration. A record is described
         // in about a dozen lines, so a large inbox wrote a quarter of a million of them
@@ -345,22 +346,31 @@ class ScanEngine(
                 anchors.mapNotNull { pointOf(it.txn.id, it.txn.sender, it.txn.atMillis, it.facts) }
         )
         val proven = chains.directions
-        val templates = TemplateInference.infer(
-            reads.map { r ->
-                TemplateInference.Observation(
-                    key = r.key,
-                    sender = r.msg.sender,
-                    messageId = r.id,
-                    atMillis = r.msg.atMillis,
-                    body = r.msg.body,
-                    read = (r.result as? SmsParser.Result.Parsed)?.direction,
-                    proven = proven[r.id],
-                    selfTransfer = (r.result as? SmsParser.Result.Parsed)?.selfTransferTo != null,
-                    skipped = r.result is SmsParser.Result.Skipped,
-                    hasAmount = r.facts != null,
-                )
-            }
-        )
+        val sightings = reads.map { r ->
+            TemplateInference.Observation(
+                key = r.key,
+                sender = r.msg.sender,
+                messageId = r.id,
+                atMillis = r.msg.atMillis,
+                body = r.msg.body,
+                read = (r.result as? SmsParser.Result.Parsed)?.direction,
+                proven = proven[r.id],
+                selfTransfer = (r.result as? SmsParser.Result.Parsed)?.selfTransferTo != null,
+                skipped = r.result is SmsParser.Result.Skipped,
+                hasAmount = r.facts != null,
+            )
+        }
+        // What the kinds of message already settled say about words: this pass's proofs,
+        // earlier passes' and the user's answers. The templates are then read again with
+        // it, so one nothing settles is guessed from its words instead of called "money
+        // out" for want of anything better - which is what the setup asks to confirm.
+        val known = store.templates.value.associateBy { it.key }.toMutableMap()
+        for (t in TemplateInference.infer(sightings).values) {
+            known[t.key] = known[t.key]?.let { TemplateInference.merge(it, t) } ?: t
+        }
+        val learner = WordLearner.train(known.values, labels)
+        if (learner.size > 0) Verbose.scan(R.string.scanlog_learned_words, learner.size)
+        val templates = TemplateInference.infer(sightings, learner::guess)
         if (proven.isNotEmpty()) {
             Verbose.scan(R.string.scanlog_proven, Verbose.count(R.plurals.count_messages, proven.size))
         }
@@ -379,7 +389,13 @@ class ScanEngine(
                 ?: earlier[r.key]?.takeIf { TemplateInference.isProven(it) }
                 ?: templates[r.key]
             val label = labels[r.key]
-            val result = decide(r, label, proven[r.id], template, parser)
+            // Never for a kind the user dismissed for good, or a sender read only because
+            // one of its kinds was wanted once.
+            val result = decide(
+                r, label, proven[r.id], template, parser,
+                learner.takeIf { r.trusted && r.key !in mutedTemplates },
+            )
+            if ((result as? SmsParser.Result.Parsed)?.trace?.lastOrNull()?.id == R.string.trace_learned) learnedReads++
             if (label?.kind == MessageKind.TRANSFER && result is SmsParser.Result.Parsed) {
                 taughtTransfers += msgId
             }
@@ -442,6 +458,8 @@ class ScanEngine(
                 }
             }
         }
+
+        if (learnedReads > 0) Verbose.scan(R.string.scanlog_learned_reads, learnedReads)
 
         val parseMs = System.currentTimeMillis() - tParse0
         onProgress(Progress(messages.size, messages.size, R.string.scan_phase_accounts))
@@ -913,6 +931,7 @@ class ScanEngine(
         proven: Direction?,
         template: TemplateStat?,
         parser: SmsParser,
+        learner: WordLearner?,
     ): SmsParser.Result {
         val read = r.result
         if (label != null) {
@@ -934,14 +953,29 @@ class ScanEngine(
         if (spread != null) {
             return reread(r, spread, parser, ParseNote(R.string.trace_kind_proven, listOf(ParseNote(kindWord(MessageKind.of(spread))))))
         }
+        // Nothing settles it and its words named no direction: what the settled kinds
+        // taught about words may. Recorded, but less sure than anything above.
+        if (read is SmsParser.Result.NeedsReview && read.amountMinor != null && learner != null) {
+            val g = learner.guess(r.key)
+            if (g != null) {
+                val why = ParseNote(R.string.trace_learned, listOf(g.word, ParseNote(kindWord(MessageKind.of(g.direction)))))
+                return reread(r, g.direction, parser, why, LEARNED_CONFIDENCE)
+            }
+        }
         return read
     }
 
     /** [r] read as [direction], with [why] at the end of its trace. */
-    private fun reread(r: Read, direction: Direction, parser: SmsParser, why: ParseNote): SmsParser.Result {
+    private fun reread(
+        r: Read,
+        direction: Direction,
+        parser: SmsParser,
+        why: ParseNote,
+        confidence: Int = 100,
+    ): SmsParser.Result {
         val read = r.result
         if (read is SmsParser.Result.Parsed && read.direction == direction) {
-            return read.copy(trace = read.trace + why, confidence = 100)
+            return read.copy(trace = read.trace + why, confidence = confidence)
         }
         // A message with no amount stays what it was: knowing which way money went does
         // not say how much.
@@ -949,7 +983,7 @@ class ScanEngine(
         if (read is SmsParser.Result.Parsed) {
             Verbose.info(R.string.scanlog_overruled, r.msg.sender, Verbose.str(kindWord(MessageKind.of(read.direction))))
         }
-        return again.copy(trace = again.trace + why, confidence = 100)
+        return again.copy(trace = again.trace + why, confidence = confidence)
     }
 
     private fun kindWord(kind: MessageKind): Int = when (kind) {
@@ -1000,6 +1034,9 @@ class ScanEngine(
 
     private companion object {
         const val MAX_SKIP_LINES = 400
+
+        /** How sure a record read from learned words is: under a proof or an answer. */
+        const val LEARNED_CONFIDENCE = 80
 
         /** How many lines of per-record narration a single pass may write. */
         const val MAX_RECORD_LINES = 1200

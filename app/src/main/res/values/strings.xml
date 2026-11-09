@@ -784,6 +784,9 @@
     <string name="money_not_mine">Not mine</string>
     <string name="setup_money_title">These look like a bank or wallet</string>
     <string name="setup_money_body">Their names don\'t look like a bank\'s, but their messages quote a balance that moves with each payment. Read the ones that are yours.</string>
+    <string name="scanlog_learned_words">words learned from the kinds of message already settled: %1$d</string>
+    <string name="scanlog_learned_reads">read from learned words: %1$d</string>
+    <string name="trace_learned">its words decide it: \"%1$s\" is %2$s in your messages that balances or your answers settled</string>
     <string name="scanlog_money_senders">left out, but they look like a bank or wallet: %1$s</string>
     <plurals name="set_status_new_messages">
         <item quantity="one">%d new message to read</item>
@@ -823,7 +826,7 @@
         <item quantity="other">%d learned</item>
     </plurals>
 
-    <string name="help_review">Messages Riyal could not read on its own. Nothing was recorded for any of them. Resolve one to record it, or dismiss it to say it was never a transaction.\n\nSome show an amount and ask only which way the money went. Those are messages whose wording your keywords do not cover yet - \"your card was used for…\" and the like. Answering records the amount as it stands, and you can adopt the word that confused it so the next one is read automatically.\n\nTransfers appear here too: two messages that look like one movement between your own accounts. Confirming a pair stops it counting as both spending and income.</string>
+    <string name="help_review">Messages Riyal could not read on its own. Nothing was recorded for any of them. Resolve one to record it, or dismiss it to say it was never a transaction.\n\nSome show an amount and ask only which way the money went. Those are messages whose wording your keywords do not cover yet - \"your card was used for…\" and the like. Answering records the amount as it stands and teaches every message written the same way, and its words help Riyal read new ones like it, from any sender.\n\nTransfers appear here too: two messages that look like one movement between your own accounts. Confirming a pair stops it counting as both spending and income.</string>
     <string name="help_needs_category">One row is one place you paid, biggest first. Filing a row files every record under it and remembers the answer, so the same place is never asked about twice.\n\nOpen a row to see its records and read the message each came from. Untick any and only the ticked ones are filed, with no rule saved: part of a name is not an answer about the name.\n\n\"Leave the rest under Other\" clears the list without answering it. Those records keep the category they fell back to, and the next scan asks again.</string>
     <string name="help_categories">Every category and what it came to in the period shown, spending and income kept apart. Open one to see its records; make your own with the button, and edit or delete the ones you made.\n\nBelow them are the names Riyal has learned: the ones it files without asking, and the ones you asked to be asked about every time.</string>
     <string name="help_accounts">The accounts Riyal found in your bank\'s own messages, and the balance each one last quoted. A balance read out of a text is a good first guess and nothing more, so open any account to set the real figure and the date it was true.\n\nAn account also carries the sender names that belong to it, which is how a message gets routed to the right balance. Archiving one keeps its records, because the money still moved.</string>

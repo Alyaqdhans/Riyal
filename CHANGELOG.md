@@ -18,6 +18,20 @@ is attached there.
   and in Lists. Read them, and it is read like a bank from then on; Not mine, and it is
   ignored. An advert or a bill quotes an amount but no balance that moves, so a telecom
   is not offered.
+- **New wording is learned, not added in code.** A message whose words name no direction
+  ("your card was charged ...", "تم إضافة مبلغ ...") went to Review, one question per kind,
+  and the answer taught nothing about the next sender to write it the same way. Now the
+  words of every kind of message already settled - by its balances, or by the user's
+  answers, which count three times as much - are learned each way, and a message nothing
+  else settles is read from them when it is nine-in-ten sure ("charged" proven as money
+  out at one bank reads a wallet's "was charged" the same). Less sure, it is still asked,
+  with the learned reading as the guess to confirm instead of a blind "money out". A kind
+  the user dismissed is never read this way.
+- A short scan no longer wipes what full scans proved about a kind of message: its few
+  proofs are merged with the earlier ones (the most each way) instead of replacing them,
+  so a proven kind stays proven after a few launches.
+- Review's help no longer offers to adopt the word that confused it, which no screen did;
+  it says what answering does now.
 - Version 1.8.6 (versionCode 14).
 
 ## 1.8.5 — 2026-11-09

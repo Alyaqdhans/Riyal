@@ -154,7 +154,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `data/SmsReader.kt` | The one `READ_SMS` query; scans are manual or on launch, never in the background. `sendersAfter` is the only other look: who sent what is newer than the last message read, no bodies, when the app comes to the front, so Settings says "Up to date" only when it is (`vm.newMessages`) |
 | `data/SmsParser.kt` | Pure extraction: amount, currency, balance, account tail, merchant. `parse` uses word cues; `parseAs` reads a message as a known direction. **Bump `VERSION` when parsing output changes** |
 | `data/Learning.kt` | `Skeleton` (message → template key), `BalanceChain` (direction proven by balance deltas), `TemplateInference`, `Tutor` (setup questions + stopping rule) |
-| `data/ScanEngine.kt` | One pass: read → decide (taught label > balance proof > proven template > words) → accounts → records (with FX conversion) → transfers → store |
+| `data/ScanEngine.kt` | One pass: read → decide (taught label > balance proof > proven template > words > learned words) → accounts → records (with FX conversion) → transfers → store |
 | `data/Store.kt` | One JSON file, written atomically. Records, accounts, rules, labels, template stats, merged places (`PlaceGroup`, keyed by `UserRule.patternOf` so rescans keep them). **Bumping `SCHEMA_VERSION` wipes user data** |
 | `data/SenderLists.kt` | Whether each sender is read, as the scan's sender gate decides (Settings › Lists) |
 | `data/MoneySenders.kt` | Senders the gate leaves out, judged by what they send: `SenderEvidence` (messages, ones quoting a balance, balance proofs), carried across scans in `Store.senderEvidence` |
@@ -186,7 +186,14 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
    sender holds none of the user's accounts: its messages route there, pass the "not your
    bank" check, and found no account for their sender (their observations carry it).
 4. `BalanceChain` proves directions; `TemplateInference` marks templates with two or
-   more agreeing proofs and none against as *proven*, and spreads their direction.
+   more agreeing proofs and none against as *proven*, and spreads their direction. A
+   short scan merges a template's proofs with what earlier scans found
+   (`TemplateInference.merge`: the most each way), never replaces them.
+   `WordLearner` learns which words go with money out and in from the kinds already
+   settled (proven templates, and taught labels at three times the weight), and reads a
+   message nothing else settles and whose words named no direction - never a dismissed
+   kind - when it is nine-in-ten sure with one firm word; less sure, its reading is the
+   template's guess the setup asks to confirm. Rebuilt every scan, nothing stored.
 5. Accounts follow the balance, not the digits. `BalanceChain` joins each message to the
    earlier one from the same bank whose balance it continues, and the joins make lines:
    one line is one account. A number is an account only when a line mostly quotes it and
