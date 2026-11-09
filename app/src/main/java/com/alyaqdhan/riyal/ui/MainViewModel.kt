@@ -1,5 +1,6 @@
 package com.alyaqdhan.riyal.ui
 
+import com.alyaqdhan.riyal.data.SenderEvidence
 import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
@@ -1356,6 +1357,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val labels = store.labels
     val templates = store.templates
     val muted = store.muted
+
+    /**
+     * Senders the gate leaves out whose messages look like a bank's or a wallet's
+     * ([MoneySenders]), the strongest evidence first: Home, the setup and Lists ask about
+     * them. Gone once the user has read, ignored or added the sender.
+     */
+    val moneySenders: StateFlow<List<SenderEvidence>> =
+        combine(store.senderEvidence, _ignoredSenders, _addedSenders, store.accounts) { evidence, ignored, added, accounts ->
+            evidence.filter { e ->
+                e.looksLikeMoney && SenderLists.statusOf(e.sender, accounts, ignored, added) == SenderLists.Status.LEFT_OUT
+            }.sortedWith(compareByDescending<SenderEvidence> { it.proofs }.thenByDescending { it.withBalance })
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private fun refreshSenderLists() {
         _ignoredSenders.value = prefs.excludedSenders

@@ -113,6 +113,10 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
     private val _templates = MutableStateFlow<List<TemplateStat>>(emptyList())
     val templates: StateFlow<List<TemplateStat>> = _templates
 
+    /** What the senders the gate leaves out have shown of holding money ([MoneySenders]). */
+    private val _senderEvidence = MutableStateFlow<List<SenderEvidence>>(emptyList())
+    val senderEvidence: StateFlow<List<SenderEvidence>> = _senderEvidence
+
     /** txnId → categoryId chosen by the user; reapplied after every rescan. */
     private val overrides = HashMap<String, String>()
 
@@ -215,6 +219,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         summary: ScanSummary,
         examinedIds: Set<String>? = null,
         templates: List<TemplateStat> = emptyList(),
+        senderEvidence: List<SenderEvidence>? = null,
     ) = mutex.withLock {
         // A message answered by hand can become readable later: adopting a gate keyword
         // is exactly that, and so is a parser fix. The scan then produces a record for a
@@ -295,6 +300,13 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             }
             kept + templates.filter { t -> kept.none { it.key == t.key } }
         }
+        // The counts move with every message a telecom sends, which is not worth writing
+        // the file for: only a sender coming to look like money, or no longer, is. Until
+        // then the counts ride along with the next write.
+        fun offered() = _senderEvidence.value.filter { it.looksLikeMoney }.mapTo(HashSet()) { it.sender.lowercase() }
+        val offeredBefore = offered()
+        if (senderEvidence != null) _senderEvidence.value = senderEvidence
+        val offeredChanged = offered() != offeredBefore
         // "You'll be asked about these again next time" was the deal. This is next time.
         if (deferred.isNotEmpty()) {
             Verbose.info(
@@ -313,7 +325,8 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             _reviews.value != beforeReviews ||
             _transfers.value != beforeTransfers ||
             _senders.value != beforeSenders ||
-            _templates.value != beforeTemplates
+            _templates.value != beforeTemplates ||
+            offeredChanged
         if (changed) {
             persistLocked()
         } else {
@@ -971,6 +984,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         _lastSummary.value = null
         _labels.value = emptyMap()
         _templates.value = emptyList()
+        _senderEvidence.value = emptyList()
         overrides.clear()
         accountOverrides.clear()
         transferDecisions.clear()
@@ -1068,6 +1082,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
                 .map { m -> if (m.sample.isBlank()) m else m.copy(template = Skeleton.of(m.sender, m.sample)) }
                 .distinctBy { it.template }
             _needed.value = root.optJSONArray("needed").toStringSet()
+            _senderEvidence.value = root.optJSONArray("moneySenders").toListOf(::evidenceFromJson)
             _categories.value = root.optJSONArray("categories").toListOf(::categoryFromJson)
             Categories.setCustom(_categories.value)
             _accounts.value = root.optJSONArray("accounts").toListOf(::accountFromJson).distinctBy { it.id }
@@ -1179,6 +1194,7 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
             root.put("senders", JSONArray().apply { _senders.value.forEach { put(it) } })
             root.put("muted", JSONArray().apply { _muted.value.forEach { put(mutedToJson(it)) } })
             root.put("needed", JSONArray().apply { _needed.value.forEach { put(it) } })
+            root.put("moneySenders", JSONArray().apply { _senderEvidence.value.forEach { put(evidenceToJson(it)) } })
             root.put("categories", JSONArray().apply { _categories.value.forEach { put(categoryToJson(it)) } })
             root.put("accounts", JSONArray().apply { _accounts.value.forEach { put(accountToJson(it)) } })
             root.put("budgets", JSONArray().apply { _budgets.value.forEach { put(budgetToJson(it)) } })
@@ -1398,6 +1414,24 @@ class Store(context: Context, autoConfirmTransfers: Boolean = true) {
         confidence = o.optDouble("conf", 0.0).toFloat(),
         provenOut = o.optInt("pout"),
         provenIn = o.optInt("pin"),
+    )
+
+    private fun evidenceToJson(e: SenderEvidence) = JSONObject().apply {
+        put("s", e.sender); put("n", e.messages); put("b", e.withBalance); put("p", e.proofs)
+        put("at", e.newestAt); put("la", e.lastAt)
+        e.lastBalanceMinor?.let { put("lb", it) }
+        e.lastBalanceCurrency?.let { put("lc", it) }
+    }
+
+    private fun evidenceFromJson(o: JSONObject) = SenderEvidence(
+        sender = o.getString("s"),
+        messages = o.optInt("n"),
+        withBalance = o.optInt("b"),
+        proofs = o.optInt("p"),
+        newestAt = o.optLong("at"),
+        lastBalanceMinor = if (o.has("lb")) o.getLong("lb") else null,
+        lastBalanceCurrency = o.optNullableString("lc"),
+        lastAt = o.optLong("la"),
     )
 
     private fun ruleToJson(r: UserRule) = JSONObject().apply {

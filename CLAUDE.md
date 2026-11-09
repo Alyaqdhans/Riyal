@@ -157,6 +157,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 | `data/ScanEngine.kt` | One pass: read → decide (taught label > balance proof > proven template > words) → accounts → records (with FX conversion) → transfers → store |
 | `data/Store.kt` | One JSON file, written atomically. Records, accounts, rules, labels, template stats, merged places (`PlaceGroup`, keyed by `UserRule.patternOf` so rescans keep them). **Bumping `SCHEMA_VERSION` wipes user data** |
 | `data/SenderLists.kt` | Whether each sender is read, as the scan's sender gate decides (Settings › Lists) |
+| `data/MoneySenders.kt` | Senders the gate leaves out, judged by what they send: `SenderEvidence` (messages, ones quoting a balance, balance proofs), carried across scans in `Store.senderEvidence` |
 | `data/AccountDiscovery.kt` | Banks list, accounts proposed from messages, routing a message to an account |
 | `data/TransferMatcher.kt` | Pairs an expense and an income across your own accounts |
 | `data/Updates.kt` | **All network code**: GitHub releases list + APK download. `ApkInstaller.kt` hands the file to Android via FileProvider |
@@ -170,7 +171,11 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio1\jbr'   # java on PATH i
 ## How a message is read (1.8.0+)
 
 1. Sender gate: phone numbers, senders the user excluded, and non-bank senders are
-   skipped (unless approved during setup).
+   skipped (unless approved during setup or in Lists). What the gate leaves out is still
+   looked at, never recorded (`MoneySenders`): a sender whose balance moves by exactly
+   its amounts, or whose messages mostly quote an amount and a balance, is asked about
+   (`vm.moneySenders`: Home, the setup's senders, Lists), because a wallet named for
+   itself is otherwise never read.
 2. `SmsParser.parse` extracts the facts. Messages with an amount but no direction words
    still get their facts through `parseAs`.
 3. `Skeleton.of(sender, body)` gives the template key: masks, amounts, numbers and names

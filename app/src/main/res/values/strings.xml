@@ -775,6 +775,16 @@
     <string name="set_no_scan_yet">No scan yet</string>
     <string name="set_last_scan">Last scan %1$s</string>
     <string name="set_status_up_to_date">Up to date</string>
+    <string name="money_title">%1$s looks like a bank or wallet</string>
+    <string name="money_evidence_moves">%1$s, and its balance moves with each one</string>
+    <string name="money_evidence_quotes">%1$s quoting a balance</string>
+    <string name="money_ask_title">Read %1$s\'s messages?</string>
+    <string name="money_ask_body">Its name doesn\'t look like a bank\'s, so its messages are left out. Read them, and its payments and balance are recorded like your bank\'s.</string>
+    <string name="money_read">Read them</string>
+    <string name="money_not_mine">Not mine</string>
+    <string name="setup_money_title">These look like a bank or wallet</string>
+    <string name="setup_money_body">Their names don\'t look like a bank\'s, but their messages quote a balance that moves with each payment. Read the ones that are yours.</string>
+    <string name="scanlog_money_senders">left out, but they look like a bank or wallet: %1$s</string>
     <plurals name="set_status_new_messages">
         <item quantity="one">%d new message to read</item>
         <item quantity="other">%d new messages to read</item>

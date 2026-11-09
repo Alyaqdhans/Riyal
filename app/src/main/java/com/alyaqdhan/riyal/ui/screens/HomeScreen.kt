@@ -2,6 +2,10 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import com.alyaqdhan.riyal.ui.compose.moneyEvidence
+import com.alyaqdhan.riyal.ui.compose.MoneySenderDialog
+import com.alyaqdhan.riyal.data.Banks
+import com.alyaqdhan.riyal.data.SenderEvidence
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.text.font.FontWeight
 import com.alyaqdhan.riyal.ui.compose.ScrollThumb
@@ -111,6 +115,8 @@ fun HomeScreen(
     val pendingTransfers by vm.pendingTransfers.collectAsState()
     val askEachTime by vm.askEachTime.collectAsState()
     val slice by vm.homeSlice.collectAsState()
+    val moneySenders by vm.moneySenders.collectAsState()
+    var askingAbout by remember { mutableStateOf<SenderEvidence?>(null) }
 
     val currency = remember(txns) { Stats.primaryCurrency(txns, vm.prefs.defaultCurrency) }
     val totals = remember(txns, currency, slice) {
@@ -161,6 +167,17 @@ fun HomeScreen(
                     counted(R.plurals.count_records, needsCategory),
                     onOpenNeedsCategory,
                 )
+            )
+        }
+        // A wallet or card whose name is like no bank's: its messages are left out until
+        // the user says they are theirs. A few at a time; the rest wait in Lists.
+        moneySenders.take(MONEY_SENDERS_SHOWN).forEach { e ->
+            add(
+                Attention(
+                    R.drawable.ic_sym_wallet,
+                    stringResource(R.string.money_title, Banks.displayName(e.sender)),
+                    moneyEvidence(e),
+                ) { askingAbout = e }
             )
         }
         // The setup checks the accounts too, so this is only for someone who skipped it.
@@ -266,6 +283,15 @@ fun HomeScreen(
         }
     }
 
+    askingAbout?.let { e ->
+        MoneySenderDialog(
+            evidence = e,
+            onRead = { vm.readSender(e.sender) },
+            onNotMine = { vm.excludeSender(e.sender) },
+            onDismiss = { askingAbout = null },
+        )
+    }
+
     picker?.let { txn ->
         TxnEditSheet(
             txn = txn,
@@ -294,6 +320,9 @@ fun HomeScreen(
         )
     }
 }
+
+/** How many senders that look like money Home asks about at once. */
+private const val MONEY_SENDERS_SHOWN = 3
 
 /** One thing waiting on the user. */
 private data class Attention(

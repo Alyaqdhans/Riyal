@@ -2,6 +2,8 @@
 
 package com.alyaqdhan.riyal.ui.screens
 
+import com.alyaqdhan.riyal.ui.compose.moneyEvidence
+import com.alyaqdhan.riyal.data.Banks
 import androidx.compose.foundation.lazy.rememberLazyListState
 import com.alyaqdhan.riyal.ui.compose.ScrollThumb
 import kotlinx.coroutines.launch
@@ -202,16 +204,18 @@ private fun AccountsStep(vm: MainViewModel) {
     val accounts by vm.accounts.collectAsState()
     val balances by vm.balances.collectAsState()
     val senders by vm.senders.collectAsState()
+    val moneySenders by vm.moneySenders.collectAsState()
     var editing by remember { mutableStateOf<Account?>(null) }
     var dropping by remember { mutableStateOf<String?>(null) }
     val live = remember(accounts) { accounts.filter { !it.archived } }
     val byBank = remember(live) {
         live.groupBy { it.senderIds.firstOrNull()?.trim().orEmpty().ifEmpty { it.bankName } }
     }
-    val missing = remember(senders, accounts) {
+    val missing = remember(senders, accounts, moneySenders) {
         val held = accounts.flatMap { it.senderIds }.mapTo(HashSet()) { it.trim().lowercase() }
+        val money = moneySenders.mapTo(HashSet()) { it.sender.trim().lowercase() }
         senders.filter { s ->
-            s.trim().lowercase() !in held && s.any(Char::isLetter)
+            s.trim().lowercase().let { it !in held && it !in money } && s.any(Char::isLetter)
         }.sorted().take(16)
     }
 
@@ -289,6 +293,37 @@ private fun AccountsStep(vm: MainViewModel) {
                     ) { Text(account.shortName) }
                 }
                 item(key = "div-$sender") { HorizontalDivider(Modifier.padding(horizontal = 16.dp)) }
+            }
+            // Named like no bank, but their balances move with their amounts: shown first,
+            // with why, rather than as one more name among sixteen.
+            if (moneySenders.isNotEmpty()) {
+                item(key = "money") {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(stringResource(R.string.setup_money_title), style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            stringResource(R.string.setup_money_body),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                moneySenders.forEach { e ->
+                    item(key = "money-" + e.sender.lowercase()) {
+                        ListItem(
+                            leadingContent = { Icon(painterResource(R.drawable.ic_sym_wallet), contentDescription = null) },
+                            supportingContent = { Text(moneyEvidence(e)) },
+                            trailingContent = {
+                                TextButton(
+                                    onClick = {
+                                        vm.includeSender(e.sender)
+                                        vm.rereadForSetup()
+                                    },
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text(stringResource(R.string.money_read)) }
+                            },
+                        ) { Text(Banks.displayName(e.sender)) }
+                    }
+                }
             }
             if (missing.isNotEmpty()) {
                 item(key = "missing") {

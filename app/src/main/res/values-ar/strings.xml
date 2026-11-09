@@ -843,6 +843,16 @@
     <string name="set_no_scan_yet">لا فحص بعد</string>
     <string name="set_last_scan">آخر فحص %1$s</string>
     <string name="set_status_up_to_date">كل شيء محدّث</string>
+    <string name="money_title">يبدو أن %1$s بنك أو محفظة</string>
+    <string name="money_evidence_moves">%1$s، ورصيده يتغيّر مع كل واحدة</string>
+    <string name="money_evidence_quotes">%1$s تذكر رصيدًا</string>
+    <string name="money_ask_title">قراءة رسائل %1$s؟</string>
+    <string name="money_ask_body">اسمه لا يشبه اسم بنك، لذا تُستبعد رسائله. اقرأها لتُسجَّل مدفوعاته ورصيده كما تُسجَّل مدفوعات بنكك.</string>
+    <string name="money_read">اقرأها</string>
+    <string name="money_not_mine">ليست لي</string>
+    <string name="setup_money_title">تبدو هذه بنوكًا أو محافظ</string>
+    <string name="setup_money_body">أسماؤها لا تشبه أسماء البنوك، لكن رسائلها تذكر رصيدًا يتغيّر مع كل دفعة. اقرأ ما يخصك منها.</string>
+    <string name="scanlog_money_senders">مستبعدة لكنها تبدو بنوكًا أو محافظ: %1$s</string>
     <plurals name="set_status_new_messages">
         <item quantity="zero">لا رسائل جديدة</item>
         <item quantity="one">رسالة جديدة بانتظار القراءة</item>

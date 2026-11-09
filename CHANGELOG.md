@@ -4,7 +4,23 @@ Every release of Riyal, newest first. Released versions are condensed from their
 [GitHub release notes](https://github.com/Alyaqdhans/Riyal/releases); the APK for each
 is attached there.
 
-## 1.8.5 — unreleased (branch `1.8.5`)
+## 1.8.6 — unreleased (branch `1.8.6`)
+
+### Reading messages
+
+- **A wallet or card with a name like no bank's is found by what it sends.** The gate
+  reads only senders named like a bank, ones holding an account, and ones added by hand,
+  so a wallet named for itself ("Example Pay") was never read at all - not recorded, not
+  proven by its balance, not asked about. The scan now also looks at what the gate leaves
+  out, recording none of it: a sender whose balance moves by exactly its amounts (twice
+  or more), or most of whose messages quote an amount and a balance, is asked about on
+  Home ("Example Pay looks like a bank or wallet"), first in the setup's list of senders,
+  and in Lists. Read them, and it is read like a bank from then on; Not mine, and it is
+  ignored. An advert or a bill quotes an amount but no balance that moves, so a telecom
+  is not offered.
+- Version 1.8.6 (versionCode 14).
+
+## 1.8.5 — 2026-11-09
 
 ### Reading messages
 
@@ -54,7 +70,7 @@ is attached there.
     bundle keeps every language, since the app switches language itself.
   - Unused strings and drawables gone; settings written through core-ktx's `edit { }`.
 
-## 1.8.4 — unreleased (branch `1.8.4`)
+## 1.8.4 — 2026-11-07
 
 ### Around the app
 

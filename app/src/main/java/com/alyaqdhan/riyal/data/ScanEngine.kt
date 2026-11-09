@@ -234,6 +234,17 @@ class ScanEngine(
         val tParse0 = System.currentTimeMillis()
         val excluded = prefs.excludedSenders.mapTo(HashSet()) { it.trim().lowercase() }
         val reads = ArrayList<Read>()
+        // What the gate leaves out is still looked at, never recorded: whether its
+        // balance moves by exactly its amounts, which a bank's or a wallet's does and an
+        // advert's cannot. A wallet named like nothing on the list ("Example Pay") was
+        // otherwise never read at all. Those that look like money are asked about.
+        val leftOut = HashMap<String, MutableList<MoneySenders.Seen>>()
+        val leftOutNames = HashMap<String, String>()
+        fun lookAtLeftOut(msg: RawSms, msgId: String) {
+            val key = msg.sender.trim().lowercase()
+            leftOutNames.putIfAbsent(key, msg.sender.trim())
+            leftOut.getOrPut(key) { ArrayList() } += MoneySenders.seen(msgId, msg.atMillis, msg.body, parser)
+        }
         messages.forEachIndexed { index, msg ->
             if (index % 25 == 0) onProgress(Progress(index, messages.size))
             // Hashed once, here, rather than at each of the three places that used to
@@ -256,6 +267,7 @@ class ScanEngine(
                 return@forEachIndexed
             }
             if (allowlistOn && msg.sender.lowercase() !in allowlist) {
+                lookAtLeftOut(msg, msgId)
                 skipped++
                 logSkip(Verbose.str(R.string.scanlog_skip_not_allowlisted, msg.sender))
                 return@forEachIndexed
@@ -273,6 +285,7 @@ class ScanEngine(
                 msg.sender.lowercase() in allowlist ||
                 AccountDiscovery.isKnownSender(existingAccounts, msg.sender)
             if (bankOnly && !bankSender) {
+                lookAtLeftOut(msg, msgId)
                 skipped++
                 logSkip(Verbose.str(R.string.scanlog_skip_not_bank, msg.sender))
                 return@forEachIndexed
@@ -295,6 +308,28 @@ class ScanEngine(
                 key = Skeleton.of(msg.sender, msg.body),
                 trusted = !bankOnly || bankSender,
             )
+        }
+
+        // ── stage 1a: the senders left out, and what they showed ──────────
+        //
+        // Added to what earlier scans found, for senders still left out: one the user
+        // has since read or ignored has had its answer.
+        fun stillLeftOut(sender: String): Boolean {
+            val key = sender.trim().lowercase()
+            if (key in excluded || SenderLists.isPhoneNumber(sender)) return false
+            if (allowlistOn) return sender.lowercase() !in allowlist
+            val bank = Banks.looksLikeBank(sender) || sender.lowercase() in allowlist ||
+                AccountDiscovery.isKnownSender(existingAccounts, sender)
+            return bankOnly && !bank
+        }
+        val earlierEvidence = if (readEverything) emptyMap()
+        else store.senderEvidence.value.associateBy { it.sender.trim().lowercase() }
+        val senderEvidence = (
+            (earlierEvidence - leftOut.keys).values +
+                leftOut.map { (key, seen) -> MoneySenders.evidence(leftOutNames.getValue(key), seen, earlierEvidence[key]) }
+            ).filter { stillLeftOut(it.sender) }
+        senderEvidence.filter { it.looksLikeMoney }.takeIf { it.isNotEmpty() }?.let { offered ->
+            Verbose.scan(R.string.scanlog_money_senders, offered.joinToString(", ") { it.sender })
         }
 
         // ── stage 1b: what the user taught, and what the inbox proves ─────
@@ -715,6 +750,7 @@ class ScanEngine(
             summary.copy(tookMs = System.currentTimeMillis() - startedAt),
             examinedIds = examined,
             templates = templates.values.toList(),
+            senderEvidence = senderEvidence,
         )
         val storeMs = System.currentTimeMillis() - tStore0
         val took = System.currentTimeMillis() - startedAt
